@@ -15,7 +15,6 @@ import { cn } from '@/lib/utils';
 import { useCredits } from '@/hooks/useCredits';
 
 const navigation = [
-  { name: 'Inspiración', href: '/inspiracion', icon: Sparkles },
   { name: 'Crear', href: '/crear', icon: Sparkles },
   { name: 'Editor', href: '/editor', icon: FileEdit },
   { name: 'Marcas', href: '/marcas', icon: Package },

@@ -1,6 +1,10 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
+// 🎨 PREVIEW MODE: Set to true to disable authentication and see the UI
+// ⚠️ CAMBIAR A FALSE una vez tengas .env.local configurado
+const PREVIEW_MODE = false;
+
 const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
@@ -8,6 +12,11 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
+  // PREVIEW MODE: Allow all routes without authentication
+  if (PREVIEW_MODE) {
+    return NextResponse.next();
+  }
+
   const { userId } = await auth();
 
   // Allow public routes
