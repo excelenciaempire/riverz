@@ -1,0 +1,113 @@
+export const translations = {
+  es: {
+    nav: {
+      inspiration: 'Inspiración',
+      create: 'Crear',
+      editor: 'Editor',
+      brands: 'Marcas',
+      history: 'Historial',
+      settings: 'Configuración',
+      logout: 'Cerrar Sesión',
+    },
+    common: {
+      generate: 'Generar',
+      download: 'Descargar',
+      edit: 'Editar',
+      delete: 'Eliminar',
+      cancel: 'Cancelar',
+      save: 'Guardar',
+      upload: 'Subir',
+      loading: 'Cargando...',
+      error: 'Error',
+      success: 'Éxito',
+      credits: 'Créditos',
+    },
+    createMenu: {
+      ugc: 'UGC',
+      faceSwap: 'Face Swap',
+      clips: 'Clips',
+      editPhoto: 'Editar Foto',
+      staticAds: 'Static Ads',
+      improveQuality: 'Mejorar Calidad',
+    },
+    brands: {
+      title: 'Mis Productos',
+      addNew: 'Agregar Nuevo',
+      name: 'Nombre',
+      price: 'Precio de venta',
+      website: 'Sitio web',
+      benefits: 'Beneficios, características, diferenciación',
+      images: 'Imágenes del Producto',
+      downloadReport: 'Descargar Reporte',
+      generatingReport: 'Generando Reporte...',
+      uploadImages: 'Para mejores resultados, añada mínimo 3 fotos de alta calidad de distintos ángulos del producto',
+    },
+    plans: {
+      free: 'Gratis',
+      basic: 'Básico',
+      pro: 'Pro',
+      premium: 'Premium',
+      upgrade: 'Mejorar Plan',
+      current: 'Plan Actual',
+    },
+  },
+  en: {
+    nav: {
+      inspiration: 'Inspiration',
+      create: 'Create',
+      editor: 'Editor',
+      brands: 'Brands',
+      history: 'History',
+      settings: 'Settings',
+      logout: 'Logout',
+    },
+    common: {
+      generate: 'Generate',
+      download: 'Download',
+      edit: 'Edit',
+      delete: 'Delete',
+      cancel: 'Cancel',
+      save: 'Save',
+      upload: 'Upload',
+      loading: 'Loading...',
+      error: 'Error',
+      success: 'Success',
+      credits: 'Credits',
+    },
+    createMenu: {
+      ugc: 'UGC',
+      faceSwap: 'Face Swap',
+      clips: 'Clips',
+      editPhoto: 'Edit Photo',
+      staticAds: 'Static Ads',
+      improveQuality: 'Improve Quality',
+    },
+    brands: {
+      title: 'My Products',
+      addNew: 'Add New',
+      name: 'Name',
+      price: 'Sale Price',
+      website: 'Website',
+      benefits: 'Benefits, Features, Differentiation',
+      images: 'Product Images',
+      downloadReport: 'Download Report',
+      generatingReport: 'Generating Report...',
+      uploadImages: 'For best results, upload at least 3 high-quality photos from different angles',
+    },
+    plans: {
+      free: 'Free',
+      basic: 'Basic',
+      pro: 'Pro',
+      premium: 'Premium',
+      upgrade: 'Upgrade Plan',
+      current: 'Current Plan',
+    },
+  },
+} as const;
+
+export type Language = keyof typeof translations;
+
+export function useTranslation(lang: Language = 'es') {
+  return translations[lang];
+}
+
