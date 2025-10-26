@@ -24,10 +24,20 @@ export default function ConfiguracionPage() {
     queryKey: ['user', user?.id],
     queryFn: async () => {
       const response = await fetch('/api/user');
+      
+      // Si el usuario no existe (error 406 o 404), inicializarlo
+      if (!response.ok && (response.status === 406 || response.status === 404)) {
+        const initResponse = await fetch('/api/user/init', { method: 'POST' });
+        if (!initResponse.ok) throw new Error('Failed to initialize user');
+        const initData = await initResponse.json();
+        return initData.data;
+      }
+      
       if (!response.ok) throw new Error('Failed to fetch user');
       return response.json();
     },
     enabled: !!user,
+    retry: 1,
   });
 
   // Update language
