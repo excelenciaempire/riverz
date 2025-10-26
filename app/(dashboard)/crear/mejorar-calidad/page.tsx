@@ -100,9 +100,9 @@ export default function MejorarCalidadPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
         {/* Left side - Configuration */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* VIDEO Mode */}
           {activeMode === 'video' && (
             <>

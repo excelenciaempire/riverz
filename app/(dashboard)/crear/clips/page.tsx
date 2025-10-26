@@ -62,12 +62,12 @@ export default function ClipsPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
       {/* Left side - Configuration */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Optional Image */}
         <div>
-          <Label className="mb-2 block">Subir Imagen (Opcional)</Label>
+          <Label className="mb-1.5 block text-sm">Subir Imagen (Opcional)</Label>
           <div className="rounded-lg border-2 border-gray-700 bg-[#1a2332] p-4">
             <FileUpload
               onFilesSelected={(files) => setImage(files[0])}
@@ -79,7 +79,7 @@ export default function ClipsPage() {
 
         {/* Prompt */}
         <div>
-          <Label className="mb-2 block">Prompt</Label>
+          <Label className="mb-1.5 block text-sm">Prompt</Label>
           <Textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -91,7 +91,7 @@ export default function ClipsPage() {
 
         {/* Modelo */}
         <div>
-          <Label className="mb-3 block">Modelo</Label>
+          <Label className="mb-2 block text-sm">Modelo</Label>
           <div className="flex gap-3">
             <button
               onClick={() => setModel('sora-2')}
@@ -120,7 +120,7 @@ export default function ClipsPage() {
 
         {/* Formato */}
         <div>
-          <Label className="mb-3 block">Formato</Label>
+          <Label className="mb-2 block text-sm">Formato</Label>
           <div className="flex gap-3">
             <button
               onClick={() => setFormat('9:16')}
@@ -149,7 +149,7 @@ export default function ClipsPage() {
 
         {/* Duración */}
         <div>
-          <Label className="mb-3 block">Duración</Label>
+          <Label className="mb-2 block text-sm">Duración</Label>
           <div className="flex gap-3">
             <button
               onClick={() => setDuration('10')}

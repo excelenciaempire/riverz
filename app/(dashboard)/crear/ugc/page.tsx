@@ -167,37 +167,37 @@ export default function UGCPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
       {/* Left side - Configuration */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Avatar Selection Tabs */}
-        <div className="flex gap-8 border-b border-gray-700">
+        <div className="flex gap-6 border-b border-gray-800">
           <button
             onClick={() => setActiveTab('library')}
-            className={`pb-3 text-base ${
+            className={`pb-2 text-sm ${
               activeTab === 'library'
-                ? 'border-b-2 border-white font-medium text-white'
-                : 'text-gray-400'
+                ? 'border-b-2 border-brand-accent font-medium text-white'
+                : 'text-gray-400 hover:text-gray-300'
             }`}
           >
             Biblioteca
           </button>
           <button
             onClick={() => setActiveTab('upload')}
-            className={`pb-3 text-base ${
+            className={`pb-2 text-sm ${
               activeTab === 'upload'
-                ? 'border-b-2 border-white font-medium text-white'
-                : 'text-gray-400'
+                ? 'border-b-2 border-brand-accent font-medium text-white'
+                : 'text-gray-400 hover:text-gray-300'
             }`}
           >
             Subir Imagen
           </button>
           <button
             onClick={() => setActiveTab('generate')}
-            className={`pb-3 text-base ${
+            className={`pb-2 text-sm ${
               activeTab === 'generate'
-                ? 'border-b-2 border-white font-medium text-white'
-                : 'text-gray-400'
+                ? 'border-b-2 border-brand-accent font-medium text-white'
+                : 'text-gray-400 hover:text-gray-300'
             }`}
           >
             Generar
@@ -205,7 +205,7 @@ export default function UGCPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="rounded-lg bg-[#141414] border border-gray-800 p-6">
+        <div className="rounded-lg bg-[#141414] border border-gray-800 p-4">
           {activeTab === 'library' && (
             <div>
               {loadingAvatars ? (
@@ -311,7 +311,6 @@ export default function UGCPage() {
         <Button
           onClick={generateUGC}
           className="w-full bg-brand-accent text-white hover:bg-brand-accent/90"
-          size="lg"
           disabled={isGenerating}
         >
           {isGenerating ? (
@@ -326,7 +325,7 @@ export default function UGCPage() {
       </div>
 
       {/* Right side - Preview/Result */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-800 bg-[#141414] p-8 min-h-[600px]">
+      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-800 bg-[#141414] p-6 min-h-[700px]">
         {isGenerating ? (
           <div className="w-full space-y-4">
             <h3 className="text-center text-xl font-semibold text-white">

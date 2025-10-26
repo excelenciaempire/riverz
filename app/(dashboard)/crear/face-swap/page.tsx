@@ -71,14 +71,14 @@ export default function FaceSwapPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
       {/* Left side - Configuration */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Uploads in grid */}
         <div className="grid grid-cols-2 gap-4">
           {/* Source Video */}
           <div>
-            <Label className="mb-2 block">Source Video</Label>
+            <Label className="mb-1.5 block text-sm">Source Video</Label>
             <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
               {sourceVideo ? (
                 <video
@@ -96,7 +96,7 @@ export default function FaceSwapPage() {
 
           {/* Character Image */}
           <div>
-            <Label className="mb-2 block">Character Image</Label>
+            <Label className="mb-1.5 block text-sm">Character Image</Label>
             <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
               {characterImage ? (
                 <img
