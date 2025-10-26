@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { triggerN8NWebhook, pollN8NResult, N8N_ENDPOINTS } from '@/lib/n8n';
+import { triggerN8NWebhook, N8N_ENDPOINTS } from '@/lib/n8n';
 
 export async function POST(req: Request) {
   try {
@@ -16,118 +16,139 @@ export async function POST(req: Request) {
     const productImage = formData.get('productImage') as File;
     const prompt = formData.get('prompt') as string;
     const format = formData.get('format') as string;
-    const numVariants = parseInt(formData.get('numVariants') as string);
+    const variants = formData.get('variants') as string;
 
-    const supabase = await createClient();
-
-    // Upload images to Supabase storage
-    const refFileName = `${Date.now()}_ref_${referenceImage.name}`;
-    const prodFileName = `${Date.now()}_prod_${productImage.name}`;
-
-    const { error: refUploadError } = await supabase.storage
-      .from('generations')
-      .upload(refFileName, referenceImage);
-
-    const { error: prodUploadError } = await supabase.storage
-      .from('generations')
-      .upload(prodFileName, productImage);
-
-    if (refUploadError || prodUploadError) {
-      throw new Error('Failed to upload images');
-    }
-
-    const { data: { publicUrl: refUrl } } = supabase.storage
-      .from('generations')
-      .getPublicUrl(refFileName);
-
-    const { data: { publicUrl: prodUrl } } = supabase.storage
-      .from('generations')
-      .getPublicUrl(prodFileName);
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('id, credits')
-      .eq('clerk_id', userId)
-      .single();
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const estimatedCost = 30 * numVariants; // Cost per variant
-    if (user.credits < estimatedCost) {
+    if (!referenceImage || !productImage) {
       return NextResponse.json(
-        { error: 'Insufficient credits' },
-        { status: 402 }
+        { error: 'Reference and product images are required' },
+        { status: 400 }
       );
     }
 
-    const { data: generation } = await supabase
+    const supabase = await createClient();
+
+    // Obtener costo del pricing_config
+    const { data: pricingConfig } = await supabase
+      .from('pricing_config')
+      .select('credits_cost')
+      .eq('mode', 'editar_foto_clonar')
+      .eq('is_active', true)
+      .single();
+
+    const creditsCost = pricingConfig?.credits_cost || 110;
+
+    // TODO: Upload files to Supabase Storage
+    // const referenceImageUrl = await uploadToStorage(referenceImage, 'user-uploads');
+    // const productImageUrl = await uploadToStorage(productImage, 'user-uploads');
+
+    // Crear registro de generación
+    const { data: generation, error: genError } = await supabase
       .from('generations')
       .insert({
-        user_id: user.id,
+        clerk_user_id: userId,
         type: 'editar_foto_clonar',
         status: 'pending',
-        input_data: { prompt, format, numVariants },
-        cost: estimatedCost,
+        input_data: { 
+          prompt: prompt || '',
+          format: format || '1:1',
+          variants: parseInt(variants) || 1
+        },
+        cost: creditsCost,
       })
       .select()
       .single();
 
+    if (genError) {
+      console.error('Error creating generation:', genError);
+      throw new Error('Failed to create generation record');
+    }
+
+    // Validar y deducir créditos
+    const deductResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/credits/deduct`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': req.headers.get('cookie') || '',
+      },
+      body: JSON.stringify({
+        amount: creditsCost,
+        generation_id: generation.id,
+        description: `Clonar Estilo #${generation.id}`,
+      }),
+    });
+
+    if (!deductResponse.ok) {
+      const errorData = await deductResponse.json();
+      
+      await supabase
+        .from('generations')
+        .update({
+          status: 'failed',
+          error_message: 'Insufficient credits',
+        })
+        .eq('id', generation.id);
+      
+      if (deductResponse.status === 402) {
+        return NextResponse.json(
+          { 
+            error: 'Insufficient credits',
+            required: creditsCost,
+            current: errorData.current_credits
+          },
+          { status: 402 }
+        );
+      }
+      
+      throw new Error('Failed to deduct credits');
+    }
+
+    // Trigger N8N webhook
     const webhookResponse = await triggerN8NWebhook({
       endpoint: N8N_ENDPOINTS.editarFotoClonar,
       data: {
-        referenceImageUrl: refUrl,
-        productImageUrl: prodUrl,
-        prompt,
-        format,
-        numVariants,
-        generationId: generation?.id,
+        prompt: prompt || '',
+        format: format || '1:1',
+        variants: parseInt(variants) || 1,
+        generationId: generation.id,
+        userId,
+        // referenceImageUrl,
+        // productImageUrl,
       },
       userId,
     });
 
     if (!webhookResponse.success) {
-      throw new Error(webhookResponse.error || 'Image cloning failed');
+      await supabase
+        .from('generations')
+        .update({
+          status: 'failed',
+          error_message: webhookResponse.error || 'N8N webhook failed',
+        })
+        .eq('id', generation.id);
+
+      throw new Error(webhookResponse.error || 'N8N webhook failed');
     }
 
+    // Actualizar estado de generación
     await supabase
       .from('generations')
       .update({
         status: 'processing',
         n8n_job_id: webhookResponse.job_id,
       })
-      .eq('id', generation?.id);
+      .eq('id', generation.id);
 
-    const result = await pollN8NResult(
-      webhookResponse.job_id!,
-      N8N_ENDPOINTS.editarFotoClonar
-    );
-
-    await supabase
-      .from('generations')
-      .update({
-        status: 'completed',
-        result_url: result.result_url,
-      })
-      .eq('id', generation?.id);
-
-    await supabase
-      .from('users')
-      .update({ credits: user.credits - estimatedCost })
-      .eq('id', user.id);
-
-    // Result should contain multiple image URLs
     return NextResponse.json({
       success: true,
-      images: result.result_url?.split(',') || [result.result_url],
+      generationId: generation.id,
+      jobId: webhookResponse.job_id,
+      status: 'processing',
     });
-  } catch (error) {
-    console.error('Error cloning image:', error);
+  } catch (error: any) {
+    console.error('Error cloning style:', error);
     return NextResponse.json(
-      { error: 'Failed to clone image' },
+      { error: error.message || 'Failed to clone style' },
       { status: 500 }
     );
   }
 }
-

@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { triggerN8NWebhook, pollN8NResult, N8N_ENDPOINTS } from '@/lib/n8n';
+import { triggerN8NWebhook, N8N_ENDPOINTS } from '@/lib/n8n';
 
 export async function POST(req: Request) {
   try {
@@ -13,102 +13,134 @@ export async function POST(req: Request) {
 
     const formData = await req.formData();
     const image = formData.get('image') as File;
+    const mask = formData.get('mask') as File;
     const prompt = formData.get('prompt') as string;
 
-    const supabase = await createClient();
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('id, credits')
-      .eq('clerk_id', userId)
-      .single();
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const estimatedCost = 15;
-    if (user.credits < estimatedCost) {
+    if (!image || !prompt) {
       return NextResponse.json(
-        { error: 'Insufficient credits' },
-        { status: 402 }
+        { error: 'Image and prompt are required' },
+        { status: 400 }
       );
     }
 
-    const { data: generation } = await supabase
+    const supabase = await createClient();
+
+    // Obtener costo del pricing_config
+    const { data: pricingConfig } = await supabase
+      .from('pricing_config')
+      .select('credits_cost')
+      .eq('mode', 'editar_foto_editar')
+      .eq('is_active', true)
+      .single();
+
+    const creditsCost = pricingConfig?.credits_cost || 90;
+
+    // TODO: Upload files to Supabase Storage
+    // const imageUrl = await uploadToStorage(image, 'user-uploads');
+    // const maskUrl = mask ? await uploadToStorage(mask, 'user-uploads') : null;
+
+    // Crear registro de generación
+    const { data: generation, error: genError } = await supabase
       .from('generations')
       .insert({
-        user_id: user.id,
+        clerk_user_id: userId,
         type: 'editar_foto_editar',
         status: 'pending',
-        input_data: { prompt },
-        cost: estimatedCost,
+        input_data: { prompt, hasMask: !!mask },
+        cost: creditsCost,
       })
       .select()
       .single();
 
-    // Upload image to Supabase storage
-    const fileName = `${Date.now()}_${image.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from('generations')
-      .upload(fileName, image);
+    if (genError) {
+      console.error('Error creating generation:', genError);
+      throw new Error('Failed to create generation record');
+    }
 
-    if (uploadError) throw uploadError;
+    // Validar y deducir créditos
+    const deductResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/credits/deduct`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': req.headers.get('cookie') || '',
+      },
+      body: JSON.stringify({
+        amount: creditsCost,
+        generation_id: generation.id,
+        description: `Editar Imagen #${generation.id}`,
+      }),
+    });
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('generations')
-      .getPublicUrl(fileName);
+    if (!deductResponse.ok) {
+      const errorData = await deductResponse.json();
+      
+      await supabase
+        .from('generations')
+        .update({
+          status: 'failed',
+          error_message: 'Insufficient credits',
+        })
+        .eq('id', generation.id);
+      
+      if (deductResponse.status === 402) {
+        return NextResponse.json(
+          { 
+            error: 'Insufficient credits',
+            required: creditsCost,
+            current: errorData.current_credits
+          },
+          { status: 402 }
+        );
+      }
+      
+      throw new Error('Failed to deduct credits');
+    }
 
+    // Trigger N8N webhook
     const webhookResponse = await triggerN8NWebhook({
       endpoint: N8N_ENDPOINTS.editarFotoEditar,
       data: {
-        imageUrl: publicUrl,
         prompt,
-        generationId: generation?.id,
+        generationId: generation.id,
+        userId,
+        // imageUrl,
+        // maskUrl,
       },
       userId,
     });
 
     if (!webhookResponse.success) {
-      throw new Error(webhookResponse.error || 'Image editing failed');
+      await supabase
+        .from('generations')
+        .update({
+          status: 'failed',
+          error_message: webhookResponse.error || 'N8N webhook failed',
+        })
+        .eq('id', generation.id);
+
+      throw new Error(webhookResponse.error || 'N8N webhook failed');
     }
 
+    // Actualizar estado de generación
     await supabase
       .from('generations')
       .update({
         status: 'processing',
         n8n_job_id: webhookResponse.job_id,
       })
-      .eq('id', generation?.id);
-
-    const result = await pollN8NResult(
-      webhookResponse.job_id!,
-      N8N_ENDPOINTS.editarFotoEditar
-    );
-
-    await supabase
-      .from('generations')
-      .update({
-        status: 'completed',
-        result_url: result.result_url,
-      })
-      .eq('id', generation?.id);
-
-    await supabase
-      .from('users')
-      .update({ credits: user.credits - estimatedCost })
-      .eq('id', user.id);
+      .eq('id', generation.id);
 
     return NextResponse.json({
       success: true,
-      images: [result.result_url],
+      generationId: generation.id,
+      jobId: webhookResponse.job_id,
+      status: 'processing',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error editing image:', error);
     return NextResponse.json(
-      { error: 'Failed to edit image' },
+      { error: error.message || 'Failed to edit image' },
       { status: 500 }
     );
   }
 }
-
