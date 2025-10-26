@@ -97,11 +97,11 @@ export default function FaceSwapPage() {
           {/* Source Video */}
           <div>
             <Label className="mb-1.5 block text-sm">Video de Origen</Label>
-            <div className="aspect-square rounded-2xl border-2 border-gray-800 bg-[#0a0a0a] p-4">
+            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
               {sourceVideo ? (
                 <video
                   src={URL.createObjectURL(sourceVideo)}
-                  className="h-full w-full rounded-lg object-cover"
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 <FileUpload
@@ -116,12 +116,12 @@ export default function FaceSwapPage() {
           {/* Character Image */}
           <div>
             <Label className="mb-1.5 block text-sm">Imagen del Personaje</Label>
-            <div className="aspect-square rounded-2xl border-2 border-gray-800 bg-[#0a0a0a] p-4">
+            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
               {characterImage ? (
                 <img
                   src={URL.createObjectURL(characterImage)}
                   alt="Character"
-                  className="h-full w-full rounded-lg object-cover"
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 <FileUpload

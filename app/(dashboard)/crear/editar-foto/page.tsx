@@ -287,38 +287,41 @@ export default function EditarFotoPage() {
             <>
               <div>
                 <Label className="mb-2 block">Subir Imágenes (Máximo 5)</Label>
-                <div className="overflow-hidden rounded-2xl border-2 border-dashed border-gray-800 bg-[#0a0a0a] p-4">
-                  <FileUpload
-                    onFilesSelected={(files) => {
-                      const newImages = [...images, ...Array.from(files)].slice(0, 5);
-                      setImages(newImages);
-                    }}
-                    accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-                    multiple
-                    maxFiles={5}
-                  />
-                  {images.length > 0 && (
-                    <div className="mt-4 grid grid-cols-5 gap-2">
-                      {images.map((img, index) => (
-                        <div key={index} className="relative aspect-square overflow-hidden rounded-lg border-2 border-gray-700">
-                          <img
-                            src={URL.createObjectURL(img)}
-                            alt={`Imagen ${index + 1}`}
-                            className="h-full w-full object-cover"
-                          />
-                          <button
-                            onClick={() => setImages(images.filter((_, i) => i !== index))}
-                            className="absolute right-1 top-1 cursor-pointer rounded-full bg-red-500 p-1 text-white transition hover:bg-red-600"
-                          >
-                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {images.length < 5 ? (
+                  <div className="overflow-hidden rounded-2xl border-2 border-dashed border-gray-800 bg-[#0a0a0a]">
+                    <FileUpload
+                      onFilesSelected={(files) => {
+                        const newImages = [...images, ...Array.from(files)].slice(0, 5);
+                        setImages(newImages);
+                      }}
+                      accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
+                      multiple
+                      maxFiles={5}
+                      hideFileList
+                    />
+                  </div>
+                ) : null}
+                {images.length > 0 && (
+                  <div className={`grid grid-cols-5 gap-2 ${images.length < 5 ? 'mt-4' : ''}`}>
+                    {images.map((img, index) => (
+                      <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border-2 border-gray-700">
+                        <img
+                          src={URL.createObjectURL(img)}
+                          alt={`Imagen ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          onClick={() => setImages(images.filter((_, i) => i !== index))}
+                          className="absolute right-1 top-1 cursor-pointer rounded-full bg-red-500 p-1 text-white opacity-0 transition hover:bg-red-600 group-hover:opacity-100"
+                        >
+                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>

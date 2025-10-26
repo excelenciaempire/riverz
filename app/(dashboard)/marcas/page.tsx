@@ -192,7 +192,7 @@ export default function MarcasPage() {
             <div>
               <Label className="mb-3 block text-sm font-medium">Imágenes del Producto (máx. 5)</Label>
               {formData.images.length < 5 ? (
-                <div className="rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] p-8 transition hover:border-gray-600">
+                <div className="overflow-hidden rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a]">
                   <FileUpload
                     onFilesSelected={(files) => {
                       const remaining = 5 - formData.images.length;
@@ -379,7 +379,7 @@ export default function MarcasPage() {
           <div>
             <Label className="mb-2 block text-sm font-medium">Imágenes (máx. 5)</Label>
             {formData.images.length < 5 ? (
-              <div className="rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] p-6">
+              <div className="overflow-hidden rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a]">
                 <FileUpload
                   onFilesSelected={(files) => {
                     const remaining = 5 - formData.images.length;

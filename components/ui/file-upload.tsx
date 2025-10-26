@@ -35,12 +35,15 @@ export function FileUpload({
     maxSize,
     multiple,
     onDrop: (acceptedFiles) => {
-      setSelectedFiles(acceptedFiles);
-      onFilesSelected(acceptedFiles);
+      // For multiple files, append to existing files instead of replacing
+      const newFiles = multiple ? [...selectedFiles, ...acceptedFiles] : acceptedFiles;
+      setSelectedFiles(newFiles);
+      onFilesSelected(acceptedFiles); // Still pass only new files to parent
 
       if (preview) {
         const urls = acceptedFiles.map((file) => URL.createObjectURL(file));
-        setPreviews(urls);
+        const newPreviews = multiple ? [...previews, ...urls] : urls;
+        setPreviews(newPreviews);
       }
     },
   });
@@ -61,8 +64,8 @@ export function FileUpload({
       <div
         {...getRootProps()}
         className={cn(
-          'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8',
-          'transition-colors focus:outline-none',
+          'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-12',
+          'transition-colors focus:outline-none w-full',
           isDragActive
             ? 'border-brand-accent bg-brand-accent/10'
             : 'border-gray-700 bg-transparent hover:border-gray-600'

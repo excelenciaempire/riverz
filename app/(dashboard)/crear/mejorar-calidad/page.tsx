@@ -119,10 +119,11 @@ export default function MejorarCalidadPage() {
             <>
               <div>
                 <Label className="mb-2 block">Subir Video</Label>
-                <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6">
+                <div className="overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
                   <FileUpload
                     onFilesSelected={(files) => setVideoFile(files[0])}
                     accept={{ 'video/*': ['.mp4', '.mov', '.avi'] }}
+                    maxSize={100 * 1024 * 1024}
                   />
                 </div>
                 {videoFile && (
@@ -247,7 +248,7 @@ export default function MejorarCalidadPage() {
             <>
               <div>
                 <Label className="mb-2 block">Subir Imagen</Label>
-                <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6">
+                <div className="overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
                   <FileUpload
                     onFilesSelected={(files) => setImageFile(files[0])}
                     accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
