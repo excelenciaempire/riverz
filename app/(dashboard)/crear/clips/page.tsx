@@ -10,6 +10,7 @@ import { ProgressBar } from '@/components/ui/loading';
 import { toast } from 'sonner';
 import { Download, Loader2, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { startPolling, handleCreditsError } from '@/lib/polling-helper';
 
 export default function ClipsPage() {
   const router = useRouter();
@@ -32,10 +33,6 @@ export default function ClipsPage() {
     setProgress(0);
 
     try {
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => Math.min(prev + 5, 90));
-      }, 1000);
-
       const formData = new FormData();
       if (image) formData.append('image', image);
       formData.append('prompt', prompt);
@@ -48,17 +45,39 @@ export default function ClipsPage() {
         body: formData,
       });
 
-      clearInterval(progressInterval);
-
-      if (!response.ok) throw new Error('Failed to generate clip');
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        if (response.status === 402) {
+          handleCreditsError(errorData, router, toast);
+          setIsGenerating(false);
+          return;
+        }
+        
+        throw new Error(errorData.error || 'Failed to generate clip');
+      }
 
       const data = await response.json();
-      setProgress(100);
-      setResultVideo(data.videoUrl);
-      toast.success('Clip generado');
-    } catch (error) {
-      toast.error('Error al generar clip');
-    } finally {
+      const { jobId } = data;
+
+      startPolling({
+        jobId,
+        statusEndpoint: '/api/clips/status',
+        onProgress: (progress) => setProgress(progress),
+        onComplete: (resultUrl) => {
+          setResultVideo(resultUrl);
+          toast.success('Clip generado exitosamente');
+          setIsGenerating(false);
+        },
+        onError: (error) => {
+          toast.error(error);
+          setIsGenerating(false);
+        },
+      });
+
+    } catch (error: any) {
+      console.error('Generation error:', error);
+      toast.error(error.message || 'Error al generar clip');
       setIsGenerating(false);
     }
   };

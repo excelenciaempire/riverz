@@ -9,6 +9,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { ProgressBar } from '@/components/ui/loading';
 import { toast } from 'sonner';
 import { Download, Loader2, ArrowLeft } from 'lucide-react';
+import { startPolling, handleCreditsError } from '@/lib/polling-helper';
 
 const resolutionOptions = [
   { value: '720p', label: '720p' },
@@ -48,10 +49,6 @@ export default function FaceSwapPage() {
     setProgress(0);
 
     try {
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => Math.min(prev + 5, 90));
-      }, 1000);
-
       const formData = new FormData();
       formData.append('sourceVideo', sourceVideo);
       formData.append('characterImage', characterImage);
@@ -63,17 +60,40 @@ export default function FaceSwapPage() {
         body: formData,
       });
 
-      clearInterval(progressInterval);
-
-      if (!response.ok) throw new Error('Failed to generate face swap');
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        if (response.status === 402) {
+          handleCreditsError(errorData, router, toast);
+          setIsGenerating(false);
+          return;
+        }
+        
+        throw new Error(errorData.error || 'Failed to generate face swap');
+      }
 
       const data = await response.json();
-      setProgress(100);
-      setResultVideo(data.videoUrl);
-      toast.success('Face swap completado');
-    } catch (error) {
-      toast.error('Error al generar face swap');
-    } finally {
+      const { jobId } = data;
+
+      // Iniciar polling
+      startPolling({
+        jobId,
+        statusEndpoint: '/api/face-swap/status',
+        onProgress: (progress) => setProgress(progress),
+        onComplete: (resultUrl) => {
+          setResultVideo(resultUrl);
+          toast.success('Face swap completado exitosamente');
+          setIsGenerating(false);
+        },
+        onError: (error) => {
+          toast.error(error);
+          setIsGenerating(false);
+        },
+      });
+
+    } catch (error: any) {
+      console.error('Generation error:', error);
+      toast.error(error.message || 'Error al generar face swap');
       setIsGenerating(false);
     }
   };
