@@ -204,12 +204,12 @@ export async function POST(req: Request) {
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscription = invoice.subscription;
+        const subscription = (invoice as any).subscription;
 
-        if (!subscription) break;
+        if (!subscription || typeof subscription !== 'string') break;
 
         // Obtener la suscripción para obtener el metadata
-        const subscriptionData = await stripe.subscriptions.retrieve(subscription as string);
+        const subscriptionData = await stripe.subscriptions.retrieve(subscription);
         const clerkUserId = subscriptionData.metadata?.clerk_user_id;
         const planType = subscriptionData.metadata?.plan_type as 'basic' | 'pro' | 'premium';
 
@@ -241,11 +241,11 @@ export async function POST(req: Request) {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscription = invoice.subscription;
+        const subscription = (invoice as any).subscription;
 
-        if (!subscription) break;
+        if (!subscription || typeof subscription !== 'string') break;
 
-        const subscriptionData = await stripe.subscriptions.retrieve(subscription as string);
+        const subscriptionData = await stripe.subscriptions.retrieve(subscription);
         const clerkUserId = subscriptionData.metadata?.clerk_user_id;
 
         if (!clerkUserId) break;

@@ -486,7 +486,7 @@ export default function UGCPage() {
           </div>
         ) : previewAvatar || editedAvatar ? (
           <div className="w-full max-w-md">
-            <div className="aspect-[9/16] overflow-hidden rounded-lg border border-gray-700">
+            <div className="aspect-9/16 overflow-hidden rounded-lg border border-gray-700">
               <img
                 src={editedAvatar || previewAvatar || ''}
                 alt="Avatar preview"
@@ -536,7 +536,7 @@ export default function UGCPage() {
                   className="aspect-square object-cover"
                 />
                 {/* Overlay with name */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 transition group-hover:opacity-100">
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100">
                   <div className="absolute bottom-2 left-2 right-2 text-center">
                     <p className="text-sm font-medium text-white">{avatar.name}</p>
                   </div>

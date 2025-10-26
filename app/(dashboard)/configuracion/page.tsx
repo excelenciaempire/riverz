@@ -202,7 +202,7 @@ export default function ConfiguracionPage() {
                 <ul className="mb-6 space-y-2">
                   {plan.features.map((feature, index) => (
                     <li key={index} className="flex items-start gap-2 text-sm text-gray-300">
-                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-accent" />
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-accent" />
                       {feature}
                     </li>
                   ))}
