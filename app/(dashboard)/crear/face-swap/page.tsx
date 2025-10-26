@@ -104,10 +104,7 @@ export default function FaceSwapPage() {
                   className="h-full w-full rounded-lg object-cover"
                 />
               ) : (
-                <div className="flex h-full flex-col items-center justify-center">
-                  <svg className="mb-2 h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
+                <>
                   <input
                     type="file"
                     accept="video/*"
@@ -115,11 +112,14 @@ export default function FaceSwapPage() {
                     className="hidden"
                     id="source-video"
                   />
-                  <label htmlFor="source-video" className="cursor-pointer text-center text-xs text-gray-400 hover:text-gray-300">
-                    Haz clic aquí
+                  <label htmlFor="source-video" className="flex h-full cursor-pointer flex-col items-center justify-center transition hover:bg-[#1a1a1a]">
+                    <svg className="mb-2 h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="text-center text-xs text-gray-400">Haz clic aquí</span>
+                    <p className="mt-1 text-[10px] text-gray-600">Máx: 100MB</p>
                   </label>
-                  <p className="mt-1 text-[10px] text-gray-600">Máx: 100MB</p>
-                </div>
+                </>
               )}
             </div>
           </div>
@@ -135,10 +135,7 @@ export default function FaceSwapPage() {
                   className="h-full w-full rounded-lg object-cover"
                 />
               ) : (
-                <div className="flex h-full flex-col items-center justify-center">
-                  <svg className="mb-2 h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
+                <>
                   <input
                     type="file"
                     accept="image/*"
@@ -146,11 +143,14 @@ export default function FaceSwapPage() {
                     className="hidden"
                     id="character-image"
                   />
-                  <label htmlFor="character-image" className="cursor-pointer text-center text-xs text-gray-400 hover:text-gray-300">
-                    Haz clic aquí
+                  <label htmlFor="character-image" className="flex h-full cursor-pointer flex-col items-center justify-center transition hover:bg-[#1a1a1a]">
+                    <svg className="mb-2 h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="text-center text-xs text-gray-400">Haz clic aquí</span>
+                    <p className="mt-1 text-[10px] text-gray-600">Máx: 10MB</p>
                   </label>
-                  <p className="mt-1 text-[10px] text-gray-600">Máx: 10MB</p>
-                </div>
+                </>
               )}
             </div>
           </div>
