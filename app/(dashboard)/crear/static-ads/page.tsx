@@ -111,9 +111,14 @@ export default function StaticAdsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1800px]">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-white">Static Ads</h1>
+        <p className="mt-2 text-gray-400">Plantillas y conceptos de anuncios</p>
+      </div>
+
       {/* Tabs */}
-      <div className="flex gap-8 border-b border-gray-700">
+      <div className="mb-8 flex gap-6 border-b border-gray-800">
         <button
           onClick={() => setActiveTab('plantillas')}
           className={cn(

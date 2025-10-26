@@ -73,9 +73,14 @@ export default function MejorarCalidadPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1600px]">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-white">Mejorar Calidad</h1>
+        <p className="mt-2 text-gray-400">Mejora la calidad de videos e imágenes con IA</p>
+      </div>
+
       {/* Tabs */}
-      <div className="flex gap-8 border-b border-gray-700">
+      <div className="mb-8 flex gap-6 border-b border-gray-800">
         <button
           onClick={() => setActiveMode('video')}
           className={cn(
@@ -100,7 +105,7 @@ export default function MejorarCalidadPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[440px_1fr]">
         {/* Left side - Configuration */}
         <div className="space-y-4">
           {/* VIDEO Mode */}
