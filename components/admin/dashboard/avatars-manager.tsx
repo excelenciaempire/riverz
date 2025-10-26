@@ -128,27 +128,22 @@ export function AvatarsManager() {
   const uploadToSupabase = async (file: File): Promise<string> => {
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const formData = new FormData();
+      formData.append('file', file);
 
-      const { data, error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      const response = await fetch('/api/admin/upload-avatar', {
+        method: 'POST',
+        body: formData,
+      });
 
-      if (uploadError) {
-        console.error('Upload error details:', uploadError);
-        throw uploadError;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      return publicUrl;
-    } catch (error) {
+      const { url } = await response.json();
+      return url;
+    } catch (error: any) {
       console.error('Upload error:', error);
       throw error;
     } finally {
