@@ -97,16 +97,17 @@ export default function FaceSwapPage() {
           {/* Source Video */}
           <div>
             <Label className="mb-1.5 block text-sm">Video de Origen</Label>
-            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
+            <div className="aspect-square rounded-2xl border-2 border-gray-800 bg-[#0a0a0a] p-4">
               {sourceVideo ? (
                 <video
                   src={URL.createObjectURL(sourceVideo)}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full rounded-lg object-cover"
                 />
               ) : (
                 <FileUpload
                   onFilesSelected={(files) => setSourceVideo(files[0])}
                   accept={{ 'video/*': ['.mp4', '.mov', '.avi'] }}
+                  maxSize={100 * 1024 * 1024}
                 />
               )}
             </div>
@@ -115,12 +116,12 @@ export default function FaceSwapPage() {
           {/* Character Image */}
           <div>
             <Label className="mb-1.5 block text-sm">Imagen del Personaje</Label>
-            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
+            <div className="aspect-square rounded-2xl border-2 border-gray-800 bg-[#0a0a0a] p-4">
               {characterImage ? (
                 <img
                   src={URL.createObjectURL(characterImage)}
                   alt="Character"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full rounded-lg object-cover"
                 />
               ) : (
                 <FileUpload

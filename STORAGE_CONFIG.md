@@ -14,8 +14,9 @@
 
 ### 2. **user-uploads**
 - **Propósito:** Uploads temporales de usuarios (videos, imágenes para procesamiento)
-- **Límite de tamaño:** 50 MB
+- **Límite de tamaño:** 100 MB
 - **Tipos permitidos:** JPEG, PNG, WebP, MP4, QuickTime
+- **Nota:** Los archivos subidos por usuarios NO se almacenan permanentemente. Solo se guardan temporalmente para procesamiento.
 - **Acceso:**
   - 🔍 Lectura: Público
   - ➕ Crear: Usuarios autenticados
@@ -36,6 +37,7 @@
 - **Propósito:** Resultados finales de generaciones (videos e imágenes generadas)
 - **Límite de tamaño:** 100 MB
 - **Tipos permitidos:** JPEG, PNG, WebP, MP4
+- **Nota:** SOLO se almacenan los resultados finales generados por N8N/APIs. Los uploads de usuarios NO se guardan aquí.
 - **Acceso:**
   - 🔍 Lectura: Público
   - ➕ Crear: Usuarios autenticados
@@ -108,8 +110,10 @@ Para el admin dashboard, se usa una ruta API especial (`/api/admin/upload-avatar
 
 ## Notas Importantes
 
-1. **Limpieza de archivos temporales:** Los archivos en `user-uploads` deberían ser limpiados periódicamente (implementar cron job)
-2. **Validación del lado del cliente:** Siempre validar tamaño y tipo antes de subir
-3. **Nombres únicos:** Todos los archivos se suben con nombres únicos generados automáticamente
-4. **URLs públicas:** Todos los buckets son públicos, las URLs son accesibles sin autenticación
+1. **Solo resultados finales:** NUNCA almacenar uploads de usuarios. Solo guardar el output final de las generaciones.
+2. **Limpieza automática:** Los archivos en `user-uploads` deberían ser eliminados después de procesarse (implementar en N8N)
+3. **Validación del lado del cliente:** Siempre validar tamaño y tipo antes de subir
+4. **Nombres únicos:** Todos los archivos se suben con nombres únicos generados automáticamente
+5. **URLs públicas:** Todos los buckets son públicos, las URLs son accesibles sin autenticación
+6. **Límites actualizados:** `user-uploads` ahora soporta hasta 100MB para videos largos
 
