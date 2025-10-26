@@ -175,11 +175,6 @@ export default function UGCPage() {
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-white">UGC Creator</h1>
-        <p className="mt-1 text-sm text-gray-400">Crea videos UGC con avatares IA</p>
-      </div>
-
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
         {/* Left side - Configuration */}
         <div className="space-y-3">

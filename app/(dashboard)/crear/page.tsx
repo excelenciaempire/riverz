@@ -82,9 +82,12 @@ export default function CrearPage() {
 
               {/* Content */}
               <div className="relative text-center px-6">
-                <h3 className="text-3xl font-semibold text-white">
+                <h3 className="text-3xl font-semibold text-white mb-3">
                   {mode.name}
                 </h3>
+                <p className="text-sm text-gray-400">
+                  {mode.description}
+                </p>
               </div>
             </Link>
           );

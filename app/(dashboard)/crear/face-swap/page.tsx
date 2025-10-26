@@ -72,11 +72,6 @@ export default function FaceSwapPage() {
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white">Face Swap</h1>
-        <p className="mt-2 text-gray-400">Intercambia rostros en videos con IA</p>
-      </div>
-
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[440px_1fr]">
         {/* Left side - Configuration */}
         <div className="space-y-4">

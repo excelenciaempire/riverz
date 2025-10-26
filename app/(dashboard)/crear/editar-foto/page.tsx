@@ -137,10 +137,6 @@ export default function EditarFotoPage() {
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white">Editar Foto</h1>
-        <p className="mt-2 text-gray-400">Crea, edita, combina o clona imágenes con IA</p>
-      </div>
 
       {/* Tabs */}
       <div className="mb-8 flex gap-6 border-b border-gray-800">
