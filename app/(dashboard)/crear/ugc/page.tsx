@@ -32,6 +32,11 @@ export default function UGCPage() {
   const [showAvatarsModal, setShowAvatarsModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [salesAngle, setSalesAngle] = useState('');
+  const [showEditImageModal, setShowEditImageModal] = useState(false);
+  const [editMode, setEditMode] = useState<'magic' | 'skin'>('magic');
+  const [productImage, setProductImage] = useState<File | null>(null);
+  const [magicEditPrompt, setMagicEditPrompt] = useState('');
+  const [variations, setVariations] = useState(1);
 
   const supabase = createClient();
 
@@ -266,11 +271,11 @@ export default function UGCPage() {
         {/* Edit Image or Add Product Button */}
         <Button
           variant="ghost"
-          onClick={() => setShowScriptModal(true)}
+          onClick={() => setShowEditImageModal(true)}
           className="w-full justify-start gap-2 border border-gray-700 text-gray-400 hover:text-white"
         >
           <Sparkles className="h-4 w-4" />
-          Edit Image or Add Product
+          Editar Imagen o Agregar Producto
         </Button>
 
         {/* Script */}
@@ -426,6 +431,190 @@ export default function UGCPage() {
           >
             {generateScript.isPending ? 'Generando...' : 'Generar Guión'}
           </Button>
+        </div>
+      </Modal>
+
+      {/* Edit Image or Add Product Modal */}
+      <Modal
+        isOpen={showEditImageModal}
+        onClose={() => setShowEditImageModal(false)}
+        title=""
+      >
+        <div className="space-y-6">
+          {/* Tabs */}
+          <div className="flex gap-4 border-b border-gray-700">
+            <button
+              onClick={() => setEditMode('magic')}
+              className={`pb-3 text-base font-medium ${
+                editMode === 'magic'
+                  ? 'border-b-2 border-brand-accent text-white'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              Magic Edit
+            </button>
+            <button
+              onClick={() => setEditMode('skin')}
+              className={`pb-3 text-base font-medium ${
+                editMode === 'skin'
+                  ? 'border-b-2 border-brand-accent text-white'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              Skin Enhancer
+            </button>
+          </div>
+
+          {editMode === 'magic' && (
+            <div className="grid grid-cols-2 gap-6">
+              {/* Left side - Upload */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="mb-2 block text-sm">
+                    Product <span className="text-gray-500">(optional)</span>
+                  </Label>
+                  <p className="mb-3 text-xs text-gray-400">
+                    Upload a product, object, or person to mix your image with
+                  </p>
+                  <div className="rounded-lg border-2 border-dashed border-gray-600 bg-[#1a1a1a] p-8 text-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          setProductImage(e.target.files[0]);
+                        }
+                      }}
+                      className="hidden"
+                      id="product-upload"
+                    />
+                    <label
+                      htmlFor="product-upload"
+                      className="flex cursor-pointer flex-col items-center gap-3"
+                    >
+                      <svg
+                        className="h-10 w-10 text-gray-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                        />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-gray-300">
+                          Drag and drop photos
+                        </p>
+                        <p className="text-sm font-medium text-gray-300">
+                          to mashup
+                        </p>
+                      </div>
+                    </label>
+                    {productImage && (
+                      <div className="mt-4">
+                        <img
+                          src={URL.createObjectURL(productImage)}
+                          alt="Product preview"
+                          className="mx-auto h-32 w-32 rounded-lg object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="mb-2 flex items-center gap-2 text-sm">
+                    <Sparkles className="h-4 w-4" />
+                    Magic Edit
+                  </Label>
+                  <p className="mb-3 text-xs text-gray-400">
+                    Give our AI instructions to modify the image
+                  </p>
+                  <Textarea
+                    value={magicEditPrompt}
+                    onChange={(e) => setMagicEditPrompt(e.target.value)}
+                    placeholder="Make her hair blue, change the background to a beach, add sunglasses..."
+                    rows={4}
+                    className="text-sm"
+                  />
+                </div>
+
+                <div>
+                  <Label className="mb-2 block text-sm">Variations</Label>
+                  <p className="mb-3 text-xs text-gray-400">
+                    Generate multiple variations at once (max 4)
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="number"
+                      min="1"
+                      max="4"
+                      value={variations}
+                      onChange={(e) => setVariations(parseInt(e.target.value) || 1)}
+                      className="w-20 rounded-lg border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white"
+                    />
+                    <span className="text-sm text-gray-400">Single image</span>
+                  </div>
+                </div>
+
+                <Button className="w-full bg-brand-accent hover:bg-brand-accent/90">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate
+                </Button>
+              </div>
+
+              {/* Right side - Preview */}
+              <div className="flex items-center justify-center rounded-lg border border-gray-700 bg-[#141414] p-6">
+                {selectedAvatar ? (
+                  <img
+                    src={
+                      activeTab === 'library'
+                        ? avatars?.find((a) => a.id === selectedAvatar)
+                            ?.image_url || ''
+                        : uploadedAvatar
+                        ? URL.createObjectURL(uploadedAvatar)
+                        : ''
+                    }
+                    alt="Preview"
+                    className="max-h-96 rounded-lg object-contain"
+                  />
+                ) : (
+                  <div className="text-center text-gray-500">
+                    Selecciona un avatar primero
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {editMode === 'skin' && (
+            <div className="text-center text-gray-500 py-8">
+              Skin Enhancer - Próximamente
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowEditImageModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-brand-accent hover:bg-brand-accent/90"
+              onClick={() => {
+                // Apply edits and close
+                setShowEditImageModal(false);
+                toast.success('Edición aplicada');
+              }}
+            >
+              Confirm
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>
