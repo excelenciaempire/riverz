@@ -1,7 +1,7 @@
 # Script para agregar SUPABASE_SERVICE_ROLE_KEY a Vercel
 # Uso: Reemplaza YOUR_VERCEL_TOKEN con tu token de Vercel
 
-$VERCEL_TOKEN = "vetSHymoSWK0hiD40AC5hPu3"
+$VERCEL_TOKEN = "YOUR_VERCEL_TOKEN"
 $PROJECT_ID = "riverz"
 $TEAM_ID = "team_a5rbFK15sMoOMLjHiNdveESB"
 
