@@ -231,6 +231,7 @@ export default function ClipsPage() {
           </div>
         )}
       </div>
+      </div>
     </div>
   );
 }
