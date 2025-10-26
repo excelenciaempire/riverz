@@ -128,21 +128,45 @@ export function AvatarsManager() {
   const uploadToSupabase = async (file: File): Promise<string> => {
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      // Try API route first (uses service role key)
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
 
-      const response = await fetch('/api/admin/upload-avatar', {
-        method: 'POST',
-        body: formData,
-      });
+        const response = await fetch('/api/admin/upload-avatar', {
+          method: 'POST',
+          body: formData,
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Upload failed');
+        if (response.ok) {
+          const { url } = await response.json();
+          return url;
+        }
+      } catch (apiError) {
+        console.log('API route failed, using client upload:', apiError);
       }
 
-      const { url } = await response.json();
-      return url;
+      // Fallback: Upload directly with client (uses anon key + RLS)
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
     } catch (error: any) {
       console.error('Upload error:', error);
       throw error;
