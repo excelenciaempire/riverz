@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserButton } from '@clerk/nextjs';
+import { UserButton, useClerk } from '@clerk/nextjs';
 import {
   Sparkles,
   FileEdit,
@@ -23,6 +23,7 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const { credits } = useCredits();
+  const { signOut } = useClerk();
 
   return (
     <div className="fixed left-0 top-0 flex h-screen w-64 flex-col bg-black border-r border-gray-900">
@@ -87,11 +88,7 @@ export function Sidebar() {
       {/* Bottom Section */}
       <div className="space-y-1 px-8 pb-6">
         <button
-          onClick={async () => {
-            const { signOut } = await import('@clerk/nextjs');
-            await signOut();
-            window.location.href = '/';
-          }}
+          onClick={() => signOut(() => window.location.href = '/')}
           className="block py-2.5 text-[15px] font-normal text-gray-400 transition-colors hover:text-gray-200"
         >
           Cerrar Sesión

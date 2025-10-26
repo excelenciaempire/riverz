@@ -64,8 +64,12 @@ export default function ConfiguracionPage() {
       // Obtener el priceId del plan
       const plan = SUBSCRIPTION_PLANS[planType as keyof typeof SUBSCRIPTION_PLANS];
       
+      console.log('Plan:', plan);
+      console.log('Price ID:', plan?.priceId);
+      
       if (!plan || !plan.priceId) {
         toast.error('Plan no configurado. Por favor contacta al administrador.');
+        console.error('Plan configuration missing:', { planType, plan });
         return;
       }
 
@@ -78,12 +82,17 @@ export default function ConfiguracionPage() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to create checkout');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Checkout error:', errorData);
+        throw new Error(errorData.error || 'Failed to create checkout');
+      }
 
       const { url } = await response.json();
       window.location.href = url;
-    } catch (error) {
-      toast.error('Error al crear sesión de pago');
+    } catch (error: any) {
+      console.error('Error creating checkout:', error);
+      toast.error(error.message || 'Error al crear sesión de pago');
     }
   };
 
