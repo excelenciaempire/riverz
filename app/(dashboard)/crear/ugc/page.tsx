@@ -41,6 +41,8 @@ export default function UGCPage() {
   const [productImage, setProductImage] = useState<File | null>(null);
   const [magicEditPrompt, setMagicEditPrompt] = useState('');
   const [variations, setVariations] = useState(1);
+  const [generatedAvatarImage, setGeneratedAvatarImage] = useState<string | null>(null);
+  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
 
   const supabase = createClient();
 
@@ -283,27 +285,101 @@ export default function UGCPage() {
           )}
 
           {activeTab === 'generate' && (
-            <div>
+            <div className="space-y-4">
               <Textarea
                 value={generatedPrompt}
                 onChange={(e) => setGeneratedPrompt(e.target.value)}
                 placeholder="Describe el avatar que quieres generar..."
                 rows={4}
               />
+              
+              {/* Generate Avatar Button */}
+              {!generatedAvatarImage && (
+                <Button
+                  onClick={async () => {
+                    if (!generatedPrompt.trim()) {
+                      toast.error('Por favor escribe una descripción');
+                      return;
+                    }
+                    setIsGeneratingAvatar(true);
+                    try {
+                      // TODO: Call N8N API to generate avatar
+                      await new Promise(resolve => setTimeout(resolve, 3000));
+                      const mockImage = 'https://via.placeholder.com/400x600/1a1a1a/07A498?text=Avatar+Generado';
+                      setGeneratedAvatarImage(mockImage);
+                      setPreviewAvatar(mockImage);
+                      toast.success('Avatar generado exitosamente');
+                    } catch (error) {
+                      toast.error('Error al generar avatar');
+                    } finally {
+                      setIsGeneratingAvatar(false);
+                    }
+                  }}
+                  disabled={isGeneratingAvatar}
+                  className="w-full rounded-2xl py-6"
+                >
+                  {isGeneratingAvatar ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Generando Avatar...
+                    </>
+                  ) : (
+                    'Generar Avatar'
+                  )}
+                </Button>
+              )}
+
+              {/* Generated Avatar Preview */}
+              {generatedAvatarImage && (
+                <div className="space-y-3">
+                  <div className="overflow-hidden rounded-lg border border-gray-700">
+                    <img
+                      src={generatedAvatarImage}
+                      alt="Avatar generado"
+                      className="w-full object-cover"
+                    />
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => setShowEditImageModal(true)}
+                      variant="outline"
+                      className="flex-1 rounded-lg"
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Editar Imagen
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setGeneratedAvatarImage(null);
+                        setGeneratedPrompt('');
+                        setPreviewAvatar(null);
+                      }}
+                      variant="ghost"
+                      className="flex-1 rounded-lg"
+                    >
+                      Generar Otra
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Edit Image or Add Product Button */}
-        <Button
-          variant="ghost"
-          onClick={() => setShowEditImageModal(true)}
-          disabled={!previewAvatar}
-          className="w-full justify-start gap-2 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-gray-400 transition hover:border-gray-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Sparkles className="h-4 w-4" />
-          Editar Imagen o Agregar Producto
-        </Button>
+        {/* Edit Image or Add Product Button - Only for library and upload tabs */}
+        {activeTab !== 'generate' && (
+          <Button
+            variant="ghost"
+            onClick={() => setShowEditImageModal(true)}
+            disabled={!previewAvatar}
+            className="w-full justify-start gap-2 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-gray-400 transition hover:border-gray-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Sparkles className="h-4 w-4" />
+            Editar Imagen o Agregar Producto
+          </Button>
+        )}
 
         {/* Script */}
         <div>
