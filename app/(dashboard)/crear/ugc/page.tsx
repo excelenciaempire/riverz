@@ -23,6 +23,8 @@ export default function UGCPage() {
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [uploadedAvatar, setUploadedAvatar] = useState<File | null>(null);
   const [generatedPrompt, setGeneratedPrompt] = useState('');
+  const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
+  const [editedAvatar, setEditedAvatar] = useState<string | null>(null);
   const [script, setScript] = useState('');
   const [selectedVoice, setSelectedVoice] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
