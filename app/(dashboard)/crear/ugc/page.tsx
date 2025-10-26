@@ -218,7 +218,7 @@ export default function UGCPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="rounded-lg bg-[#141414] border border-gray-800 p-4">
+        <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6">
           {activeTab === 'library' && (
             <div>
               {loadingAvatars ? (
@@ -293,7 +293,7 @@ export default function UGCPage() {
           variant="ghost"
           onClick={() => setShowEditImageModal(true)}
           disabled={!previewAvatar}
-          className="w-full justify-start gap-2 border border-gray-700 text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full justify-start gap-2 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-gray-400 transition hover:border-gray-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Sparkles className="h-4 w-4" />
           Editar Imagen o Agregar Producto
@@ -336,7 +336,7 @@ export default function UGCPage() {
         {/* Generate Button */}
         <Button
           onClick={generateUGC}
-          className="w-full bg-brand-accent text-white hover:bg-brand-accent/90"
+          className="w-full rounded-2xl bg-brand-accent py-6 text-white hover:bg-brand-accent/90"
           disabled={isGenerating}
         >
           {isGenerating ? (
