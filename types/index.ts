@@ -88,21 +88,21 @@ export const SUBSCRIPTION_PLANS = {
     price: 19,
     credits: 2000,
     features: ['Todas las características', '2000 créditos'],
-    priceId: process.env.STRIPE_BASIC_PRICE_ID,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID,
   },
   pro: {
     name: 'Pro',
-    price: 59,
+    price: 49,
     credits: 5500,
     features: ['Todas las características', '5500 créditos'],
-    priceId: process.env.STRIPE_PRO_PRICE_ID,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
   },
   premium: {
     name: 'Premium',
     price: 99,
     credits: 12000,
     features: ['Todas las características', '12000 créditos'],
-    priceId: process.env.STRIPE_PREMIUM_PRICE_ID,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID,
   },
 } as const;
 
