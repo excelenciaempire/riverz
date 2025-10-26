@@ -24,18 +24,12 @@ export default function HistorialPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['generations', user?.id, filter, page],
     queryFn: async () => {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clerk_id', user!.id)
-        .single();
-
-      if (!userData) return { items: [], total: 0 };
+      if (!user?.id) return { items: [], total: 0 };
 
       let query = supabase
         .from('generations')
         .select('*', { count: 'exact' })
-        .eq('user_id', userData.id)
+        .eq('clerk_user_id', user.id)
         .eq('status', 'completed')
         .order('created_at', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);

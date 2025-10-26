@@ -62,20 +62,17 @@ export default function StaticAdsPage() {
   const { data: products } = useQuery({
     queryKey: ['products', user?.id],
     queryFn: async () => {
-      const { data: userDataLocal } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clerk_id', user!.id)
-        .single();
-
-      if (!userDataLocal) return [];
+      if (!user?.id) return [];
 
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('user_id', userDataLocal.id);
+        .eq('clerk_user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching products:', error);
+        return [];
+      }
       return data as Product[];
     },
     enabled: !!user && activeTab === 'ideacion',
