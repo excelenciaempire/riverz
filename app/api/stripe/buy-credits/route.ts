@@ -4,6 +4,11 @@ import { createCreditPurchaseSession } from '@/lib/stripe';
 
 export async function POST(req: Request) {
   try {
+    // Check if Clerk is configured
+    if (!process.env.CLERK_SECRET_KEY) {
+      return NextResponse.json({ error: 'Clerk not configured' }, { status: 500 });
+    }
+
     const { userId } = await auth();
 
     if (!userId) {
