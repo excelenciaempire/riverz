@@ -7,6 +7,7 @@ import { DashboardStats } from '@/components/admin/dashboard/stats';
 import { UsersTable } from '@/components/admin/dashboard/users-table';
 import { GenerationsTable } from '@/components/admin/dashboard/generations-table';
 import { TemplatesManager } from '@/components/admin/dashboard/templates-manager';
+import { AvatarsManager } from '@/components/admin/dashboard/avatars-manager';
 import { APIConfigManager } from '@/components/admin/dashboard/api-config-manager';
 import { LogsViewer } from '@/components/admin/dashboard/logs-viewer';
 import { CreditsManager } from '@/components/admin/dashboard/credits-manager';
@@ -55,6 +56,7 @@ export default function DashboardPage() {
     { id: 'credits', name: 'Créditos' },
     { id: 'pricing', name: 'Precios' },
     { id: 'templates', name: 'Plantillas' },
+    { id: 'avatars', name: 'Avatares' },
     { id: 'api-config', name: 'APIs' },
     { id: 'logs', name: 'Logs' },
   ];
@@ -94,6 +96,7 @@ export default function DashboardPage() {
           {activeTab === 'credits' && <CreditsManager />}
           {activeTab === 'pricing' && <PricingConfig />}
           {activeTab === 'templates' && <TemplatesManager />}
+          {activeTab === 'avatars' && <AvatarsManager />}
           {activeTab === 'api-config' && <APIConfigManager />}
           {activeTab === 'logs' && <LogsViewer />}
         </div>

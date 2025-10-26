@@ -228,7 +228,11 @@ export default function UGCPage() {
                   {avatars?.slice(0, 5).map((avatar) => (
                     <button
                       key={avatar.id}
-                      onClick={() => setSelectedAvatar(avatar.id)}
+                      onClick={() => {
+                        setSelectedAvatar(avatar.id);
+                        setPreviewAvatar(avatar.image_url);
+                        setEditedAvatar(null);
+                      }}
                       className={`overflow-hidden rounded-lg border-2 transition ${
                         selectedAvatar === avatar.id
                           ? 'border-brand-accent'
@@ -258,7 +262,12 @@ export default function UGCPage() {
 
           {activeTab === 'upload' && (
             <FileUpload
-              onFilesSelected={(files) => setUploadedAvatar(files[0])}
+              onFilesSelected={(files) => {
+                setUploadedAvatar(files[0]);
+                setPreviewAvatar(URL.createObjectURL(files[0]));
+                setSelectedAvatar(null);
+                setEditedAvatar(null);
+              }}
               accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
               preview
             />
@@ -280,7 +289,8 @@ export default function UGCPage() {
         <Button
           variant="ghost"
           onClick={() => setShowEditImageModal(true)}
-          className="w-full justify-start gap-2 border border-gray-700 text-gray-400 hover:text-white"
+          disabled={!previewAvatar}
+          className="w-full justify-start gap-2 border border-gray-700 text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Sparkles className="h-4 w-4" />
           Editar Imagen o Agregar Producto
@@ -364,6 +374,16 @@ export default function UGCPage() {
                 <Download className="mr-2 h-4 w-4" />
                 Descargar
               </Button>
+            </div>
+          </div>
+        ) : previewAvatar || editedAvatar ? (
+          <div className="w-full max-w-md">
+            <div className="aspect-[9/16] overflow-hidden rounded-lg border border-gray-700">
+              <img
+                src={editedAvatar || previewAvatar || ''}
+                alt="Avatar preview"
+                className="h-full w-full object-cover"
+              />
             </div>
           </div>
         ) : (
@@ -460,7 +480,7 @@ export default function UGCPage() {
                   : 'text-gray-400 hover:text-gray-300'
               }`}
             >
-              Magic Edit
+              Edición Mágica
             </button>
             <button
               onClick={() => setEditMode('skin')}
@@ -470,7 +490,7 @@ export default function UGCPage() {
                   : 'text-gray-400 hover:text-gray-300'
               }`}
             >
-              Skin Enhancer
+              Mejorar Piel
             </button>
           </div>
 
@@ -480,10 +500,10 @@ export default function UGCPage() {
               <div className="space-y-4">
                 <div>
                   <Label className="mb-2 block text-sm">
-                    Product <span className="text-gray-500">(optional)</span>
+                    Producto <span className="text-gray-500">(opcional)</span>
                   </Label>
                   <p className="mb-3 text-xs text-gray-400">
-                    Upload a product, object, or person to mix your image with
+                    Sube un producto, objeto o persona para mezclar con tu imagen
                   </p>
                   <div className="rounded-lg border-2 border-dashed border-gray-600 bg-[#1a1a1a] p-8 text-center">
                     <input
@@ -516,10 +536,10 @@ export default function UGCPage() {
                       </svg>
                       <div>
                         <p className="text-sm font-medium text-gray-300">
-                          Drag and drop photos
+                          Arrastra y suelta fotos
                         </p>
                         <p className="text-sm font-medium text-gray-300">
-                          to mashup
+                          para mezclar
                         </p>
                       </div>
                     </label>
@@ -538,24 +558,24 @@ export default function UGCPage() {
                 <div>
                   <Label className="mb-2 flex items-center gap-2 text-sm">
                     <Sparkles className="h-4 w-4" />
-                    Magic Edit
+                    Edición Mágica
                   </Label>
                   <p className="mb-3 text-xs text-gray-400">
-                    Give our AI instructions to modify the image
+                    Instrucciones para la IA sobre cómo modificar la imagen
                   </p>
                   <Textarea
                     value={magicEditPrompt}
                     onChange={(e) => setMagicEditPrompt(e.target.value)}
-                    placeholder="Make her hair blue, change the background to a beach, add sunglasses..."
+                    placeholder="Hazle el cabello azul, cambia el fondo a una playa, agrega lentes de sol..."
                     rows={4}
                     className="text-sm"
                   />
                 </div>
 
                 <div>
-                  <Label className="mb-2 block text-sm">Variations</Label>
+                  <Label className="mb-2 block text-sm">Variaciones</Label>
                   <p className="mb-3 text-xs text-gray-400">
-                    Generate multiple variations at once (max 4)
+                    Genera múltiples variaciones a la vez (máximo 4)
                   </p>
                   <div className="flex items-center gap-4">
                     <input
@@ -566,13 +586,13 @@ export default function UGCPage() {
                       onChange={(e) => setVariations(parseInt(e.target.value) || 1)}
                       className="w-20 rounded-lg border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white"
                     />
-                    <span className="text-sm text-gray-400">Single image</span>
+                    <span className="text-sm text-gray-400">{variations === 1 ? 'Imagen única' : `${variations} imágenes`}</span>
                   </div>
                 </div>
 
                 <Button className="w-full bg-brand-accent hover:bg-brand-accent/90">
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Generate
+                  Generar
                 </Button>
               </div>
 
@@ -602,7 +622,7 @@ export default function UGCPage() {
 
           {editMode === 'skin' && (
             <div className="text-center text-gray-500 py-8">
-              Skin Enhancer - Próximamente
+              Mejorar Piel - Próximamente
             </div>
           )}
 
@@ -611,17 +631,18 @@ export default function UGCPage() {
               variant="outline"
               onClick={() => setShowEditImageModal(false)}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button
               className="bg-brand-accent hover:bg-brand-accent/90"
               onClick={() => {
-                // Apply edits and close
+                // TODO: Apply AI edits here
+                setEditedAvatar(previewAvatar);
                 setShowEditImageModal(false);
                 toast.success('Edición aplicada');
               }}
             >
-              Confirm
+              Confirmar
             </Button>
           </div>
         </div>
