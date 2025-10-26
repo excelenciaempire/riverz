@@ -175,14 +175,14 @@ export default function UGCPage() {
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white">UGC Creator</h1>
-        <p className="mt-2 text-gray-400">Crea videos UGC con avatares IA</p>
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-white">UGC Creator</h1>
+        <p className="mt-1 text-sm text-gray-400">Crea videos UGC con avatares IA</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[440px_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
         {/* Left side - Configuration */}
-        <div className="space-y-4">
+        <div className="space-y-3">
         {/* Avatar Selection Tabs */}
         <div className="flex gap-6 border-b border-gray-800">
           <button
@@ -218,7 +218,7 @@ export default function UGCPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6">
+        <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] p-4">
           {activeTab === 'library' && (
             <div>
               {loadingAvatars ? (
@@ -301,13 +301,13 @@ export default function UGCPage() {
 
         {/* Script */}
         <div>
-          <div className="mb-2 flex items-center justify-between">
-            <Label className="text-base">Guión</Label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <Label className="text-sm">Guión</Label>
             <Button
               size="sm"
               variant="outline"
               onClick={() => setShowScriptModal(true)}
-              className="text-xs"
+              className="h-7 text-xs"
             >
               Generar con IA
             </Button>
@@ -316,13 +316,14 @@ export default function UGCPage() {
             value={script}
             onChange={(e) => setScript(e.target.value)}
             placeholder="Escribe o genera el guión que dirá el avatar..."
-            rows={6}
+            rows={4}
+            className="text-sm"
           />
         </div>
 
         {/* Voice Selection */}
         <div>
-          <Label className="mb-2 block text-base">Voz</Label>
+          <Label className="mb-1.5 block text-sm">Voz</Label>
           <Dropdown
             options={
               voices?.map((v) => ({ value: v.id, label: v.name })) || []
@@ -336,7 +337,7 @@ export default function UGCPage() {
         {/* Generate Button */}
         <Button
           onClick={generateUGC}
-          className="w-full rounded-2xl bg-brand-accent py-6 text-white hover:bg-brand-accent/90"
+          className="w-full rounded-2xl bg-brand-accent py-4 text-white hover:bg-brand-accent/90"
           disabled={isGenerating}
         >
           {isGenerating ? (
@@ -351,7 +352,7 @@ export default function UGCPage() {
       </div>
 
         {/* Right side - Preview/Result */}
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-800 bg-[#141414] p-8 min-h-[750px]">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-800 bg-[#141414] p-6 min-h-[600px]">
         {isGenerating ? (
           <div className="w-full space-y-4">
             <h3 className="text-center text-xl font-semibold text-white">
