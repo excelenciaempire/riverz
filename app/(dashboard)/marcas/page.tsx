@@ -180,56 +180,56 @@ export default function MarcasPage() {
   // Show form if no products
   if (!products || products.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-8">
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-white">Mis Productos</h1>
           <p className="mt-2 text-gray-400">Agrega tu primer producto para comenzar</p>
         </div>
 
-        <div className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-8">
+        <div className="rounded-2xl border border-gray-800 bg-[#141414] p-8">
           <div className="space-y-6">
             {/* Product Images */}
             <div>
-              <Label className="mb-2 block">Imágenes del Producto</Label>
-              <div className="rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332] p-6">
-                <div className="flex flex-col items-center justify-center text-center">
-                  <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gray-800">
-                    <Package className="h-12 w-12 text-gray-600" />
-                  </div>
-                  <p className="mb-2 text-sm text-gray-400">Click to upload or drag and drop</p>
-                  <p className="text-xs text-gray-500">
-                    Supported formats: JPEG, PNG, WEBP Maximum file size: 10MB; Maximum file count: 5
-                  </p>
-                  <FileUpload
-                    onFilesSelected={(files) =>
-                      setFormData({ ...formData, images: [...formData.images, ...files] })
-                    }
-                    accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}
-                    multiple
-                  />
-                </div>
+              <Label className="mb-3 block text-sm font-medium">Imágenes del Producto</Label>
+              <div className="rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] p-8 transition hover:border-gray-600">
+                <FileUpload
+                  onFilesSelected={(files) =>
+                    setFormData({ ...formData, images: [...formData.images, ...files] })
+                  }
+                  accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}
+                  multiple
+                />
                 {formData.images.length > 0 && (
-                  <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="mt-6 grid grid-cols-3 gap-4">
                     {formData.images.map((img, index) => (
-                      <div key={index} className="relative aspect-square overflow-hidden rounded-lg">
+                      <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-700">
                         <img
                           src={URL.createObjectURL(img)}
                           alt={`Product ${index + 1}`}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-cover transition group-hover:scale-105"
                         />
+                        <button
+                          onClick={() => {
+                            const newImages = formData.images.filter((_, i) => i !== index);
+                            setFormData({ ...formData, images: newImages });
+                          }}
+                          className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white opacity-0 transition group-hover:opacity-100"
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="mt-3 text-xs text-gray-500">
                 Para mejores resultados, añade mínimo 3 fotos de alta calidad de distintos ángulos del producto
               </p>
             </div>
 
             {/* Name */}
             <div>
-              <Label className="mb-2 block">Nombre</Label>
+              <Label className="mb-2 block text-sm font-medium">Nombre</Label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -239,9 +239,10 @@ export default function MarcasPage() {
 
             {/* Price */}
             <div>
-              <Label className="mb-2 block">Precio de venta</Label>
+              <Label className="mb-2 block text-sm font-medium">Precio de venta</Label>
               <Input
                 type="number"
+                step="0.01"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 placeholder="0.00"
@@ -250,7 +251,7 @@ export default function MarcasPage() {
 
             {/* Website */}
             <div>
-              <Label className="mb-2 block">Sitio web</Label>
+              <Label className="mb-2 block text-sm font-medium">Sitio web</Label>
               <Input
                 value={formData.website}
                 onChange={(e) => setFormData({ ...formData, website: e.target.value })}
@@ -260,7 +261,7 @@ export default function MarcasPage() {
 
             {/* Benefits */}
             <div>
-              <Label className="mb-2 block">Beneficios, características, diferenciación</Label>
+              <Label className="mb-2 block text-sm font-medium">Beneficios</Label>
               <Textarea
                 value={formData.benefits}
                 onChange={(e) => setFormData({ ...formData, benefits: e.target.value })}
@@ -273,7 +274,6 @@ export default function MarcasPage() {
             <Button
               onClick={() => createProduct.mutate(formData)}
               className="w-full bg-brand-accent hover:bg-brand-accent/90"
-              size="lg"
               disabled={createProduct.isPending || !formData.name || !formData.price}
             >
               {createProduct.isPending ? (
@@ -294,11 +294,9 @@ export default function MarcasPage() {
   // Show products grid
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Mis Productos</h1>
-          <p className="mt-2 text-gray-400">Gestiona tus productos</p>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white">Mis Productos</h1>
+        <p className="mt-2 text-gray-400">Gestiona tus productos y descarga reportes</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -306,30 +304,30 @@ export default function MarcasPage() {
         {products.map((product) => (
           <div
             key={product.id}
-            className="overflow-hidden rounded-lg border border-gray-700 bg-brand-dark-secondary"
+            className="group overflow-hidden rounded-2xl border border-gray-800 bg-[#141414] transition hover:border-gray-700"
           >
-            <div className="aspect-square overflow-hidden bg-gray-800">
+            <div className="aspect-square overflow-hidden bg-[#0a0a0a]">
               {product.images && product.images.length > 0 ? (
                 <img
                   src={product.images[0]}
                   alt={product.name}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover transition group-hover:scale-105"
                 />
               ) : (
                 <div className="flex h-full items-center justify-center">
-                  <Package className="h-16 w-16 text-gray-600" />
+                  <Package className="h-16 w-16 text-gray-700" />
                 </div>
               )}
             </div>
             
-            <div className="p-4">
+            <div className="p-5">
               <h3 className="mb-1 text-lg font-semibold text-white">{product.name}</h3>
-              <p className="mb-4 text-sm text-gray-400">${product.price}</p>
+              <p className="mb-4 text-base text-gray-400">${product.price}</p>
               
               <Button
                 onClick={() => downloadReport(product.id)}
                 variant="outline"
-                className="w-full"
+                className="w-full border-gray-700 hover:border-brand-accent hover:bg-brand-accent/10"
                 disabled={generatingReportId === product.id}
               >
                 {generatingReportId === product.id ? (
@@ -351,10 +349,10 @@ export default function MarcasPage() {
         {/* Add New Button */}
         <button
           onClick={handleAddProduct}
-          className="flex min-h-[300px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-700 bg-brand-dark-secondary p-8 transition hover:border-brand-accent hover:bg-gray-800"
+          className="flex min-h-[380px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-800 bg-[#141414] p-8 transition hover:border-brand-accent hover:bg-[#1a1a1a]"
         >
           <Plus className="mb-4 h-12 w-12 text-brand-accent" />
-          <p className="text-lg font-medium text-white">Agregar Nuevo</p>
+          <p className="text-lg font-semibold text-white">Agregar Nuevo</p>
         </button>
       </div>
 
@@ -364,9 +362,44 @@ export default function MarcasPage() {
         onClose={() => setIsModalOpen(false)}
         title="Agregar Producto"
       >
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div>
-            <Label>Nombre</Label>
+            <Label className="mb-2 block text-sm font-medium">Imágenes</Label>
+            <div className="rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] p-6">
+              <FileUpload
+                onFilesSelected={(files) =>
+                  setFormData({ ...formData, images: [...formData.images, ...files] })
+                }
+                accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
+                multiple
+              />
+              {formData.images.length > 0 && (
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  {formData.images.map((img, index) => (
+                    <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-700">
+                      <img
+                        src={URL.createObjectURL(img)}
+                        alt={`Product ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        onClick={() => {
+                          const newImages = formData.images.filter((_, i) => i !== index);
+                          setFormData({ ...formData, images: newImages });
+                        }}
+                        className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white opacity-0 transition group-hover:opacity-100"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-2 block text-sm font-medium">Nombre</Label>
             <Input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -375,9 +408,10 @@ export default function MarcasPage() {
           </div>
 
           <div>
-            <Label>Precio de venta</Label>
+            <Label className="mb-2 block text-sm font-medium">Precio de venta</Label>
             <Input
               type="number"
+              step="0.01"
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
               placeholder="0.00"
@@ -385,7 +419,7 @@ export default function MarcasPage() {
           </div>
 
           <div>
-            <Label>Sitio web</Label>
+            <Label className="mb-2 block text-sm font-medium">Sitio web</Label>
             <Input
               value={formData.website}
               onChange={(e) => setFormData({ ...formData, website: e.target.value })}
@@ -394,7 +428,7 @@ export default function MarcasPage() {
           </div>
 
           <div>
-            <Label>Beneficios</Label>
+            <Label className="mb-2 block text-sm font-medium">Beneficios</Label>
             <Textarea
               value={formData.benefits}
               onChange={(e) => setFormData({ ...formData, benefits: e.target.value })}
@@ -403,24 +437,19 @@ export default function MarcasPage() {
             />
           </div>
 
-          <div>
-            <Label>Imágenes</Label>
-            <FileUpload
-              onFilesSelected={(files) =>
-                setFormData({ ...formData, images: [...formData.images, ...files] })
-              }
-              accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-              multiple
-              preview
-            />
-          </div>
-
           <Button
             onClick={() => createProduct.mutate(formData)}
             className="w-full bg-brand-accent hover:bg-brand-accent/90"
             disabled={createProduct.isPending || !formData.name || !formData.price}
           >
-            {createProduct.isPending ? 'Guardando...' : 'Guardar'}
+            {createProduct.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              'Guardar'
+            )}
           </Button>
         </div>
       </Modal>
