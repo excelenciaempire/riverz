@@ -226,8 +226,8 @@ export default function ClipsPage() {
             </div>
           </div>
         ) : (
-          <div className="text-center">
-            <h2 className="text-8xl font-bold text-white">CLIPS SCREEN</h2>
+          <div className="flex items-center justify-center text-gray-500">
+            <p>El clip generado aparecerá aquí</p>
           </div>
         )}
       </div>

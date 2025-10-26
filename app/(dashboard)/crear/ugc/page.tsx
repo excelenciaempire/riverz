@@ -365,8 +365,8 @@ export default function UGCPage() {
             </div>
           </div>
         ) : (
-          <div className="text-center">
-            <h2 className="text-9xl font-bold text-white">UGC</h2>
+          <div className="flex items-center justify-center text-gray-500">
+            <p>El video UGC generado aparecerá aquí</p>
           </div>
         )}
         </div>

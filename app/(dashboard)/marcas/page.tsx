@@ -200,20 +200,23 @@ export default function MarcasPage() {
                   multiple
                 />
                 {formData.images.length > 0 && (
-                  <div className="mt-6 grid grid-cols-3 gap-4">
+                  <div className="mt-6 grid grid-cols-4 gap-3">
                     {formData.images.map((img, index) => (
                       <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-700">
                         <img
                           src={URL.createObjectURL(img)}
                           alt={`Product ${index + 1}`}
-                          className="h-full w-full object-cover transition group-hover:scale-105"
+                          className="h-full w-full object-cover"
                         />
                         <button
-                          onClick={() => {
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             const newImages = formData.images.filter((_, i) => i !== index);
                             setFormData({ ...formData, images: newImages });
                           }}
-                          className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white opacity-0 transition group-hover:opacity-100"
+                          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white transition hover:bg-red-600"
                         >
                           ×
                         </button>

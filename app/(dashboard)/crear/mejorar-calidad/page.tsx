@@ -292,10 +292,10 @@ export default function MejorarCalidadPage() {
               </Button>
             </div>
           ) : (
-            <div className="text-center">
-              <h2 className="text-6xl font-bold text-yellow-400">
-                (MEJORAR CALIDAD SCREEN {activeMode === 'video' ? '1 VIDEO' : '2 IMAGEN'})
-              </h2>
+            <div className="flex items-center justify-center text-gray-500">
+              <p>
+                {activeMode === 'video' ? 'El video mejorado aparecerá aquí' : 'La imagen mejorada aparecerá aquí'}
+              </p>
             </div>
           )}
         </div>

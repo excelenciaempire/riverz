@@ -198,8 +198,8 @@ export default function FaceSwapPage() {
               </div>
             </div>
           ) : (
-            <div className="text-center">
-              <h2 className="text-8xl font-bold text-white">FACE SWAP</h2>
+            <div className="flex items-center justify-center text-gray-500">
+              <p>El video con face swap aparecerá aquí</p>
             </div>
           )}
         </div>

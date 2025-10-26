@@ -281,34 +281,38 @@ export default function EditarFotoPage() {
           {activeMode === 'combinar' && (
             <>
               <div>
-                <Label className="mb-2 block">Subir Imágenes</Label>
-                <div className="space-y-3">
-                  {[0, 1].map((index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      {images[index] ? (
-                        <div className="relative h-16 w-16 overflow-hidden rounded-lg border-2 border-gray-700">
+                <Label className="mb-2 block">Subir Imágenes (Máximo 5)</Label>
+                <div className="rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332] p-4">
+                  <FileUpload
+                    onFilesSelected={(files) => {
+                      const newImages = [...images, ...Array.from(files)].slice(0, 5);
+                      setImages(newImages);
+                    }}
+                    accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
+                    multiple
+                    maxFiles={5}
+                  />
+                  {images.length > 0 && (
+                    <div className="mt-4 grid grid-cols-5 gap-2">
+                      {images.map((img, index) => (
+                        <div key={index} className="relative aspect-square overflow-hidden rounded-lg border-2 border-gray-700">
                           <img
-                            src={URL.createObjectURL(images[index])}
-                            alt={`Image ${index + 1}`}
+                            src={URL.createObjectURL(img)}
+                            alt={`Imagen ${index + 1}`}
                             className="h-full w-full object-cover"
                           />
+                          <button
+                            onClick={() => setImages(images.filter((_, i) => i !== index))}
+                            className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                          >
+                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
                         </div>
-                      ) : (
-                        <div className="h-16 w-16 rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332]" />
-                      )}
-                      <FileUpload
-                        onFilesSelected={(files) => {
-                          const newImages = [...images];
-                          newImages[index] = files[0];
-                          setImages(newImages);
-                        }}
-                        accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-                      />
+                      ))}
                     </div>
-                  ))}
-                  <button className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600">
-                    +
-                  </button>
+                  )}
                 </div>
               </div>
 
@@ -355,7 +359,7 @@ export default function EditarFotoPage() {
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="mb-2 block text-sm">Reference Image</Label>
+                  <Label className="mb-2 block text-sm">Imagen de Referencia</Label>
                   <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
                     {referenceImage ? (
                       <img
@@ -374,7 +378,7 @@ export default function EditarFotoPage() {
                 </div>
 
                 <div>
-                  <Label className="mb-2 block text-sm">Upload Your Product Image</Label>
+                  <Label className="mb-2 block text-sm">Sube tu Imagen del Producto</Label>
                   <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
                     {productImage ? (
                       <img
@@ -394,11 +398,11 @@ export default function EditarFotoPage() {
               </div>
 
               <div>
-                <Label className="mb-2 block">Specific requests (Optional)</Label>
+                <Label className="mb-2 block">Solicitudes Específicas (Opcional)</Label>
                 <Textarea
                   value={specificRequests}
                   onChange={(e) => setSpecificRequests(e.target.value)}
-                  placeholder="Extra Prompt | Add marketing angles, concept ideas, brand personality, custom details, for text or specific product attributes (colors, materials, style, lighting, etc.)"
+                  placeholder="Prompt Extra | Agrega ángulos de marketing, ideas de concepto, personalidad de marca, detalles personalizados, texto o atributos específicos del producto (colores, materiales, estilo, iluminación, etc.)"
                   rows={4}
                   className="bg-[#1a2332] text-sm"
                 />
@@ -528,10 +532,13 @@ export default function EditarFotoPage() {
                 </div>
               </div>
             ) : (
-              <div className="text-center">
-                <h2 className="text-6xl font-bold text-yellow-400">
-                  (EDITAR FOTO SCREEN {activeMode === 'crear' ? '1 CREAR' : activeMode === 'editar' ? '2 EDITAR' : activeMode === 'combinar' ? '3 COMBINAR' : '4 CLONAR'})
-                </h2>
+              <div className="flex items-center justify-center text-gray-500">
+                <p>
+                  {activeMode === 'crear' && 'La imagen creada aparecerá aquí'}
+                  {activeMode === 'editar' && 'La imagen editada aparecerá aquí'}
+                  {activeMode === 'combinar' && 'Las imágenes combinadas aparecerán aquí'}
+                  {activeMode === 'clonar' && 'Las variaciones aparecerán aquí'}
+                </p>
               </div>
             )}
           </div>
