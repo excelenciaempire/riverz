@@ -87,8 +87,10 @@ export function Sidebar() {
       {/* Bottom Section */}
       <div className="space-y-1 px-8 pb-6">
         <button
-          onClick={() => {
-            window.location.href = '/api/auth/signout';
+          onClick={async () => {
+            const { signOut } = await import('@clerk/nextjs');
+            await signOut();
+            window.location.href = '/';
           }}
           className="block py-2.5 text-[15px] font-normal text-gray-400 transition-colors hover:text-gray-200"
         >

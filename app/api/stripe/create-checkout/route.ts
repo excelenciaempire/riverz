@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
     // Inicializar Stripe
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: '2025-09-30.clover',
+      apiVersion: '2024-12-18.acacia',
     });
 
     // Crear sesión de checkout
