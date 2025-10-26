@@ -196,7 +196,7 @@ export default function StaticAdsPage() {
                   onClick={() => handleTemplateClick(template, index)}
                 >
                   <img
-                    src={template.image_url}
+                    src={template.thumbnail_url}
                     alt={template.name}
                     className="h-full w-full object-cover"
                   />
