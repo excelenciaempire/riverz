@@ -272,16 +272,45 @@ export default function UGCPage() {
           )}
 
           {activeTab === 'upload' && (
-            <FileUpload
-              onFilesSelected={(files) => {
-                setUploadedAvatar(files[0]);
-                setPreviewAvatar(URL.createObjectURL(files[0]));
-                setSelectedAvatar(null);
-                setEditedAvatar(null);
-              }}
-              accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-              preview
-            />
+            <div className="space-y-3">
+              {!uploadedAvatar ? (
+                <FileUpload
+                  onFilesSelected={(files) => {
+                    if (files.length > 0) {
+                      setUploadedAvatar(files[0]);
+                      setPreviewAvatar(URL.createObjectURL(files[0]));
+                      setSelectedAvatar(null);
+                      setEditedAvatar(null);
+                    } else {
+                      // Si no hay archivos, limpiar el preview
+                      setUploadedAvatar(null);
+                      setPreviewAvatar(null);
+                    }
+                  }}
+                  accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
+                  preview
+                />
+              ) : (
+                <div className="relative overflow-hidden rounded-lg border border-gray-700">
+                  <img
+                    src={URL.createObjectURL(uploadedAvatar)}
+                    alt="Avatar subido"
+                    className="w-full object-cover"
+                  />
+                  <button
+                    onClick={() => {
+                      setUploadedAvatar(null);
+                      setPreviewAvatar(null);
+                    }}
+                    className="absolute right-2 top-2 rounded-full bg-red-500 p-2 text-white transition hover:bg-red-600"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === 'generate' && (
