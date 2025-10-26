@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { createCreditPurchaseSession } from '@/lib/stripe';
 
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { user } = await auth();
+    const user = await currentUser();
     const { credits } = await req.json();
 
     if (!credits || credits < 500) {
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const session = await createCreditPurchaseSession({
       credits,
       userId,
-      userEmail: user?.emailAddresses[0]?.emailAddress || '',
+      userEmail: user?.emailAddresses?.[0]?.emailAddress || '',
       successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/configuracion?credits_added=true`,
       cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/configuracion?canceled=true`,
     });
