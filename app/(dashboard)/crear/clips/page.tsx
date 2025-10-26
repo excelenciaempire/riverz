@@ -80,7 +80,7 @@ export default function ClipsPage() {
         {/* Optional Image */}
         <div>
           <Label className="mb-1.5 block text-sm">Subir Imagen (Opcional)</Label>
-          <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6">
+          <div className="overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
             <FileUpload
               onFilesSelected={(files) => setImage(files[0])}
               accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
@@ -97,7 +97,6 @@ export default function ClipsPage() {
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe el video que quieres crear..."
             rows={5}
-            className="bg-[#1a2332]"
           />
         </div>
 
@@ -108,10 +107,10 @@ export default function ClipsPage() {
             <button
               onClick={() => setModel('sora-2')}
               className={cn(
-                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
+                'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 model === 'sora-2'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
               )}
             >
               Sora 2
@@ -119,10 +118,10 @@ export default function ClipsPage() {
             <button
               onClick={() => setModel('sora-2-pro')}
               className={cn(
-                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
+                'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 model === 'sora-2-pro'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
               )}
             >
               Sora 2 Pro
@@ -137,10 +136,10 @@ export default function ClipsPage() {
             <button
               onClick={() => setFormat('9:16')}
               className={cn(
-                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
+                'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 format === '9:16'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
               )}
             >
               Vertical 9:16
@@ -148,10 +147,10 @@ export default function ClipsPage() {
             <button
               onClick={() => setFormat('16:9')}
               className={cn(
-                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
+                'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 format === '16:9'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
               )}
             >
               Horizontal 16:9
@@ -166,10 +165,10 @@ export default function ClipsPage() {
             <button
               onClick={() => setDuration('10')}
               className={cn(
-                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
+                'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 duration === '10'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
               )}
             >
               10 Segundos
@@ -177,10 +176,10 @@ export default function ClipsPage() {
             <button
               onClick={() => setDuration('15')}
               className={cn(
-                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
+                'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 duration === '15'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
               )}
             >
               15 Segundos

@@ -28,6 +28,7 @@ export default function FaceSwapPage() {
   const [characterImage, setCharacterImage] = useState<File | null>(null);
   const [resolution, setResolution] = useState('720p');
   const [format, setFormat] = useState('9:16');
+  const [consent, setConsent] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [resultVideo, setResultVideo] = useState<string | null>(null);
@@ -35,6 +36,11 @@ export default function FaceSwapPage() {
   const handleGenerate = async () => {
     if (!sourceVideo || !characterImage) {
       toast.error('Por favor sube ambos archivos');
+      return;
+    }
+
+    if (!consent) {
+      toast.error('Debes confirmar que tienes los derechos de uso de las imágenes');
       return;
     }
 
@@ -90,8 +96,8 @@ export default function FaceSwapPage() {
         <div className="grid grid-cols-2 gap-4">
           {/* Source Video */}
           <div>
-            <Label className="mb-1.5 block text-sm">Source Video</Label>
-            <div className="aspect-square overflow-hidden rounded-2xl border border-gray-800 bg-[#0a0a0a]">
+            <Label className="mb-1.5 block text-sm">Video de Origen</Label>
+            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
               {sourceVideo ? (
                 <video
                   src={URL.createObjectURL(sourceVideo)}
@@ -108,8 +114,8 @@ export default function FaceSwapPage() {
 
           {/* Character Image */}
           <div>
-            <Label className="mb-1.5 block text-sm">Character Image</Label>
-            <div className="aspect-square overflow-hidden rounded-2xl border border-gray-800 bg-[#0a0a0a]">
+            <Label className="mb-1.5 block text-sm">Imagen del Personaje</Label>
+            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
               {characterImage ? (
                 <img
                   src={URL.createObjectURL(characterImage)}
@@ -149,14 +155,16 @@ export default function FaceSwapPage() {
         </div>
 
         {/* Checkbox */}
-        <div className="flex items-start gap-2">
+        <div className="flex items-start gap-3 rounded-lg border border-gray-800 bg-[#0a0a0a] p-4">
           <input
             type="checkbox"
             id="consent"
-            className="mt-1 h-4 w-4 rounded border-gray-600 bg-brand-dark-primary text-brand-accent focus:ring-brand-accent"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-600 bg-transparent text-brand-accent focus:ring-1 focus:ring-brand-accent"
           />
-          <label htmlFor="consent" className="text-sm text-gray-400">
-            I confirm that I have the rights and/or consent to use the source image if it features a real person.
+          <label htmlFor="consent" className="cursor-pointer text-sm text-gray-300 leading-relaxed">
+            Confirmo que tengo los derechos y/o consentimiento para usar las imágenes/videos si contienen personas reales.
           </label>
         </div>
 
