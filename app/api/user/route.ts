@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -10,17 +10,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Usar service role key para bypass RLS
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
+    // Usar admin client con service role key
+    const supabaseAdmin = createAdminClient();
 
     // Consultar user_credits
     const { data, error } = await supabaseAdmin
@@ -65,17 +56,8 @@ export async function PATCH(req: Request) {
 
     const body = await req.json();
     
-    // Usar service role key para bypass RLS
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
+    // Usar admin client con service role key
+    const supabaseAdmin = createAdminClient();
 
     const { data, error } = await supabaseAdmin
       .from('user_credits')
