@@ -10,17 +10,13 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = await createClient();
-
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('clerk_id', userId)
-      .single();
-
-    if (error) throw error;
-
-    return NextResponse.json(user);
+    // Por ahora, devolver un plan por defecto
+    // TODO: Implementar lógica de planes cuando esté configurado Stripe
+    return NextResponse.json({
+      clerk_id: userId,
+      plan_type: 'free',
+      credits: 0
+    });
   } catch (error) {
     console.error('Error fetching user:', error);
     return NextResponse.json(

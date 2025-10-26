@@ -96,39 +96,61 @@ export default function FaceSwapPage() {
         <div className="grid grid-cols-2 gap-4">
           {/* Source Video */}
           <div>
-            <Label className="mb-1.5 block text-sm">Video de Origen</Label>
-            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
+            <Label className="mb-1.5 block text-center text-sm">Video de Origen</Label>
+            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a] p-3">
               {sourceVideo ? (
                 <video
                   src={URL.createObjectURL(sourceVideo)}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full rounded-lg object-cover"
                 />
               ) : (
-                <FileUpload
-                  onFilesSelected={(files) => setSourceVideo(files[0])}
-                  accept={{ 'video/*': ['.mp4', '.mov', '.avi'] }}
-                  maxSize={100 * 1024 * 1024}
-                />
+                <div className="flex h-full flex-col items-center justify-center">
+                  <svg className="mb-2 h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    onChange={(e) => e.target.files && setSourceVideo(e.target.files[0])}
+                    className="hidden"
+                    id="source-video"
+                  />
+                  <label htmlFor="source-video" className="cursor-pointer text-center text-xs text-gray-400 hover:text-gray-300">
+                    Haz clic aquí
+                  </label>
+                  <p className="mt-1 text-[10px] text-gray-600">Máx: 100MB</p>
+                </div>
               )}
             </div>
           </div>
 
           {/* Character Image */}
           <div>
-            <Label className="mb-1.5 block text-sm">Imagen del Personaje</Label>
-            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
+            <Label className="mb-1.5 block text-center text-sm">Imagen del Personaje</Label>
+            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a] p-3">
               {characterImage ? (
                 <img
                   src={URL.createObjectURL(characterImage)}
                   alt="Character"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full rounded-lg object-cover"
                 />
               ) : (
-                <FileUpload
-                  onFilesSelected={(files) => setCharacterImage(files[0])}
-                  accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-                  preview
-                />
+                <div className="flex h-full flex-col items-center justify-center">
+                  <svg className="mb-2 h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => e.target.files && setCharacterImage(e.target.files[0])}
+                    className="hidden"
+                    id="character-image"
+                  />
+                  <label htmlFor="character-image" className="cursor-pointer text-center text-xs text-gray-400 hover:text-gray-300">
+                    Haz clic aquí
+                  </label>
+                  <p className="mt-1 text-[10px] text-gray-600">Máx: 10MB</p>
+                </div>
               )}
             </div>
           </div>
