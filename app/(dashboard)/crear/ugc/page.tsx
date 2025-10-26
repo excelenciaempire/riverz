@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dropdown } from '@/components/ui/dropdown';
@@ -12,7 +11,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { Modal } from '@/components/ui/modal';
 import { Loading, ProgressBar } from '@/components/ui/loading';
 import { toast } from 'sonner';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, Sparkles } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Product } from '@/types';
 
@@ -30,6 +29,7 @@ export default function UGCPage() {
   const [progress, setProgress] = useState(0);
   const [resultVideo, setResultVideo] = useState<string | null>(null);
   const [showScriptModal, setShowScriptModal] = useState(false);
+  const [showAvatarsModal, setShowAvatarsModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [salesAngle, setSalesAngle] = useState('');
 
@@ -170,15 +170,13 @@ export default function UGCPage() {
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
       {/* Left side - Configuration */}
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-white">UGC CREATOR</h1>
-
         {/* Avatar Selection Tabs */}
-        <div className="flex gap-4 border-b border-gray-700">
+        <div className="flex gap-8 border-b border-gray-700">
           <button
             onClick={() => setActiveTab('library')}
-            className={`pb-2 ${
+            className={`pb-3 text-base ${
               activeTab === 'library'
-                ? 'border-b-2 border-brand-accent text-white'
+                ? 'border-b-2 border-white font-medium text-white'
                 : 'text-gray-400'
             }`}
           >
@@ -186,9 +184,9 @@ export default function UGCPage() {
           </button>
           <button
             onClick={() => setActiveTab('upload')}
-            className={`pb-2 ${
+            className={`pb-3 text-base ${
               activeTab === 'upload'
-                ? 'border-b-2 border-brand-accent text-white'
+                ? 'border-b-2 border-white font-medium text-white'
                 : 'text-gray-400'
             }`}
           >
@@ -196,9 +194,9 @@ export default function UGCPage() {
           </button>
           <button
             onClick={() => setActiveTab('generate')}
-            className={`pb-2 ${
+            className={`pb-3 text-base ${
               activeTab === 'generate'
-                ? 'border-b-2 border-brand-accent text-white'
+                ? 'border-b-2 border-white font-medium text-white'
                 : 'text-gray-400'
             }`}
           >
@@ -207,18 +205,18 @@ export default function UGCPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-6">
+        <div className="rounded-lg bg-[#1a2332] p-6">
           {activeTab === 'library' && (
             <div>
               {loadingAvatars ? (
                 <Loading text="Cargando avatares..." />
               ) : (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-3">
                   {avatars?.slice(0, 5).map((avatar) => (
-                    <div
+                    <button
                       key={avatar.id}
                       onClick={() => setSelectedAvatar(avatar.id)}
-                      className={`cursor-pointer rounded-lg border-2 p-2 transition ${
+                      className={`overflow-hidden rounded-lg border-2 transition ${
                         selectedAvatar === avatar.id
                           ? 'border-brand-accent'
                           : 'border-transparent hover:border-gray-600'
@@ -227,16 +225,17 @@ export default function UGCPage() {
                       <img
                         src={avatar.image_url}
                         alt={avatar.name}
-                        className="aspect-square rounded object-cover"
+                        className="aspect-square object-cover"
                       />
-                      <p className="mt-1 text-center text-xs text-white">
-                        {avatar.name}
-                      </p>
-                    </div>
+                    </button>
                   ))}
                   {avatars && avatars.length > 5 && (
-                    <button className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-600 p-4 text-sm text-gray-400 hover:border-gray-500">
-                      Ver {avatars.length - 5} más
+                    <button
+                      onClick={() => setShowAvatarsModal(true)}
+                      className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-600 p-4 text-sm text-gray-400 hover:border-gray-500"
+                    >
+                      <span className="text-xs">Show</span>
+                      <span className="font-semibold">{avatars.length - 5} actors</span>
                     </button>
                   )}
                 </div>
@@ -254,12 +253,12 @@ export default function UGCPage() {
 
           {activeTab === 'generate' && (
             <div>
-              <Label>Prompt para generar avatar</Label>
               <Textarea
                 value={generatedPrompt}
                 onChange={(e) => setGeneratedPrompt(e.target.value)}
                 placeholder="Describe el avatar que quieres generar..."
                 rows={4}
+                className="bg-brand-dark-primary"
               />
             </div>
           )}
@@ -267,21 +266,23 @@ export default function UGCPage() {
 
         {/* Edit Image or Add Product Button */}
         <Button
-          variant="outline"
+          variant="ghost"
           onClick={() => setShowScriptModal(true)}
-          className="w-full"
+          className="w-full justify-start gap-2 border border-gray-700 text-gray-400 hover:text-white"
         >
-          ✨ Editar Imagen o Agregar Producto
+          <Sparkles className="h-4 w-4" />
+          Edit Image or Add Product
         </Button>
 
         {/* Script */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <Label>Guión</Label>
+            <Label className="text-base">Guión</Label>
             <Button
               size="sm"
               variant="outline"
               onClick={() => setShowScriptModal(true)}
+              className="text-xs"
             >
               Generar con IA
             </Button>
@@ -291,26 +292,27 @@ export default function UGCPage() {
             onChange={(e) => setScript(e.target.value)}
             placeholder="Escribe o genera el guión que dirá el avatar..."
             rows={6}
+            className="bg-[#1a2332]"
           />
         </div>
 
         {/* Voice Selection */}
         <div>
-          <Label>Voz</Label>
+          <Label className="mb-2 block text-base">Voz</Label>
           <Dropdown
             options={
               voices?.map((v) => ({ value: v.id, label: v.name })) || []
             }
             value={selectedVoice}
             onChange={setSelectedVoice}
-            placeholder="Selecciona una voz"
+            placeholder="Seleccionar"
           />
         </div>
 
         {/* Generate Button */}
         <Button
           onClick={generateUGC}
-          className="w-full"
+          className="w-full bg-brand-accent text-white hover:bg-brand-accent/90"
           size="lg"
           disabled={isGenerating}
         >
@@ -326,7 +328,7 @@ export default function UGCPage() {
       </div>
 
       {/* Right side - Preview/Result */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-brand-dark-secondary p-8">
+      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-brand-dark-secondary p-8 min-h-[600px]">
         {isGenerating ? (
           <div className="w-full space-y-4">
             <h3 className="text-center text-xl font-semibold text-white">
@@ -341,14 +343,14 @@ export default function UGCPage() {
               controls
               className="w-full rounded-lg"
             />
-            <div className="mt-4 flex gap-4">
+            <div className="mt-6 flex gap-4">
               <Button variant="outline" className="flex-1">
                 Editar
               </Button>
               <Button variant="outline" className="flex-1">
                 Aumentar
               </Button>
-              <Button className="flex-1">
+              <Button className="flex-1 bg-brand-accent hover:bg-brand-accent/90">
                 <Download className="mr-2 h-4 w-4" />
                 Descargar
               </Button>
@@ -356,13 +358,40 @@ export default function UGCPage() {
           </div>
         ) : (
           <div className="text-center">
-            <p className="text-4xl font-bold text-yellow-400">UGC</p>
-            <p className="mt-4 text-gray-400">
-              Configura tu video y haz clic en Generar
-            </p>
+            <h2 className="text-8xl font-bold text-white">UGC</h2>
           </div>
         )}
       </div>
+
+      {/* All Avatars Modal */}
+      <Modal
+        isOpen={showAvatarsModal}
+        onClose={() => setShowAvatarsModal(false)}
+        title="Todos los Avatares"
+      >
+        <div className="grid grid-cols-4 gap-4 max-h-96 overflow-y-auto">
+          {avatars?.map((avatar) => (
+            <button
+              key={avatar.id}
+              onClick={() => {
+                setSelectedAvatar(avatar.id);
+                setShowAvatarsModal(false);
+              }}
+              className={`overflow-hidden rounded-lg border-2 transition ${
+                selectedAvatar === avatar.id
+                  ? 'border-brand-accent'
+                  : 'border-transparent hover:border-gray-600'
+              }`}
+            >
+              <img
+                src={avatar.image_url}
+                alt={avatar.name}
+                className="aspect-square object-cover"
+              />
+            </button>
+          ))}
+        </div>
+      </Modal>
 
       {/* Script Generation Modal */}
       <Modal
@@ -385,16 +414,17 @@ export default function UGCPage() {
 
           <div>
             <Label>Ángulo de ventas</Label>
-            <Input
+            <Textarea
               value={salesAngle}
               onChange={(e) => setSalesAngle(e.target.value)}
               placeholder="Ej: Beneficios para la salud, estilo de vida..."
+              rows={3}
             />
           </div>
 
           <Button
             onClick={() => generateScript.mutate()}
-            className="w-full"
+            className="w-full bg-brand-accent hover:bg-brand-accent/90"
             disabled={generateScript.isPending || !selectedProduct}
           >
             {generateScript.isPending ? 'Generando...' : 'Generar Guión'}
@@ -404,4 +434,3 @@ export default function UGCPage() {
     </div>
   );
 }
-

@@ -64,55 +64,26 @@ const creationModes = [
 export default function CrearPage() {
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Selecciona Modo De Uso</h1>
-        <p className="mt-2 text-gray-400">Elige qué tipo de contenido quieres crear</p>
+      <div className="mb-12 text-center">
+        <h1 className="text-4xl font-bold text-white">Selecciona Modo De Uso</h1>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
         {creationModes.map((mode) => {
-          const Icon = mode.icon;
-          
           return (
             <Link
               key={mode.id}
               href={mode.href}
-              className="group relative overflow-hidden rounded-2xl border border-gray-700 bg-brand-dark-secondary p-8 transition-all hover:border-brand-accent hover:shadow-lg hover:shadow-brand-accent/20"
+              className="group relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-3xl border-2 border-brand-accent bg-brand-dark-secondary transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-accent/30"
             >
-              {/* Gradient background on hover */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} opacity-0 transition-opacity group-hover:opacity-10`} />
+              {/* Background gradient */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} opacity-5 group-hover:opacity-20 transition-opacity`} />
 
               {/* Content */}
-              <div className="relative">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-gray-800 group-hover:bg-brand-accent/20">
-                  <Icon className="h-8 w-8 text-brand-accent" />
-                </div>
-
-                <h3 className="mb-2 text-xl font-semibold text-white">
+              <div className="relative text-center">
+                <h3 className="text-3xl font-bold text-white">
                   {mode.name}
                 </h3>
-
-                <p className="text-sm text-gray-400">
-                  {mode.description}
-                </p>
-
-                {/* Arrow indicator */}
-                <div className="mt-4 flex items-center text-brand-accent opacity-0 transition-opacity group-hover:opacity-100">
-                  <span className="text-sm font-medium">Comenzar</span>
-                  <svg
-                    className="ml-2 h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </div>
               </div>
             </Link>
           );

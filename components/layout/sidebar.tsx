@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useCredits } from '@/hooks/useCredits';
 
 const navigation = [
+  { name: 'Inspiración', href: '/inspiracion', icon: Sparkles },
   { name: 'Crear', href: '/crear', icon: Sparkles },
   { name: 'Editor', href: '/editor', icon: FileEdit },
   { name: 'Marcas', href: '/marcas', icon: Package },
@@ -27,61 +28,50 @@ export function Sidebar() {
   const { credits } = useCredits();
 
   return (
-    <div className="fixed left-0 top-0 flex h-screen w-64 flex-col bg-brand-dark-secondary">
+    <div className="fixed left-0 top-0 flex h-screen w-64 flex-col bg-black">
       {/* Logo */}
-      <div className="flex h-20 items-center px-6">
-        <h1 className="text-3xl font-bold text-brand-accent">RIVERZ</h1>
+      <div className="flex h-24 items-center justify-center border-b border-gray-800">
+        <h1 className="text-4xl font-bold text-brand-accent">RIVERZ</h1>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-4 py-6">
+      <nav className="flex-1 space-y-2 px-6 py-8">
         {navigation.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-          const Icon = item.icon;
 
           return (
             <Link
               key={item.name}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors',
-                'relative',
+                'block py-3 text-base font-normal transition-colors relative',
                 isActive
-                  ? 'text-white'
-                  : 'text-gray-400 hover:text-white'
+                  ? 'text-white border-b-2 border-brand-accent'
+                  : 'text-gray-300 hover:text-white'
               )}
             >
-              <Icon className="h-5 w-5" />
               {item.name}
-              {isActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-accent" />
-              )}
             </Link>
           );
         })}
 
+        {/* Spacer */}
+        <div className="flex-1" />
+        
         {/* Logout */}
         <button
           onClick={() => {
-            // This will be handled by Clerk
             window.location.href = '/api/auth/signout';
           }}
-          className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-gray-400 transition-colors hover:text-white"
+          className="block py-3 text-base font-normal text-gray-300 transition-colors hover:text-white"
         >
-          <LogOut className="h-5 w-5" />
           Cerrar Sesión
         </button>
       </nav>
 
-      {/* Credits Display */}
-      <div className="border-t border-gray-700 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-gray-400">Créditos</p>
-            <p className="text-lg font-semibold text-white">{credits}</p>
-          </div>
-          <UserButton afterSignOutUrl="/sign-in" />
-        </div>
+      {/* User Profile */}
+      <div className="border-t border-gray-800 p-6">
+        <UserButton afterSignOutUrl="/sign-in" />
       </div>
     </div>
   );
