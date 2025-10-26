@@ -4,27 +4,11 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dropdown } from '@/components/ui/dropdown';
 import { FileUpload } from '@/components/ui/file-upload';
 import { ProgressBar } from '@/components/ui/loading';
 import { toast } from 'sonner';
 import { Download, Loader2 } from 'lucide-react';
-
-const modelOptions = [
-  { value: 'sora-2', label: 'Sora 2' },
-  { value: 'sora-2-pro', label: 'Sora 2 Pro' },
-];
-
-const formatOptions = [
-  { value: '9:16', label: 'Vertical 9:16' },
-  { value: '16:9', label: 'Horizontal 16:9' },
-  { value: '1:1', label: 'Cuadrado 1:1' },
-];
-
-const durationOptions = [
-  { value: '10', label: '10 Segundos' },
-  { value: '15', label: '15 Segundos' },
-];
+import { cn } from '@/lib/utils';
 
 export default function ClipsPage() {
   const [image, setImage] = useState<File | null>(null);
@@ -81,93 +65,121 @@ export default function ClipsPage() {
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
       {/* Left side - Configuration */}
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-white">CLIPS</h1>
-
         {/* Optional Image */}
         <div>
-          <Label>Subir Imagen (Opcional)</Label>
-          <FileUpload
-            onFilesSelected={(files) => setImage(files[0])}
-            accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-            preview
-          />
+          <Label className="mb-2 block">Subir Imagen (Opcional)</Label>
+          <div className="rounded-lg border-2 border-gray-700 bg-[#1a2332] p-4">
+            <FileUpload
+              onFilesSelected={(files) => setImage(files[0])}
+              accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
+              preview
+            />
+          </div>
         </div>
 
         {/* Prompt */}
         <div>
-          <Label>Prompt</Label>
+          <Label className="mb-2 block">Prompt</Label>
           <Textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe el video que quieres generar..."
-            rows={4}
+            placeholder="Describe el video que quieres crear..."
+            rows={5}
+            className="bg-[#1a2332]"
           />
         </div>
 
-        {/* Model */}
+        {/* Modelo */}
         <div>
-          <Label>Modelo</Label>
-          <div className="grid grid-cols-2 gap-4">
-            {modelOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => setModel(option.value)}
-                className={`rounded-lg border-2 p-4 transition ${
-                  model === option.value
-                    ? 'border-brand-accent bg-brand-accent/10'
-                    : 'border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <p className="text-white">{option.label}</p>
-              </button>
-            ))}
+          <Label className="mb-3 block">Modelo</Label>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setModel('sora-2')}
+              className={cn(
+                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                model === 'sora-2'
+                  ? 'border-brand-accent bg-brand-accent/10 text-white'
+                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+              )}
+            >
+              Sora 2
+            </button>
+            <button
+              onClick={() => setModel('sora-2-pro')}
+              className={cn(
+                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                model === 'sora-2-pro'
+                  ? 'border-brand-accent bg-brand-accent/10 text-white'
+                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+              )}
+            >
+              Sora 2 Pro
+            </button>
           </div>
         </div>
 
-        {/* Format */}
+        {/* Formato */}
         <div>
-          <Label>Formato</Label>
-          <div className="grid grid-cols-3 gap-4">
-            {formatOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => setFormat(option.value)}
-                className={`rounded-lg border-2 p-4 transition ${
-                  format === option.value
-                    ? 'border-brand-accent bg-brand-accent/10'
-                    : 'border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <p className="text-sm text-white">{option.label}</p>
-              </button>
-            ))}
+          <Label className="mb-3 block">Formato</Label>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setFormat('9:16')}
+              className={cn(
+                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                format === '9:16'
+                  ? 'border-brand-accent bg-brand-accent/10 text-white'
+                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+              )}
+            >
+              Vertical 9:16
+            </button>
+            <button
+              onClick={() => setFormat('16:9')}
+              className={cn(
+                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                format === '16:9'
+                  ? 'border-brand-accent bg-brand-accent/10 text-white'
+                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+              )}
+            >
+              Horizontal 16:9
+            </button>
           </div>
         </div>
 
-        {/* Duration */}
+        {/* Duración */}
         <div>
-          <Label>Duración</Label>
-          <div className="grid grid-cols-2 gap-4">
-            {durationOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => setDuration(option.value)}
-                className={`rounded-lg border-2 p-4 transition ${
-                  duration === option.value
-                    ? 'border-brand-accent bg-brand-accent/10'
-                    : 'border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <p className="text-white">{option.label}</p>
-              </button>
-            ))}
+          <Label className="mb-3 block">Duración</Label>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setDuration('10')}
+              className={cn(
+                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                duration === '10'
+                  ? 'border-brand-accent bg-brand-accent/10 text-white'
+                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+              )}
+            >
+              10 Segundos
+            </button>
+            <button
+              onClick={() => setDuration('15')}
+              className={cn(
+                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                duration === '15'
+                  ? 'border-brand-accent bg-brand-accent/10 text-white'
+                  : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
+              )}
+            >
+              15 Segundos
+            </button>
           </div>
         </div>
 
         {/* Generate Button */}
         <Button
           onClick={handleGenerate}
-          className="w-full"
+          className="w-full bg-brand-accent text-white hover:bg-brand-accent/90"
           size="lg"
           disabled={isGenerating}
         >
@@ -182,26 +194,26 @@ export default function ClipsPage() {
         </Button>
       </div>
 
-      {/* Right side - Preview/Result */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-brand-dark-secondary p-8">
+      {/* Right side - Result */}
+      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-brand-dark-secondary p-8 min-h-[600px]">
         {isGenerating ? (
           <div className="w-full space-y-4">
             <h3 className="text-center text-xl font-semibold text-white">
-              Generando clip...
+              Generando Clip...
             </h3>
             <ProgressBar progress={progress} />
           </div>
         ) : resultVideo ? (
           <div className="w-full">
             <video src={resultVideo} controls className="w-full rounded-lg" />
-            <div className="mt-4 flex gap-4">
+            <div className="mt-6 flex gap-4">
               <Button variant="outline" className="flex-1">
                 Editar
               </Button>
               <Button variant="outline" className="flex-1">
                 Aumentar
               </Button>
-              <Button className="flex-1">
+              <Button className="flex-1 bg-brand-accent hover:bg-brand-accent/90">
                 <Download className="mr-2 h-4 w-4" />
                 Descargar
               </Button>
@@ -209,14 +221,10 @@ export default function ClipsPage() {
           </div>
         ) : (
           <div className="text-center">
-            <p className="text-4xl font-bold text-yellow-400">CLIPS SCREEN</p>
-            <p className="mt-4 text-gray-400">
-              Configura tu clip y haz clic en Generar
-            </p>
+            <h2 className="text-8xl font-bold text-white">CLIPS SCREEN</h2>
           </div>
         )}
       </div>
     </div>
   );
 }
-

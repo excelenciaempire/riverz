@@ -74,64 +74,84 @@ export default function FaceSwapPage() {
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
       {/* Left side - Configuration */}
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-white">FACE SWAP</h1>
+        {/* Uploads in grid */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Source Video */}
+          <div>
+            <Label className="mb-2 block">Source Video</Label>
+            <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
+              {sourceVideo ? (
+                <video
+                  src={URL.createObjectURL(sourceVideo)}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <FileUpload
+                  onFilesSelected={(files) => setSourceVideo(files[0])}
+                  accept={{ 'video/*': ['.mp4', '.mov', '.avi'] }}
+                />
+              )}
+            </div>
+          </div>
 
-        {/* Source Video */}
-        <div>
-          <Label>Source Video</Label>
-          <FileUpload
-            onFilesSelected={(files) => setSourceVideo(files[0])}
-            accept={{ 'video/*': ['.mp4', '.mov', '.avi'] }}
-          />
+          {/* Character Image */}
+          <div>
+            <Label className="mb-2 block">Character Image</Label>
+            <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
+              {characterImage ? (
+                <img
+                  src={URL.createObjectURL(characterImage)}
+                  alt="Character"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <FileUpload
+                  onFilesSelected={(files) => setCharacterImage(files[0])}
+                  accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
+                  preview
+                />
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Character Image */}
-        <div>
-          <Label>Character Image</Label>
-          <FileUpload
-            onFilesSelected={(files) => setCharacterImage(files[0])}
-            accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-            preview
-          />
+        {/* Resolution and Format in grid */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="mb-2 block">Resolución</Label>
+            <Dropdown
+              options={resolutionOptions}
+              value={resolution}
+              onChange={setResolution}
+            />
+          </div>
+
+          <div>
+            <Label className="mb-2 block">Formato</Label>
+            <Dropdown
+              options={formatOptions}
+              value={format}
+              onChange={setFormat}
+            />
+          </div>
         </div>
 
-        {/* Resolution */}
-        <div>
-          <Label>Resolución</Label>
-          <Dropdown
-            options={resolutionOptions}
-            value={resolution}
-            onChange={setResolution}
-          />
-        </div>
-
-        {/* Format */}
-        <div>
-          <Label>Formato</Label>
-          <Dropdown
-            options={formatOptions}
-            value={format}
-            onChange={setFormat}
-          />
-        </div>
-
-        {/* Consent Checkbox */}
+        {/* Checkbox */}
         <div className="flex items-start gap-2">
           <input
             type="checkbox"
             id="consent"
-            className="mt-1"
-            defaultChecked
+            className="mt-1 h-4 w-4 rounded border-gray-600 bg-brand-dark-primary text-brand-accent focus:ring-brand-accent"
           />
           <label htmlFor="consent" className="text-sm text-gray-400">
-            Confirmo que tengo los derechos y/o consentimiento para usar la imagen fuente si presenta una persona real.
+            I confirm that I have the rights and/or consent to use the source image if it features a real person.
           </label>
         </div>
 
         {/* Generate Button */}
         <Button
           onClick={handleGenerate}
-          className="w-full"
+          className="w-full bg-brand-accent text-white hover:bg-brand-accent/90"
           size="lg"
           disabled={isGenerating}
         >
@@ -146,26 +166,26 @@ export default function FaceSwapPage() {
         </Button>
       </div>
 
-      {/* Right side - Preview/Result */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-brand-dark-secondary p-8">
+      {/* Right side - Result */}
+      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-brand-dark-secondary p-8 min-h-[600px]">
         {isGenerating ? (
           <div className="w-full space-y-4">
             <h3 className="text-center text-xl font-semibold text-white">
-              Procesando Face Swap...
+              Generando Face Swap...
             </h3>
             <ProgressBar progress={progress} />
           </div>
         ) : resultVideo ? (
           <div className="w-full">
             <video src={resultVideo} controls className="w-full rounded-lg" />
-            <div className="mt-4 flex gap-4">
+            <div className="mt-6 flex gap-4">
               <Button variant="outline" className="flex-1">
                 Editar
               </Button>
               <Button variant="outline" className="flex-1">
                 Aumentar
               </Button>
-              <Button className="flex-1">
+              <Button className="flex-1 bg-brand-accent hover:bg-brand-accent/90">
                 <Download className="mr-2 h-4 w-4" />
                 Descargar
               </Button>
@@ -173,16 +193,10 @@ export default function FaceSwapPage() {
           </div>
         ) : (
           <div className="text-center">
-            <p className="text-4xl font-bold text-yellow-400">
-              FACE SWAP SCREEN
-            </p>
-            <p className="mt-4 text-gray-400">
-              Sube tus archivos y configura las opciones
-            </p>
+            <h2 className="text-8xl font-bold text-white">FACE SWAP SCREEN</h2>
           </div>
         )}
       </div>
     </div>
   );
 }
-
