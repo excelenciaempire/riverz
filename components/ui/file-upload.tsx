@@ -19,7 +19,7 @@ interface FileUploadProps {
 export function FileUpload({
   onFilesSelected,
   accept,
-  maxFiles = 1,
+  maxFiles = 0, // 0 = unlimited
   maxSize = 10 * 1024 * 1024, // 10MB default
   className,
   multiple = false,
