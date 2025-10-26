@@ -1,17 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { FileUpload } from '@/components/ui/file-upload';
 import { ProgressBar } from '@/components/ui/loading';
 import { toast } from 'sonner';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type ModeType = 'video' | 'imagen';
 
 export default function MejorarCalidadPage() {
+  const router = useRouter();
   const [activeMode, setActiveMode] = useState<ModeType>('video');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -74,6 +76,15 @@ export default function MejorarCalidadPage() {
 
   return (
     <div className="mx-auto max-w-[1600px]">
+      {/* Back Button */}
+      <button
+        onClick={() => router.push('/crear')}
+        className="mb-4 flex items-center gap-2 text-gray-400 transition hover:text-white"
+      >
+        <ArrowLeft className="h-5 w-5" />
+        <span className="text-sm">Volver</span>
+      </button>
+
       {/* Tabs */}
       <div className="mb-8 flex gap-6 border-b border-gray-800">
         <button

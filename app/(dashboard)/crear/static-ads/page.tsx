@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/dropdown';
 import { toast } from 'sonner';
-import { ExternalLink, Star } from 'lucide-react';
+import { ExternalLink, Star, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Template, Product } from '@/types';
 
@@ -21,6 +22,7 @@ const awarenessLevels = [
 
 export default function StaticAdsPage() {
   const { user } = useUser();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('plantillas');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [awarenessFilter, setAwarenessFilter] = useState('all');
@@ -112,6 +114,15 @@ export default function StaticAdsPage() {
 
   return (
     <div className="mx-auto max-w-[1800px]">
+      {/* Back Button */}
+      <button
+        onClick={() => router.push('/crear')}
+        className="mb-4 flex items-center gap-2 text-gray-400 transition hover:text-white"
+      >
+        <ArrowLeft className="h-5 w-5" />
+        <span className="text-sm">Volver</span>
+      </button>
+
       {/* Tabs */}
       <div className="mb-8 flex gap-6 border-b border-gray-800">
         <button

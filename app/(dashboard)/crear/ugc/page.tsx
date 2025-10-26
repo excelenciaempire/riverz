@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -11,7 +12,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { Modal } from '@/components/ui/modal';
 import { Loading, ProgressBar } from '@/components/ui/loading';
 import { toast } from 'sonner';
-import { Download, Loader2, Sparkles } from 'lucide-react';
+import { Download, Loader2, Sparkles, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Product } from '@/types';
 
@@ -19,6 +20,7 @@ type TabType = 'library' | 'upload' | 'generate';
 
 export default function UGCPage() {
   const { user } = useUser();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('library');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [uploadedAvatar, setUploadedAvatar] = useState<File | null>(null);
@@ -175,6 +177,15 @@ export default function UGCPage() {
 
   return (
     <div className="mx-auto max-w-[1600px]">
+      {/* Back Button */}
+      <button
+        onClick={() => router.push('/crear')}
+        className="mb-4 flex items-center gap-2 text-gray-400 transition hover:text-white"
+      >
+        <ArrowLeft className="h-5 w-5" />
+        <span className="text-sm">Volver</span>
+      </button>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
         {/* Left side - Configuration */}
         <div className="space-y-3">

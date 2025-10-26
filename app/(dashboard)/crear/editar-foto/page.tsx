@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,7 +19,8 @@ import {
   Type,
   ArrowRight,
   Image as ImageIcon,
-  Palette
+  Palette,
+  ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -46,6 +48,7 @@ const variantOptions = [
 ];
 
 export default function EditarFotoPage() {
+  const router = useRouter();
   const [activeMode, setActiveMode] = useState<ModeType>('crear');
   const [prompt, setPrompt] = useState('');
   const [format, setFormat] = useState('1:1');
@@ -137,6 +140,14 @@ export default function EditarFotoPage() {
 
   return (
     <div className="mx-auto max-w-[1600px]">
+      {/* Back Button */}
+      <button
+        onClick={() => router.push('/crear')}
+        className="mb-4 flex items-center gap-2 text-gray-400 transition hover:text-white"
+      >
+        <ArrowLeft className="h-5 w-5" />
+        <span className="text-sm">Volver</span>
+      </button>
 
       {/* Tabs */}
       <div className="mb-8 flex gap-6 border-b border-gray-800">

@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Dropdown } from '@/components/ui/dropdown';
 import { FileUpload } from '@/components/ui/file-upload';
 import { ProgressBar } from '@/components/ui/loading';
 import { toast } from 'sonner';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, ArrowLeft } from 'lucide-react';
 
 const resolutionOptions = [
   { value: '720p', label: '720p' },
@@ -22,6 +23,7 @@ const formatOptions = [
 ];
 
 export default function FaceSwapPage() {
+  const router = useRouter();
   const [sourceVideo, setSourceVideo] = useState<File | null>(null);
   const [characterImage, setCharacterImage] = useState<File | null>(null);
   const [resolution, setResolution] = useState('720p');
@@ -72,6 +74,15 @@ export default function FaceSwapPage() {
 
   return (
     <div className="mx-auto max-w-[1600px]">
+      {/* Back Button */}
+      <button
+        onClick={() => router.push('/crear')}
+        className="mb-4 flex items-center gap-2 text-gray-400 transition hover:text-white"
+      >
+        <ArrowLeft className="h-5 w-5" />
+        <span className="text-sm">Volver</span>
+      </button>
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[440px_1fr]">
         {/* Left side - Configuration */}
         <div className="space-y-4">
