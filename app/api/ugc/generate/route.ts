@@ -2,6 +2,13 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { triggerN8NWebhook, N8N_ENDPOINTS } from '@/lib/n8n';
+import { 
+  rateLimit, 
+  getClientIp, 
+  validateGenerationRequest, 
+  logSecurityEvent,
+  RATE_LIMITS 
+} from '@/lib/security';
 
 export async function POST(req: Request) {
   try {
@@ -11,7 +18,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Rate limiting
+    const clientIp = await getClientIp();
+    const rateLimitKey = `ugc:${userId}:${clientIp}`;
+    const rateLimitResult = await rateLimit(
+      rateLimitKey,
+      RATE_LIMITS.generation.limit,
+      RATE_LIMITS.generation.windowMs
+    );
+
+    if (!rateLimitResult.success) {
+      logSecurityEvent('RATE_LIMIT_EXCEEDED', userId, {
+        endpoint: '/api/ugc/generate',
+        ip: clientIp,
+      });
+      
+      return NextResponse.json(
+        { error: 'Demasiadas solicitudes. Intenta de nuevo en un minuto.' },
+        { status: 429 }
+      );
+    }
+
     const { avatar, script, voiceId } = await req.json();
+
+    // Validar entrada
+    const validation = validateGenerationRequest({ prompt: script });
+    if (!validation.valid) {
+      logSecurityEvent('INVALID_INPUT', userId, {
+        endpoint: '/api/ugc/generate',
+        errors: validation.errors,
+      });
+      
+      return NextResponse.json(
+        { error: validation.errors.join(', ') },
+        { status: 400 }
+      );
+    }
     const supabase = await createClient();
 
     // Obtener costo del pricing_config
