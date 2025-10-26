@@ -63,25 +63,26 @@ const creationModes = [
 
 export default function CrearPage() {
   return (
-    <div>
-      <div className="mb-10 text-center">
-        <h1 className="text-3xl font-bold text-white">Selecciona Modo De Uso</h1>
+    <div className="mx-auto max-w-7xl">
+      <div className="mb-12 text-center">
+        <h1 className="text-4xl font-bold text-white">Selecciona Modo De Uso</h1>
+        <p className="mt-3 text-lg text-gray-400">Elige una herramienta para comenzar a crear</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         {creationModes.map((mode) => {
           return (
             <Link
               key={mode.id}
               href={mode.href}
-              className="group relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl border border-gray-800 bg-[#141414] transition-all hover:border-brand-accent hover:shadow-lg hover:shadow-brand-accent/20"
+              className="group relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl border border-gray-800 bg-[#141414] transition-all hover:border-brand-accent hover:shadow-xl hover:shadow-brand-accent/20 hover:scale-[1.02]"
             >
               {/* Background gradient */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} opacity-0 group-hover:opacity-10 transition-opacity`} />
+              <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
 
               {/* Content */}
-              <div className="relative text-center">
-                <h3 className="text-2xl font-semibold text-white">
+              <div className="relative text-center px-6">
+                <h3 className="text-3xl font-semibold text-white">
                   {mode.name}
                 </h3>
               </div>

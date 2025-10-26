@@ -26,22 +26,22 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       {/* Modal */}
       <div
         className={cn(
-          'relative z-10 w-full max-w-lg rounded-lg bg-brand-dark-secondary p-6',
-          'border border-gray-700 shadow-xl',
+          'relative z-10 w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#141414] p-8',
+          'border border-gray-800 shadow-2xl',
           className
         )}
       >
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-sm text-gray-400 hover:text-white"
+          className="absolute right-5 top-5 rounded-lg p-1 text-gray-400 transition hover:bg-gray-800 hover:text-white"
         >
           <X className="h-5 w-5" />
         </button>
 
         {/* Title */}
         {title && (
-          <h2 className="mb-4 text-xl font-semibold text-white">{title}</h2>
+          <h2 className="mb-6 text-2xl font-semibold text-white pr-10">{title}</h2>
         )}
 
         {/* Content */}

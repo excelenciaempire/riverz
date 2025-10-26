@@ -62,9 +62,15 @@ export default function ClipsPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
-      {/* Left side - Configuration */}
-      <div className="space-y-4">
+    <div className="mx-auto max-w-[1600px]">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-white">Clips</h1>
+        <p className="mt-2 text-gray-400">Genera videos cortos con IA</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[440px_1fr]">
+        {/* Left side - Configuration */}
+        <div className="space-y-4">
         {/* Optional Image */}
         <div>
           <Label className="mb-1.5 block text-sm">Subir Imagen (Opcional)</Label>

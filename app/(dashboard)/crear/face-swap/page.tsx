@@ -71,9 +71,15 @@ export default function FaceSwapPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
-      {/* Left side - Configuration */}
-      <div className="space-y-4">
+    <div className="mx-auto max-w-[1600px]">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-white">Face Swap</h1>
+        <p className="mt-2 text-gray-400">Intercambia rostros en videos con IA</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[440px_1fr]">
+        {/* Left side - Configuration */}
+        <div className="space-y-4">
         {/* Uploads in grid */}
         <div className="grid grid-cols-2 gap-4">
           {/* Source Video */}
@@ -166,36 +172,37 @@ export default function FaceSwapPage() {
         </Button>
       </div>
 
-      {/* Right side - Result */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-brand-dark-secondary p-8 min-h-[600px]">
-        {isGenerating ? (
-          <div className="w-full space-y-4">
-            <h3 className="text-center text-xl font-semibold text-white">
-              Generando Face Swap...
-            </h3>
-            <ProgressBar progress={progress} />
-          </div>
-        ) : resultVideo ? (
-          <div className="w-full">
-            <video src={resultVideo} controls className="w-full rounded-lg" />
-            <div className="mt-6 flex gap-4">
-              <Button variant="outline" className="flex-1">
-                Editar
-              </Button>
-              <Button variant="outline" className="flex-1">
-                Aumentar
-              </Button>
-              <Button className="flex-1 bg-brand-accent hover:bg-brand-accent/90">
-                <Download className="mr-2 h-4 w-4" />
-                Descargar
-              </Button>
+        {/* Right side - Result */}
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-800 bg-[#141414] p-8 min-h-[750px]">
+          {isGenerating ? (
+            <div className="w-full space-y-4">
+              <h3 className="text-center text-xl font-semibold text-white">
+                Generando Face Swap...
+              </h3>
+              <ProgressBar progress={progress} />
             </div>
-          </div>
-        ) : (
-          <div className="text-center">
-            <h2 className="text-8xl font-bold text-white">FACE SWAP SCREEN</h2>
-          </div>
-        )}
+          ) : resultVideo ? (
+            <div className="w-full">
+              <video src={resultVideo} controls className="w-full rounded-lg" />
+              <div className="mt-6 flex gap-4">
+                <Button variant="outline" className="flex-1">
+                  Editar
+                </Button>
+                <Button variant="outline" className="flex-1">
+                  Aumentar
+                </Button>
+                <Button className="flex-1 bg-brand-accent hover:bg-brand-accent/90">
+                  <Download className="mr-2 h-4 w-4" />
+                  Descargar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center">
+              <h2 className="text-8xl font-bold text-white">FACE SWAP</h2>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

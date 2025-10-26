@@ -172,9 +172,15 @@ export default function UGCPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
-      {/* Left side - Configuration */}
-      <div className="space-y-4">
+    <div className="mx-auto max-w-[1600px]">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-white">UGC Creator</h1>
+        <p className="mt-2 text-gray-400">Crea videos UGC con avatares IA</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[440px_1fr]">
+        {/* Left side - Configuration */}
+        <div className="space-y-4">
         {/* Avatar Selection Tabs */}
         <div className="flex gap-6 border-b border-gray-800">
           <button
@@ -329,8 +335,8 @@ export default function UGCPage() {
         </Button>
       </div>
 
-      {/* Right side - Preview/Result */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-800 bg-[#141414] p-6 min-h-[700px]">
+        {/* Right side - Preview/Result */}
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-800 bg-[#141414] p-8 min-h-[750px]">
         {isGenerating ? (
           <div className="w-full space-y-4">
             <h3 className="text-center text-xl font-semibold text-white">
@@ -360,9 +366,10 @@ export default function UGCPage() {
           </div>
         ) : (
           <div className="text-center">
-            <h2 className="text-8xl font-bold text-white">UGC</h2>
+            <h2 className="text-9xl font-bold text-white">UGC</h2>
           </div>
         )}
+        </div>
       </div>
 
       {/* All Avatars Modal */}
