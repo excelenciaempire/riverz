@@ -1,6 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { currentUser } from '@clerk/nextjs/server';
 
 // 🎨 PREVIEW MODE: Set to true to disable authentication and see the UI
 // ⚠️ CAMBIAR A FALSE una vez tengas .env.local configurado
@@ -18,7 +17,8 @@ const isAdminRoute = createRouteMatcher([
   '/api/admin(.*)',
 ]);
 
-async function isAdminUser(email: string): Promise<boolean> {
+function isAdminUser(email: string | undefined): boolean {
+  if (!email) return false;
   const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
   return adminEmails.includes(email.toLowerCase());
 }
@@ -29,7 +29,7 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.next();
   }
 
-  const { userId } = await auth();
+  const { userId, sessionClaims } = await auth();
 
   // Allow public routes
   if (isPublicRoute(request)) {
@@ -45,10 +45,10 @@ export default clerkMiddleware(async (auth, request) => {
 
   // Check admin routes
   if (isAdminRoute(request)) {
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    // Get email from session claims
+    const userEmail = sessionClaims?.email as string | undefined;
 
-    if (!userEmail || !(await isAdminUser(userEmail))) {
+    if (!isAdminUser(userEmail)) {
       // Redirect to unauthorized page
       return NextResponse.redirect(new URL('/admin/unauthorized', request.url));
     }
