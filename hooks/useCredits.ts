@@ -1,56 +1,25 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
 import { useUser } from '@clerk/nextjs';
 
 export function useCredits() {
   const { user } = useUser();
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
-  const { data: credits, isLoading } = useQuery({
+  const { data: creditsData, isLoading } = useQuery({
     queryKey: ['credits', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('credits')
-        .eq('clerk_id', user!.id)
-        .single();
-
-      if (error) throw error;
-      return data?.credits || 0;
+      const response = await fetch('/api/credits/balance');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch credits');
+      }
+      
+      return response.json();
     },
     enabled: !!user,
-  });
-
-  // Real-time subscription to credits changes
-  useQuery({
-    queryKey: ['credits-subscription', user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-
-      const channel = supabase
-        .channel('credits-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'users',
-            filter: `clerk_id=eq.${user.id}`,
-          },
-          (payload) => {
-            queryClient.setQueryData(['credits', user.id], payload.new.credits);
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    },
-    enabled: !!user,
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 
   const deductCredits = useMutation({
@@ -70,7 +39,9 @@ export function useCredits() {
   });
 
   return {
-    credits: credits || 0,
+    credits: creditsData?.credits || 0,
+    planType: creditsData?.plan_type || 'free',
+    subscriptionStatus: creditsData?.subscription_status || 'inactive',
     isLoading,
     deductCredits: deductCredits.mutate,
   };
