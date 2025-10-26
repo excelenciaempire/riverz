@@ -190,41 +190,50 @@ export default function MarcasPage() {
           <div className="space-y-6">
             {/* Product Images */}
             <div>
-              <Label className="mb-3 block text-sm font-medium">Imágenes del Producto</Label>
-              <div className="rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] p-8 transition hover:border-gray-600">
-                <FileUpload
-                  onFilesSelected={(files) =>
-                    setFormData({ ...formData, images: [...formData.images, ...files] })
-                  }
-                  accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}
-                  multiple
-                />
-                {formData.images.length > 0 && (
-                  <div className="mt-6 grid grid-cols-4 gap-3">
-                    {formData.images.map((img, index) => (
-                      <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-700">
-                        <img
-                          src={URL.createObjectURL(img)}
-                          alt={`Product ${index + 1}`}
-                          className="h-full w-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const newImages = formData.images.filter((_, i) => i !== index);
-                            setFormData({ ...formData, images: newImages });
-                          }}
-                          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white transition hover:bg-red-600"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <Label className="mb-3 block text-sm font-medium">Imágenes del Producto (máx. 5)</Label>
+              {formData.images.length < 5 ? (
+                <div className="rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] p-8 transition hover:border-gray-600">
+                  <FileUpload
+                    onFilesSelected={(files) => {
+                      const remaining = 5 - formData.images.length;
+                      const filesToAdd = files.slice(0, remaining);
+                      setFormData({ ...formData, images: [...formData.images, ...filesToAdd] });
+                      if (files.length > remaining) {
+                        toast.warning(`Solo se agregaron ${remaining} imagen(es). Máximo 5 permitidas.`);
+                      }
+                    }}
+                    accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}
+                    multiple
+                  />
+                </div>
+              ) : null}
+              
+              {formData.images.length > 0 && (
+                <div className={`grid grid-cols-5 gap-3 ${formData.images.length < 5 ? 'mt-6' : ''}`}>
+                  {formData.images.map((img, index) => (
+                    <div key={index} className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-gray-700">
+                      <img
+                        src={URL.createObjectURL(img)}
+                        alt={`Product ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const newImages = formData.images.filter((_, i) => i !== index);
+                          setFormData({ ...formData, images: newImages });
+                        }}
+                        className="absolute right-1 top-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-red-500 text-white opacity-0 transition hover:bg-red-600 group-hover:opacity-100"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
               <p className="mt-3 text-xs text-gray-500">
                 Para mejores resultados, añade mínimo 3 fotos de alta calidad de distintos ángulos del producto
               </p>
@@ -367,38 +376,46 @@ export default function MarcasPage() {
       >
         <div className="space-y-5">
           <div>
-            <Label className="mb-2 block text-sm font-medium">Imágenes</Label>
-            <div className="rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] p-6">
-              <FileUpload
-                onFilesSelected={(files) =>
-                  setFormData({ ...formData, images: [...formData.images, ...files] })
-                }
-                accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-                multiple
-              />
-              {formData.images.length > 0 && (
-                <div className="mt-4 grid grid-cols-3 gap-3">
-                  {formData.images.map((img, index) => (
-                    <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-700">
-                      <img
-                        src={URL.createObjectURL(img)}
-                        alt={`Product ${index + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                      <button
-                        onClick={() => {
-                          const newImages = formData.images.filter((_, i) => i !== index);
-                          setFormData({ ...formData, images: newImages });
-                        }}
-                        className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white opacity-0 transition group-hover:opacity-100"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <Label className="mb-2 block text-sm font-medium">Imágenes (máx. 5)</Label>
+            {formData.images.length < 5 ? (
+              <div className="rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] p-6">
+                <FileUpload
+                  onFilesSelected={(files) => {
+                    const remaining = 5 - formData.images.length;
+                    const filesToAdd = files.slice(0, remaining);
+                    setFormData({ ...formData, images: [...formData.images, ...filesToAdd] });
+                    if (files.length > remaining) {
+                      toast.warning(`Solo se agregaron ${remaining} imagen(es). Máximo 5 permitidas.`);
+                    }
+                  }}
+                  accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
+                  multiple
+                />
+              </div>
+            ) : null}
+            
+            {formData.images.length > 0 && (
+              <div className={`grid grid-cols-3 gap-3 ${formData.images.length < 5 ? 'mt-4' : ''}`}>
+                {formData.images.map((img, index) => (
+                  <div key={index} className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-gray-700">
+                    <img
+                      src={URL.createObjectURL(img)}
+                      alt={`Product ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      onClick={() => {
+                        const newImages = formData.images.filter((_, i) => i !== index);
+                        setFormData({ ...formData, images: newImages });
+                      }}
+                      className="absolute right-1.5 top-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-red-500 text-xs text-white opacity-0 transition hover:bg-red-600 group-hover:opacity-100"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

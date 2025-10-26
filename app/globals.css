@@ -39,3 +39,30 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Remove default focus outlines and replace with custom styling */
+* {
+  outline: none;
+}
+
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid #07A498;
+  outline-offset: 2px;
+}
+
+/* Cursor pointer for interactive elements */
+button,
+a,
+[role="button"],
+[role="tab"],
+select,
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"],
+.cursor-pointer {
+  cursor: pointer;
+}
