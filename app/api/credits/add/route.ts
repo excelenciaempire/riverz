@@ -23,11 +23,18 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { amount, generation_id, description } = body;
+    const { amount, transaction_type, description } = body;
 
     if (!amount || amount <= 0) {
       return NextResponse.json(
         { error: 'Invalid amount' },
+        { status: 400 }
+      );
+    }
+
+    if (!transaction_type) {
+      return NextResponse.json(
+        { error: 'Transaction type is required' },
         { status: 400 }
       );
     }
@@ -47,20 +54,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validar que tenga suficientes créditos
-    if (userCredits.credits < amount) {
-      return NextResponse.json(
-        { 
-          error: 'Insufficient credits',
-          current_credits: userCredits.credits,
-          required_credits: amount
-        },
-        { status: 402 } // Payment Required
-      );
-    }
-
-    // Deducir créditos (operación atómica)
-    const newBalance = userCredits.credits - amount;
+    // Agregar créditos (operación atómica)
+    const newBalance = userCredits.credits + amount;
     
     const { error: updateError } = await supabaseAdmin
       .from('user_credits')
@@ -73,7 +68,7 @@ export async function POST(req: Request) {
     if (updateError) {
       console.error('Error updating credits:', updateError);
       return NextResponse.json(
-        { error: 'Failed to deduct credits' },
+        { error: 'Failed to add credits' },
         { status: 500 }
       );
     }
@@ -83,10 +78,9 @@ export async function POST(req: Request) {
       .from('credit_transactions')
       .insert({
         clerk_user_id: userId,
-        amount: -amount, // Negativo para deducción
-        transaction_type: 'deduction',
-        generation_id: generation_id || null,
-        description: description || 'Credit deduction for generation',
+        amount: amount, // Positivo para agregar
+        transaction_type: transaction_type, // 'purchase', 'subscription', 'refund', 'admin_grant'
+        description: description || 'Credits added',
         balance_after: newBalance
       });
 
@@ -97,14 +91,15 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      credits_deducted: amount,
+      credits_added: amount,
       new_balance: newBalance
     });
   } catch (error) {
-    console.error('Error in credits/deduct:', error);
+    console.error('Error in credits/add:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
+

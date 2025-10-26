@@ -51,10 +51,21 @@ export default function ConfiguracionPage() {
   // Create checkout session
   const createCheckout = async (planType: string) => {
     try {
+      // Obtener el priceId del plan
+      const plan = SUBSCRIPTION_PLANS[planType as keyof typeof SUBSCRIPTION_PLANS];
+      
+      if (!plan || !plan.priceId) {
+        toast.error('Plan no configurado. Por favor contacta al administrador.');
+        return;
+      }
+
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planType }),
+        body: JSON.stringify({ 
+          priceId: plan.priceId,
+          planType 
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to create checkout');
@@ -69,10 +80,13 @@ export default function ConfiguracionPage() {
   // Buy credits
   const buyCredits = async () => {
     try {
+      // Mínimo $5 USD
+      const amount = 5;
+      
       const response = await fetch('/api/stripe/buy-credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credits: 500 }), // Minimum purchase
+        body: JSON.stringify({ amount }), // $5 USD = 500 créditos
       });
 
       if (!response.ok) throw new Error('Failed to create checkout');

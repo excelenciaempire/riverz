@@ -10,13 +10,32 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Por ahora, devolver un plan por defecto
-    // TODO: Implementar lógica de planes cuando esté configurado Stripe
-    return NextResponse.json({
-      clerk_id: userId,
-      plan_type: 'free',
-      credits: 0
-    });
+    const supabase = await createClient();
+
+    // Consultar user_credits
+    const { data, error } = await supabase
+      .from('user_credits')
+      .select('*')
+      .eq('clerk_user_id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user credits:', error);
+      
+      // Si el usuario no existe en user_credits, retornar valores por defecto
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({
+          clerk_user_id: userId,
+          plan_type: 'free',
+          credits: 0,
+          subscription_status: 'inactive'
+        });
+      }
+      
+      throw error;
+    }
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching user:', error);
     return NextResponse.json(
@@ -38,9 +57,9 @@ export async function PATCH(req: Request) {
     const supabase = await createClient();
 
     const { data, error } = await supabase
-      .from('users')
+      .from('user_credits')
       .update(body)
-      .eq('clerk_id', userId)
+      .eq('clerk_user_id', userId)
       .select()
       .single();
 
