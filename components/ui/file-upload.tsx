@@ -60,20 +60,20 @@ export function FileUpload({
         {...getRootProps()}
         className={cn(
           'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8',
-          'transition-colors',
+          'transition-colors focus:outline-none',
           isDragActive
             ? 'border-brand-accent bg-brand-accent/10'
-            : 'border-gray-600 bg-brand-dark-secondary hover:border-gray-500'
+            : 'border-gray-700 bg-transparent hover:border-gray-600'
         )}
       >
-        <input {...getInputProps()} />
-        <Upload className="mb-4 h-12 w-12 text-gray-400" />
+        <input {...getInputProps()} className="focus:outline-none" />
+        <Upload className="mb-4 h-12 w-12 text-gray-500" />
         <p className="text-center text-sm text-gray-400">
           {isDragActive
             ? 'Suelta los archivos aquí...'
             : 'Haz clic o arrastra archivos aquí'}
         </p>
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-gray-600">
           Tamaño máximo: {Math.round(maxSize / 1024 / 1024)}MB
         </p>
       </div>
