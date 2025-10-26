@@ -14,6 +14,7 @@ import { Loading, ProgressBar } from '@/components/ui/loading';
 import { toast } from 'sonner';
 import { Download, Loader2, Sparkles, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { startGeneration } from '@/lib/polling-helper';
 import type { Product } from '@/types';
 
 type TabType = 'library' | 'upload' | 'generate';
@@ -140,38 +141,33 @@ export default function UGCPage() {
       return;
     }
 
-    setIsGenerating(true);
-    setProgress(0);
-
-    try {
-      // Simulate progress
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => Math.min(prev + 5, 90));
-      }, 1000);
-
-      const response = await fetch('/api/ugc/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          avatar: avatarData,
-          script,
-          voiceId: selectedVoice,
-        }),
-      });
-
-      clearInterval(progressInterval);
-
-      if (!response.ok) throw new Error('Failed to generate UGC');
-
-      const data = await response.json();
-      setProgress(100);
-      setResultVideo(data.videoUrl);
-      toast.success('Video generado');
-    } catch (error) {
-      toast.error('Error al generar video');
-    } finally {
-      setIsGenerating(false);
-    }
+    await startGeneration(
+      '/api/ugc/generate',
+      {
+        avatar: avatarData,
+        script,
+        voiceId: selectedVoice,
+      },
+      {
+        router,
+        toast,
+        onStart: () => {
+          setIsGenerating(true);
+          setProgress(0);
+        },
+        onProgress: (progress) => setProgress(progress),
+        onComplete: (resultUrl) => {
+          setResultVideo(resultUrl);
+          toast.success('Video generado exitosamente');
+        },
+        onError: (error) => {
+          toast.error(error);
+        },
+        onFinally: () => {
+          setIsGenerating(false);
+        },
+      }
+    );
   };
 
   return (
