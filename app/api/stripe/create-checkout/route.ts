@@ -1,6 +1,4 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { createCheckoutSession, SUBSCRIPTION_PLANS } from '@/lib/stripe';
 
 export async function POST(req: Request) {
   try {
@@ -8,6 +6,10 @@ export async function POST(req: Request) {
     if (!process.env.CLERK_SECRET_KEY) {
       return NextResponse.json({ error: 'Clerk not configured' }, { status: 500 });
     }
+
+    // Dynamic import to avoid Clerk initialization during build
+    const { auth, currentUser } = await import('@clerk/nextjs/server');
+    const { createCheckoutSession, SUBSCRIPTION_PLANS } = await import('@/lib/stripe');
 
     const { userId } = await auth();
 
