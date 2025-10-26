@@ -210,7 +210,6 @@ export default function EditarFotoPage() {
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Describe la imagen que quieres crear..."
                   rows={6}
-                  className="bg-[#1a2332]"
                 />
               </div>
 
@@ -246,7 +245,7 @@ export default function EditarFotoPage() {
             <>
               <div>
                 <Label className="mb-2 block">Subir Imagen</Label>
-                <div className="rounded-lg border-2 border-gray-700 bg-[#1a2332] p-4">
+                <div className="overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
                   <FileUpload
                     onFilesSelected={(files) => setImage(files[0])}
                     accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
@@ -262,7 +261,6 @@ export default function EditarFotoPage() {
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Describe los cambios que quieres hacer..."
                   rows={4}
-                  className="bg-[#1a2332]"
                 />
               </div>
 
@@ -289,7 +287,7 @@ export default function EditarFotoPage() {
             <>
               <div>
                 <Label className="mb-2 block">Subir Imágenes (Máximo 5)</Label>
-                <div className="rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332] p-4">
+                <div className="overflow-hidden rounded-2xl border-2 border-dashed border-gray-800 bg-[#0a0a0a] p-4">
                   <FileUpload
                     onFilesSelected={(files) => {
                       const newImages = [...images, ...Array.from(files)].slice(0, 5);
@@ -310,7 +308,7 @@ export default function EditarFotoPage() {
                           />
                           <button
                             onClick={() => setImages(images.filter((_, i) => i !== index))}
-                            className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                            className="absolute right-1 top-1 cursor-pointer rounded-full bg-red-500 p-1 text-white transition hover:bg-red-600"
                           >
                             <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -330,7 +328,6 @@ export default function EditarFotoPage() {
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Describe cómo quieres combinar las imágenes..."
                   rows={4}
-                  className="bg-[#1a2332]"
                 />
               </div>
 
@@ -367,7 +364,7 @@ export default function EditarFotoPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="mb-2 block text-sm">Imagen de Referencia</Label>
-                  <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
+                  <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
                     {referenceImage ? (
                       <img
                         src={URL.createObjectURL(referenceImage)}
@@ -386,7 +383,7 @@ export default function EditarFotoPage() {
 
                 <div>
                   <Label className="mb-2 block text-sm">Sube tu Imagen del Producto</Label>
-                  <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
+                  <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
                     {productImage ? (
                       <img
                         src={URL.createObjectURL(productImage)}
@@ -411,7 +408,7 @@ export default function EditarFotoPage() {
                   onChange={(e) => setSpecificRequests(e.target.value)}
                   placeholder="Prompt Extra | Agrega ángulos de marketing, ideas de concepto, personalidad de marca, detalles personalizados, texto o atributos específicos del producto (colores, materiales, estilo, iluminación, etc.)"
                   rows={4}
-                  className="bg-[#1a2332] text-sm"
+                  className="text-sm"
                 />
               </div>
 
