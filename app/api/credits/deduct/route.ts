@@ -25,9 +25,25 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { amount, generation_id, description } = body;
 
-    if (!amount || amount <= 0) {
+    if (amount === undefined || amount < 0) {
       return NextResponse.json(
         { error: 'Invalid amount' },
+        { status: 400 }
+      );
+    }
+
+    // Si amount es 0, solo registrar transacción sin deducir
+    if (amount === 0 && generation_id) {
+      return NextResponse.json({
+        success: true,
+        credits_deducted: 0,
+        message: 'Transaction recorded',
+      });
+    }
+
+    if (amount === 0) {
+      return NextResponse.json(
+        { error: 'Amount must be greater than 0' },
         { status: 400 }
       );
     }
