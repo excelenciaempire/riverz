@@ -218,7 +218,7 @@ export default function EditarFotoPage() {
 
               <Button
                 onClick={handleGenerate}
-                className="w-full bg-brand-accent hover:bg-brand-accent/90"
+                className="w-full rounded-2xl bg-brand-accent py-6 hover:bg-brand-accent/90"
                 size="lg"
                 disabled={isGenerating}
               >
@@ -261,7 +261,7 @@ export default function EditarFotoPage() {
 
               <Button
                 onClick={handleGenerate}
-                className="w-full bg-brand-accent hover:bg-brand-accent/90"
+                className="w-full rounded-2xl bg-brand-accent py-6 hover:bg-brand-accent/90"
                 size="lg"
                 disabled={isGenerating}
               >
@@ -338,7 +338,7 @@ export default function EditarFotoPage() {
 
               <Button
                 onClick={handleGenerate}
-                className="w-full bg-brand-accent hover:bg-brand-accent/90"
+                className="w-full rounded-2xl bg-brand-accent py-6 hover:bg-brand-accent/90"
                 size="lg"
                 disabled={isGenerating}
               >
@@ -431,7 +431,7 @@ export default function EditarFotoPage() {
 
               <Button
                 onClick={handleGenerate}
-                className="w-full bg-brand-accent hover:bg-brand-accent/90"
+                className="w-full rounded-2xl bg-brand-accent py-6 hover:bg-brand-accent/90"
                 size="lg"
                 disabled={isGenerating}
               >

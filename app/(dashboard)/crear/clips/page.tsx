@@ -74,7 +74,7 @@ export default function ClipsPage() {
         {/* Optional Image */}
         <div>
           <Label className="mb-1.5 block text-sm">Subir Imagen (Opcional)</Label>
-          <div className="rounded-lg border-2 border-gray-700 bg-[#1a2332] p-4">
+          <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6">
             <FileUpload
               onFilesSelected={(files) => setImage(files[0])}
               accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
@@ -102,7 +102,7 @@ export default function ClipsPage() {
             <button
               onClick={() => setModel('sora-2')}
               className={cn(
-                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
                 model === 'sora-2'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
                   : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
@@ -113,7 +113,7 @@ export default function ClipsPage() {
             <button
               onClick={() => setModel('sora-2-pro')}
               className={cn(
-                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
                 model === 'sora-2-pro'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
                   : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
@@ -131,7 +131,7 @@ export default function ClipsPage() {
             <button
               onClick={() => setFormat('9:16')}
               className={cn(
-                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
                 format === '9:16'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
                   : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
@@ -142,7 +142,7 @@ export default function ClipsPage() {
             <button
               onClick={() => setFormat('16:9')}
               className={cn(
-                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
                 format === '16:9'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
                   : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
@@ -160,7 +160,7 @@ export default function ClipsPage() {
             <button
               onClick={() => setDuration('10')}
               className={cn(
-                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
                 duration === '10'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
                   : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
@@ -171,7 +171,7 @@ export default function ClipsPage() {
             <button
               onClick={() => setDuration('15')}
               className={cn(
-                'flex-1 rounded-lg border-2 px-6 py-3 text-sm font-medium transition',
+                'flex-1 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-6 py-3 text-sm font-medium transition',
                 duration === '15'
                   ? 'border-brand-accent bg-brand-accent/10 text-white'
                   : 'border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600'
@@ -185,7 +185,7 @@ export default function ClipsPage() {
         {/* Generate Button */}
         <Button
           onClick={handleGenerate}
-          className="w-full bg-brand-accent text-white hover:bg-brand-accent/90"
+          className="w-full rounded-2xl bg-brand-accent py-6 text-white hover:bg-brand-accent/90"
           size="lg"
           disabled={isGenerating}
         >

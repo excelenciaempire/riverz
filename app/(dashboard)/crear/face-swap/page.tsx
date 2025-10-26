@@ -85,7 +85,7 @@ export default function FaceSwapPage() {
           {/* Source Video */}
           <div>
             <Label className="mb-1.5 block text-sm">Source Video</Label>
-            <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
+            <div className="aspect-square overflow-hidden rounded-2xl border border-gray-800 bg-[#0a0a0a]">
               {sourceVideo ? (
                 <video
                   src={URL.createObjectURL(sourceVideo)}
@@ -103,7 +103,7 @@ export default function FaceSwapPage() {
           {/* Character Image */}
           <div>
             <Label className="mb-1.5 block text-sm">Character Image</Label>
-            <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
+            <div className="aspect-square overflow-hidden rounded-2xl border border-gray-800 bg-[#0a0a0a]">
               {characterImage ? (
                 <img
                   src={URL.createObjectURL(characterImage)}
@@ -157,7 +157,7 @@ export default function FaceSwapPage() {
         {/* Generate Button */}
         <Button
           onClick={handleGenerate}
-          className="w-full bg-brand-accent text-white hover:bg-brand-accent/90"
+          className="w-full rounded-2xl bg-brand-accent py-6 text-white hover:bg-brand-accent/90"
           size="lg"
           disabled={isGenerating}
         >

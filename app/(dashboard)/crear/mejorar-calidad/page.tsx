@@ -113,7 +113,7 @@ export default function MejorarCalidadPage() {
             <>
               <div>
                 <Label className="mb-2 block">Subir Video</Label>
-                <div className="rounded-lg border-2 border-gray-700 bg-[#1a2332] p-4">
+                <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6">
                   <FileUpload
                     onFilesSelected={(files) => setVideoFile(files[0])}
                     accept={{ 'video/*': ['.mp4', '.mov', '.avi'] }}
@@ -129,7 +129,7 @@ export default function MejorarCalidadPage() {
               {/* upscale_factor */}
               <div>
                 <Label className="mb-3 block">upscale_factor</Label>
-                <div className="rounded-lg border border-gray-700 bg-[#1a2332] p-4">
+                <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6">
                   <div className="flex items-center justify-between gap-4">
                     <input
                       type="range"
@@ -159,7 +159,7 @@ export default function MejorarCalidadPage() {
               {/* target_fps */}
               <div>
                 <Label className="mb-3 block">target_fps</Label>
-                <div className="rounded-lg border border-gray-700 bg-[#1a2332] p-4">
+                <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6">
                   <div className="flex items-center justify-between gap-4">
                     <input
                       type="range"
@@ -220,7 +220,7 @@ export default function MejorarCalidadPage() {
 
               <Button
                 onClick={handleGenerate}
-                className="w-full bg-brand-accent hover:bg-brand-accent/90"
+                className="w-full rounded-2xl bg-brand-accent py-6 hover:bg-brand-accent/90"
                 size="lg"
                 disabled={isGenerating}
               >
@@ -241,7 +241,7 @@ export default function MejorarCalidadPage() {
             <>
               <div>
                 <Label className="mb-2 block">Subir Imagen</Label>
-                <div className="rounded-lg border-2 border-gray-700 bg-[#1a2332] p-4">
+                <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6">
                   <FileUpload
                     onFilesSelected={(files) => setImageFile(files[0])}
                     accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
@@ -252,7 +252,7 @@ export default function MejorarCalidadPage() {
 
               <Button
                 onClick={handleGenerate}
-                className="w-full bg-brand-accent hover:bg-brand-accent/90"
+                className="w-full rounded-2xl bg-brand-accent py-6 hover:bg-brand-accent/90"
                 size="lg"
                 disabled={isGenerating}
               >
