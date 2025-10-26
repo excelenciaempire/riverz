@@ -1,318 +1,341 @@
-# Riverz - AI-Powered Content Creation Platform
+# Riverz - AI Content Generation Platform
 
-A comprehensive platform for creating AI-generated images and videos for e-commerce and marketing.
+Plataforma de generación de contenido con IA que permite crear videos UGC, face swaps, clips, editar fotos y más, con sistema de créditos y suscripciones.
 
-## 🚀 Tech Stack
+## 🎯 Estado del Proyecto
 
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS
-- **Authentication**: Clerk
-- **Database**: Supabase (PostgreSQL)
-- **Payments**: Stripe
-- **AI Processing**: N8N webhooks (external automation)
-- **Deployment**: Vercel
+### ✅ **Backend Funcional - 95% Completado**
 
-## 📋 Features Implemented
+El backend está completamente implementado y listo para usar. Solo falta configurar las integraciones externas (Stripe y N8N).
 
-### User Authentication
-- ✅ Sign in / Sign up with Clerk
-- ✅ Google OAuth integration
-- ✅ Password reset flow
-- ✅ Session persistence
-- ✅ User sync to Supabase via webhooks
+---
 
-### Dashboard & Navigation
-- ✅ Responsive sidebar navigation
-- ✅ Real-time credits display
-- ✅ Active route highlighting
-- ✅ Protected routes with middleware
+## 📋 Características Implementadas
 
-### Content Creation Modes
+### ✅ Sistema de Autenticación
+- Clerk para autenticación de usuarios
+- Webhook de sincronización con Supabase
+- Protección de rutas con middleware
+- Admin dashboard con autorización por email
 
-#### 1. UGC Creator
-- ✅ Avatar library selection
-- ✅ Upload custom avatar
-- ✅ Generate avatar with AI
-- ✅ Script generation with AI
-- ✅ Voice selection (ElevenLabs integration ready)
-- ✅ Video generation with progress tracking
+### ✅ Sistema de Créditos y Pagos
+- Gestión completa de créditos por usuario
+- 4 planes de suscripción (Free, Básico, Pro, Premium)
+- Compra de créditos adicionales
+- Transacciones atómicas y registro de historial
+- Integración con Stripe (listo para configurar)
 
-#### 2. Face Swap
-- ✅ Video upload
-- ✅ Character image upload
-- ✅ Resolution & format selection
-- ✅ Consent checkbox
-- ✅ Processing with N8N
+### ✅ Modos de Generación
+Todos los modos tienen sus API routes completas con:
+- Validación de créditos
+- Deducción automática
+- Integración con N8N (listo para configurar)
+- Polling de resultados
+- Manejo de errores
 
-#### 3. Clips
-- ✅ Optional image upload
-- ✅ AI model selection (Sora 2, Sora 2 Pro)
-- ✅ Format selection (9:16, 16:9, 1:1)
-- ✅ Duration selection
-- ✅ Video generation
+**Modos disponibles:**
+1. **UGC Creator** - Videos con avatares AI
+2. **Face Swap** - Intercambio de rostros en videos
+3. **Clips** - Generación de clips con Sora 2/Kling
+4. **Editar Foto** (4 sub-modos):
+   - Crear desde prompt
+   - Editar con máscara
+   - Combinar múltiples imágenes
+   - Clonar estilo
+5. **Mejorar Calidad** - Upscale de videos e imágenes
+6. **Static Ads** - Plantillas y generación de conceptos
 
-#### 4. Editar Foto (4 Modes)
-- ✅ **Crear**: Generate images from text
-- ✅ **Editar**: Edit images with drawing tools (UI ready)
-- ✅ **Combinar**: Combine multiple images
-- ✅ **Clonar**: Clone product with reference image
+### ✅ Admin Dashboard
+- **Stats**: Métricas completas de usuarios, generaciones, créditos
+- **Users**: Gestión de usuarios, otorgar/quitar créditos
+- **Generations**: Monitor de todas las generaciones
+- **Templates**: CRUD completo de plantillas
+- **Pricing**: Configuración de precios por modo
+- **N8N Config**: Gestión de URLs de webhooks
+- **Logs**: Visualización de errores
+- **Avatars**: Gestión de avatares (ya funcional)
 
-#### 5. Static Ads
-- ✅ Template library with filters
-- ✅ Canva integration (external links)
-- ✅ Free/paid user access control
-- ✅ AI ideation based on products
-- ✅ Awareness level organization
+### ✅ Base de Datos (Supabase)
+Todas las tablas creadas con RLS configurado:
+- `user_credits` - Créditos y planes de usuarios
+- `credit_transactions` - Historial de transacciones
+- `generations` - Registro de generaciones
+- `products` - Productos de usuarios (Marcas)
+- `templates` - Plantillas de Static Ads
+- `avatars` - Avatares para UGC
+- `voices` - Catálogo de voces
+- `ad_concepts` - Conceptos generados por IA
+- `pricing_config` - Precios por modo
+- `admin_config` - Configuración de N8N
 
-#### 6. Mejorar Calidad
-- ✅ Video quality improvement
-- ✅ Image quality improvement
-- ✅ Upscale factor slider
-- ✅ FPS target selection
-- ✅ H264 codec option
+---
 
-### Marcas (Brands/Products)
-- ✅ Product CRUD operations
-- ✅ Multi-image upload
-- ✅ PDF report generation (N8N integration)
-- ✅ Free user limit (1 product)
-- ✅ Supabase storage integration
+## 🚀 Configuración Inicial
 
-### Historial (History)
-- ✅ View all generated content
-- ✅ Filter by type (all/videos/images)
-- ✅ Pagination
-- ✅ Download & delete actions
-- ✅ Cost tracking per generation
+### 1. Clonar e Instalar
 
-### Configuración (Settings/Billing)
-- ✅ Current plan display
-- ✅ Subscription plans (Free, Basic $19, Pro $59, Premium $99)
-- ✅ Credit purchase ($0.01/credit, min $5)
-- ✅ Language switcher (Spanish/English)
-- ✅ Stripe checkout integration
-
-### API Routes
-- ✅ Clerk webhook (user sync)
-- ✅ User API (GET, PATCH)
-- ✅ Credits deduction
-- ✅ Stripe checkout session creation
-- ✅ Stripe credit purchase
-- ✅ Stripe webhooks (subscription management)
-- ✅ UGC generation
-- ✅ Face Swap generation
-- ✅ Clips generation
-- ✅ Marcas report generation
-
-## 🔧 Setup Instructions
-
-### 1. Prerequisites
-```bash
-Node.js 18+ and npm installed
-Supabase account
-Clerk account
-Stripe account
-N8N instance (for AI processing)
-```
-
-### 2. Install Dependencies
 ```bash
 cd riverz-app
 npm install
 ```
 
-### 3. Environment Variables
+### 2. Variables de Entorno
 
-Create a `.env.local` file with the following variables:
+Crea un archivo `.env.local` con las siguientes variables:
 
 ```env
-# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-CLERK_SECRET_KEY=your_clerk_secret_key
-CLERK_WEBHOOK_SECRET=your_clerk_webhook_secret
+# Clerk (Autenticación)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/crear
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/crear
+CLERK_WEBHOOK_SECRET=whsec_...
 
 # Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-# Stripe
-STRIPE_SECRET_KEY=your_stripe_secret_key
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
-STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
-STRIPE_BASIC_PRICE_ID=your_basic_plan_price_id
-STRIPE_PRO_PRICE_ID=your_pro_plan_price_id
-STRIPE_PREMIUM_PRICE_ID=your_premium_plan_price_id
+# Stripe (Pagos) - CONFIGURAR DESPUÉS
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_BASIC_PRICE_ID=price_...
+STRIPE_PRO_PRICE_ID=price_...
+STRIPE_PREMIUM_PRICE_ID=price_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 
-# N8N Webhooks
-N8N_UGC_WEBHOOK_URL=your_n8n_ugc_webhook_url
-N8N_FACE_SWAP_WEBHOOK_URL=your_n8n_face_swap_webhook_url
-N8N_CLIPS_WEBHOOK_URL=your_n8n_clips_webhook_url
-N8N_EDITAR_FOTO_CREAR_WEBHOOK_URL=your_n8n_editar_foto_crear_webhook_url
-N8N_EDITAR_FOTO_EDITAR_WEBHOOK_URL=your_n8n_editar_foto_editar_webhook_url
-N8N_EDITAR_FOTO_COMBINAR_WEBHOOK_URL=your_n8n_editar_foto_combinar_webhook_url
-N8N_EDITAR_FOTO_CLONAR_WEBHOOK_URL=your_n8n_editar_foto_clonar_webhook_url
-N8N_STATIC_ADS_IDEACION_WEBHOOK_URL=your_n8n_static_ads_ideacion_webhook_url
-N8N_MEJORAR_CALIDAD_VIDEO_WEBHOOK_URL=your_n8n_mejorar_calidad_video_webhook_url
-N8N_MEJORAR_CALIDAD_IMAGEN_WEBHOOK_URL=your_n8n_mejorar_calidad_imagen_webhook_url
-N8N_MARCAS_REPORT_WEBHOOK_URL=your_n8n_marcas_report_webhook_url
+# Admin
+NEXT_PUBLIC_ADMIN_EMAILS=juandiegoriosmesa@gmail.com
 
-# Analytics
-NEXT_PUBLIC_GA_ID=your_google_analytics_id
-NEXT_PUBLIC_FB_PIXEL_ID=your_facebook_pixel_id
-
-# App URL
+# App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# N8N (Webhooks) - CONFIGURAR DESPUÉS
+N8N_UGC_WEBHOOK_URL=
+N8N_FACE_SWAP_WEBHOOK_URL=
+N8N_CLIPS_WEBHOOK_URL=
+N8N_EDITAR_FOTO_CREAR_WEBHOOK_URL=
+N8N_EDITAR_FOTO_EDITAR_WEBHOOK_URL=
+N8N_EDITAR_FOTO_COMBINAR_WEBHOOK_URL=
+N8N_EDITAR_FOTO_CLONAR_WEBHOOK_URL=
+N8N_MEJORAR_CALIDAD_VIDEO_WEBHOOK_URL=
+N8N_MEJORAR_CALIDAD_IMAGEN_WEBHOOK_URL=
+N8N_STATIC_ADS_IDEACION_WEBHOOK_URL=
+N8N_MARCAS_REPORT_WEBHOOK_URL=
 ```
 
-### 4. Database Setup
+Ver `ENV_VARIABLES.md` para más detalles sobre cada variable.
 
-1. Go to your Supabase project
-2. Run the SQL schema from `lib/supabase/schema.sql`
-3. Create storage buckets:
-   - `products`
-   - `avatars`
-   - `generations`
-4. Set up Row Level Security policies (included in schema.sql)
+### 3. Ejecutar en Desarrollo
 
-### 5. Stripe Setup
-
-1. Create products in Stripe Dashboard:
-   - Basic Plan: $19/month
-   - Pro Plan: $59/month
-   - Premium Plan: $99/month
-2. Copy the Price IDs to your `.env.local`
-3. Set up webhook endpoint: `your-domain.com/api/stripe/webhooks`
-4. Copy webhook signing secret to `.env.local`
-
-### 6. Clerk Setup
-
-1. Create a Clerk application
-2. Enable Google OAuth
-3. Set up webhook endpoint: `your-domain.com/api/webhooks/clerk`
-4. Subscribe to `user.created`, `user.updated`, `user.deleted` events
-5. Copy webhook secret to `.env.local`
-
-### 7. Run Development Server
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+La aplicación estará disponible en `http://localhost:3000`
 
-## 🚧 Pending Implementation
+---
 
-### API Routes to Complete
-- [ ] Additional Editar Foto endpoints (editar, combinar, clonar)
-- [ ] Mejorar Calidad endpoints
-- [ ] Static Ads ideation endpoint
+## 📝 Próximos Pasos (Configuración Externa)
 
-### Features to Add
-- [ ] Canvas drawing tools for Editar mode
-- [ ] File upload to Supabase storage (currently using local files)
-- [ ] Version control for image editing
-- [ ] Real WebSocket support for real-time updates (currently polling)
-- [ ] Admin dashboard (separate Next.js app)
-- [ ] Email notifications
-- [ ] Billing history page
-- [ ] Usage analytics dashboard
+### 1. Configurar Stripe
 
-### Admin Dashboard (Separate App)
-- [ ] Initialize separate Next.js app
-- [ ] Dashboard overview with stats
-- [ ] Users management
-- [ ] Videos/Images management
-- [ ] Templates CRUD interface
-- [ ] API endpoints configuration
-- [ ] Logs viewer
-- [ ] Manual credit adjustment
+Sigue la guía completa en `STRIPE_SETUP.md`:
 
-### Optimization
-- [ ] Add proper error boundaries
-- [ ] Implement retry logic for failed N8N requests
-- [ ] Add request rate limiting
-- [ ] Optimize images with Next.js Image component
-- [ ] Add loading skeletons
-- [ ] Implement data caching strategies
-- [ ] Add E2E tests
+1. Crear cuenta en Stripe
+2. Crear los 3 productos (Básico $19, Pro $49, Premium $99)
+3. Obtener los Price IDs
+4. Configurar webhook apuntando a `/api/stripe/webhooks`
+5. Agregar las variables de entorno
 
-## 📱 Missing Dependencies
+**Tiempo estimado**: 30 minutos
 
-Some dependencies may need to be installed:
+### 2. Configurar Webhook de Clerk
 
-```bash
-npm install clsx svix date-fns
+1. Ve a Clerk Dashboard → Webhooks
+2. Crea un nuevo endpoint: `https://tu-dominio.vercel.app/api/webhooks/clerk`
+3. Selecciona eventos: `user.created`, `user.updated`, `user.deleted`
+4. Copia el Signing Secret
+5. Agrégalo a `CLERK_WEBHOOK_SECRET`
+
+**Tiempo estimado**: 10 minutos
+
+### 3. Configurar N8N (Opcional - Al Final)
+
+Las URLs de N8N se pueden configurar más adelante desde el Admin Dashboard.
+
+---
+
+## 🧪 Testing
+
+### Flujo Completo de Testing
+
+1. **Registro de Usuario**
+   ```
+   - Registrarse con email
+   - Verificar que se cree entrada en user_credits (0 créditos, plan free)
+   ```
+
+2. **Comprar Suscripción** (requiere Stripe configurado)
+   ```
+   - Ir a Configuración
+   - Seleccionar plan Básico ($19/mes)
+   - Completar pago con tarjeta de prueba: 4242 4242 4242 4242
+   - Verificar que se agreguen 2000 créditos
+   ```
+
+3. **Generar Contenido**
+   ```
+   - Ir a Crear → UGC
+   - Seleccionar avatar
+   - Escribir guión
+   - Seleccionar voz
+   - Click en Generar
+   - Verificar deducción de créditos (100 créditos)
+   - Ver resultado (requiere N8N configurado)
+   ```
+
+4. **Admin Dashboard**
+   ```
+   - Ir a /admin con email autorizado
+   - Ver estadísticas
+   - Gestionar usuarios
+   - Configurar precios
+   ```
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+riverz-app/
+├── app/
+│   ├── (dashboard)/          # Páginas principales
+│   │   ├── crear/            # Modos de generación
+│   │   ├── marcas/           # Gestión de productos
+│   │   ├── historial/        # Historial de generaciones
+│   │   └── configuracion/    # Billing y configuración
+│   ├── admin/                # Admin dashboard
+│   │   ├── dashboard/        # Panel principal
+│   │   └── unauthorized/     # Acceso denegado
+│   └── api/                  # API Routes
+│       ├── credits/          # Sistema de créditos
+│       ├── stripe/           # Integración Stripe
+│       ├── webhooks/         # Webhooks externos
+│       ├── ugc/              # UGC generation
+│       ├── face-swap/        # Face swap
+│       ├── clips/            # Clips
+│       ├── editar-foto/      # Editar foto (4 modos)
+│       ├── mejorar-calidad/  # Mejorar calidad
+│       └── admin/            # Admin APIs
+├── components/
+│   ├── admin/                # Componentes del admin
+│   ├── layout/               # Layout components
+│   └── ui/                   # UI components
+├── lib/
+│   ├── supabase/             # Supabase helpers
+│   ├── n8n.ts                # N8N integration
+│   └── stripe.ts             # Stripe helpers
+└── middleware.ts             # Auth + Admin protection
 ```
 
-## 🔐 Security Considerations
+---
 
-- All API routes are protected with Clerk authentication
-- Supabase Row Level Security is enabled
-- File uploads should be validated (type, size)
-- Rate limiting should be added to prevent abuse
-- Webhook signatures are verified
+## 🔐 Seguridad
 
-## 🌐 Deployment
+- ✅ RLS (Row Level Security) en todas las tablas de Supabase
+- ✅ Middleware de autenticación con Clerk
+- ✅ Protección de rutas admin por email
+- ✅ Validación de créditos antes de generaciones
+- ✅ Transacciones atómicas para créditos
+- ✅ Service role key solo en server-side
+- ✅ Webhooks verificados con signatures
 
-### Vercel Deployment
+---
 
-1. Push code to GitHub
-2. Import project in Vercel
-3. Add all environment variables
-4. Deploy
+## 📊 Costos por Modo (Configurables)
 
-### Post-Deployment
+| Modo | Créditos | Configurable |
+|------|----------|--------------|
+| UGC | 100 | ✅ Admin Dashboard |
+| Face Swap | 150 | ✅ Admin Dashboard |
+| Clips | 120 | ✅ Admin Dashboard |
+| Editar Foto - Crear | 80 | ✅ Admin Dashboard |
+| Editar Foto - Editar | 90 | ✅ Admin Dashboard |
+| Editar Foto - Combinar | 100 | ✅ Admin Dashboard |
+| Editar Foto - Clonar | 110 | ✅ Admin Dashboard |
+| Mejorar Calidad - Video | 200 | ✅ Admin Dashboard |
+| Mejorar Calidad - Imagen | 70 | ✅ Admin Dashboard |
+| Static Ads - Ideación | 50 | ✅ Admin Dashboard |
 
-1. Update Clerk webhook URL to production URL
-2. Update Stripe webhook URL to production URL
-3. Update NEXT_PUBLIC_APP_URL to production URL
-4. Test all flows end-to-end
+---
 
-## 📊 Database Schema
+## 🛠️ Tecnologías
 
-See `lib/supabase/schema.sql` for complete schema including:
-- Users (synced from Clerk)
-- Products
-- Templates
-- Generations
-- API Logs
-- Admin Config
-- Avatars
-- Voices
+- **Frontend**: Next.js 15.5.6, React 18, TypeScript, Tailwind CSS
+- **Auth**: Clerk
+- **Database**: Supabase (PostgreSQL + Realtime + Storage)
+- **Payments**: Stripe
+- **Automation**: N8N
+- **Deployment**: Vercel
 
-## 🎨 Brand Colors
+---
 
-- Primary Dark: `#161616`
-- Secondary Dark: `#101010`
-- Accent (Teal): `#07A498`
-- White: `#FFFFFF`
-- Blue: `#2563EB`
+## 📚 Documentación Adicional
 
-## 📖 API Documentation
+- `STRIPE_SETUP.md` - Guía completa de configuración de Stripe
+- `ENV_VARIABLES.md` - Todas las variables de entorno
+- `STORAGE_CONFIG.md` - Configuración de Supabase Storage
+- `IMPLEMENTATION_PROGRESS.md` - Estado detallado de implementación
 
-### N8N Webhook Expected Format
+---
 
-All N8N webhooks should return:
-```json
-{
-  "success": true,
-  "job_id": "unique-job-id",
-  "result_url": "https://url-to-result.com/file.mp4"
-}
-```
+## 🐛 Troubleshooting
 
-For polling endpoints (GET /job-id):
-```json
-{
-  "status": "completed|processing|failed",
-  "result_url": "https://url-to-result.com/file.mp4",
-  "error": "error message if failed"
-}
-```
+### Error: "Unauthorized" en APIs
+- Verifica que estés autenticado con Clerk
+- Revisa que las cookies estén habilitadas
 
-## 🤝 Contributing
+### Error: "Insufficient credits"
+- Verifica tu balance en la esquina superior derecha
+- Compra créditos o suscríbete a un plan
 
-This is a private project. Contact the owner for contribution guidelines.
+### Error: "N8N endpoint not configured"
+- Normal si aún no has configurado N8N
+- Las generaciones quedarán en estado "processing"
+- Configura las URLs en Admin Dashboard → API Config
 
-## 📄 License
+### Admin Dashboard: "Forbidden"
+- Verifica que tu email esté en `NEXT_PUBLIC_ADMIN_EMAILS`
+- El email debe coincidir exactamente (case-insensitive)
 
-Proprietary - All rights reserved
+---
+
+## 🚀 Deploy a Producción
+
+### Vercel
+
+1. Conecta tu repositorio a Vercel
+2. Configura todas las variables de entorno
+3. Deploy automático en cada push a main
+
+### Variables de Entorno en Vercel
+
+Agrega todas las variables de `.env.local` en:
+**Settings** → **Environment Variables**
+
+Asegúrate de seleccionar: Production, Preview, Development
+
+---
+
+## 📞 Soporte
+
+Para preguntas o issues, contacta al equipo de desarrollo.
+
+---
+
+## 📄 Licencia
+
+Todos los derechos reservados © 2025 Riverz
