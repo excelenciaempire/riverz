@@ -24,6 +24,8 @@ export function AvatarsManager() {
   const [name, setName] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -45,11 +47,22 @@ export function AvatarsManager() {
   // Create/Update avatar
   const saveMutation = useMutation({
     mutationFn: async () => {
+      let finalImageUrl = imageUrl;
+
+      // Upload file if present
+      if (uploadedFile) {
+        finalImageUrl = await uploadToSupabase(uploadedFile);
+      }
+
+      if (!finalImageUrl) {
+        throw new Error('Se requiere una imagen');
+      }
+
       if (editingAvatar) {
         // Update
         const { error } = await supabase
           .from('avatars')
-          .update({ name, image_url: imageUrl, is_active: isActive })
+          .update({ name, image_url: finalImageUrl, is_active: isActive })
           .eq('id', editingAvatar.id);
 
         if (error) throw error;
@@ -57,7 +70,7 @@ export function AvatarsManager() {
         // Create
         const { error } = await supabase
           .from('avatars')
-          .insert([{ name, image_url: imageUrl, is_active: isActive }]);
+          .insert([{ name, image_url: finalImageUrl, is_active: isActive }]);
 
         if (error) throw error;
       }
@@ -112,12 +125,39 @@ export function AvatarsManager() {
     },
   });
 
+  const uploadToSupabase = async (file: File): Promise<string> => {
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const resetForm = () => {
     setShowModal(false);
     setEditingAvatar(null);
     setName('');
     setImageUrl('');
     setIsActive(true);
+    setUploadedFile(null);
   };
 
   const handleEdit = (avatar: Avatar) => {
@@ -230,26 +270,66 @@ export function AvatarsManager() {
 
           <div>
             <label className="mb-2 block text-sm font-medium text-white">
-              URL de Imagen
+              Imagen
             </label>
-            <Input
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://..."
-            />
-            {imageUrl && (
-              <div className="mt-3">
-                <img
-                  src={imageUrl}
-                  alt="Preview"
-                  className="h-32 w-32 rounded-lg object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '';
-                    toast.error('URL de imagen inválida');
+            <div className="space-y-3">
+              {/* File Upload */}
+              <div>
+                <label className="mb-1.5 block text-xs text-gray-400">
+                  Subir desde PC
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setUploadedFile(file);
+                      setImageUrl(''); // Clear URL if file is selected
+                    }
                   }}
+                  className="w-full rounded-lg border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white file:mr-4 file:rounded file:border-0 file:bg-brand-accent file:px-4 file:py-1.5 file:text-sm file:text-white hover:file:bg-brand-accent/90"
                 />
               </div>
-            )}
+
+              {/* Divider */}
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-gray-800"></div>
+                <span className="text-xs text-gray-500">o</span>
+                <div className="h-px flex-1 bg-gray-800"></div>
+              </div>
+
+              {/* URL Input */}
+              <div>
+                <label className="mb-1.5 block text-xs text-gray-400">
+                  URL externa
+                </label>
+                <Input
+                  value={imageUrl}
+                  onChange={(e) => {
+                    setImageUrl(e.target.value);
+                    setUploadedFile(null); // Clear file if URL is entered
+                  }}
+                  placeholder="https://..."
+                  disabled={!!uploadedFile}
+                />
+              </div>
+
+              {/* Preview */}
+              {(uploadedFile || imageUrl) && (
+                <div className="mt-3">
+                  <img
+                    src={uploadedFile ? URL.createObjectURL(uploadedFile) : imageUrl}
+                    alt="Preview"
+                    className="h-32 w-32 rounded-lg object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '';
+                      if (!uploadedFile) toast.error('URL de imagen inválida');
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -271,10 +351,10 @@ export function AvatarsManager() {
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}
-              disabled={!name || !imageUrl || saveMutation.isPending}
+              disabled={!name || (!imageUrl && !uploadedFile) || saveMutation.isPending || uploading}
               className="flex-1 bg-brand-accent hover:bg-brand-accent/90"
             >
-              {saveMutation.isPending ? 'Guardando...' : 'Guardar'}
+              {uploading ? 'Subiendo...' : saveMutation.isPending ? 'Guardando...' : 'Guardar'}
             </Button>
           </div>
         </div>

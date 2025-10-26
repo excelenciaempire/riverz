@@ -249,10 +249,13 @@ export default function UGCPage() {
                   {avatars && avatars.length > 5 && (
                     <button
                       onClick={() => setShowAvatarsModal(true)}
-                      className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-600 p-4 text-sm text-gray-400 hover:border-gray-500"
+                      className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-600 p-4 text-sm text-gray-400 transition hover:border-brand-accent hover:text-brand-accent"
                     >
-                      <span className="text-xs">Show</span>
-                      <span className="font-semibold">{avatars.length - 5} actors</span>
+                      <svg className="mb-2 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      <span className="text-xs font-medium">Ver más</span>
+                      <span className="text-xs font-semibold">{avatars.length} avatares</span>
                     </button>
                   )}
                 </div>
@@ -398,29 +401,56 @@ export default function UGCPage() {
       <Modal
         isOpen={showAvatarsModal}
         onClose={() => setShowAvatarsModal(false)}
-        title="Todos los Avatares"
+        title="Biblioteca de Avatares"
       >
-        <div className="grid grid-cols-4 gap-4 max-h-96 overflow-y-auto">
-          {avatars?.map((avatar) => (
-            <button
-              key={avatar.id}
-              onClick={() => {
-                setSelectedAvatar(avatar.id);
-                setShowAvatarsModal(false);
-              }}
-              className={`overflow-hidden rounded-lg border-2 transition ${
-                selectedAvatar === avatar.id
-                  ? 'border-brand-accent'
-                  : 'border-transparent hover:border-gray-600'
-              }`}
-            >
-              <img
-                src={avatar.image_url}
-                alt={avatar.name}
-                className="aspect-square object-cover"
-              />
-            </button>
-          ))}
+        <div className="grid grid-cols-4 gap-4 max-h-[600px] overflow-y-auto p-2">
+          {loadingAvatars ? (
+            <div className="col-span-4">
+              <Loading text="Cargando avatares..." />
+            </div>
+          ) : avatars && avatars.length > 0 ? (
+            avatars.map((avatar) => (
+              <button
+                key={avatar.id}
+                onClick={() => {
+                  setSelectedAvatar(avatar.id);
+                  setPreviewAvatar(avatar.image_url);
+                  setEditedAvatar(null);
+                  setShowAvatarsModal(false);
+                  toast.success(`Avatar "${avatar.name}" seleccionado`);
+                }}
+                className={`group relative overflow-hidden rounded-xl border-2 transition ${
+                  selectedAvatar === avatar.id
+                    ? 'border-brand-accent'
+                    : 'border-gray-700 hover:border-brand-accent/50'
+                }`}
+              >
+                <img
+                  src={avatar.image_url}
+                  alt={avatar.name}
+                  className="aspect-square object-cover"
+                />
+                {/* Overlay with name */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 transition group-hover:opacity-100">
+                  <div className="absolute bottom-2 left-2 right-2 text-center">
+                    <p className="text-sm font-medium text-white">{avatar.name}</p>
+                  </div>
+                </div>
+                {/* Selected indicator */}
+                {selectedAvatar === avatar.id && (
+                  <div className="absolute right-2 top-2 rounded-full bg-brand-accent p-1">
+                    <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+              </button>
+            ))
+          ) : (
+            <div className="col-span-4 py-8 text-center text-gray-500">
+              No hay avatares disponibles
+            </div>
+          )}
         </div>
       </Modal>
 
