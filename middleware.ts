@@ -9,19 +9,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhooks(.*)',
-  '/admin$', // Solo la página de login del admin es pública
 ]);
-
-const isAdminRoute = createRouteMatcher([
-  '/admin/dashboard(.*)',
-  '/api/admin(.*)',
-]);
-
-function isAdminUser(email: string | undefined): boolean {
-  if (!email) return false;
-  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
-  return adminEmails.includes(email.toLowerCase());
-}
 
 export default clerkMiddleware(async (auth, request) => {
   // PREVIEW MODE: Allow all routes without authentication
@@ -29,7 +17,7 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.next();
   }
 
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
 
   // Allow public routes
   if (isPublicRoute(request)) {
@@ -43,17 +31,8 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.redirect(signInUrl);
   }
 
-  // Check admin routes
-  if (isAdminRoute(request)) {
-    // Get email from session claims
-    const userEmail = sessionClaims?.email as string | undefined;
-
-    if (!isAdminUser(userEmail)) {
-      // Redirect to unauthorized page
-      return NextResponse.redirect(new URL('/admin/unauthorized', request.url));
-    }
-  }
-
+  // Allow authenticated users to access all routes
+  // Admin check will be done in the page component
   return NextResponse.next();
 });
 
