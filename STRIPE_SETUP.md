@@ -280,3 +280,4 @@ Si tienes algún problema, revisa los logs en:
 - Stripe Dashboard → Developers → Logs
 - Vercel Dashboard → Tu Proyecto → Logs
 
+

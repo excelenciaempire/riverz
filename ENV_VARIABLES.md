@@ -167,3 +167,4 @@ Para agregar variables de entorno en Vercel:
 - Las variables `NEXT_PUBLIC_*` son visibles en el cliente, solo úsalas para datos públicos
 - Rota tus keys periódicamente
 
+

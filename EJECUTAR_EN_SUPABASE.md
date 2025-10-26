@@ -118,3 +118,4 @@ Ejecutar las queries de verificación arriba.
 **Tiempo estimado**: 2-3 minutos
 **Dificultad**: Fácil (solo copy-paste)
 
+

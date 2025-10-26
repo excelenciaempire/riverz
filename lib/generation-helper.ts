@@ -119,3 +119,4 @@ export async function updateGenerationStatus(
     .eq('id', generationId);
 }
 
+
