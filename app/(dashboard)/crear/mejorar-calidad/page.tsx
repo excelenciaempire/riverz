@@ -9,6 +9,7 @@ import { ProgressBar } from '@/components/ui/loading';
 import { toast } from 'sonner';
 import { Download, Loader2, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { startPolling, handleCreditsError } from '@/lib/polling-helper';
 
 type ModeType = 'video' | 'imagen';
 
@@ -36,17 +37,16 @@ export default function MejorarCalidadPage() {
     setProgress(0);
 
     try {
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => Math.min(prev + 5, 90));
-      }, 1000);
-
       const formData = new FormData();
       formData.append('file', file);
 
       if (activeMode === 'video') {
-        formData.append('upscaleFactor', upscaleFactor.toString());
-        formData.append('targetFps', targetFps.toString());
-        formData.append('h264Output', h264Output.toString());
+        formData.append('targetResolution', '1080p');
+        formData.append('enhanceDetails', 'true');
+        formData.append('reduceNoise', 'true');
+      } else {
+        formData.append('targetResolution', '4k');
+        formData.append('enhanceDetails', 'true');
       }
 
       const endpoint =
@@ -59,17 +59,39 @@ export default function MejorarCalidadPage() {
         body: formData,
       });
 
-      clearInterval(progressInterval);
-
-      if (!response.ok) throw new Error('Failed to improve quality');
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        if (response.status === 402) {
+          handleCreditsError(errorData, router, toast);
+          setIsGenerating(false);
+          return;
+        }
+        
+        throw new Error(errorData.error || 'Failed to improve quality');
+      }
 
       const data = await response.json();
-      setProgress(100);
-      setResultUrl(data.url);
-      toast.success(`${activeMode === 'video' ? 'Video' : 'Imagen'} mejorado`);
-    } catch (error) {
-      toast.error('Error al mejorar calidad');
-    } finally {
+      const { jobId } = data;
+
+      startPolling({
+        jobId,
+        statusEndpoint: '/api/mejorar-calidad/status',
+        onProgress: (progress) => setProgress(progress),
+        onComplete: (resultUrl) => {
+          setResultUrl(resultUrl);
+          toast.success(`${activeMode === 'video' ? 'Video' : 'Imagen'} mejorado exitosamente`);
+          setIsGenerating(false);
+        },
+        onError: (error) => {
+          toast.error(error);
+          setIsGenerating(false);
+        },
+      });
+
+    } catch (error: any) {
+      console.error('Generation error:', error);
+      toast.error(error.message || 'Error al mejorar calidad');
       setIsGenerating(false);
     }
   };

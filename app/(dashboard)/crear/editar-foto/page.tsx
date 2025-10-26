@@ -23,6 +23,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { startPolling, handleCreditsError } from '@/lib/polling-helper';
 
 type ModeType = 'crear' | 'editar' | 'combinar' | 'clonar';
 
@@ -74,10 +75,6 @@ export default function EditarFotoPage() {
     setProgress(0);
 
     try {
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => Math.min(prev + 5, 90));
-      }, 1000);
-
       let endpoint = '';
       const formData = new FormData();
 
@@ -109,7 +106,7 @@ export default function EditarFotoPage() {
           if (productImage) formData.append('productImage', productImage);
           formData.append('prompt', specificRequests);
           formData.append('format', format);
-          formData.append('numVariants', numVariants);
+          formData.append('variants', numVariants);
           break;
       }
 
@@ -118,22 +115,44 @@ export default function EditarFotoPage() {
         body: formData,
       });
 
-      clearInterval(progressInterval);
-
-      if (!response.ok) throw new Error('Failed to generate image');
-
-      const data = await response.json();
-      setProgress(100);
-      setResultImages(Array.isArray(data.images) ? data.images : [data.imageUrl]);
-      
-      if (activeMode === 'editar') {
-        setVersionHistory([...versionHistory, ...(Array.isArray(data.images) ? data.images : [data.imageUrl])]);
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        if (response.status === 402) {
+          handleCreditsError(errorData, router, toast);
+          setIsGenerating(false);
+          return;
+        }
+        
+        throw new Error(errorData.error || 'Failed to generate image');
       }
 
-      toast.success('Imagen generada');
-    } catch (error) {
-      toast.error('Error al generar imagen');
-    } finally {
+      const data = await response.json();
+      const { jobId } = data;
+
+      startPolling({
+        jobId,
+        statusEndpoint: '/api/editar-foto/status',
+        onProgress: (progress) => setProgress(progress),
+        onComplete: (resultUrl) => {
+          setResultImages([resultUrl]);
+          
+          if (activeMode === 'editar') {
+            setVersionHistory([...versionHistory, resultUrl]);
+          }
+          
+          toast.success('Imagen generada exitosamente');
+          setIsGenerating(false);
+        },
+        onError: (error) => {
+          toast.error(error);
+          setIsGenerating(false);
+        },
+      });
+
+    } catch (error: any) {
+      console.error('Generation error:', error);
+      toast.error(error.message || 'Error al generar imagen');
       setIsGenerating(false);
     }
   };
