@@ -15,12 +15,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  outputFileTracingIncludes: {
-    '/': ['./public/**/*'],
-  },
-  experimental: {
-    outputFileTracingIgnores: ['**/*'],
-  },
+  output: 'standalone',
 };
 
 export default nextConfig;
