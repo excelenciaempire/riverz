@@ -204,6 +204,7 @@ export default function MarcasPage() {
                     }}
                     accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}
                     multiple
+                    hideFileList
                   />
                 </div>
               ) : null}
@@ -390,6 +391,7 @@ export default function MarcasPage() {
                   }}
                   accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
                   multiple
+                  hideFileList
                 />
               </div>
             ) : null}

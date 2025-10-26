@@ -13,6 +13,7 @@ interface FileUploadProps {
   className?: string;
   multiple?: boolean;
   preview?: boolean;
+  hideFileList?: boolean;
 }
 
 export function FileUpload({
@@ -23,6 +24,7 @@ export function FileUpload({
   className,
   multiple = false,
   preview = false,
+  hideFileList = false,
 }: FileUploadProps) {
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
   const [previews, setPreviews] = React.useState<string[]>([]);
@@ -79,7 +81,7 @@ export function FileUpload({
       </div>
 
       {/* File previews */}
-      {selectedFiles.length > 0 && (
+      {!hideFileList && selectedFiles.length > 0 && (
         <div className="mt-4 space-y-2">
           {selectedFiles.map((file, index) => (
             <div
