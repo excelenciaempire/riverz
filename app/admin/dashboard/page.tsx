@@ -24,8 +24,15 @@ export default function DashboardPage() {
     if (isLoaded) {
       if (!user) {
         router.push('/admin');
-      } else if (!ADMIN_EMAILS.includes(user.emailAddresses[0]?.emailAddress || '')) {
-        router.push('/admin/unauthorized');
+      } else {
+        const userEmail = user.emailAddresses[0]?.emailAddress || '';
+        const isAuthorized = ADMIN_EMAILS.some(email => email.trim().toLowerCase() === userEmail.toLowerCase());
+        
+        console.log('Admin check:', { userEmail, ADMIN_EMAILS, isAuthorized });
+        
+        if (!isAuthorized) {
+          router.push('/admin/unauthorized');
+        }
       }
     }
   }, [user, isLoaded, router]);
@@ -34,7 +41,10 @@ export default function DashboardPage() {
     return <Loading text="Verificando acceso..." />;
   }
 
-  if (!user || !ADMIN_EMAILS.includes(user.emailAddresses[0]?.emailAddress || '')) {
+  const userEmail = user?.emailAddresses[0]?.emailAddress || '';
+  const isAuthorized = ADMIN_EMAILS.some(email => email.trim().toLowerCase() === userEmail.toLowerCase());
+  
+  if (!user || !isAuthorized) {
     return null;
   }
 
