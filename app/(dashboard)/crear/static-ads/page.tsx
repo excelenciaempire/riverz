@@ -198,6 +198,9 @@ export default function StaticAdsPage() {
                 <div
                   key={template.id}
                   className="group relative aspect-[3/4] overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332] cursor-pointer transition hover:border-brand-accent"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && handleTemplateClick(template, index)}
                   onClick={() => handleTemplateClick(template, index)}
                 >
                   <img

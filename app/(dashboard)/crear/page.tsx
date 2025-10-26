@@ -75,7 +75,7 @@ export default function CrearPage() {
             <Link
               key={mode.id}
               href={mode.href}
-              className="group relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl border border-gray-800 bg-[#141414] transition-all hover:border-brand-accent hover:shadow-xl hover:shadow-brand-accent/20 hover:scale-[1.02]"
+              className="group relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl border border-gray-800 bg-[#141414] transition-all hover:border-brand-accent hover:shadow-xl hover:shadow-brand-accent/20 hover:scale-105"
             >
               {/* Background gradient */}
               <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
