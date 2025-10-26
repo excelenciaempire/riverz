@@ -1,15 +1,26 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dropdown } from '@/components/ui/dropdown';
 import { FileUpload } from '@/components/ui/file-upload';
 import { ProgressBar } from '@/components/ui/loading';
 import { toast } from 'sonner';
-import { Download, Loader2, Undo2, Redo2, RotateCcw } from 'lucide-react';
+import { 
+  Download, 
+  Loader2, 
+  Undo2, 
+  Redo2, 
+  RotateCcw,
+  Pencil,
+  Type,
+  ArrowRight,
+  Image as ImageIcon,
+  Palette
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type ModeType = 'crear' | 'editar' | 'combinar' | 'clonar';
 
@@ -43,17 +54,15 @@ export default function EditarFotoPage() {
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [productImage, setProductImage] = useState<File | null>(null);
   const [numVariants, setNumVariants] = useState('1');
+  const [specificRequests, setSpecificRequests] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [resultImages, setResultImages] = useState<string[]>([]);
   const [versionHistory, setVersionHistory] = useState<string[]>([]);
   const [currentVersion, setCurrentVersion] = useState(0);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-
   const handleGenerate = async () => {
-    if (!prompt) {
+    if (!prompt && activeMode !== 'clonar') {
       toast.error('Por favor escribe un prompt');
       return;
     }
@@ -80,7 +89,6 @@ export default function EditarFotoPage() {
           endpoint = '/api/editar-foto/editar';
           if (image) formData.append('image', image);
           formData.append('prompt', prompt);
-          // Canvas data would be added here
           break;
 
         case 'combinar':
@@ -96,7 +104,7 @@ export default function EditarFotoPage() {
           endpoint = '/api/editar-foto/clonar';
           if (referenceImage) formData.append('referenceImage', referenceImage);
           if (productImage) formData.append('productImage', productImage);
-          formData.append('prompt', prompt);
+          formData.append('prompt', specificRequests);
           formData.append('format', format);
           formData.append('numVariants', numVariants);
           break;
@@ -116,7 +124,7 @@ export default function EditarFotoPage() {
       setResultImages(Array.isArray(data.images) ? data.images : [data.imageUrl]);
       
       if (activeMode === 'editar') {
-        setVersionHistory([...versionHistory, ...data.images]);
+        setVersionHistory([...versionHistory, ...(Array.isArray(data.images) ? data.images : [data.imageUrl])]);
       }
 
       toast.success('Imagen generada');
@@ -127,213 +135,191 @@ export default function EditarFotoPage() {
     }
   };
 
-  const usePrevious = () => {
-    if (currentVersion > 0) {
-      setCurrentVersion(currentVersion - 1);
-    }
-  };
-
-  const redo = () => {
-    if (currentVersion < versionHistory.length - 1) {
-      setCurrentVersion(currentVersion + 1);
-    }
-  };
-
-  const reset = () => {
-    // Reset canvas or drawing tools
-    toast.info('Canvas reiniciado');
-  };
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">EDITAR FOTO</h1>
-
-        {/* Mode Tabs */}
-        <div className="flex gap-4">
-          <button
-            onClick={() => setActiveMode('crear')}
-            className={`rounded-lg px-4 py-2 ${
-              activeMode === 'crear'
-                ? 'bg-brand-accent text-white'
-                : 'bg-brand-dark-secondary text-gray-400 hover:text-white'
-            }`}
-          >
-            Crear
-          </button>
-          <button
-            onClick={() => setActiveMode('editar')}
-            className={`rounded-lg px-4 py-2 ${
-              activeMode === 'editar'
-                ? 'bg-brand-accent text-white'
-                : 'bg-brand-dark-secondary text-gray-400 hover:text-white'
-            }`}
-          >
-            Editar
-          </button>
-          <button
-            onClick={() => setActiveMode('combinar')}
-            className={`rounded-lg px-4 py-2 ${
-              activeMode === 'combinar'
-                ? 'bg-brand-accent text-white'
-                : 'bg-brand-dark-secondary text-gray-400 hover:text-white'
-            }`}
-          >
-            Combinar
-          </button>
-          <button
-            onClick={() => setActiveMode('clonar')}
-            className={`rounded-lg px-4 py-2 ${
-              activeMode === 'clonar'
-                ? 'bg-brand-accent text-white'
-                : 'bg-brand-dark-secondary text-gray-400 hover:text-white'
-            }`}
-          >
-            Clonar
-          </button>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-8 border-b border-gray-700">
+        <button
+          onClick={() => setActiveMode('crear')}
+          className={cn(
+            'pb-3 text-base transition',
+            activeMode === 'crear'
+              ? 'border-b-2 border-brand-accent font-medium text-white'
+              : 'text-gray-400 hover:text-white'
+          )}
+        >
+          Crear
+        </button>
+        <button
+          onClick={() => setActiveMode('editar')}
+          className={cn(
+            'pb-3 text-base transition',
+            activeMode === 'editar'
+              ? 'border-b-2 border-brand-accent font-medium text-white'
+              : 'text-gray-400 hover:text-white'
+          )}
+        >
+          Editar
+        </button>
+        <button
+          onClick={() => setActiveMode('combinar')}
+          className={cn(
+            'pb-3 text-base transition',
+            activeMode === 'combinar'
+              ? 'border-b-2 border-brand-accent font-medium text-white'
+              : 'text-gray-400 hover:text-white'
+          )}
+        >
+          Combinar
+        </button>
+        <button
+          onClick={() => setActiveMode('clonar')}
+          className={cn(
+            'pb-3 text-base transition',
+            activeMode === 'clonar'
+              ? 'border-b-2 border-brand-accent font-medium text-white'
+              : 'text-gray-400 hover:text-white'
+          )}
+        >
+          Clonar
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Left side - Configuration */}
         <div className="space-y-6">
-          {/* CREAR MODE */}
+          {/* CREAR Mode */}
           {activeMode === 'crear' && (
             <>
               <div>
-                <Label>Prompt</Label>
+                <Label className="mb-2 block">Prompt</Label>
                 <Textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Describe la imagen que quieres crear..."
-                  rows={4}
+                  rows={6}
+                  className="bg-[#1a2332]"
                 />
               </div>
 
               <div>
-                <Label>Formato</Label>
+                <Label className="mb-2 block">Formato</Label>
                 <Dropdown
                   options={formatOptions}
                   value={format}
                   onChange={setFormat}
                 />
               </div>
+
+              <Button
+                onClick={handleGenerate}
+                className="w-full bg-brand-accent hover:bg-brand-accent/90"
+                size="lg"
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Generando...
+                  </>
+                ) : (
+                  'Generar'
+                )}
+              </Button>
             </>
           )}
 
-          {/* EDITAR MODE */}
+          {/* EDITAR Mode */}
           {activeMode === 'editar' && (
             <>
-              {!image ? (
-                <div>
-                  <Label>Subir Imagen</Label>
+              <div>
+                <Label className="mb-2 block">Subir Imagen</Label>
+                <div className="rounded-lg border-2 border-gray-700 bg-[#1a2332] p-4">
                   <FileUpload
                     onFilesSelected={(files) => setImage(files[0])}
                     accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
                     preview
                   />
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <Label>Qué te gustaría hacer?</Label>
-                    <Input
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      placeholder="Ej: Cambia el fondo, añade texto..."
-                    />
-                  </div>
-
-                  {/* Drawing Tools Placeholder */}
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="icon">
-                      ✏️
-                    </Button>
-                    <Button variant="outline" size="icon">
-                      T
-                    </Button>
-                    <Button variant="outline" size="icon">
-                      →
-                    </Button>
-                    <Button variant="outline" size="icon">
-                      🖼️
-                    </Button>
-                    <Button variant="outline" size="icon">
-                      P
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* COMBINAR MODE */}
-          {activeMode === 'combinar' && (
-            <>
-              <div>
-                <Label>Subir Imágenes</Label>
-                <FileUpload
-                  onFilesSelected={setImages}
-                  accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-                  maxFiles={5}
-                  multiple
-                  preview
-                />
               </div>
 
               <div>
-                <Label>Prompt</Label>
+                <Label className="mb-2 block">Qué te gustaría hacer?</Label>
                 <Textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe cómo combinar las imágenes..."
-                  rows={3}
+                  placeholder="Describe los cambios que quieres hacer..."
+                  rows={4}
+                  className="bg-[#1a2332]"
                 />
               </div>
 
-              <div>
-                <Label>Formato</Label>
-                <Dropdown
-                  options={formatOptions}
-                  value={format}
-                  onChange={setFormat}
-                />
-              </div>
+              <Button
+                onClick={handleGenerate}
+                className="w-full bg-brand-accent hover:bg-brand-accent/90"
+                size="lg"
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Generando...
+                  </>
+                ) : (
+                  'Generar'
+                )}
+              </Button>
             </>
           )}
 
-          {/* CLONAR MODE */}
-          {activeMode === 'clonar' && (
+          {/* COMBINAR Mode */}
+          {activeMode === 'combinar' && (
             <>
               <div>
-                <Label>Imagen de Referencia</Label>
-                <FileUpload
-                  onFilesSelected={(files) => setReferenceImage(files[0])}
-                  accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-                  preview
-                />
+                <Label className="mb-2 block">Subir Imágenes</Label>
+                <div className="space-y-3">
+                  {[0, 1].map((index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      {images[index] ? (
+                        <div className="relative h-16 w-16 overflow-hidden rounded-lg border-2 border-gray-700">
+                          <img
+                            src={URL.createObjectURL(images[index])}
+                            alt={`Image ${index + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-16 w-16 rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332]" />
+                      )}
+                      <FileUpload
+                        onFilesSelected={(files) => {
+                          const newImages = [...images];
+                          newImages[index] = files[0];
+                          setImages(newImages);
+                        }}
+                        accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
+                      />
+                    </div>
+                  ))}
+                  <button className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332] text-gray-400 hover:border-gray-600">
+                    +
+                  </button>
+                </div>
               </div>
 
               <div>
-                <Label>Foto del Producto</Label>
-                <FileUpload
-                  onFilesSelected={(files) => setProductImage(files[0])}
-                  accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
-                  preview
-                />
-              </div>
-
-              <div>
-                <Label>Especificaciones</Label>
-                <Input
+                <Label className="mb-2 block">Prompt</Label>
+                <Textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Agrega detalles específicos..."
+                  placeholder="Describe cómo quieres combinar las imágenes..."
+                  rows={4}
+                  className="bg-[#1a2332]"
                 />
               </div>
 
               <div>
-                <Label>Formato</Label>
+                <Label className="mb-2 block">Formato</Label>
                 <Dropdown
                   options={formatOptions}
                   value={format}
@@ -341,120 +327,211 @@ export default function EditarFotoPage() {
                 />
               </div>
 
-              <div>
-                <Label>Número de Variantes</Label>
-                <Dropdown
-                  options={variantOptions}
-                  value={numVariants}
-                  onChange={setNumVariants}
-                />
-              </div>
+              <Button
+                onClick={handleGenerate}
+                className="w-full bg-brand-accent hover:bg-brand-accent/90"
+                size="lg"
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Generando...
+                  </>
+                ) : (
+                  'Generar'
+                )}
+              </Button>
             </>
           )}
 
-          {/* Generate Button */}
-          <Button
-            onClick={handleGenerate}
-            className="w-full"
-            size="lg"
-            disabled={isGenerating}
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Generando...
-              </>
-            ) : (
-              'Generar'
-            )}
-          </Button>
+          {/* CLONAR Mode */}
+          {activeMode === 'clonar' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="mb-2 block text-sm">Reference Image</Label>
+                  <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
+                    {referenceImage ? (
+                      <img
+                        src={URL.createObjectURL(referenceImage)}
+                        alt="Reference"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <FileUpload
+                        onFilesSelected={(files) => setReferenceImage(files[0])}
+                        accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
+                        preview
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block text-sm">Upload Your Product Image</Label>
+                  <div className="aspect-square overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332]">
+                    {productImage ? (
+                      <img
+                        src={URL.createObjectURL(productImage)}
+                        alt="Product"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <FileUpload
+                        onFilesSelected={(files) => setProductImage(files[0])}
+                        accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
+                        preview
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Specific requests (Optional)</Label>
+                <Textarea
+                  value={specificRequests}
+                  onChange={(e) => setSpecificRequests(e.target.value)}
+                  placeholder="Extra Prompt | Add marketing angles, concept ideas, brand personality, custom details, for text or specific product attributes (colors, materials, style, lighting, etc.)"
+                  rows={4}
+                  className="bg-[#1a2332] text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="mb-2 block">Format</Label>
+                  <Dropdown
+                    options={formatOptions}
+                    value={format}
+                    onChange={setFormat}
+                    placeholder="Portrait (2:3)"
+                  />
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Image</Label>
+                  <Dropdown
+                    options={variantOptions}
+                    value={numVariants}
+                    onChange={setNumVariants}
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleGenerate}
+                className="w-full bg-brand-accent hover:bg-brand-accent/90"
+                size="lg"
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Generando...
+                  </>
+                ) : (
+                  'Generar'
+                )}
+              </Button>
+            </>
+          )}
         </div>
 
-        {/* Right side - Preview/Result */}
-        <div className="flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-brand-dark-secondary p-8">
-          {isGenerating ? (
-            <div className="w-full space-y-4">
-              <h3 className="text-center text-xl font-semibold text-white">
-                Generando imagen...
-              </h3>
-              <ProgressBar progress={progress} />
+        {/* Right side - Result */}
+        <div className="relative flex flex-col">
+          {activeMode === 'editar' && resultImages.length > 0 && (
+            <div className="absolute right-0 top-0 flex flex-col gap-2 rounded-l-lg bg-[#1a2332] p-2">
+              <button className="rounded-lg p-3 text-white hover:bg-gray-800">
+                <Pencil className="h-5 w-5" />
+              </button>
+              <button className="rounded-lg p-3 text-white hover:bg-gray-800">
+                <Type className="h-5 w-5" />
+              </button>
+              <button className="rounded-lg p-3 text-white hover:bg-gray-800">
+                <ArrowRight className="h-5 w-5" />
+              </button>
+              <button className="rounded-lg p-3 text-white hover:bg-gray-800">
+                <ImageIcon className="h-5 w-5" />
+              </button>
+              <button className="rounded-lg p-3 text-white hover:bg-gray-800">
+                <Palette className="h-5 w-5" />
+              </button>
+              <div className="my-2 h-px bg-gray-700" />
+              <button className="rounded-lg p-3 text-white hover:bg-gray-800">
+                <Undo2 className="h-5 w-5" />
+              </button>
+              <button className="rounded-lg p-3 text-white hover:bg-gray-800">
+                <Redo2 className="h-5 w-5" />
+              </button>
+              <button className="rounded-lg p-3 text-red-400 hover:bg-gray-800">
+                <RotateCcw className="h-5 w-5" />
+              </button>
             </div>
-          ) : resultImages.length > 0 ? (
-            <div className="w-full space-y-4">
-              {activeMode === 'clonar' ? (
+          )}
+
+          <div className="flex-1 rounded-lg border border-gray-700 bg-brand-dark-secondary p-8 flex items-center justify-center min-h-[600px]">
+            {isGenerating ? (
+              <div className="w-full space-y-4">
+                <h3 className="text-center text-xl font-semibold text-white">
+                  Generando imagen...
+                </h3>
+                <ProgressBar progress={progress} />
+              </div>
+            ) : resultImages.length > 0 ? (
+              <div className="w-full space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   {resultImages.map((img, index) => (
-                    <div key={index} className="relative">
+                    <div key={index} className="relative group">
                       <img
                         src={img}
-                        alt={`Resultado ${index + 1}`}
+                        alt={`Result ${index + 1}`}
                         className="w-full rounded-lg"
                       />
-                      <Button
-                        size="icon"
-                        className="absolute bottom-2 right-2"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      <button className="absolute bottom-2 right-2 rounded-lg bg-brand-accent p-2 opacity-0 group-hover:opacity-100 transition">
+                        <Download className="h-4 w-4 text-white" />
+                      </button>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <>
-                  <img
-                    src={resultImages[currentVersion] || resultImages[0]}
-                    alt="Resultado"
-                    className="w-full rounded-lg"
-                  />
 
-                  {activeMode === 'editar' && versionHistory.length > 0 && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={usePrevious}
-                        disabled={currentVersion === 0}
-                      >
-                        <Undo2 className="mr-2 h-4 w-4" />
-                        Use Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={redo}
-                        disabled={currentVersion === versionHistory.length - 1}
-                      >
-                        <Redo2 className="mr-2 h-4 w-4" />
-                        Redo
-                      </Button>
-                      <Button variant="outline" onClick={reset}>
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        Reset
-                      </Button>
-                    </div>
-                  )}
+                {activeMode === 'editar' && (
+                  <div className="flex gap-3 justify-center">
+                    <Button variant="outline" size="sm">
+                      <Undo2 className="mr-2 h-4 w-4" />
+                      Use Previous
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Redo2 className="mr-2 h-4 w-4" />
+                      Redo
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Reset
+                    </Button>
+                  </div>
+                )}
 
-                  <Button className="w-full">
+                <div className="flex gap-4 justify-center">
+                  <Button variant="outline">Editar</Button>
+                  <Button variant="outline">Aumentar</Button>
+                  <Button className="bg-brand-accent hover:bg-brand-accent/90">
                     <Download className="mr-2 h-4 w-4" />
                     Descargar
                   </Button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="text-center">
-              <p className="text-4xl font-bold text-yellow-400">
-                EDITAR FOTO SCREEN
-              </p>
-              <p className="mt-4 text-gray-400">
-                {activeMode === 'crear' && 'Escribe un prompt para crear una imagen'}
-                {activeMode === 'editar' && 'Sube una imagen para editar'}
-                {activeMode === 'combinar' && 'Sube múltiples imágenes para combinar'}
-                {activeMode === 'clonar' && 'Sube una referencia y producto para clonar'}
-              </p>
-            </div>
-          )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center">
+                <h2 className="text-6xl font-bold text-yellow-400">
+                  (EDITAR FOTO SCREEN {activeMode === 'crear' ? '1 CREAR' : activeMode === 'editar' ? '2 EDITAR' : activeMode === 'combinar' ? '3 COMBINAR' : '4 CLONAR'})
+                </h2>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

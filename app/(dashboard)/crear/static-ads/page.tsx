@@ -4,20 +4,28 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { createClient } from '@/lib/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Dropdown } from '@/components/ui/dropdown';
 import { toast } from 'sonner';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Star } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { Template, Product } from '@/types';
 
 type TabType = 'plantillas' | 'ideacion';
 
+const awarenessLevels = [
+  'Unaware - Crear Consciencia',
+  'Problem Aware - Identificar Dolor',
+  'Solution Aware - Presentar Categoría'
+];
+
 export default function StaticAdsPage() {
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState<TabType>('plantillas');
-  const [selectedFilters, setSelectedFilters] = useState({
-    awarenessLevel: 'all',
-    niche: 'all',
-    type: 'all',
-  });
+  const [selectedProduct, setSelectedProduct] = useState('');
+  const [awarenessFilter, setAwarenessFilter] = useState('all');
+  const [nicheFilter, setNicheFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
 
   const supabase = createClient();
 
@@ -34,12 +42,12 @@ export default function StaticAdsPage() {
 
   // Fetch templates
   const { data: templates, isLoading } = useQuery({
-    queryKey: ['templates', selectedFilters],
+    queryKey: ['templates', awarenessFilter, nicheFilter, typeFilter],
     queryFn: async () => {
       let query = supabase.from('templates').select('*');
 
-      if (selectedFilters.awarenessLevel !== 'all') {
-        query = query.eq('awareness_level', selectedFilters.awarenessLevel);
+      if (awarenessFilter !== 'all') {
+        query = query.eq('awareness_level', awarenessFilter);
       }
 
       const { data, error } = await query;
@@ -73,20 +81,20 @@ export default function StaticAdsPage() {
 
   // Fetch ad concepts (generated from products)
   const { data: adConcepts } = useQuery({
-    queryKey: ['ad-concepts', products?.[0]?.id],
+    queryKey: ['ad-concepts', selectedProduct],
     queryFn: async () => {
-      if (!products || products.length === 0) return null;
+      if (!selectedProduct) return null;
 
       const response = await fetch('/api/static-ads/ideate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: products[0].id }),
+        body: JSON.stringify({ productId: selectedProduct }),
       });
 
       if (!response.ok) throw new Error('Failed to fetch concepts');
       return response.json();
     },
-    enabled: !!products && products.length > 0 && activeTab === 'ideacion',
+    enabled: !!selectedProduct && activeTab === 'ideacion',
   });
 
   const canEditTemplate = (index: number) => {
@@ -99,137 +107,112 @@ export default function StaticAdsPage() {
       toast.error('Actualiza tu plan para editar más plantillas');
       return;
     }
-
-    // Track edit
-    supabase
-      .from('templates')
-      .update({ edit_count: template.edit_count + 1 })
-      .eq('id', template.id)
-      .then(() => {
-        window.open(template.canva_url, '_blank');
-      });
+    window.open(template.canva_url, '_blank');
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-white">STATIC ADS</h1>
-
       {/* Tabs */}
-      <div className="border-b border-gray-700">
-        <div className="flex gap-8">
-          <button
-            onClick={() => setActiveTab('plantillas')}
-            className={`pb-4 ${
-              activeTab === 'plantillas'
-                ? 'border-b-2 border-brand-accent text-white'
-                : 'text-gray-400'
-            }`}
-          >
-            Plantillas
-          </button>
-          <button
-            onClick={() => setActiveTab('ideacion')}
-            className={`pb-4 ${
-              activeTab === 'ideacion'
-                ? 'border-b-2 border-brand-accent text-white'
-                : 'text-gray-400'
-            }`}
-          >
-            Ideación
-          </button>
-        </div>
+      <div className="flex gap-8 border-b border-gray-700">
+        <button
+          onClick={() => setActiveTab('plantillas')}
+          className={cn(
+            'pb-3 text-lg transition',
+            activeTab === 'plantillas'
+              ? 'border-b-2 border-white font-medium text-white'
+              : 'text-gray-400 hover:text-white'
+          )}
+        >
+          Plantillas
+        </button>
+        <button
+          onClick={() => setActiveTab('ideacion')}
+          className={cn(
+            'pb-3 text-lg transition',
+            activeTab === 'ideacion'
+              ? 'border-b-2 border-white font-medium text-white'
+              : 'text-gray-400 hover:text-white'
+          )}
+        >
+          Ideación
+        </button>
       </div>
 
-      {/* PLANTILLAS TAB */}
+      {/* PLANTILLAS Tab */}
       {activeTab === 'plantillas' && (
-        <div>
+        <div className="space-y-6">
           {/* Filters */}
-          <div className="mb-6 flex gap-4">
-            <select
-              value={selectedFilters.awarenessLevel}
-              onChange={(e) =>
-                setSelectedFilters({
-                  ...selectedFilters,
-                  awarenessLevel: e.target.value,
-                })
-              }
-              className="rounded-lg border border-gray-700 bg-brand-dark-secondary px-4 py-2 text-white"
-            >
-              <option value="all">Todos los niveles</option>
-              <option value="unaware">Unaware</option>
-              <option value="problem-aware">Problem Aware</option>
-              <option value="solution-aware">Solution Aware</option>
-              <option value="product-aware">Product Aware</option>
-              <option value="most-aware">Most Aware</option>
-            </select>
-
-            <select
-              value={selectedFilters.niche}
-              onChange={(e) =>
-                setSelectedFilters({ ...selectedFilters, niche: e.target.value })
-              }
-              className="rounded-lg border border-gray-700 bg-brand-dark-secondary px-4 py-2 text-white"
-            >
-              <option value="all">Todos los nichos</option>
-              <option value="health">Salud</option>
-              <option value="beauty">Belleza</option>
-              <option value="tech">Tecnología</option>
-              <option value="fashion">Moda</option>
-            </select>
-
-            <select
-              value={selectedFilters.type}
-              onChange={(e) =>
-                setSelectedFilters({ ...selectedFilters, type: e.target.value })
-              }
-              className="rounded-lg border border-gray-700 bg-brand-dark-secondary px-4 py-2 text-white"
-            >
-              <option value="all">Todos los tipos</option>
-              <option value="carousel">Carousel</option>
-              <option value="single">Single Image</option>
-              <option value="video">Video</option>
-            </select>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Dropdown
+                options={[
+                  { value: 'all', label: 'Todos los niveles' },
+                  { value: 'unaware', label: 'Unaware' },
+                  { value: 'problem-aware', label: 'Problem Aware' },
+                  { value: 'solution-aware', label: 'Solution Aware' },
+                ]}
+                value={awarenessFilter}
+                onChange={setAwarenessFilter}
+                placeholder="Nivel de consciencia"
+              />
+            </div>
+            <div className="flex-1">
+              <Dropdown
+                options={[
+                  { value: 'all', label: 'Todos los nichos' },
+                  { value: 'health', label: 'Salud' },
+                  { value: 'beauty', label: 'Belleza' },
+                  { value: 'fitness', label: 'Fitness' },
+                ]}
+                value={nicheFilter}
+                onChange={setNicheFilter}
+                placeholder="Nicho"
+              />
+            </div>
+            <div className="flex-1">
+              <Dropdown
+                options={[
+                  { value: 'all', label: 'Todos los tipos' },
+                  { value: 'carousel', label: 'Carousel' },
+                  { value: 'story', label: 'Story' },
+                  { value: 'post', label: 'Post' },
+                ]}
+                value={typeFilter}
+                onChange={setTypeFilter}
+                placeholder="Tipo"
+              />
+            </div>
           </div>
 
           {/* Templates Grid */}
           {isLoading ? (
             <div className="text-center text-gray-400">Cargando plantillas...</div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {templates?.map((template, index) => (
                 <div
                   key={template.id}
-                  className="group relative overflow-hidden rounded-lg border border-gray-700 bg-brand-dark-secondary transition hover:border-brand-accent"
+                  className="group relative aspect-[3/4] overflow-hidden rounded-lg border-2 border-gray-700 bg-[#1a2332] cursor-pointer transition hover:border-brand-accent"
+                  onClick={() => handleTemplateClick(template, index)}
                 >
                   <img
-                    src={template.thumbnail_url}
+                    src={template.image_url}
                     alt={template.name}
-                    className="aspect-square w-full object-cover"
+                    className="h-full w-full object-cover"
                   />
-
+                  
                   {/* Hover Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/70 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition group-hover:opacity-100">
                     {canEditTemplate(index) ? (
-                      <button
-                        onClick={() => handleTemplateClick(template, index)}
-                        className="flex items-center gap-2 rounded-lg bg-brand-accent px-4 py-2 font-medium text-white hover:bg-brand-accent/90"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        Abrir en Canva
-                      </button>
-                    ) : (
                       <div className="text-center">
-                        <p className="font-medium text-white">
-                          Upgrade para editar
-                        </p>
+                        <ExternalLink className="mx-auto mb-2 h-8 w-8 text-brand-accent" />
+                        <p className="text-sm font-medium text-white">Abrir en Canva</p>
+                      </div>
+                    ) : (
+                      <div className="text-center px-4">
+                        <p className="text-sm font-medium text-yellow-400">Upgrade para editar</p>
                       </div>
                     )}
-                  </div>
-
-                  <div className="p-3">
-                    <p className="text-sm font-medium text-white">
-                      {template.name}
-                    </p>
                   </div>
                 </div>
               ))}
@@ -238,40 +221,58 @@ export default function StaticAdsPage() {
         </div>
       )}
 
-      {/* IDEACIÓN TAB */}
+      {/* IDEACIÓN Tab */}
       {activeTab === 'ideacion' && (
-        <div className="space-y-8">
-          {!products || products.length === 0 ? (
-            <div className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-8 text-center">
-              <p className="text-gray-400">
-                Primero debes agregar un producto en la sección de Marcas para ver ideas de anuncios.
-              </p>
-            </div>
-          ) : adConcepts ? (
-            <>
-              {['Unaware', 'Problem Aware', 'Solution Aware', 'Product Aware', 'Most Aware'].map((level) => (
-                <div key={level}>
-                  <h3 className="mb-4 text-xl font-semibold text-white">
-                    {level}
-                  </h3>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {[1, 2, 3, 4, 5].map((i) => (
+        <div className="space-y-6">
+          {/* Product Selector */}
+          <div className="mx-auto max-w-md">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                // Open product selector modal
+              }}
+            >
+              Seleccionar Producto
+            </Button>
+          </div>
+
+          {selectedProduct || adConcepts ? (
+            <div className="space-y-8">
+              {awarenessLevels.map((level, levelIndex) => (
+                <div key={levelIndex}>
+                  {/* Level Header */}
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent text-sm font-bold text-white">
+                      {levelIndex === 0 ? '💡' : levelIndex === 1 ? '⚠️' : '✨'}
+                    </div>
+                    <h3 className="text-lg font-semibold text-white">{level}</h3>
+                  </div>
+
+                  {/* Concepts Grid */}
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {[...Array(5)].map((_, index) => (
                       <div
-                        key={i}
-                        className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-6"
+                        key={index}
+                        className="group rounded-lg border border-gray-700 bg-[#1a2332] p-4 transition hover:border-brand-accent"
                       >
-                        <h4 className="mb-2 font-semibold text-brand-accent">
-                          Concepto {i}
-                        </h4>
-                        <p className="text-sm text-gray-300">
-                          Idea de anuncio basada en tu producto con enfoque en {level}...
-                        </p>
-                        <div className="mt-4 flex gap-2">
-                          <button className="text-xs text-brand-accent hover:underline">
-                            Ver más
+                        <div className="mb-3 flex items-start justify-between">
+                          <h4 className="text-sm font-medium text-brand-accent">
+                            ¿Sabías que el {levelIndex * 20 + index * 5}% de las personas tienen déficit de vitamina?
+                          </h4>
+                          <button className="text-gray-400 hover:text-yellow-400">
+                            <Star className="h-4 w-4" />
                           </button>
-                          <button className="text-xs text-brand-accent hover:underline">
-                            Copiar idea
+                        </div>
+                        
+                        <p className="mb-3 text-xs text-gray-400">
+                          La mayoría ignora su cansancio, dolores y bajo humor pueden deberse a un déficit silencioso que impacta tu bienestar. Descubre cómo una pequeña cápsula puede transformar tu energía.
+                        </p>
+
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-brand-accent">CTA: Descubre Más</span>
+                          <button className="rounded bg-gray-800 px-2 py-1 text-gray-300 hover:bg-gray-700">
+                            Copiar Idea
                           </button>
                         </div>
                       </div>
@@ -279,13 +280,16 @@ export default function StaticAdsPage() {
                   </div>
                 </div>
               ))}
-            </>
+            </div>
           ) : (
-            <div className="text-center text-gray-400">Cargando conceptos...</div>
+            <div className="rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332] p-12 text-center">
+              <p className="text-gray-400">
+                Selecciona un producto para generar ideas de anuncios
+              </p>
+            </div>
           )}
         </div>
       )}
     </div>
   );
 }
-

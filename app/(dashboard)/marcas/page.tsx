@@ -12,7 +12,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { Loading } from '@/components/ui/loading';
 import { Modal } from '@/components/ui/modal';
 import { toast } from 'sonner';
-import { Plus, Download, Loader2 } from 'lucide-react';
+import { Plus, Download, Loader2, Package } from 'lucide-react';
 import type { Product } from '@/types';
 
 export default function MarcasPage() {
@@ -73,7 +73,7 @@ export default function MarcasPage() {
 
       for (const image of data.images) {
         const fileName = `${Date.now()}_${image.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('products')
           .upload(fileName, image);
 
@@ -122,16 +122,17 @@ export default function MarcasPage() {
         benefits: '',
         images: [],
       });
-      toast.success('Producto creado exitosamente');
+      toast.success('Producto agregado');
     },
     onError: () => {
-      toast.error('Error al crear producto');
+      toast.error('Error al agregar producto');
     },
   });
 
-  // Generate report
-  const generateReport = async (productId: string) => {
+  // Download report
+  const downloadReport = async (productId: string) => {
     setGeneratingReportId(productId);
+
     try {
       const response = await fetch('/api/marcas/report', {
         method: 'POST',
@@ -145,11 +146,11 @@ export default function MarcasPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `reporte-${productId}.pdf`;
+      a.download = 'reporte-producto.pdf';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
 
       toast.success('Reporte descargado');
     } catch (error) {
@@ -159,162 +160,202 @@ export default function MarcasPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (formData.images.length < 3) {
-      toast.error('Por favor sube al menos 3 imágenes');
-      return;
-    }
-
-    createProduct.mutate(formData);
+  const canAddProduct = () => {
+    if (userData?.plan_type !== 'free') return true;
+    return !products || products.length < 1;
   };
 
-  const canAddProduct = userData?.plan_type !== 'free' || (products?.length || 0) < 1;
+  const handleAddProduct = () => {
+    if (!canAddProduct()) {
+      toast.error('Upgrade tu cuenta para agregar más productos');
+      return;
+    }
+    setIsModalOpen(true);
+  };
 
   if (isLoading) {
     return <Loading text="Cargando productos..." />;
   }
 
-  // Empty state
+  // Show form if no products
   if (!products || products.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <h1 className="mb-8 text-3xl font-bold text-white">Mis Productos</h1>
-        
-        <div className="w-full max-w-2xl rounded-lg border border-gray-700 bg-brand-dark-secondary p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white">Mis Productos</h1>
+          <p className="mt-2 text-gray-400">Agrega tu primer producto para comenzar</p>
+        </div>
+
+        <div className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-8">
+          <div className="space-y-6">
+            {/* Product Images */}
             <div>
-              <Label htmlFor="name">Nombre *</Label>
+              <Label className="mb-2 block">Imágenes del Producto</Label>
+              <div className="rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332] p-6">
+                <div className="flex flex-col items-center justify-center text-center">
+                  <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gray-800">
+                    <Package className="h-12 w-12 text-gray-600" />
+                  </div>
+                  <p className="mb-2 text-sm text-gray-400">Click to upload or drag and drop</p>
+                  <p className="text-xs text-gray-500">
+                    Supported formats: JPEG, PNG, WEBP Maximum file size: 10MB; Maximum file count: 5
+                  </p>
+                  <FileUpload
+                    onFilesSelected={(files) =>
+                      setFormData({ ...formData, images: [...formData.images, ...files] })
+                    }
+                    accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}
+                    multiple
+                  />
+                </div>
+                {formData.images.length > 0 && (
+                  <div className="mt-4 grid grid-cols-3 gap-3">
+                    {formData.images.map((img, index) => (
+                      <div key={index} className="relative aspect-square overflow-hidden rounded-lg">
+                        <img
+                          src={URL.createObjectURL(img)}
+                          alt={`Product ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                Para mejores resultados, añade mínimo 3 fotos de alta calidad de distintos ángulos del producto
+              </p>
+            </div>
+
+            {/* Name */}
+            <div>
+              <Label className="mb-2 block">Nombre</Label>
               <Input
-                id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
+                placeholder="Nombre del producto"
               />
             </div>
 
+            {/* Price */}
             <div>
-              <Label htmlFor="price">Precio de venta (USD) *</Label>
+              <Label className="mb-2 block">Precio de venta</Label>
               <Input
-                id="price"
                 type="number"
-                step="0.01"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                required
+                placeholder="0.00"
               />
             </div>
 
+            {/* Website */}
             <div>
-              <Label htmlFor="website">Sitio web *</Label>
+              <Label className="mb-2 block">Sitio web</Label>
               <Input
-                id="website"
-                type="url"
                 value={formData.website}
                 onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                required
+                placeholder="https://..."
               />
             </div>
 
+            {/* Benefits */}
             <div>
-              <Label htmlFor="benefits">Beneficios, características, diferenciación *</Label>
+              <Label className="mb-2 block">Beneficios, características, diferenciación</Label>
               <Textarea
-                id="benefits"
                 value={formData.benefits}
                 onChange={(e) => setFormData({ ...formData, benefits: e.target.value })}
+                placeholder="Describe los beneficios y características principales..."
                 rows={4}
-                required
               />
             </div>
 
-            <div>
-              <Label>Imágenes del Producto *</Label>
-              <p className="mb-2 text-xs text-gray-400">
-                Para mejores resultados, añada mínimo 3 fotos de alta calidad de distintos ángulos del producto
-              </p>
-              <FileUpload
-                onFilesSelected={(files) => setFormData({ ...formData, images: files })}
-                accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}
-                maxFiles={10}
-                multiple
-                preview
-              />
-            </div>
-
-            <Button type="submit" className="w-full" disabled={createProduct.isPending}>
-              {createProduct.isPending ? 'Guardando...' : 'Guardar'}
+            {/* Submit Button */}
+            <Button
+              onClick={() => createProduct.mutate(formData)}
+              className="w-full bg-brand-accent hover:bg-brand-accent/90"
+              size="lg"
+              disabled={createProduct.isPending || !formData.name || !formData.price}
+            >
+              {createProduct.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                'Guardar'
+              )}
             </Button>
-          </form>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Products list
+  // Show products grid
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">Mis Productos</h1>
-        <Button
-          onClick={() => {
-            if (!canAddProduct) {
-              toast.error('Plan gratuito limitado a 1 producto. Actualiza tu plan para agregar más.');
-              return;
-            }
-            setIsModalOpen(true);
-          }}
-          disabled={!canAddProduct}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Agregar Nuevo
-        </Button>
+        <div>
+          <h1 className="text-3xl font-bold text-white">Mis Productos</h1>
+          <p className="mt-2 text-gray-400">Gestiona tus productos</p>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Existing Products */}
         {products.map((product) => (
           <div
             key={product.id}
-            className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-6"
+            className="overflow-hidden rounded-lg border border-gray-700 bg-brand-dark-secondary"
           >
-            <div className="mb-4">
-              {product.images[0] && (
+            <div className="aspect-square overflow-hidden bg-gray-800">
+              {product.images && product.images.length > 0 ? (
                 <img
                   src={product.images[0]}
                   alt={product.name}
-                  className="h-48 w-full rounded-lg object-cover"
+                  className="h-full w-full object-cover"
                 />
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <Package className="h-16 w-16 text-gray-600" />
+                </div>
               )}
             </div>
-
-            <h3 className="mb-2 text-lg font-semibold text-white">{product.name}</h3>
-            <p className="mb-1 text-sm text-gray-400">
-              Precio: ${product.price.toFixed(2)}
-            </p>
-            <p className="mb-4 text-sm text-gray-400 truncate">
-              {product.website}
-            </p>
-
-            <Button
-              onClick={() => generateReport(product.id)}
-              variant="outline"
-              className="w-full"
-              disabled={generatingReportId === product.id}
-            >
-              {generatingReportId === product.id ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generando Reporte...
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 h-4 w-4" />
-                  Descargar Reporte
-                </>
-              )}
-            </Button>
+            
+            <div className="p-4">
+              <h3 className="mb-1 text-lg font-semibold text-white">{product.name}</h3>
+              <p className="mb-4 text-sm text-gray-400">${product.price}</p>
+              
+              <Button
+                onClick={() => downloadReport(product.id)}
+                variant="outline"
+                className="w-full"
+                disabled={generatingReportId === product.id}
+              >
+                {generatingReportId === product.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generando...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Descargar Reporte
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         ))}
+
+        {/* Add New Button */}
+        <button
+          onClick={handleAddProduct}
+          className="flex min-h-[300px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-700 bg-brand-dark-secondary p-8 transition hover:border-brand-accent hover:bg-gray-800"
+        >
+          <Plus className="mb-4 h-12 w-12 text-brand-accent" />
+          <p className="text-lg font-medium text-white">Agregar Nuevo</p>
+        </button>
       </div>
 
       {/* Add Product Modal */}
@@ -322,70 +363,67 @@ export default function MarcasPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Agregar Producto"
-        className="max-w-2xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           <div>
-            <Label htmlFor="modal-name">Nombre *</Label>
+            <Label>Nombre</Label>
             <Input
-              id="modal-name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
+              placeholder="Nombre del producto"
             />
           </div>
 
           <div>
-            <Label htmlFor="modal-price">Precio de venta (USD) *</Label>
+            <Label>Precio de venta</Label>
             <Input
-              id="modal-price"
               type="number"
-              step="0.01"
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              required
+              placeholder="0.00"
             />
           </div>
 
           <div>
-            <Label htmlFor="modal-website">Sitio web *</Label>
+            <Label>Sitio web</Label>
             <Input
-              id="modal-website"
-              type="url"
               value={formData.website}
               onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-              required
+              placeholder="https://..."
             />
           </div>
 
           <div>
-            <Label htmlFor="modal-benefits">Beneficios *</Label>
+            <Label>Beneficios</Label>
             <Textarea
-              id="modal-benefits"
               value={formData.benefits}
               onChange={(e) => setFormData({ ...formData, benefits: e.target.value })}
+              placeholder="Describe los beneficios..."
               rows={3}
-              required
             />
           </div>
 
           <div>
-            <Label>Imágenes *</Label>
+            <Label>Imágenes</Label>
             <FileUpload
-              onFilesSelected={(files) => setFormData({ ...formData, images: files })}
-              accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}
-              maxFiles={10}
+              onFilesSelected={(files) =>
+                setFormData({ ...formData, images: [...formData.images, ...files] })
+              }
+              accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
               multiple
               preview
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={createProduct.isPending}>
+          <Button
+            onClick={() => createProduct.mutate(formData)}
+            className="w-full bg-brand-accent hover:bg-brand-accent/90"
+            disabled={createProduct.isPending || !formData.name || !formData.price}
+          >
             {createProduct.isPending ? 'Guardando...' : 'Guardar'}
           </Button>
-        </form>
+        </div>
       </Modal>
     </div>
   );
 }
-
