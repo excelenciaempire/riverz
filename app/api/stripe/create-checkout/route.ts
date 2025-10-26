@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { createCheckoutSession, SUBSCRIPTION_PLANS } from '@/lib/stripe';
 
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { user } = await auth();
+    const user = await currentUser();
     const { planType } = await req.json();
 
     const plan = SUBSCRIPTION_PLANS[planType as keyof typeof SUBSCRIPTION_PLANS];
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const session = await createCheckoutSession({
       priceId: plan.priceId,
       userId,
-      userEmail: user?.emailAddresses[0]?.emailAddress || '',
+      userEmail: user?.emailAddresses?.[0]?.emailAddress || '',
       successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/configuracion?success=true`,
       cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/configuracion?canceled=true`,
     });
