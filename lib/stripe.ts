@@ -8,6 +8,27 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export const CREDIT_PRICE = 0.01; // $0.01 per credit
 export const MIN_CREDIT_PURCHASE = 500; // Minimum 500 credits = $5
 
+export const SUBSCRIPTION_PLANS = {
+  basic: {
+    name: 'Básico',
+    price: 19,
+    credits: 2000,
+    priceId: process.env.STRIPE_BASIC_PRICE_ID || '',
+  },
+  pro: {
+    name: 'Pro',
+    price: 49,
+    credits: 5500,
+    priceId: process.env.STRIPE_PRO_PRICE_ID || '',
+  },
+  premium: {
+    name: 'Premium',
+    price: 99,
+    credits: 12000,
+    priceId: process.env.STRIPE_PREMIUM_PRICE_ID || '',
+  },
+};
+
 export async function createCheckoutSession({
   priceId,
   userId,
