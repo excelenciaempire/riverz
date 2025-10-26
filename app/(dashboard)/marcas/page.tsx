@@ -34,21 +34,18 @@ export default function MarcasPage() {
   const { data: products, isLoading } = useQuery({
     queryKey: ['products', user?.id],
     queryFn: async () => {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clerk_id', user!.id)
-        .single();
-
-      if (!userData) return [];
+      if (!user?.id) return [];
 
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('user_id', userData.id)
+        .eq('clerk_user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching products:', error);
+        return [];
+      }
       return data as Product[];
     },
     enabled: !!user,
@@ -86,20 +83,11 @@ export default function MarcasPage() {
         imageUrls.push(publicUrl);
       }
 
-      // Get user ID
-      const { data: userData } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clerk_id', user!.id)
-        .single();
-
-      if (!userData) throw new Error('User not found');
-
-      // Create product
+      // Create product (using clerk_user_id directly)
       const { data: product, error } = await supabase
         .from('products')
         .insert({
-          user_id: userData.id,
+          clerk_user_id: user!.id,
           name: data.name,
           price: parseFloat(data.price),
           website: data.website,

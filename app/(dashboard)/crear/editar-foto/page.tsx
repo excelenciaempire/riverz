@@ -366,7 +366,7 @@ export default function EditarFotoPage() {
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="mb-2 block text-sm">Imagen de Referencia</Label>
+                  <Label className="mb-2 block text-center text-sm">Imagen de Referencia</Label>
                   <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
                     {referenceImage ? (
                       <img
@@ -385,7 +385,7 @@ export default function EditarFotoPage() {
                 </div>
 
                 <div>
-                  <Label className="mb-2 block text-sm">Sube tu Imagen del Producto</Label>
+                  <Label className="mb-2 block text-center text-sm">Imagen del Producto</Label>
                   <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a]">
                     {productImage ? (
                       <img
@@ -409,8 +409,8 @@ export default function EditarFotoPage() {
                 <Textarea
                   value={specificRequests}
                   onChange={(e) => setSpecificRequests(e.target.value)}
-                  placeholder="Prompt Extra | Agrega ángulos de marketing, ideas de concepto, personalidad de marca, detalles personalizados, texto o atributos específicos del producto (colores, materiales, estilo, iluminación, etc.)"
-                  rows={4}
+                  placeholder="Describe detalles específicos: ángulos, colores, estilo, iluminación, etc."
+                  rows={3}
                   className="text-sm"
                 />
               </div>

@@ -78,6 +78,11 @@ export function FileUpload({
             ? 'Suelta los archivos aquí...'
             : 'Haz clic o arrastra archivos aquí'}
         </p>
+        {multiple && (
+          <p className="mt-1 text-xs text-gray-500">
+            Mantén Ctrl/Cmd para seleccionar múltiples archivos
+          </p>
+        )}
         <p className="mt-2 text-xs text-gray-600">
           Tamaño máximo: {Math.round(maxSize / 1024 / 1024)}MB
         </p>
