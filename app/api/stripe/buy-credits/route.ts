@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth, currentUser } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
-});
 
 export async function POST(req: Request) {
   try {
+    // Importación dinámica de Clerk para evitar errores en build
+    const { auth, currentUser } = await import('@clerk/nextjs/server');
+    
     const { userId } = await auth();
     const user = await currentUser();
 
@@ -30,6 +28,11 @@ export async function POST(req: Request) {
 
     // Calcular créditos: $1 = 100 créditos
     const credits = amount * 100;
+
+    // Inicializar Stripe
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-09-30.clover',
+    });
 
     // Crear sesión de checkout para compra única
     const session = await stripe.checkout.sessions.create({
