@@ -2,14 +2,19 @@
 
 :root {
   /* Riverz Brand Colors */
-  --brand-dark-primary: #161616;
-  --brand-dark-secondary: #101010;
+  --brand-dark-primary: #0a0a0a;
+  --brand-dark-secondary: #141414;
   --brand-accent: #07A498;
   --brand-white: #FFFFFF;
   --brand-blue: #2563EB;
   
-  --background: #161616;
+  --background: #0a0a0a;
   --foreground: #FFFFFF;
+  
+  /* Additional UI Colors */
+  --input-bg: #1a1a1a;
+  --card-bg: #141414;
+  --border-color: #2a2a2a;
 }
 
 @theme inline {

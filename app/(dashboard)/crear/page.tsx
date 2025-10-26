@@ -64,24 +64,24 @@ const creationModes = [
 export default function CrearPage() {
   return (
     <div>
-      <div className="mb-12 text-center">
-        <h1 className="text-4xl font-bold text-white">Selecciona Modo De Uso</h1>
+      <div className="mb-10 text-center">
+        <h1 className="text-3xl font-bold text-white">Selecciona Modo De Uso</h1>
       </div>
 
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {creationModes.map((mode) => {
           return (
             <Link
               key={mode.id}
               href={mode.href}
-              className="group relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-3xl border-2 border-brand-accent bg-brand-dark-secondary transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-accent/30"
+              className="group relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl border border-gray-800 bg-[#141414] transition-all hover:border-brand-accent hover:shadow-lg hover:shadow-brand-accent/20"
             >
               {/* Background gradient */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} opacity-5 group-hover:opacity-20 transition-opacity`} />
+              <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} opacity-0 group-hover:opacity-10 transition-opacity`} />
 
               {/* Content */}
               <div className="relative text-center">
-                <h3 className="text-3xl font-bold text-white">
+                <h3 className="text-2xl font-semibold text-white">
                   {mode.name}
                 </h3>
               </div>

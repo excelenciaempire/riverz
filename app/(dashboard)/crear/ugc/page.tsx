@@ -205,7 +205,7 @@ export default function UGCPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="rounded-lg bg-[#1a2332] p-6">
+        <div className="rounded-lg bg-[#141414] border border-gray-800 p-6">
           {activeTab === 'library' && (
             <div>
               {loadingAvatars ? (
@@ -258,7 +258,6 @@ export default function UGCPage() {
                 onChange={(e) => setGeneratedPrompt(e.target.value)}
                 placeholder="Describe el avatar que quieres generar..."
                 rows={4}
-                className="bg-brand-dark-primary"
               />
             </div>
           )}
@@ -292,7 +291,6 @@ export default function UGCPage() {
             onChange={(e) => setScript(e.target.value)}
             placeholder="Escribe o genera el guión que dirá el avatar..."
             rows={6}
-            className="bg-[#1a2332]"
           />
         </div>
 
@@ -328,7 +326,7 @@ export default function UGCPage() {
       </div>
 
       {/* Right side - Preview/Result */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-brand-dark-secondary p-8 min-h-[600px]">
+      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-800 bg-[#141414] p-8 min-h-[600px]">
         {isGenerating ? (
           <div className="w-full space-y-4">
             <h3 className="text-center text-xl font-semibold text-white">
