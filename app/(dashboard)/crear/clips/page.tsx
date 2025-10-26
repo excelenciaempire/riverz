@@ -198,9 +198,9 @@ export default function ClipsPage() {
             'Generar'
           )}
         </Button>
-      </div>
+        </div>
 
-      {/* Right side - Result */}
+        {/* Right side - Result */}
       <div className="flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-brand-dark-secondary p-8 min-h-[600px]">
         {isGenerating ? (
           <div className="w-full space-y-4">
