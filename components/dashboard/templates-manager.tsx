@@ -39,8 +39,21 @@ export function TemplatesManager() {
 
   const createTemplate = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from('templates').insert([data]);
-      if (error) throw error;
+      // Filter out empty strings for optional fields
+      const cleanData = {
+        name: data.name,
+        thumbnail_url: data.thumbnail_url,
+        canva_url: data.canva_url,
+        ...(data.category && { category: data.category }),
+        ...(data.awareness_level && { awareness_level: data.awareness_level }),
+        ...(data.niche && { niche: data.niche }),
+      };
+      
+      const { error } = await supabase.from('templates').insert([cleanData]);
+      if (error) {
+        console.error('Error creating template:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
@@ -48,12 +61,29 @@ export function TemplatesManager() {
       resetForm();
       toast.success('Plantilla creada');
     },
+    onError: (error: any) => {
+      console.error('Create template error:', error);
+      toast.error(error.message || 'Error al crear plantilla');
+    },
   });
 
   const updateTemplate = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      const { error } = await supabase.from('templates').update(data).eq('id', id);
-      if (error) throw error;
+      // Filter out empty strings for optional fields
+      const cleanData = {
+        name: data.name,
+        thumbnail_url: data.thumbnail_url,
+        canva_url: data.canva_url,
+        ...(data.category && { category: data.category }),
+        ...(data.awareness_level && { awareness_level: data.awareness_level }),
+        ...(data.niche && { niche: data.niche }),
+      };
+      
+      const { error } = await supabase.from('templates').update(cleanData).eq('id', id);
+      if (error) {
+        console.error('Error updating template:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
@@ -61,16 +91,27 @@ export function TemplatesManager() {
       resetForm();
       toast.success('Plantilla actualizada');
     },
+    onError: (error: any) => {
+      console.error('Update template error:', error);
+      toast.error(error.message || 'Error al actualizar plantilla');
+    },
   });
 
   const deleteTemplate = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('templates').delete().eq('id', id);
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting template:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
       toast.success('Plantilla eliminada');
+    },
+    onError: (error: any) => {
+      console.error('Delete template error:', error);
+      toast.error(error.message || 'Error al eliminar plantilla');
     },
   });
 
