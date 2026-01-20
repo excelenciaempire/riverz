@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { SignOutButton } from '@clerk/nextjs';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,11 +25,19 @@ export default function UnauthorizedPage() {
           </p>
         </div>
 
-        <SignOutButton>
-          <Button className="w-full bg-brand-accent hover:bg-brand-accent/90">
-            Cerrar Sesión
-          </Button>
-        </SignOutButton>
+        <div className="space-y-3">
+          <Link href="/crear">
+            <Button className="w-full bg-brand-accent hover:bg-brand-accent/90">
+              Ir a la Plataforma
+            </Button>
+          </Link>
+          
+          <SignOutButton>
+            <Button variant="outline" className="w-full border-gray-700 text-gray-300 hover:bg-gray-800">
+              Cerrar Sesión
+            </Button>
+          </SignOutButton>
+        </div>
       </div>
     </div>
   );
