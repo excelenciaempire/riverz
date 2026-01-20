@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
+// Force cache invalidation v1
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
