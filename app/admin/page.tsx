@@ -13,7 +13,7 @@ export default function AdminLoginPage() {
         </div>
         
         <SignIn 
-          afterSignInUrl="/dashboard"
+          afterSignInUrl="/admin/dashboard"
           appearance={{
             elements: {
               rootBox: "mx-auto",
