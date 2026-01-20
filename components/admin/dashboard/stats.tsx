@@ -1,11 +1,30 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Users, CreditCard, Video, Image, Package, TrendingUp } from 'lucide-react';
+import { Users, CreditCard, Video, Image, Package, TrendingUp, Zap, AlertTriangle, RefreshCw } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useState } from 'react';
 
 export function DashboardStats() {
   const supabase = createClient();
+  const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
+
+  // Fetch Kie.ai balance (API Provider)
+  const { data: providerBalance, refetch: refetchBalance } = useQuery({
+    queryKey: ['provider-balance'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/kie-balance');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  const handleRefreshBalance = async () => {
+    setIsRefreshingBalance(true);
+    await refetchBalance();
+    setIsRefreshingBalance(false);
+  };
 
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
@@ -156,8 +175,69 @@ export function DashboardStats() {
     },
   ];
 
+  // Determine balance status
+  const balance = providerBalance?.balance || 0;
+  const isLowBalance = balance < 1000;
+  const isCriticalBalance = balance < 200;
+
   return (
     <div className="space-y-8">
+      {/* API Provider Balance - Admin Only */}
+      <div className={`rounded-2xl border p-6 ${
+        isCriticalBalance 
+          ? 'border-red-500/50 bg-red-500/10' 
+          : isLowBalance 
+            ? 'border-yellow-500/50 bg-yellow-500/10'
+            : 'border-brand-accent/50 bg-brand-accent/10'
+      }`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Zap className={`h-5 w-5 ${isCriticalBalance ? 'text-red-500' : isLowBalance ? 'text-yellow-500' : 'text-brand-accent'}`} />
+              <p className="text-sm font-medium text-gray-300">Balance Proveedor IA (Solo Admin)</p>
+              {isCriticalBalance && (
+                <span className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-400">
+                  <AlertTriangle className="h-3 w-3" /> CRÍTICO
+                </span>
+              )}
+              {isLowBalance && !isCriticalBalance && (
+                <span className="flex items-center gap-1 rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-400">
+                  <AlertTriangle className="h-3 w-3" /> BAJO
+                </span>
+              )}
+            </div>
+            <p className={`mt-2 text-4xl font-bold ${
+              isCriticalBalance ? 'text-red-500' : isLowBalance ? 'text-yellow-500' : 'text-white'
+            }`}>
+              {balance.toLocaleString()} créditos
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              Actualizado: {providerBalance?.lastChecked ? new Date(providerBalance.lastChecked).toLocaleTimeString() : 'N/A'}
+            </p>
+          </div>
+          <div className="text-right">
+            <button
+              onClick={handleRefreshBalance}
+              disabled={isRefreshingBalance}
+              className="mb-3 rounded-lg bg-white/10 p-2 hover:bg-white/20 transition disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 text-white ${isRefreshingBalance ? 'animate-spin' : ''}`} />
+            </button>
+            <div className="space-y-1 text-sm">
+              <p className="text-gray-400">~{providerBalance?.estimates?.static_ads?.toLocaleString() || 0} static ads</p>
+              <p className="text-gray-400">~{providerBalance?.estimates?.ugc_videos?.toLocaleString() || 0} videos UGC</p>
+            </div>
+          </div>
+        </div>
+        {isCriticalBalance && (
+          <div className="mt-4 rounded-lg bg-red-500/20 p-3">
+            <p className="text-sm text-red-300">
+              ⚠️ El balance está muy bajo. Recarga en <a href="https://kie.ai" target="_blank" rel="noopener noreferrer" className="underline font-medium">kie.ai</a> para evitar interrupciones del servicio.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {statCards.map((stat) => {

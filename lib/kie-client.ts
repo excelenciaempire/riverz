@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 
-const KIE_API_KEY = '174d2ff19987520a25ecd1ed9c3ccc2b';
+// Use environment variable for API key (fallback for backwards compatibility)
+const KIE_API_KEY = process.env.KIE_API_KEY || '174d2ff19987520a25ecd1ed9c3ccc2b';
 const KIE_BASE_URL = 'https://api.kie.ai';
 
 // --- Types ---
