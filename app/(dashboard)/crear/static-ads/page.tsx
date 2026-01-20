@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/dropdown';
 import { toast } from 'sonner';
-import { Star, Check, Loader2 } from 'lucide-react';
+import { Star, Check, Loader2, Zap, Clock, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Template, Product } from '@/types';
 
@@ -37,7 +37,22 @@ export default function StaticAdsPage() {
   const [projectName, setProjectName] = useState('');
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isProgressOpen, setIsProgressOpen] = useState(false);
-  const [progressValue, setProgressValue] = useState(0);
+  const [progressData, setProgressData] = useState({
+    percentage: 0,
+    completed: 0,
+    total: 0,
+    failed: 0,
+    inProgress: 0,
+    isComplete: false
+  });
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [bulkEstimate, setBulkEstimate] = useState<{
+    totalCredits: number;
+    estimatedMinutes: number;
+    message: string;
+  } | null>(null);
+  
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const supabase = createClient();
 
@@ -88,6 +103,72 @@ export default function StaticAdsPage() {
     enabled: !!user,
   });
 
+  // Fetch estimate when selection changes
+  useEffect(() => {
+    if (selectedTemplateIds.length > 0) {
+      fetch('/api/static-ads/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateCount: selectedTemplateIds.length }),
+      })
+        .then(res => res.json())
+        .then(setBulkEstimate)
+        .catch(() => setBulkEstimate(null));
+    } else {
+      setBulkEstimate(null);
+    }
+  }, [selectedTemplateIds.length]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
+
+  // Poll for progress
+  const startPolling = (projectId: string) => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    
+    const poll = async () => {
+      try {
+        // Call process queue to move things forward
+        const processRes = await fetch('/api/static-ads/process-queue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectId }),
+        });
+        
+        if (processRes.ok) {
+          const data = await processRes.json();
+          
+          if (data.progress) {
+            setProgressData(data.progress);
+            
+            if (data.progress.isComplete) {
+              if (pollingRef.current) clearInterval(pollingRef.current);
+              toast.success(`¡${data.progress.completed} imágenes generadas!`);
+              setTimeout(() => {
+                router.push(`/crear/static-ads/historial/${projectId}`);
+              }, 1500);
+            }
+          }
+        } else if (processRes.status === 429) {
+          // Rate limited - slow down polling
+          console.log('Rate limited, slowing down...');
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    };
+
+    // Initial call
+    poll();
+    
+    // Poll every 3 seconds (respects rate limit)
+    pollingRef.current = setInterval(poll, 3000);
+  };
+
   // Clone Mutation
   const cloneMutation = useMutation({
     mutationFn: async ({ templateIds, productId, projectName }: { templateIds: string[], productId: string, projectName: string }) => {
@@ -98,24 +179,29 @@ export default function StaticAdsPage() {
       });
       
       if (!response.ok) {
-        if (response.status === 402) throw new Error('Créditos insuficientes');
-        throw new Error('Error al clonar plantillas');
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 402) {
+          throw new Error(`Créditos insuficientes. Necesitas ${errorData.required || 'más'} créditos.`);
+        }
+        throw new Error(errorData.error || 'Error al clonar plantillas');
       }
       return response.json();
     },
     onSuccess: (data) => {
-      // Simulate progress for UX
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
-        setProgressValue(progress);
-        if (progress >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            router.push(`/crear/static-ads/historial/${data.project.id}`);
-          }, 500);
-        }
-      }, 200);
+      setCurrentProjectId(data.project.id);
+      setProgressData({
+        percentage: 0,
+        completed: 0,
+        total: data.bulk?.total || selectedTemplateIds.length,
+        failed: 0,
+        inProgress: data.bulk?.total || selectedTemplateIds.length,
+        isComplete: false
+      });
+      
+      toast.success(`Iniciando generación de ${data.bulk?.total} imágenes...`);
+      
+      // Start polling for real progress
+      startPolling(data.project.id);
     },
     onError: (error) => {
       setIsProgressOpen(false);
@@ -176,7 +262,14 @@ export default function StaticAdsPage() {
     }
     setIsProjectModalOpen(false);
     setIsProgressOpen(true);
-    setProgressValue(10); // Start progress
+    setProgressData({
+      percentage: 5,
+      completed: 0,
+      total: selectedTemplateIds.length,
+      failed: 0,
+      inProgress: selectedTemplateIds.length,
+      isComplete: false
+    });
     cloneMutation.mutate({ 
       templateIds: selectedTemplateIds, 
       productId: selectedProduct,
@@ -400,19 +493,35 @@ export default function StaticAdsPage() {
       {/* Floating Bottom Bar for Cloning */}
       {isCloneBarVisible && (
         <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-800 bg-[#0a0a0a]/95 backdrop-blur-lg p-4 transition-transform duration-300 transform translate-y-0">
-          <div className="mx-auto flex max-w-4xl items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#07A498]/20 text-[#07A498] font-bold">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+            {/* Selection count with estimate */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#07A498]/20 text-[#07A498] font-bold text-lg">
                 {selectedTemplateIds.length}
               </div>
-              <p className="text-sm font-medium text-white">
-                Plantillas seleccionadas
-              </p>
+              <div>
+                <p className="text-sm font-medium text-white">
+                  Plantillas seleccionadas
+                </p>
+                {bulkEstimate && (
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <Zap className="h-3 w-3 text-yellow-500" />
+                      {bulkEstimate.totalCredits.toLocaleString()} créditos
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-blue-400" />
+                      ~{bulkEstimate.estimatedMinutes} min
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex flex-1 items-center gap-4">
-              <span className="text-sm font-medium text-gray-300 whitespace-nowrap">Clonar con producto:</span>
-              <div className="flex-1 max-w-md">
+            {/* Product selector */}
+            <div className="flex flex-1 items-center gap-3 max-w-md">
+              <span className="text-sm font-medium text-gray-300 whitespace-nowrap">Producto:</span>
+              <div className="flex-1">
                  <Dropdown
                     options={products?.map(p => ({ value: p.id, label: p.name })) || []}
                     value={selectedProduct}
@@ -424,20 +533,35 @@ export default function StaticAdsPage() {
               </div>
             </div>
 
-            <Button
-              onClick={initiateCloneProcess}
-              disabled={cloneMutation.isPending || !selectedProduct}
-              className="bg-[#07A498] text-white hover:bg-[#068f84] px-8 py-6 rounded-xl shadow-lg shadow-[#07A498]/20"
-            >
-              {cloneMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                'Confirmar y Clonar'
-              )}
-            </Button>
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedTemplateIds([]);
+                  setIsCloneBarVisible(false);
+                }}
+                className="border-gray-700 text-gray-300 hover:text-white"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={initiateCloneProcess}
+                disabled={cloneMutation.isPending || !selectedProduct}
+                className="bg-[#07A498] text-white hover:bg-[#068f84] px-6 py-5 rounded-xl shadow-lg shadow-[#07A498]/20"
+              >
+                {cloneMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    Generar {selectedTemplateIds.length} Imágenes
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -446,9 +570,33 @@ export default function StaticAdsPage() {
       {isProjectModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#141414] p-6 shadow-2xl">
-            <h2 className="mb-4 text-xl font-bold text-white">Nombre del Proyecto</h2>
-            <p className="mb-6 text-sm text-gray-400">Asigna un nombre para identificar este grupo de imágenes en tu historial.</p>
+            <h2 className="mb-2 text-xl font-bold text-white">Confirmar Generación Masiva</h2>
+            <p className="mb-6 text-sm text-gray-400">
+              Vas a generar {selectedTemplateIds.length} imágenes únicas para tu producto.
+            </p>
+
+            {/* Cost Summary */}
+            {bulkEstimate && (
+              <div className="mb-6 rounded-xl bg-[#07A498]/10 border border-[#07A498]/30 p-4">
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-[#07A498]">{bulkEstimate.totalCredits.toLocaleString()}</p>
+                    <p className="text-xs text-gray-400">Créditos a usar</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">~{bulkEstimate.estimatedMinutes} min</p>
+                    <p className="text-xs text-gray-400">Tiempo estimado</p>
+                  </div>
+                </div>
+                <p className="mt-3 text-center text-xs text-gray-400">
+                  {bulkEstimate.message}
+                </p>
+              </div>
+            )}
             
+            <label className="mb-2 block text-sm font-medium text-gray-300">
+              Nombre del proyecto
+            </label>
             <input
               type="text"
               value={projectName}
@@ -469,8 +617,10 @@ export default function StaticAdsPage() {
               <Button
                 className="flex-1 bg-[#07A498] hover:bg-[#068f84] text-white"
                 onClick={confirmClone}
+                disabled={!projectName.trim()}
               >
-                Comenzar Clonación
+                <Zap className="mr-2 h-4 w-4" />
+                Generar {selectedTemplateIds.length} Imágenes
               </Button>
             </div>
           </div>
@@ -480,18 +630,93 @@ export default function StaticAdsPage() {
       {/* Progress Popup */}
       {isProgressOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md">
-          <div className="w-full max-w-sm text-center">
-            <Loader2 className="mx-auto mb-6 h-12 w-12 animate-spin text-[#07A498]" />
-            <h2 className="mb-2 text-2xl font-bold text-white">Clonando Imágenes</h2>
-            <p className="mb-8 text-gray-400">Estamos generando tus variantes, por favor espera...</p>
-            
-            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-800">
-              <div 
-                className="h-full bg-[#07A498] transition-all duration-300 ease-out"
-                style={{ width: `${progressValue}%` }}
-              />
+          <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#141414] p-8">
+            {/* Header */}
+            <div className="mb-6 text-center">
+              {progressData.isComplete ? (
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
+                  <Check className="h-8 w-8 text-green-500" />
+                </div>
+              ) : (
+                <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-[#07A498]" />
+              )}
+              <h2 className="text-2xl font-bold text-white">
+                {progressData.isComplete ? '¡Generación Completa!' : 'Generando Imágenes'}
+              </h2>
+              <p className="mt-2 text-gray-400">
+                {progressData.isComplete 
+                  ? 'Todas las imágenes están listas'
+                  : 'Procesando con IA, puedes cerrar y volver después'
+                }
+              </p>
             </div>
-            <p className="mt-2 text-right text-xs text-[#07A498]">{progressValue}%</p>
+            
+            {/* Progress Stats */}
+            <div className="mb-6 grid grid-cols-3 gap-4 text-center">
+              <div className="rounded-lg bg-[#07A498]/10 p-3">
+                <p className="text-2xl font-bold text-[#07A498]">{progressData.completed}</p>
+                <p className="text-xs text-gray-400">Completadas</p>
+              </div>
+              <div className="rounded-lg bg-blue-500/10 p-3">
+                <p className="text-2xl font-bold text-blue-400">{progressData.inProgress}</p>
+                <p className="text-xs text-gray-400">En Proceso</p>
+              </div>
+              <div className="rounded-lg bg-gray-800 p-3">
+                <p className="text-2xl font-bold text-white">{progressData.total}</p>
+                <p className="text-xs text-gray-400">Total</p>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mb-4">
+              <div className="mb-2 flex justify-between text-xs">
+                <span className="text-gray-400">Progreso</span>
+                <span className="text-[#07A498] font-medium">{progressData.percentage}%</span>
+              </div>
+              <div className="h-3 w-full overflow-hidden rounded-full bg-gray-800">
+                <div 
+                  className="h-full bg-gradient-to-r from-[#07A498] to-[#0ab6a8] transition-all duration-500 ease-out"
+                  style={{ width: `${progressData.percentage}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Failed Warning */}
+            {progressData.failed > 0 && (
+              <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <span>{progressData.failed} imagen(es) fallaron. Puedes reintentar desde el historial.</span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 border-gray-700 hover:bg-gray-800"
+                onClick={() => {
+                  setIsProgressOpen(false);
+                  // Don't stop polling - let it continue in background
+                }}
+              >
+                Continuar Navegando
+              </Button>
+              {progressData.isComplete && currentProjectId && (
+                <Button
+                  className="flex-1 bg-[#07A498] hover:bg-[#068f84] text-white"
+                  onClick={() => router.push(`/crear/static-ads/historial/${currentProjectId}`)}
+                >
+                  Ver Resultados
+                </Button>
+              )}
+            </div>
+
+            {/* Bulk info */}
+            {bulkEstimate && !progressData.isComplete && (
+              <p className="mt-4 text-center text-xs text-gray-500">
+                Tiempo estimado: ~{bulkEstimate.estimatedMinutes} minutos para {progressData.total} imágenes
+              </p>
+            )}
           </div>
         </div>
       )}

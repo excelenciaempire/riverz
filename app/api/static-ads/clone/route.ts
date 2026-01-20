@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@/lib/supabase/server';
-import { deductCreditsForGeneration } from '@/lib/generation-helper';
+import { estimateBulkTime } from '@/lib/rate-limiter';
+
+export const maxDuration = 30; // Allow time for DB operations
 
 export async function POST(req: Request) {
   try {
@@ -14,6 +16,14 @@ export async function POST(req: Request) {
 
     if (!templateIds || !Array.isArray(templateIds) || templateIds.length === 0) {
       return new NextResponse('Missing templateIds', { status: 400 });
+    }
+
+    // Validate bulk limit (100 max per batch for safety)
+    if (templateIds.length > 100) {
+      return NextResponse.json({ 
+        error: 'Maximum 100 templates per batch',
+        maxAllowed: 100
+      }, { status: 400 });
     }
 
     if (!productId) {
@@ -49,11 +59,36 @@ export async function POST(req: Request) {
 
     // Calculate cost
     const COST_PER_AD = 50;
+    const totalCost = templateIds.length * COST_PER_AD;
     
-    // Deduct credits
-    const deductionResult = await deductCreditsForGeneration(userId, 'static_ad_generation', `Clonación de Static Ads: ${projectName}`, req.headers);
-    if (!deductionResult.success) {
-      return new NextResponse(deductionResult.error || 'Insufficient credits', { status: 402 });
+    // Check user credits first
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('credits')
+      .eq('clerk_user_id', userId)
+      .single();
+
+    if (userError || !userData) {
+      return new NextResponse('User not found', { status: 404 });
+    }
+
+    if (userData.credits < totalCost) {
+      return NextResponse.json({
+        error: 'Insufficient credits',
+        required: totalCost,
+        available: userData.credits,
+        perAd: COST_PER_AD
+      }, { status: 402 });
+    }
+
+    // Deduct all credits upfront
+    const { error: deductError } = await supabase
+      .from('users')
+      .update({ credits: userData.credits - totalCost })
+      .eq('clerk_user_id', userId);
+
+    if (deductError) {
+      return new NextResponse('Failed to deduct credits', { status: 500 });
     }
 
     // Create Project
@@ -107,7 +142,19 @@ export async function POST(req: Request) {
       })
     );
 
-    return NextResponse.json({ project, generations });
+    // Calculate time estimate for user
+    const estimate = estimateBulkTime(templateIds.length);
+
+    return NextResponse.json({ 
+      project, 
+      generations,
+      bulk: {
+        total: templateIds.length,
+        totalCreditsDeducted: totalCost,
+        estimatedMinutes: estimate.estimatedMinutes,
+        batches: estimate.batches
+      }
+    });
   } catch (error: any) {
     console.error('[STATIC_AD_CLONE]', error);
     return new NextResponse('Internal Error', { status: 500 });

@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@/lib/supabase/server';
 import { createKieTask, getKieTaskResult, getKieModelConfig, analyzeWithGemini3Pro, GeminiMessage, NanoBananaInput } from '@/lib/kie-client';
 import { getPromptText } from '@/lib/get-ai-prompt';
+import { withRateLimit, getRecommendedBatchSize, checkRateLimit } from '@/lib/rate-limiter';
 
 export const maxDuration = 60; // Allow longer processing time
 
@@ -30,8 +31,11 @@ export async function POST(req: Request) {
     const { generationModel } = await getKieModelConfig();
     const updates = [];
 
-    // Process max 3 'pending_analysis' items per request to keep it within timeout
-    const pendingAnalysis = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, 3);
+    // Check rate limit and adjust batch size dynamically
+    const recommendedBatch = Math.min(getRecommendedBatchSize(), 5); // Max 5 per request for stability
+    
+    // Process 'pending_analysis' items based on rate limit
+    const pendingAnalysis = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, recommendedBatch || 2);
     const generating = generations.filter((g: any) => g.status === 'generating');
 
     // Process Analysis (Gemini 3 Pro) - Generate optimized prompts
@@ -82,8 +86,11 @@ Usa el research para crear un ad que conecte emocionalmente.`;
                 }
             ];
 
-            // Generate the optimized prompt using Gemini 3 Pro
-            const generatedPrompt = await analyzeWithGemini3Pro(messages);
+            // Generate the optimized prompt using Gemini 3 Pro (with rate limiting)
+            const generatedPrompt = await withRateLimit(
+                () => analyzeWithGemini3Pro(messages),
+                3 // Max 3 retries
+            );
             
             // Build Nano Banana Pro input with image references
             const nanoBananaInput: NanoBananaInput = {
@@ -98,8 +105,11 @@ Usa el research para crear un ad que conecte emocionalmente.`;
                 output_format: 'png'
             };
 
-            // Start Generation Task with Nano Banana Pro
-            const genTaskId = await createKieTask(generationModel, nanoBananaInput);
+            // Start Generation Task with Nano Banana Pro (with rate limiting)
+            const genTaskId = await withRateLimit(
+                () => createKieTask(generationModel, nanoBananaInput),
+                3 // Max 3 retries
+            );
 
             updates.push(
                 supabase.from('generations').update({
@@ -175,15 +185,64 @@ Usa el research para crear un ad que conecte emocionalmente.`;
 
     await Promise.all(updates);
 
+    // Count total statuses for better progress reporting
+    const { data: allGens } = await supabase
+      .from('generations')
+      .select('status')
+      .eq('project_id', projectId);
+
+    const statusCounts = {
+      pending_analysis: 0,
+      generating: 0,
+      completed: 0,
+      failed: 0,
+    };
+
+    allGens?.forEach((g: any) => {
+      if (statusCounts.hasOwnProperty(g.status)) {
+        statusCounts[g.status as keyof typeof statusCounts]++;
+      }
+    });
+
+    const total = allGens?.length || 0;
+    const completed = statusCounts.completed;
+    const failed = statusCounts.failed;
+    const inProgress = statusCounts.pending_analysis + statusCounts.generating;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    // Check rate limit status
+    const rateLimitStatus = checkRateLimit();
+
     return NextResponse.json({ 
         success: true, 
         processedAnalysis: pendingAnalysis.length,
         processedPolling: generating.length,
-        remainingPending: generations.length - pendingAnalysis.length - generating.length
+        progress: {
+          total,
+          completed,
+          failed,
+          inProgress,
+          percentage: progress,
+          isComplete: inProgress === 0 && total > 0
+        },
+        rateLimit: {
+          canProceed: rateLimitStatus.canProceed,
+          waitMs: rateLimitStatus.waitMs
+        }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error processing queue:', error);
+    
+    // Check if it's a rate limit error
+    if (error.message?.includes('429')) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Rate limited',
+        retryAfter: 10000 // 10 seconds
+      }, { status: 429 });
+    }
+    
     return new NextResponse('Internal Error', { status: 500 });
   }
 }
