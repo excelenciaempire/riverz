@@ -20,6 +20,21 @@ export default {
       fontFamily: {
         sans: ["var(--font-poppins)", "sans-serif"],
       },
+      animation: {
+        'shimmer': 'shimmer 2s infinite',
+        'progress': 'progress 2s ease-in-out infinite',
+      },
+      keyframes: {
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+        progress: {
+          '0%': { transform: 'translateX(-100%)' },
+          '50%': { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
     },
   },
   plugins: [],

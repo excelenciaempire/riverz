@@ -16,6 +16,15 @@ export interface GeminiMessage {
   content: string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>;
 }
 
+// Nano Banana Pro input interface based on Kie.ai docs
+export interface NanoBananaInput {
+  prompt: string;
+  image_input?: string[]; // Up to 8 reference images
+  aspect_ratio?: '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '9:16' | '16:9' | '21:9' | 'auto';
+  resolution?: '1K' | '2K' | '4K';
+  output_format?: 'png' | 'jpg';
+}
+
 // --- Gemini 3 Pro (Analysis) ---
 
 export async function analyzeWithGemini3Pro(messages: GeminiMessage[]) {
@@ -57,18 +66,38 @@ export async function analyzeWithGemini3Pro(messages: GeminiMessage[]) {
 
 // --- Nano Banana Pro (Generation - Job Based) ---
 
-export async function createKieTask(model: string, input: any) {
+export async function createKieTask(model: string, input: NanoBananaInput | any) {
   try {
+    // Build the request body according to Kie.ai docs
+    const requestBody: any = {
+      model, // e.g., 'nano-banana-pro'
+      input: {
+        prompt: input.prompt,
+        // Default settings for high quality static ads
+        aspect_ratio: input.aspect_ratio || '4:5', // Good for social media ads
+        resolution: input.resolution || '2K',
+        output_format: input.output_format || 'png',
+      },
+    };
+
+    // Add image references if provided (for image-to-image generation)
+    if (input.image_input && Array.isArray(input.image_input) && input.image_input.length > 0) {
+      // Filter out empty strings and ensure valid URLs
+      const validImages = input.image_input.filter((url: string) => url && url.startsWith('http'));
+      if (validImages.length > 0) {
+        requestBody.input.image_input = validImages.slice(0, 8); // Max 8 images per Kie.ai docs
+      }
+    }
+
+    console.log('[KIE] Creating task with:', JSON.stringify(requestBody, null, 2));
+
     const response = await fetch(`${KIE_BASE_URL}/api/v1/jobs/createTask`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${KIE_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model, // e.g., 'nano-banana-pro'
-        input,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {

@@ -74,6 +74,7 @@ export async function POST(req: Request) {
 
     // 3. Create Generation Records (Pending Analysis)
     // We do NOT call Gemini here to avoid timeouts. The queue processor handles it.
+    // Include research_data if available for enhanced prompt generation
     
     const generations = await Promise.all(
       templates.map(async (template: any) => {
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
           .insert({
             clerk_user_id: userId,
             type: 'static_ad_generation',
-            status: 'pending_analysis', // New Initial Status
+            status: 'pending_analysis', // Initial Status - will be processed by queue
             cost: COST_PER_AD,
             project_id: project.id,
             input_data: {
@@ -91,7 +92,11 @@ export async function POST(req: Request) {
               templateName: template.name,
               templateThumbnail: template.thumbnail_url, // Needed for vision analysis
               productName: product.name,
-              productImage: product.images?.[0] // Needed for vision analysis
+              productBenefits: product.benefits,
+              productImage: product.images?.[0], // Needed for vision analysis
+              // Include deep research data if available
+              researchData: product.research_data || null,
+              hasResearch: !!product.research_data
             },
           })
           .select()

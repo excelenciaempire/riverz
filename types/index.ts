@@ -19,8 +19,49 @@ export interface Product {
   website: string;
   benefits: string;
   images: string[];
+  ai_prompt?: string;
+  research_data?: ResearchData | null;
+  research_status?: 'pending' | 'processing' | 'completed' | 'failed' | null;
   created_at: string;
   updated_at: string;
+}
+
+// Research Data Structure
+export interface ResearchData {
+  perfil_demografico?: {
+    nombre_arquetipo?: string;
+    edad?: string;
+    descripcion?: string;
+  };
+  problema_central?: {
+    dolor_principal?: string;
+    emociones?: string[];
+  };
+  miedos_oscuros?: {
+    miedos?: Array<{ miedo?: string; descripcion?: string }>;
+    impacto_relaciones?: string[];
+    citas_hirientes?: Array<{ persona?: string; cita?: string }>;
+  };
+  soluciones_fallidas?: {
+    productos_fallidos?: Array<{ nombre?: string; razon_fallo?: string; soundbite?: string }>;
+    aversiones?: Array<{ tarea?: string; soundbite?: string }>;
+  };
+  transformacion?: {
+    resultados?: string[];
+    impacto_estatus?: string;
+    soundbites_post?: Array<{ persona?: string; cita?: string }>;
+  };
+  creencias?: {
+    si_solo_tuviera?: string;
+    comodidad_problema?: string;
+    culpables?: string[];
+    objeciones?: string[];
+  };
+  lenguaje?: {
+    palabras_clave?: string[];
+  };
+  raw_response?: string;
+  parse_error?: boolean;
 }
 
 // Template Types

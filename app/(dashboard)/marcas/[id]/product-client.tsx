@@ -1,44 +1,66 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/ui/loading';
 import { toast } from 'sonner';
-import { ArrowLeft, Sparkles, Edit, Plus, Loader2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus } from 'lucide-react';
+import { ResearchProgress } from '@/components/products/research-progress';
+import { ResearchPanel } from '@/components/products/research-panel';
 import type { Product } from '@/types';
 
-export default function ProductClient({ product }: { product: Product }) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
+// Extended product type with research fields
+interface ProductWithResearch extends Product {
+  research_data?: any;
+  research_status?: 'pending' | 'processing' | 'completed' | 'failed' | null;
+}
 
-  // Analyze Mutation
-  const analyzeProduct = useMutation({
+export default function ProductClient({ product }: { product: ProductWithResearch }) {
+  const router = useRouter();
+  const [isResearchPanelOpen, setIsResearchPanelOpen] = useState(false);
+  const [localResearchData, setLocalResearchData] = useState(product.research_data);
+  const [localResearchStatus, setLocalResearchStatus] = useState(product.research_status);
+
+  // Deep Research Mutation
+  const deepResearch = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/products/analyze', {
+      const response = await fetch('/api/products/deep-research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId: product.id }),
       });
 
       if (!response.ok) {
-         if (response.status === 404) throw new Error('Servicio de análisis no disponible (404)');
-         throw new Error('Error en el análisis');
+        const text = await response.text();
+        throw new Error(text || 'Error en el research');
       }
       return response.json();
     },
     onSuccess: (data) => {
-      toast.success('Análisis completado: ' + (data.aiPrompt ? 'Prompt generado' : 'Sin cambios'));
-      // We need to refresh the server data. 
-      // The easiest way is to refresh the page route
+      toast.success('Deep Research completado');
+      setLocalResearchData(data.researchData);
+      setLocalResearchStatus('completed');
       router.refresh();
     },
-    onError: (err) => {
-      toast.error(err.message);
+    onError: (err: any) => {
+      toast.error(err.message || 'Error al realizar el research');
+      setLocalResearchStatus('failed');
     },
   });
 
+  const handleStartResearch = () => {
+    setLocalResearchStatus('processing');
+    deepResearch.mutate();
+  };
+
+  const handleViewResearch = () => {
+    setIsResearchPanelOpen(true);
+  };
+
   if (!product) return <div className="p-8 text-center text-red-500">Producto no encontrado</div>;
+
+  const hasResearch = !!(localResearchData || product.research_data);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -87,55 +109,72 @@ export default function ProductClient({ product }: { product: Product }) {
             </div>
           </div>
 
-          {/* AI Analysis Section */}
+          {/* Deep Research Section */}
           <div className="rounded-xl border border-brand-accent/20 bg-brand-accent/5 p-6">
-            <h3 className="mb-3 flex items-center font-semibold text-white">
+            <h3 className="mb-4 flex items-center font-semibold text-white">
               <Sparkles className="mr-2 h-5 w-5 text-brand-accent" />
-              Investigación de IA
+              Deep Research de Mercado
             </h3>
             
-            {product.ai_prompt ? (
-              <div className="space-y-4">
-                <div className="rounded-lg bg-black/40 p-4 text-sm text-gray-300">
-                  {product.ai_prompt}
+            <p className="mb-4 text-sm text-gray-400">
+              {hasResearch 
+                ? 'El research profundo está listo. Úsalo para crear ads que conecten emocionalmente con tu audiencia.'
+                : 'La IA analizará Reddit, reseñas y redes sociales para descubrir los verdaderos motivadores emocionales de compra de tu público objetivo.'
+              }
+            </p>
+
+            <ResearchProgress
+              productId={product.id}
+              initialStatus={localResearchStatus || product.research_status || null}
+              hasResearch={hasResearch}
+              onStartResearch={handleStartResearch}
+              onViewResearch={handleViewResearch}
+              isStarting={deepResearch.isPending}
+            />
+
+            {/* Quick stats if research exists */}
+            {hasResearch && (localResearchData || product.research_data) && (
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg bg-black/30 p-2">
+                  <p className="text-lg font-bold text-brand-accent">
+                    {(localResearchData || product.research_data)?.problema_central?.emociones?.length || 0}
+                  </p>
+                  <p className="text-xs text-gray-500">Emociones</p>
                 </div>
-                <div className="flex gap-3">
-                    <Button onClick={() => analyzeProduct.mutate()} disabled={analyzeProduct.isPending} variant="outline" size="sm">
-                       {analyzeProduct.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                       Regenerar Análisis
-                    </Button>
-                    <Button onClick={() => router.push(`/admin/dashboard`)} variant="ghost" size="sm">
-                        <Edit className="mr-2 h-4 w-4" /> Editar Prompt (Admin)
-                    </Button>
+                <div className="rounded-lg bg-black/30 p-2">
+                  <p className="text-lg font-bold text-brand-accent">
+                    {(localResearchData || product.research_data)?.miedos_oscuros?.miedos?.length || 0}
+                  </p>
+                  <p className="text-xs text-gray-500">Miedos</p>
                 </div>
-              </div>
-            ) : (
-              <div>
-                <p className="mb-4 text-sm text-gray-400">
-                  La IA analizará tu producto para crear los mejores clones.
-                </p>
-                <Button 
-                  onClick={() => analyzeProduct.mutate()} 
-                  disabled={analyzeProduct.isPending}
-                  className="w-full bg-brand-accent hover:bg-brand-accent/90"
-                >
-                  {analyzeProduct.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Analizando...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-5 w-5" />
-                      Empezar Research
-                    </>
-                  )}
-                </Button>
+                <div className="rounded-lg bg-black/30 p-2">
+                  <p className="text-lg font-bold text-brand-accent">
+                    {(localResearchData || product.research_data)?.lenguaje?.palabras_clave?.length || 0}
+                  </p>
+                  <p className="text-xs text-gray-500">Keywords</p>
+                </div>
               </div>
             )}
           </div>
+
+          {/* Action Button to go to Static Ads */}
+          <Button 
+            onClick={() => router.push('/crear/static-ads')}
+            className="w-full bg-gradient-to-r from-brand-accent to-brand-blue hover:opacity-90"
+            size="lg"
+          >
+            Ir a Crear Static Ads
+          </Button>
         </div>
       </div>
+
+      {/* Research Panel Modal */}
+      <ResearchPanel
+        isOpen={isResearchPanelOpen}
+        onClose={() => setIsResearchPanelOpen(false)}
+        researchData={localResearchData || product.research_data}
+        productName={product.name}
+      />
     </div>
   );
 }
