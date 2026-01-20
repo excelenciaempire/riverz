@@ -19,8 +19,8 @@ export function useCredits() {
       return response.json();
     },
     enabled: !!user,
-    refetchInterval: 5000, // Refetch every 5 seconds for real-time Kie.ai balance
-    staleTime: 3000, // Consider data stale after 3 seconds
+    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 10000,
   });
 
   const deductCredits = useMutation({
@@ -35,17 +35,16 @@ export function useCredits() {
       return response.json();
     },
     onSuccess: () => {
-      // Immediately refetch credits after deduction
       queryClient.invalidateQueries({ queryKey: ['credits', user?.id] });
     },
   });
 
   return {
     credits: creditsData?.credits || 0,
-    lastUpdated: creditsData?.lastUpdated,
+    planType: creditsData?.plan_type || 'free',
+    subscriptionStatus: creditsData?.subscription_status || 'inactive',
     isLoading,
     deductCredits: deductCredits.mutate,
     refetchCredits: refetch,
   };
 }
-

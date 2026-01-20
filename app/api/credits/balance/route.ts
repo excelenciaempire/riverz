@@ -1,8 +1,11 @@
 import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-const KIE_API_KEY = process.env.KIE_API_KEY || '174d2ff19987520a25ecd1ed9c3ccc2b';
-const KIE_BASE_URL = 'https://api.kie.ai';
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET() {
   try {
@@ -11,36 +14,45 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch Kie.ai credit balance
-    const response = await fetch(`${KIE_BASE_URL}/api/v1/chat/credit`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${KIE_API_KEY}`,
-      },
-      // Cache for 10 seconds to avoid too many API calls
-      next: { revalidate: 10 }
-    });
+    // Fetch user's internal credits from database
+    const { data: userData, error } = await supabaseAdmin
+      .from('user_credits')
+      .select('credits, plan_type, subscription_status')
+      .eq('clerk_user_id', userId)
+      .single();
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
+    if (error || !userData) {
+      // Create default entry if not exists
+      const { data: newUser, error: createError } = await supabaseAdmin
+        .from('user_credits')
+        .insert({
+          clerk_user_id: userId,
+          credits: 0,
+          plan_type: 'free',
+          subscription_status: 'inactive'
+        })
+        .select()
+        .single();
 
-    const data = await response.json();
-    
-    if (data.code !== 200) {
-      throw new Error(data.msg || 'Failed to fetch balance');
+      if (createError) {
+        return NextResponse.json({ credits: 0, plan_type: 'free' });
+      }
+      
+      return NextResponse.json({
+        credits: newUser.credits,
+        plan_type: newUser.plan_type,
+        subscription_status: newUser.subscription_status
+      });
     }
 
     return NextResponse.json({
-      credits: data.data,
-      lastUpdated: new Date().toISOString(),
+      credits: userData.credits,
+      plan_type: userData.plan_type,
+      subscription_status: userData.subscription_status
     });
 
   } catch (error: any) {
     console.error('Error fetching credits:', error);
-    return NextResponse.json(
-      { credits: 0, error: error.message },
-      { status: 200 } // Return 200 with 0 credits on error
-    );
+    return NextResponse.json({ credits: 0, error: error.message }, { status: 200 });
   }
 }

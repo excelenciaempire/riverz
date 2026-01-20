@@ -1,24 +1,12 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@supabase/supabase-js';
 import { estimateBulkTime } from '@/lib/rate-limiter';
 
-const KIE_API_KEY = process.env.KIE_API_KEY || '174d2ff19987520a25ecd1ed9c3ccc2b';
-const KIE_BASE_URL = 'https://api.kie.ai';
-
-// Get current Kie.ai balance
-async function getKieBalance(): Promise<number> {
-  try {
-    const response = await fetch(`${KIE_BASE_URL}/api/v1/chat/credit`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${KIE_API_KEY}` },
-    });
-    if (!response.ok) return 0;
-    const data = await response.json();
-    return data.code === 200 ? data.data : 0;
-  } catch {
-    return 0;
-  }
-}
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(req: Request) {
   try {
@@ -32,11 +20,17 @@ export async function POST(req: Request) {
     }
 
     const estimate = estimateBulkTime(templateCount);
-    const COST_PER_AD = 5; // ~5 Kie.ai credits per static ad
+    const COST_PER_AD = 50; // Internal Riverz credits
     const totalCredits = templateCount * COST_PER_AD;
     
-    // Get current balance
-    const currentBalance = await getKieBalance();
+    // Get user's current balance
+    const { data: userData } = await supabaseAdmin
+      .from('user_credits')
+      .select('credits')
+      .eq('clerk_user_id', userId)
+      .single();
+
+    const currentBalance = userData?.credits || 0;
     const hasEnough = currentBalance >= totalCredits;
 
     return NextResponse.json({
