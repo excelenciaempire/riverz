@@ -419,6 +419,7 @@ export default function StaticAdsPage() {
                     onChange={setSelectedProduct}
                     placeholder={products && products.length > 0 ? "Seleccionar producto..." : "No hay productos creados"}
                     className="w-full"
+                    openDirection="up"
                   />
               </div>
             </div>

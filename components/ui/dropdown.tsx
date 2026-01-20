@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 export interface DropdownOption {
   value: string;
@@ -15,6 +15,7 @@ interface DropdownProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  openDirection?: 'up' | 'down';
 }
 
 export function Dropdown({
@@ -23,6 +24,7 @@ export function Dropdown({
   onChange,
   placeholder = 'Selecciona una opción',
   className,
+  openDirection = 'down',
 }: DropdownProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const selectedOption = options.find((opt) => opt.value === value);
@@ -39,38 +41,51 @@ export function Dropdown({
           className
         )}
       >
-        <span className={!selectedOption ? 'text-gray-500' : ''}>
+        <span className={cn('truncate', !selectedOption ? 'text-gray-500' : '')}>
           {selectedOption?.label || placeholder}
         </span>
-        <ChevronDown className="h-4 w-4" />
+        {openDirection === 'up' ? (
+          <ChevronUp className={cn('h-4 w-4 flex-shrink-0 ml-2 transition-transform', isOpen && 'rotate-180')} />
+        ) : (
+          <ChevronDown className={cn('h-4 w-4 flex-shrink-0 ml-2 transition-transform', isOpen && 'rotate-180')} />
+        )}
       </button>
 
       {isOpen && (
         <>
           <div
-            className="fixed inset-0 z-10"
+            className="fixed inset-0 z-[100]"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute z-20 mt-1 w-full rounded-md border border-gray-700 bg-brand-dark-secondary shadow-lg">
+          <div 
+            className={cn(
+              'absolute z-[101] w-full rounded-md border border-gray-700 bg-[#1a1a1a] shadow-xl',
+              openDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+            )}
+          >
             <div className="max-h-60 overflow-auto py-1">
-              {options.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    onChange(option.value);
-                    setIsOpen(false);
-                  }}
-                  className={cn(
-                    'w-full px-3 py-2 text-left text-sm hover:bg-gray-700',
-                    option.value === value
-                      ? 'bg-brand-accent text-white'
-                      : 'text-white'
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
+              {options.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-gray-500">No hay opciones</div>
+              ) : (
+                options.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(option.value);
+                      setIsOpen(false);
+                    }}
+                    className={cn(
+                      'w-full px-3 py-2 text-left text-sm hover:bg-gray-700 truncate',
+                      option.value === value
+                        ? 'bg-brand-accent text-white'
+                        : 'text-white'
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </>
