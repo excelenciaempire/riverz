@@ -3,6 +3,24 @@ import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@/lib/supabase/server';
 import { estimateBulkTime } from '@/lib/rate-limiter';
 
+const KIE_API_KEY = process.env.KIE_API_KEY || '174d2ff19987520a25ecd1ed9c3ccc2b';
+const KIE_BASE_URL = 'https://api.kie.ai';
+
+// Get current Kie.ai balance
+async function getKieBalance(): Promise<number> {
+  try {
+    const response = await fetch(`${KIE_BASE_URL}/api/v1/chat/credit`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${KIE_API_KEY}` },
+    });
+    if (!response.ok) return 0;
+    const data = await response.json();
+    return data.code === 200 ? data.data : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export const maxDuration = 30; // Allow time for DB operations
 
 export async function POST(req: Request) {
@@ -57,38 +75,19 @@ export async function POST(req: Request) {
        return new NextResponse('Error fetching templates', { status: 500 });
     }
 
-    // Calculate cost
-    const COST_PER_AD = 50;
-    const totalCost = templateIds.length * COST_PER_AD;
+    // Check Kie.ai balance (real-time credits)
+    const kieBalance = await getKieBalance();
     
-    // Check user credits first
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('credits')
-      .eq('clerk_user_id', userId)
-      .single();
-
-    if (userError || !userData) {
-      return new NextResponse('User not found', { status: 404 });
-    }
-
-    if (userData.credits < totalCost) {
+    // Estimate: ~5 Kie.ai credits per static ad generation
+    const estimatedKieCost = templateIds.length * 5;
+    
+    if (kieBalance < estimatedKieCost) {
       return NextResponse.json({
-        error: 'Insufficient credits',
-        required: totalCost,
-        available: userData.credits,
-        perAd: COST_PER_AD
+        error: 'Créditos insuficientes',
+        required: estimatedKieCost,
+        available: kieBalance,
+        message: 'No hay suficientes créditos para esta generación'
       }, { status: 402 });
-    }
-
-    // Deduct all credits upfront
-    const { error: deductError } = await supabase
-      .from('users')
-      .update({ credits: userData.credits - totalCost })
-      .eq('clerk_user_id', userId);
-
-    if (deductError) {
-      return new NextResponse('Failed to deduct credits', { status: 500 });
     }
 
     // Create Project

@@ -7,7 +7,7 @@ export function useCredits() {
   const { user } = useUser();
   const queryClient = useQueryClient();
 
-  const { data: creditsData, isLoading } = useQuery({
+  const { data: creditsData, isLoading, refetch } = useQuery({
     queryKey: ['credits', user?.id],
     queryFn: async () => {
       const response = await fetch('/api/credits/balance');
@@ -19,7 +19,8 @@ export function useCredits() {
       return response.json();
     },
     enabled: !!user,
-    refetchInterval: 10000, // Refetch every 10 seconds
+    refetchInterval: 5000, // Refetch every 5 seconds for real-time Kie.ai balance
+    staleTime: 3000, // Consider data stale after 3 seconds
   });
 
   const deductCredits = useMutation({
@@ -34,16 +35,17 @@ export function useCredits() {
       return response.json();
     },
     onSuccess: () => {
+      // Immediately refetch credits after deduction
       queryClient.invalidateQueries({ queryKey: ['credits', user?.id] });
     },
   });
 
   return {
     credits: creditsData?.credits || 0,
-    planType: creditsData?.plan_type || 'free',
-    subscriptionStatus: creditsData?.subscription_status || 'inactive',
+    lastUpdated: creditsData?.lastUpdated,
     isLoading,
     deductCredits: deductCredits.mutate,
+    refetchCredits: refetch,
   };
 }
 

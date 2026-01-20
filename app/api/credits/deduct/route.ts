@@ -2,6 +2,9 @@ import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
+const KIE_API_KEY = process.env.KIE_API_KEY || '174d2ff19987520a25ecd1ed9c3ccc2b';
+const KIE_BASE_URL = 'https://api.kie.ai';
+
 // Usar service_role para operaciones atómicas
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,6 +16,24 @@ const supabaseAdmin = createClient(
     }
   }
 );
+
+// Get current Kie.ai balance
+async function getKieBalance(): Promise<number> {
+  try {
+    const response = await fetch(`${KIE_BASE_URL}/api/v1/chat/credit`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${KIE_API_KEY}`,
+      },
+    });
+    
+    if (!response.ok) return 0;
+    const data = await response.json();
+    return data.code === 200 ? data.data : 0;
+  } catch {
+    return 0;
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -33,7 +54,7 @@ export async function POST(req: Request) {
     }
 
     // Si amount es 0, solo registrar transacción sin deducir
-    if (amount === 0 && generation_id) {
+    if (amount === 0) {
       return NextResponse.json({
         success: true,
         credits_deducted: 0,
@@ -41,80 +62,44 @@ export async function POST(req: Request) {
       });
     }
 
-    if (amount === 0) {
-      return NextResponse.json(
-        { error: 'Amount must be greater than 0' },
-        { status: 400 }
-      );
-    }
-
-    // Obtener balance actual
-    const { data: userCredits, error: fetchError } = await supabaseAdmin
-      .from('user_credits')
-      .select('credits')
-      .eq('clerk_user_id', userId)
-      .single();
-
-    if (fetchError) {
-      console.error('Error fetching user credits:', fetchError);
-      return NextResponse.json(
-        { error: 'Failed to fetch user credits' },
-        { status: 500 }
-      );
-    }
-
-    // Validar que tenga suficientes créditos
-    if (userCredits.credits < amount) {
+    // Check Kie.ai balance instead of internal credits
+    const kieBalance = await getKieBalance();
+    
+    // Estimate Kie.ai cost (rough estimate: 1 Riverz credit = 0.1 Kie.ai credit)
+    const estimatedKieCost = Math.ceil(amount * 0.1);
+    
+    if (kieBalance < estimatedKieCost) {
       return NextResponse.json(
         { 
           error: 'Insufficient credits',
-          current_credits: userCredits.credits,
-          required_credits: amount
+          current_credits: kieBalance,
+          required_credits: estimatedKieCost
         },
-        { status: 402 } // Payment Required
+        { status: 402 }
       );
     }
 
-    // Deducir créditos (operación atómica)
-    const newBalance = userCredits.credits - amount;
-    
-    const { error: updateError } = await supabaseAdmin
-      .from('user_credits')
-      .update({ 
-        credits: newBalance,
-        updated_at: new Date().toISOString()
-      })
-      .eq('clerk_user_id', userId);
-
-    if (updateError) {
-      console.error('Error updating credits:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to deduct credits' },
-        { status: 500 }
-      );
+    // Log the usage (for tracking purposes only)
+    try {
+      await supabaseAdmin
+        .from('credit_transactions')
+        .insert({
+          clerk_user_id: userId,
+          amount: -amount,
+          transaction_type: 'deduction',
+          generation_id: generation_id || null,
+          description: description || 'Generation usage',
+          balance_after: kieBalance // Log current Kie.ai balance
+        });
+    } catch (e) {
+      console.error('Error logging transaction:', e);
     }
 
-    // Registrar transacción
-    const { error: transactionError } = await supabaseAdmin
-      .from('credit_transactions')
-      .insert({
-        clerk_user_id: userId,
-        amount: -amount, // Negativo para deducción
-        transaction_type: 'deduction',
-        generation_id: generation_id || null,
-        description: description || 'Credit deduction for generation',
-        balance_after: newBalance
-      });
-
-    if (transactionError) {
-      console.error('Error creating transaction:', transactionError);
-      // No fallar si la transacción no se registra, pero loguearlo
-    }
-
+    // Return success - actual deduction happens when Kie.ai API is called
     return NextResponse.json({
       success: true,
       credits_deducted: amount,
-      new_balance: newBalance
+      new_balance: kieBalance
     });
   } catch (error) {
     console.error('Error in credits/deduct:', error);

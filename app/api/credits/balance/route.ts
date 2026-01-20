@@ -1,48 +1,46 @@
 import { auth } from '@clerk/nextjs/server';
-import { createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+
+const KIE_API_KEY = process.env.KIE_API_KEY || '174d2ff19987520a25ecd1ed9c3ccc2b';
+const KIE_BASE_URL = 'https://api.kie.ai';
 
 export async function GET() {
   try {
     const { userId } = await auth();
-
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Usar admin client con service role key
-    const supabaseAdmin = createAdminClient();
+    // Fetch Kie.ai credit balance
+    const response = await fetch(`${KIE_BASE_URL}/api/v1/chat/credit`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${KIE_API_KEY}`,
+      },
+      // Cache for 10 seconds to avoid too many API calls
+      next: { revalidate: 10 }
+    });
 
-    // Consultar balance de créditos
-    const { data, error } = await supabaseAdmin
-      .from('user_credits')
-      .select('credits, plan_type, subscription_status')
-      .eq('clerk_user_id', userId)
-      .single();
-
-    if (error) {
-      console.error('Error fetching credits balance:', error);
-      
-      // Si el usuario no existe, retornar 0 créditos
-      if (error.code === 'PGRST116') {
-        return NextResponse.json({
-          credits: 0,
-          plan_type: 'free',
-          subscription_status: 'inactive'
-        });
-      }
-      
-      throw error;
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
     }
 
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error('Error in credits/balance:', error);
+    const data = await response.json();
+    
+    if (data.code !== 200) {
+      throw new Error(data.msg || 'Failed to fetch balance');
+    }
+
+    return NextResponse.json({
+      credits: data.data,
+      lastUpdated: new Date().toISOString(),
+    });
+
+  } catch (error: any) {
+    console.error('Error fetching credits:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch credits balance' },
-      { status: 500 }
+      { credits: 0, error: error.message },
+      { status: 200 } // Return 200 with 0 credits on error
     );
   }
 }
-
-
