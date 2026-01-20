@@ -2,14 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Modal } from '@/components/ui/modal';
-import { FileUpload } from '@/components/ui/file-upload';
+import { Button } from '@/components/admin/ui/button';
+import { Input } from '@/components/admin/ui/input';
+import { Label } from '@/components/admin/ui/label';
+import { Modal } from '@/components/admin/ui/modal';
+import { FileUpload } from '@/components/admin/ui/file-upload';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Upload as UploadIcon, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 
 export function TemplatesManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,25 +23,36 @@ export function TemplatesManager() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const supabase = createClient();
   const queryClient = useQueryClient();
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ['admin-templates'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('templates')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      const res = await fetch('/api/admin/templates');
+      if (!res.ok) throw new Error('Failed to fetch templates');
+      const data = await res.json();
+      return data.templates || [];
     },
   });
 
   const createTemplate = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from('templates').insert([data]);
-      if (error) throw error;
+      const res = await fetch('/api/admin/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          thumbnail_url: data.thumbnail_url,
+          category: data.category || null,
+          awareness_level: data.awareness_level || null,
+          niche: data.niche || null,
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to create template');
+      }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
@@ -50,12 +60,30 @@ export function TemplatesManager() {
       resetForm();
       toast.success('Plantilla creada');
     },
+    onError: (error: any) => {
+      console.error('Create template mutation error:', error);
+      toast.error(error.message || 'Error al crear plantilla');
+    },
   });
 
   const updateTemplate = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      const { error } = await supabase.from('templates').update(data).eq('id', id);
-      if (error) throw error;
+      const res = await fetch(`/api/admin/templates/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          thumbnail_url: data.thumbnail_url,
+          category: data.category || null,
+          awareness_level: data.awareness_level || null,
+          niche: data.niche || null,
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update template');
+      }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
@@ -63,41 +91,49 @@ export function TemplatesManager() {
       resetForm();
       toast.success('Plantilla actualizada');
     },
+    onError: (error: any) => {
+      console.error('Update template mutation error:', error);
+      toast.error(error.message || 'Error al actualizar plantilla');
+    },
   });
 
   const deleteTemplate = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('templates').delete().eq('id', id);
-      if (error) throw error;
+      const res = await fetch(`/api/admin/templates?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete template');
+      }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
       toast.success('Plantilla eliminada');
     },
+    onError: (error: any) => {
+      console.error('Delete template mutation error:', error);
+      toast.error(error.message || 'Error al eliminar plantilla');
+    },
   });
 
   const uploadImage = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('public-images')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      throw uploadError;
+    const uploadFormData = new FormData();
+    uploadFormData.append('file', file);
+    
+    const res = await fetch('/api/admin/upload', {
+      method: 'POST',
+      body: uploadFormData,
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Failed to upload image');
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('public-images')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
+    
+    const data = await res.json();
+    return data.url;
   };
 
   const resetForm = () => {
@@ -159,27 +195,7 @@ export function TemplatesManager() {
 
   const handleDelete = async (template: any) => {
     if (!confirm(`¿Estás seguro de eliminar "${template.name}"?`)) return;
-
-    try {
-      // Delete image from storage if it exists
-      if (template.thumbnail_url && template.thumbnail_url.includes('supabase')) {
-        const urlParts = template.thumbnail_url.split('/');
-        const fileName = urlParts[urlParts.length - 1];
-        const { error: storageError } = await supabase.storage
-          .from('public-images')
-          .remove([fileName]);
-        
-        if (storageError) {
-          console.error('Storage delete error:', storageError);
-        }
-      }
-
-      // Delete from database
-      deleteTemplate.mutate(template.id);
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Error al eliminar');
-    }
+    deleteTemplate.mutate(template.id);
   };
 
   return (
@@ -258,7 +274,7 @@ export function TemplatesManager() {
                   }
                 }}
                 accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}
-                maxSize={10 * 1024 * 1024}
+                maxSize={50 * 1024 * 1024}
                 variant="minimal"
                 hideFileList
               />

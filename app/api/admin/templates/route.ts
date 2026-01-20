@@ -66,11 +66,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { name, thumbnail_url, canva_url, awareness_level, niche, type } = await req.json();
+    const body = await req.json();
+    const { name, thumbnail_url, category, awareness_level, niche } = body;
 
-    if (!name || !thumbnail_url || !canva_url) {
+    if (!name || !thumbnail_url) {
       return NextResponse.json(
-        { error: 'Name, thumbnail_url, and canva_url are required' },
+        { error: 'Name and thumbnail_url are required' },
         { status: 400 }
       );
     }
@@ -80,13 +81,10 @@ export async function POST(req: Request) {
       .insert({
         name,
         thumbnail_url,
-        canva_url,
+        category: category || null,
         awareness_level: awareness_level || null,
         niche: niche || null,
-        type: type || 'image',
         is_active: true,
-        view_count: 0,
-        edit_count: 0,
       })
       .select()
       .single();
