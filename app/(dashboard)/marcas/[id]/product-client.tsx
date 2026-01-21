@@ -157,14 +157,6 @@ export default function ProductClient({ product }: { product: ProductWithResearc
             )}
           </div>
 
-          {/* Action Button to go to Static Ads */}
-          <Button 
-            onClick={() => router.push('/crear/static-ads')}
-            className="w-full bg-gradient-to-r from-brand-accent to-brand-blue hover:opacity-90"
-            size="lg"
-          >
-            Ir a Crear Static Ads
-          </Button>
         </div>
       </div>
 
