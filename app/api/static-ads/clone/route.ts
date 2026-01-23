@@ -62,8 +62,9 @@ export async function POST(req: Request) {
        return new NextResponse('Error fetching templates', { status: 500 });
     }
 
-    // Calculate cost
-    const COST_PER_AD = 50; // Internal Riverz credits per ad
+    // Calculate cost - matches Kie.ai pricing (Nano Banana Pro ~$0.134/image)
+    // 1 credit = $0.01, so 14 credits = $0.14 ≈ Kie.ai cost
+    const COST_PER_AD = 14;
     const totalCost = templateIds.length * COST_PER_AD;
     
     // Check user's internal credits

@@ -20,7 +20,8 @@ export async function POST(req: Request) {
     }
 
     const estimate = estimateBulkTime(templateCount);
-    const COST_PER_AD = 50; // Internal Riverz credits
+    // Matches Kie.ai pricing (Nano Banana Pro ~$0.134/image)
+    const COST_PER_AD = 14;
     const totalCredits = templateCount * COST_PER_AD;
     
     // Get user's current balance

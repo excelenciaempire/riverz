@@ -4,7 +4,9 @@ import { NextResponse } from 'next/server';
 import { analyzeWithGemini3Pro, GeminiMessage } from '@/lib/kie-client';
 import { getPromptText } from '@/lib/get-ai-prompt';
 
+export const runtime = 'nodejs';
 export const maxDuration = 60; // Allow up to 60 seconds for deep research
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
