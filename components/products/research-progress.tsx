@@ -38,7 +38,7 @@ export function ResearchProgress({
     
     const pollStatus = async () => {
       try {
-        const res = await fetch(`/api/products/${productId}/research-status`);
+        const res = await fetch(`/api/research?productId=${productId}`);
         if (res.ok) {
           const data = await res.json();
           setStatus(data.status);

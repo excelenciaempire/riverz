@@ -25,15 +25,15 @@ export default function ProductClient({ product }: { product: ProductWithResearc
   // Deep Research Mutation
   const deepResearch = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/products/deep-research', {
+      const response = await fetch('/api/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId: product.id }),
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || 'Error en el research');
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Error en el research');
       }
       return response.json();
     },
