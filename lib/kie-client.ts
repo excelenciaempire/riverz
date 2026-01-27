@@ -57,8 +57,30 @@ export async function analyzeWithGemini3Pro(messages: GeminiMessage[]) {
     }
 
     const data = await response.json();
-    // OpenAI format response
-    return data.choices[0]?.message?.content || '';
+    console.log('[GEMINI] Response:', JSON.stringify(data, null, 2));
+    
+    // Handle different response formats
+    if (data.choices && data.choices[0]?.message?.content) {
+      return data.choices[0].message.content;
+    }
+    
+    // Alternative format
+    if (data.response) {
+      return data.response;
+    }
+    
+    // Direct content
+    if (data.content) {
+      return data.content;
+    }
+    
+    // If data itself is the message
+    if (typeof data === 'string') {
+      return data;
+    }
+    
+    console.error('[GEMINI] Unexpected response format:', data);
+    throw new Error('Unexpected Gemini response format');
   } catch (error) {
     console.error('Error calling Gemini 3 Pro:', error);
     throw error;

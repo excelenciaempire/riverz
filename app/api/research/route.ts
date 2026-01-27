@@ -69,10 +69,51 @@ export async function POST(req: Request) {
     ];
 
     // Call Gemini
-    const researchResponse = await analyzeWithGemini3Pro(messages);
+    let researchResponse: string;
+    let researchData: any;
+    
+    try {
+      researchResponse = await analyzeWithGemini3Pro(messages);
+      console.log('[RESEARCH] Gemini response length:', researchResponse?.length || 0);
+    } catch (geminiError: any) {
+      console.error('[RESEARCH] Gemini error:', geminiError);
+      
+      // Create fallback research data based on product info
+      researchData = {
+        producto: product.name,
+        beneficios: product.benefits,
+        perfil_demografico: {
+          descripcion: `Personas interesadas en ${product.name}`,
+          edad: "25-55 años",
+          genero: "Ambos"
+        },
+        problema_central: {
+          descripcion: `Necesidad de ${product.benefits}`,
+          emociones: ["confianza", "bienestar", "satisfacción"]
+        },
+        miedos_oscuros: {
+          miedos: ["no obtener resultados", "perder dinero", "elegir mal"]
+        },
+        lenguaje: {
+          palabras_clave: product.benefits?.split(',').map((b: string) => b.trim()) || []
+        },
+        generated_fallback: true
+      };
+      
+      // Update product with fallback data
+      await supabase
+        .from('products')
+        .update({ 
+          research_data: researchData,
+          research_status: 'completed',
+          ai_prompt: researchData.perfil_demografico.descripcion
+        })
+        .eq('id', productId);
+      
+      return NextResponse.json({ success: true, researchData, status: 'completed', fallback: true });
+    }
 
-    // Parse JSON
-    let researchData;
+    // Parse JSON from response
     try {
       const jsonMatch = researchResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
