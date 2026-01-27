@@ -83,22 +83,18 @@ export default function StaticAdsPage() {
     },
   });
 
-  // Fetch user products for ideation and cloning
+  // Fetch user products for ideation and cloning (using API with service role)
   const { data: products } = useQuery({
     queryKey: ['products', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('clerk_user_id', user.id);
-
-      if (error) {
-        console.error('Error fetching products:', error);
+      const response = await fetch('/api/products');
+      if (!response.ok) {
+        console.error('Error fetching products');
         return [];
       }
-      return data as Product[];
+      return response.json() as Promise<Product[]>;
     },
     enabled: !!user,
   });
