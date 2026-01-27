@@ -5,7 +5,9 @@ import { createKieTask, getKieTaskResult, getKieModelConfig, analyzeWithGemini3P
 import { getPromptText } from '@/lib/get-ai-prompt';
 import { withRateLimit, getRecommendedBatchSize, checkRateLimit } from '@/lib/rate-limiter';
 
-export const maxDuration = 60; // Allow longer processing time
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
