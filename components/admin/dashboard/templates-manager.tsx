@@ -119,21 +119,32 @@ export function TemplatesManager() {
   });
 
   const uploadImage = async (file: File): Promise<string> => {
-    const uploadFormData = new FormData();
-    uploadFormData.append('file', file);
+    const fileExt = file.name.split('.').pop() || 'png';
     
-    const res = await fetch('/api/admin/upload', {
-      method: 'POST',
-      body: uploadFormData,
-    });
-    
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.error || 'Failed to upload image');
+    // Get signed URL for direct upload
+    const signedUrlRes = await fetch(`/api/admin/upload?ext=${fileExt}`);
+    if (!signedUrlRes.ok) {
+      throw new Error('Failed to get upload URL');
     }
     
-    const data = await res.json();
-    return data.url;
+    const { signedUrl, publicUrl } = await signedUrlRes.json();
+    
+    // Upload directly to Supabase Storage using signed URL
+    const uploadRes = await fetch(signedUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type,
+      },
+      body: file,
+    });
+    
+    if (!uploadRes.ok) {
+      const errorText = await uploadRes.text();
+      console.error('Direct upload error:', errorText);
+      throw new Error('Failed to upload image to storage');
+    }
+    
+    return publicUrl;
   };
 
   const resetForm = () => {

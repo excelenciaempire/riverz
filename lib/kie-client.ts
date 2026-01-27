@@ -30,25 +30,23 @@ export interface NanoBananaInput {
 
 export async function analyzeWithGemini3Pro(messages: GeminiMessage[]) {
   try {
+    // Build request body without response_format for more flexible responses
+    const requestBody = {
+      model: 'gemini-3-pro',
+      messages,
+      stream: false,
+    };
+    
+    console.log('[GEMINI] Sending request to:', `${KIE_BASE_URL}/gemini-3-pro/v1/chat/completions`);
+    console.log('[GEMINI] Messages:', JSON.stringify(messages, null, 2).substring(0, 500));
+    
     const response = await fetch(`${KIE_BASE_URL}/gemini-3-pro/v1/chat/completions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${KIE_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'gemini-3-pro',
-        messages,
-        stream: false, // We want the full response for now
-        response_format: {
-             type: "object",
-             properties: {
-                 response: { type: "string" }
-             }
-        } // Optional: Enforce JSON if we want structured output, but simple text is fine for prompts.
-          // User docs show response_format example. Let's stick to standard text for creativity unless we need strict JSON.
-          // Actually, prompt generation is better as free text.
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {

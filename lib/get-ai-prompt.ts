@@ -40,6 +40,87 @@ Replace the generic product in the template with the specific User Product.
 Keep the text overlay style from the template in mind (describe where text space should be), but focus on the visual image.
 Output ONLY the prompt text.`,
 
+  static_ads_clone_with_research: `Eres un experto en publicidad y generación de prompts para IA.
+
+RESEARCH DEL PRODUCTO:
+{RESEARCH_DATA}
+
+PRODUCTO: {PRODUCT_NAME}
+BENEFICIOS: {PRODUCT_BENEFITS}
+TEMPLATE DE REFERENCIA: {TEMPLATE_NAME}
+
+Tu objetivo es generar un prompt de imagen para "Nano Banana Pro" que:
+1. Capture la esencia visual del template de referencia
+2. Integre el producto de forma natural
+3. Use las emociones y miedos del research para crear conexión
+4. Mantenga el estilo visual publicitario del template
+
+Genera SOLO el prompt de imagen, sin explicaciones. El prompt debe ser detallado, describiendo:
+- Composición y encuadre
+- Iluminación y atmósfera
+- Ubicación del producto
+- Elementos de fondo y contexto
+- Estilo fotográfico (profesional, 8k, etc.)`,
+
+  product_deep_research: `ROL Y OBJETIVO
+Sos un analista de marketing de clase mundial con un entendimiento profundo del comportamiento del comprador. Sos el mejor del mundo descubriendo las VERDADERAS motivaciones de la gente para comprar productos, más allá de las razones superficiales.
+
+Tu objetivo: Crear un perfil psicológico profundo del comprador ideal para {PRODUCT_NAME}.
+
+INFORMACIÓN DEL PRODUCTO:
+- Nombre: {PRODUCT_NAME}
+- Descripción/Web: {PRODUCT_DESCRIPTION}
+- Beneficios: {PRODUCT_BENEFITS}
+- Audiencia objetivo: {TARGET_AUDIENCE}
+
+INSTRUCCIONES:
+Analiza el producto y genera un JSON con la siguiente estructura exacta:
+
+{
+  "producto": "nombre del producto",
+  "perfil_demografico": {
+    "avatar": "nombre descriptivo del comprador ideal",
+    "descripcion": "descripción detallada del buyer persona",
+    "edad": "rango de edad",
+    "genero": "género predominante o ambos",
+    "ubicacion": "tipo de ubicación (urbana/rural)",
+    "nivel_socioeconomico": "nivel económico",
+    "ocupacion": "ocupaciones típicas"
+  },
+  "problema_central": {
+    "descripcion": "el problema principal que el producto resuelve",
+    "impacto_vida_diaria": "cómo afecta su día a día",
+    "emociones": ["emoción1", "emoción2", "emoción3"],
+    "frustraciones": ["frustración1", "frustración2"]
+  },
+  "miedos_oscuros": {
+    "descripcion": "los miedos profundos que tiene el comprador",
+    "miedos": ["miedo1", "miedo2", "miedo3", "miedo4", "miedo5"],
+    "consecuencias_temidas": "qué temen que pase si no actúan"
+  },
+  "deseos_profundos": {
+    "descripcion": "lo que realmente desean lograr",
+    "deseos": ["deseo1", "deseo2", "deseo3"],
+    "estado_ideal": "cómo se imaginan después de usar el producto"
+  },
+  "lenguaje": {
+    "palabras_clave": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+    "frases_comunes": ["frase que dirían", "otra frase"],
+    "tono": "formal/informal/técnico/emocional"
+  },
+  "objeciones": {
+    "principales": ["objeción1", "objeción2", "objeción3"],
+    "respuestas": ["respuesta a objeción1", "respuesta a objeción2"]
+  },
+  "triggers_compra": {
+    "emocionales": ["trigger1", "trigger2"],
+    "racionales": ["trigger1", "trigger2"],
+    "urgencia": "qué crea urgencia para comprar"
+  }
+}
+
+IMPORTANTE: Responde SOLO con el JSON, sin texto adicional ni explicaciones.`,
+
   product_analysis: `Act as an expert advertising copywriter and AI prompt engineer.
 Analyze the provided product information and image.
 Generate a highly detailed, professional image generation prompt optimized for "Nano Banana Pro".

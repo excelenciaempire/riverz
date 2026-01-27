@@ -37,35 +37,59 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
+    console.log('[RESEARCH] Starting for product:', product.name, 'ID:', productId);
+
     // Update status to processing
     await supabase
       .from('products')
       .update({ research_status: 'processing' })
       .eq('id', productId);
 
-    // Get prompt template
-    const promptTemplate = await getPromptText('product_deep_research');
+    // Get prompt template from DB or fallback
+    let promptTemplate: string;
+    try {
+      promptTemplate = await getPromptText('product_deep_research');
+      console.log('[RESEARCH] Got prompt template, length:', promptTemplate.length);
+    } catch (promptError) {
+      console.error('[RESEARCH] Error getting prompt:', promptError);
+      promptTemplate = `Analiza el producto "{PRODUCT_NAME}" con beneficios "{PRODUCT_BENEFITS}" y genera un perfil de comprador en formato JSON.`;
+    }
     
+    // Replace variables in the prompt
     const systemPrompt = promptTemplate
-      .replace('{PRODUCT_NAME}', product.name || '')
-      .replace('{PRODUCT_DESCRIPTION}', product.website || '')
-      .replace('{PRODUCT_BENEFITS}', product.benefits || '')
-      .replace('{TARGET_AUDIENCE}', 'General consumer interested in this product category');
+      .replace(/\{PRODUCT_NAME\}/g, product.name || 'Producto')
+      .replace(/\{PRODUCT_DESCRIPTION\}/g, product.website || product.name || '')
+      .replace(/\{PRODUCT_BENEFITS\}/g, product.benefits || '')
+      .replace(/\{TARGET_AUDIENCE\}/g, 'Consumidor interesado en este tipo de producto');
 
     const productImageUrl = product.images?.[0];
+    console.log('[RESEARCH] Product image:', productImageUrl ? 'Present' : 'None');
+    
+    // Build messages for Gemini
+    const userContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
+      { 
+        type: 'text', 
+        text: `Analiza este producto y genera el research profundo en formato JSON válido.
+        
+Producto: ${product.name}
+Beneficios: ${product.benefits || 'No especificados'}
+Web: ${product.website || 'No disponible'}
+
+Responde ÚNICAMENTE con el JSON, sin markdown ni explicaciones adicionales.` 
+      }
+    ];
+    
+    // Add product image if available
+    if (productImageUrl && productImageUrl.startsWith('http')) {
+      userContent.push({ 
+        type: 'image_url', 
+        image_url: { url: productImageUrl } 
+      });
+    }
     
     const messages: GeminiMessage[] = [
       { role: 'developer', content: systemPrompt },
-      {
-        role: 'user',
-        content: [
-          { 
-            type: 'text', 
-            text: `Analiza este producto y genera el research profundo en formato JSON. Producto: ${product.name}. Beneficios: ${product.benefits}` 
-          },
-          ...(productImageUrl ? [{ type: 'image_url', image_url: { url: productImageUrl } } as const] : [])
-        ]
-      }
+      { role: 'user', content: userContent }
     ];
 
     // Call Gemini
@@ -73,77 +97,86 @@ export async function POST(req: Request) {
     let researchData: any;
     
     try {
+      console.log('[RESEARCH] Calling Gemini 3 Pro...');
       researchResponse = await analyzeWithGemini3Pro(messages);
-      console.log('[RESEARCH] Gemini response length:', researchResponse?.length || 0);
+      console.log('[RESEARCH] Gemini response received, length:', researchResponse?.length || 0);
+      console.log('[RESEARCH] Response preview:', researchResponse?.substring(0, 300));
     } catch (geminiError: any) {
-      console.error('[RESEARCH] Gemini error:', geminiError);
+      console.error('[RESEARCH] Gemini API error:', geminiError.message);
       
-      // Create fallback research data based on product info
-      researchData = {
-        producto: product.name,
-        beneficios: product.benefits,
-        perfil_demografico: {
-          descripcion: `Personas interesadas en ${product.name}`,
-          edad: "25-55 años",
-          genero: "Ambos"
-        },
-        problema_central: {
-          descripcion: `Necesidad de ${product.benefits}`,
-          emociones: ["confianza", "bienestar", "satisfacción"]
-        },
-        miedos_oscuros: {
-          miedos: ["no obtener resultados", "perder dinero", "elegir mal"]
-        },
-        lenguaje: {
-          palabras_clave: product.benefits?.split(',').map((b: string) => b.trim()) || []
-        },
-        generated_fallback: true
-      };
-      
-      // Update product with fallback data
+      // Mark as failed instead of using fallback
       await supabase
         .from('products')
         .update({ 
-          research_data: researchData,
-          research_status: 'completed',
-          ai_prompt: researchData.perfil_demografico.descripcion
+          research_status: 'failed',
+          research_data: { error: geminiError.message, timestamp: new Date().toISOString() }
         })
         .eq('id', productId);
       
-      return NextResponse.json({ success: true, researchData, status: 'completed', fallback: true });
+      return NextResponse.json({ 
+        success: false, 
+        error: `Error de IA: ${geminiError.message}`,
+        status: 'failed' 
+      }, { status: 500 });
     }
 
     // Parse JSON from response
     try {
-      const jsonMatch = researchResponse.match(/\{[\s\S]*\}/);
+      // Remove markdown code blocks if present
+      let cleanedResponse = researchResponse
+        .replace(/```json\n?/gi, '')
+        .replace(/```\n?/gi, '')
+        .trim();
+      
+      // Try to extract JSON object
+      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         researchData = JSON.parse(jsonMatch[0]);
+        console.log('[RESEARCH] Successfully parsed JSON with keys:', Object.keys(researchData));
       } else {
-        throw new Error('No JSON found');
+        throw new Error('No JSON object found in response');
       }
-    } catch {
-      researchData = { raw_response: researchResponse, parse_error: true };
+    } catch (parseError: any) {
+      console.error('[RESEARCH] JSON parse error:', parseError.message);
+      console.log('[RESEARCH] Raw response:', researchResponse);
+      
+      // Store raw response for debugging
+      researchData = { 
+        raw_response: researchResponse, 
+        parse_error: true,
+        error_message: parseError.message
+      };
     }
 
-    // Update product
+    // Update product with research data
     const { error: updateError } = await supabase
       .from('products')
       .update({ 
         research_data: researchData,
-        research_status: 'completed',
-        ai_prompt: researchData.perfil_demografico?.descripcion || researchResponse.substring(0, 500)
+        research_status: researchData.parse_error ? 'partial' : 'completed',
+        ai_prompt: researchData.perfil_demografico?.descripcion || 
+                   researchData.perfil_demografico?.avatar ||
+                   `Research generado para ${product.name}`
       })
       .eq('id', productId);
 
     if (updateError) {
+      console.error('[RESEARCH] DB update error:', updateError);
       await supabase.from('products').update({ research_status: 'failed' }).eq('id', productId);
       throw updateError;
     }
 
-    return NextResponse.json({ success: true, researchData, status: 'completed' });
+    console.log('[RESEARCH] Completed successfully for product:', product.name);
+
+    return NextResponse.json({ 
+      success: true, 
+      researchData, 
+      status: researchData.parse_error ? 'partial' : 'completed',
+      hasParseError: !!researchData.parse_error
+    });
 
   } catch (error: any) {
-    console.error('Research error:', error);
+    console.error('[RESEARCH] Unexpected error:', error);
     return NextResponse.json({ error: error.message || 'Internal Error' }, { status: 500 });
   }
 }
@@ -175,8 +208,10 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       status: product.research_status || null,
-      hasResearch: !!product.research_data,
-      researchData: product.research_data
+      hasResearch: !!product.research_data && !product.research_data?.error,
+      researchData: product.research_data,
+      hasFallback: product.research_data?.generated_fallback || false,
+      hasParseError: product.research_data?.parse_error || false
     });
 
   } catch (error: any) {
