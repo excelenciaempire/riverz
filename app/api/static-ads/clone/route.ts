@@ -117,6 +117,9 @@ export async function POST(req: Request) {
     }
 
     // 3. Create Generation Records
+    // Include ALL product images (Nano Banana Pro supports up to 8 images per request)
+    const productImages = (product.images || []).slice(0, 7); // Max 7 product images (leave 1 slot for template)
+    
     const generations = await Promise.all(
       templates.map(async (template: any) => {
         const { data: generation, error: genError } = await supabase
@@ -134,7 +137,8 @@ export async function POST(req: Request) {
               templateThumbnail: template.thumbnail_url,
               productName: product.name,
               productBenefits: product.benefits,
-              productImage: product.images?.[0],
+              productImages: productImages, // ALL product images (max 7)
+              productImage: productImages[0] || null, // Primary image for backwards compat
               researchData: product.research_data || null,
               hasResearch: !!product.research_data
             },

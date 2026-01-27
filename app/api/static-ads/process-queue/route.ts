@@ -41,7 +41,19 @@ export async function POST(req: Request) {
     // Process Analysis (Gemini 3 Pro) - Generate optimized prompts
     for (const gen of pendingAnalysis) {
         try {
-            const { productId, productName, productImage, productBenefits, templateName, templateThumbnail, researchData } = gen.input_data;
+            const { 
+              productId, 
+              productName, 
+              productImage, 
+              productImages, // Array of all product images
+              productBenefits, 
+              templateName, 
+              templateThumbnail, 
+              researchData 
+            } = gen.input_data;
+            
+            // Use all product images, fallback to single image for backwards compat
+            const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
 
             // Determine which prompt to use based on whether we have research data
             let systemPrompt: string;
@@ -69,6 +81,24 @@ Usa el research para crear un ad que conecte emocionalmente.`;
                 userContent = `Product: ${productName}\nTemplate Style: ${templateName}`;
             }
 
+            // Build image content for Gemini (include multiple product images for better context)
+            const imageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
+                { type: 'text', text: userContent },
+            ];
+            
+            // Add product images (max 4 for Gemini analysis to keep context manageable)
+            const productImagesForAnalysis = allProductImages.slice(0, 4);
+            for (const imgUrl of productImagesForAnalysis) {
+                if (imgUrl) {
+                    imageContent.push({ type: 'image_url', image_url: { url: imgUrl } });
+                }
+            }
+            
+            // Add template image for style reference
+            if (templateThumbnail) {
+                imageContent.push({ type: 'image_url', image_url: { url: templateThumbnail } });
+            }
+            
             const messages: GeminiMessage[] = [
                 {
                     role: 'developer',
@@ -76,13 +106,7 @@ Usa el research para crear un ad que conecte emocionalmente.`;
                 },
                 {
                     role: 'user',
-                    content: [
-                        { type: 'text', text: userContent },
-                        // Include product image for visual reference
-                        ...(productImage ? [{ type: 'image_url', image_url: { url: productImage } } as const] : []),
-                        // Include template image for style reference
-                        ...(templateThumbnail ? [{ type: 'image_url', image_url: { url: templateThumbnail } } as const] : []),
-                    ]
+                    content: imageContent
                 }
             ];
 
@@ -93,17 +117,33 @@ Usa el research para crear un ad que conecte emocionalmente.`;
             );
             
             // Build Nano Banana Pro input with image references
+            // IMPORTANT: Nano Banana Pro supports MAX 8 images per request
+            // Priority: 1. Template (style reference), 2. Product images (content reference)
+            const imageInputs: string[] = [];
+            
+            // Add template first (most important for style)
+            if (templateThumbnail) {
+                imageInputs.push(templateThumbnail);
+            }
+            
+            // Add product images (up to remaining slots, max 7 product images)
+            const maxProductImages = 8 - imageInputs.length;
+            for (const imgUrl of allProductImages.slice(0, maxProductImages)) {
+                if (imgUrl && imageInputs.length < 8) {
+                    imageInputs.push(imgUrl);
+                }
+            }
+            
             const nanoBananaInput: NanoBananaInput = {
                 prompt: generatedPrompt,
-                // Include both product and template images for image-to-image generation
-                image_input: [
-                    ...(productImage ? [productImage] : []),
-                    ...(templateThumbnail ? [templateThumbnail] : [])
-                ].filter(Boolean),
+                // Include template + product images for image-to-image generation (max 8)
+                image_input: imageInputs.filter(Boolean),
                 aspect_ratio: '4:5', // Good for social media static ads
                 resolution: '2K',
                 output_format: 'png'
             };
+            
+            console.log(`[STATIC_ADS] Processing template ${templateName} with ${imageInputs.length} reference images`);
 
             // Start Generation Task with Nano Banana Pro (with rate limiting)
             const genTaskId = await withRateLimit(

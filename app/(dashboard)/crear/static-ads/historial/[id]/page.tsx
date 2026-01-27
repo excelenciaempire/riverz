@@ -116,25 +116,38 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         }),
       });
 
-      if (!startRes.ok) throw new Error('Error starting edit');
+      if (!startRes.ok) {
+        const errorData = await startRes.json().catch(() => ({}));
+        if (startRes.status === 402) {
+          throw new Error(`Créditos insuficientes. Necesitas ${errorData.required || 14} créditos.`);
+        }
+        throw new Error(errorData.error || 'Error starting edit');
+      }
+      
       const { taskId } = await startRes.json();
 
-      // 2. Poll Status
-      const poll = async () => {
+      // 2. Poll Status with timeout
+      const maxAttempts = 60; // Max 2 minutes (60 * 2 seconds)
+      let attempts = 0;
+      
+      const poll = async (): Promise<string> => {
+        attempts++;
+        if (attempts > maxAttempts) {
+          throw new Error('Timeout: La generación está tardando demasiado');
+        }
+        
         const statusRes = await fetch(`/api/ai/task-status/${taskId}`);
         if (!statusRes.ok) throw new Error('Error checking status');
         const statusData = await statusRes.json();
 
-        if (statusData.code === 200 && statusData.data.status === 'SUCCESS') {
-            // Assuming the result structure based on typical KIE response
-            // Adjust based on actual API response inspection if needed
-            return statusData.data.result?.[0]?.url || statusData.data.results?.[0]?.url; 
-        } else if (statusData.data.status === 'FAILED') {
-            throw new Error('Generation failed');
+        if (statusData.data?.status === 'SUCCESS' && statusData.data?.result) {
+          return statusData.data.result;
+        } else if (statusData.data?.status === 'FAILED') {
+          throw new Error('La generación falló');
         } else {
-            // Wait and retry
-            await new Promise(r => setTimeout(r, 2000));
-            return poll();
+          // Wait and retry
+          await new Promise(r => setTimeout(r, 2000));
+          return poll();
         }
       };
 
@@ -143,27 +156,42 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     onSuccess: (url) => {
       setGeneratedEditUrl(url);
       setIsGenerating(false);
-      toast.success('Edición completada');
+      toast.success('Edición completada - Revisa el resultado');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       setIsGenerating(false);
-      toast.error('Error al editar imagen');
+      toast.error(error.message || 'Error al editar imagen');
       console.error(error);
     }
   });
 
-  const handleSaveEdit = () => {
-    // In a real app, we would update the generation record in DB here.
-    // For now, let's pretend we saved it (or add an API route to update result_url).
-    // I'll skip DB update for brevity unless requested specifically to persist edits permanently
-    // The prompt implies "la ultima foto que el usuario deja es la que va a quedar guardada", so yes, persist.
+  const handleSaveEdit = async () => {
+    if (!editingImage || !generatedEditUrl) return;
     
-    // TODO: Call API to update generation.result_url
-    toast.success('Imagen guardada en el proyecto');
-    setEditingImage(null);
-    setGeneratedEditUrl(null);
-    setEditPrompt('');
-    queryClient.invalidateQueries({ queryKey: ['project', params.id] });
+    try {
+      // Save the edited image to the database
+      const response = await fetch('/api/ai/save-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          generationId: editingImage.id,
+          newImageUrl: generatedEditUrl
+        }),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Error al guardar');
+      }
+      
+      toast.success('Imagen guardada en el proyecto');
+      setEditingImage(null);
+      setGeneratedEditUrl(null);
+      setEditPrompt('');
+      queryClient.invalidateQueries({ queryKey: ['project', params.id] });
+    } catch (error: any) {
+      toast.error(error.message || 'Error al guardar la imagen');
+    }
   };
 
   if (isLoading) {
