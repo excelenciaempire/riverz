@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { createKieTask, getKieTaskResult, getKieModelConfig, analyzeWithGemini3Pro, GeminiMessage, NanoBananaInput } from '@/lib/kie-client';
+import { getPromptText } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -11,25 +12,6 @@ const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-// System prompt for Gemini to create image generation prompts
-const SYSTEM_PROMPT = `You are an expert AI image prompt engineer specializing in e-commerce advertising.
-
-Your task: Create a detailed image generation prompt for Nano Banana Pro AI model.
-
-You will receive:
-1. Product information (name, benefits)
-2. Product images (to understand the product visually)
-3. A template image (the style/layout to replicate)
-
-Your output must be a single, detailed prompt that:
-- Describes recreating the template's composition, lighting, colors, and style
-- Specifies placing the EXACT product from the product images into the scene
-- Maintains the template's advertising aesthetic (professional, clean, eye-catching)
-- Includes details about background, lighting, shadows, and product placement
-- Does NOT include any text overlays (those are added separately)
-
-Output ONLY the prompt text, nothing else. Write in English for best AI results.`;
 
 export async function POST(req: Request) {
   try {
@@ -87,46 +69,69 @@ export async function POST(req: Request) {
             const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
 
             console.log(`[STATIC_ADS] Analyzing template "${templateName}" for product "${productName}"`);
+            console.log(`[STATIC_ADS] Product images: ${allProductImages.length}, Template: ${templateThumbnail ? 'yes' : 'no'}`);
 
-            // STEP 2: Build Gemini request with product info + images
-            const userContent = `
-Product Name: ${productName}
-Product Benefits: ${productBenefits || 'Premium quality product'}
-Template Style: ${templateName}
+            // STEP 2: Get the system prompt from database (admin dashboard)
+            let systemPrompt = await getPromptText('static_ads_clone');
+            
+            // Inject product variables into the prompt
+            systemPrompt = systemPrompt
+                .replace(/\{PRODUCT_NAME\}/g, productName || 'Product')
+                .replace(/\{PRODUCT_BENEFITS\}/g, productBenefits || 'Premium quality product')
+                .replace(/\{TEMPLATE_NAME\}/g, templateName || 'Template')
+                .replace(/\{RESEARCH_DATA\}/g, researchData ? JSON.stringify(researchData, null, 2) : 'No research available');
 
-Analyze the product images and the template image. Create a prompt to generate a new ad image that:
-1. Matches the template's style, composition, and aesthetic
-2. Features the exact product shown in the product images
-3. Is suitable for social media advertising
+            // Build user message with complete product information
+            const userMessage = `
+INFORMACIÓN DEL PRODUCTO:
+- Nombre: ${productName}
+- Beneficios: ${productBenefits || 'Producto de alta calidad'}
+
+TEMPLATE DE REFERENCIA: ${templateName}
+
+IMÁGENES ADJUNTAS:
+- Las primeras ${Math.min(allProductImages.length, 4)} imágenes son del PRODUCTO
+- La última imagen es el TEMPLATE de referencia (el estilo a replicar)
+
+Tu tarea: Analiza visualmente las imágenes del producto y el template. Genera un prompt detallado para Nano Banana Pro que:
+1. Replique el ESTILO, composición, colores e iluminación del template
+2. Coloque el PRODUCTO exacto de las imágenes del producto en la escena
+3. Sea adecuado para publicidad en redes sociales
+
+Genera SOLO el prompt, sin explicaciones adicionales. El prompt debe estar en inglés para mejores resultados.
 `;
 
             // Build image content array for Gemini
             const imageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
-                { type: 'text', text: userContent },
+                { type: 'text', text: userMessage },
             ];
             
-            // Add product images (max 3 for Gemini to keep focused)
-            for (const imgUrl of allProductImages.slice(0, 3)) {
-                if (imgUrl) {
+            // Add product images (max 4 for Gemini analysis)
+            for (const imgUrl of allProductImages.slice(0, 4)) {
+                if (imgUrl && imgUrl.startsWith('http')) {
                     imageContent.push({ type: 'image_url', image_url: { url: imgUrl } });
+                    console.log(`[STATIC_ADS] Added product image: ${imgUrl.substring(0, 60)}...`);
                 }
             }
             
-            // Add template image for style reference
-            if (templateThumbnail) {
+            // Add template image for style reference (last, so Gemini knows it's the reference)
+            if (templateThumbnail && templateThumbnail.startsWith('http')) {
                 imageContent.push({ type: 'image_url', image_url: { url: templateThumbnail } });
+                console.log(`[STATIC_ADS] Added template image: ${templateThumbnail.substring(0, 60)}...`);
             }
             
             const messages: GeminiMessage[] = [
                 {
                     role: 'developer',
-                    content: SYSTEM_PROMPT
+                    content: systemPrompt
                 },
                 {
                     role: 'user',
                     content: imageContent
                 }
             ];
+            
+            console.log(`[STATIC_ADS] Sending to Gemini with ${imageContent.length - 1} images`);
 
             // STEP 3: Call Gemini to generate the optimized prompt
             const generatedPrompt = await analyzeWithGemini3Pro(messages);
