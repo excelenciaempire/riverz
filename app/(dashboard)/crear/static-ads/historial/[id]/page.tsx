@@ -40,19 +40,23 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     },
     refetchInterval: (query) => {
         const hasPending = query.state.data?.generations?.some(
-            (g: any) => g.status === 'pending_analysis' || g.status === 'analyzing' || g.status === 'generating' || g.status === 'processing'
+            (g: any) => ['pending_analysis', 'analyzing', 'generating', 'processing'].includes(g.status)
         );
-        return hasPending ? 3000 : false;
+        // Poll every 5 seconds if processing, otherwise stop
+        return hasPending ? 5000 : false;
     }
   });
   
   // Effect to trigger queue processing if needed
+  // Only call process-queue when there are items that need initial processing
   useEffect(() => {
     const processQueue = async () => {
-        const hasPending = project?.generations?.some(
-            (g: any) => g.status === 'pending_analysis' || g.status === 'generating'
+        // Only trigger processing for pending_analysis items
+        // Items in 'generating' status are already being processed by KIE.ai
+        const needsProcessing = project?.generations?.some(
+            (g: any) => g.status === 'pending_analysis'
         );
-        if (hasPending) {
+        if (needsProcessing) {
             try {
                 await fetch('/api/static-ads/process-queue', {
                     method: 'POST',
@@ -68,7 +72,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     if (project) {
         processQueue();
     }
-  }, [project, params.id]); // Add project as dependency to retry on each refresh if still pending
+  }, [project?.generations?.length, params.id]); // Only re-trigger when generation count changes
 
   const toggleSelection = (id: string) => {
     setSelectedImages((prev) =>

@@ -122,13 +122,13 @@ export default function StaticAdsPage() {
     };
   }, []);
 
-  // Poll for progress
+  // Poll for progress - calls process-queue to advance the pipeline
   const startPolling = (projectId: string) => {
     if (pollingRef.current) clearInterval(pollingRef.current);
     
     const poll = async () => {
       try {
-        // Call process queue to move things forward
+        // Call process queue to advance items in the pipeline
         const processRes = await fetch('/api/static-ads/process-queue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -149,9 +149,6 @@ export default function StaticAdsPage() {
               }, 1500);
             }
           }
-        } else if (processRes.status === 429) {
-          // Rate limited - slow down polling
-          console.log('Rate limited, slowing down...');
         }
       } catch (error) {
         console.error('Polling error:', error);
@@ -161,8 +158,9 @@ export default function StaticAdsPage() {
     // Initial call
     poll();
     
-    // Poll every 3 seconds (respects rate limit)
-    pollingRef.current = setInterval(poll, 3000);
+    // Poll every 5 seconds to avoid excessive API calls
+    // Each poll processes ONE item, so larger batches take longer
+    pollingRef.current = setInterval(poll, 5000);
   };
 
   // Clone Mutation
