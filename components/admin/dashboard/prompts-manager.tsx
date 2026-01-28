@@ -25,11 +25,11 @@ interface AIPrompt {
 }
 
 const CATEGORIES = [
-  { value: 'image_generation', label: 'Generación de Imágenes' },
-  { value: 'image_editing', label: 'Edición de Imágenes' },
-  { value: 'analysis', label: 'Análisis' },
-  { value: 'copywriting', label: 'Copywriting' },
-  { value: 'other', label: 'Otro' }
+  { value: 'product_research', label: '🔬 Research de Producto', description: 'Prompts para analizar productos' },
+  { value: 'template_analysis', label: '🎨 Análisis de Plantillas', description: 'Prompts para analizar estilos visuales' },
+  { value: 'prompt_generation', label: '✨ Generación de Prompts', description: 'Prompts para crear prompts de imágenes' },
+  { value: 'image_generation', label: '🖼️ Generación de Imágenes', description: 'Prompts directos para generar imágenes' },
+  { value: 'other', label: '📁 Otros', description: 'Prompts de uso general' }
 ];
 
 export function PromptsManager() {
@@ -207,9 +207,9 @@ export function PromptsManager() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Gestión de Prompts IA</h2>
+          <h2 className="text-2xl font-bold text-white">Prompts de IA</h2>
           <p className="mt-1 text-sm text-gray-400">
-            Configura y personaliza los prompts del sistema para cada proceso de IA
+            Configura los prompts del sistema para cada etapa de generación
           </p>
         </div>
         <Button 
@@ -219,6 +219,45 @@ export function PromptsManager() {
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Prompt
         </Button>
+      </div>
+
+      {/* Info Panel - Pipeline Explanation */}
+      <div className="rounded-xl border border-gray-800 bg-gradient-to-r from-[#141414] to-[#1a1a1a] p-5">
+        <h3 className="text-sm font-medium text-gray-300 mb-3">📋 Flujo de Static Ads</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
+            <span className="text-lg">1️⃣</span>
+            <div>
+              <p className="font-medium text-white">Research</p>
+              <p className="text-gray-500">Claude Sonnet 4.5</p>
+              <code className="text-brand-accent/80 text-[10px]">product_deep_research</code>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
+            <span className="text-lg">2️⃣</span>
+            <div>
+              <p className="font-medium text-white">Análisis Template</p>
+              <p className="text-gray-500">Gemini 3 Pro</p>
+              <code className="text-brand-accent/80 text-[10px]">template_analysis</code>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
+            <span className="text-lg">3️⃣</span>
+            <div>
+              <p className="font-medium text-white">Genera Prompt</p>
+              <p className="text-gray-500">Claude Sonnet 4.5</p>
+              <code className="text-brand-accent/80 text-[10px]">static_ads_prompt_generation</code>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
+            <span className="text-lg">4️⃣</span>
+            <div>
+              <p className="font-medium text-white">Crea Imagen</p>
+              <p className="text-gray-500">Nano Banana Pro</p>
+              <code className="text-gray-500 text-[10px]">Sin prompt configurable</code>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Grouped by Category */}

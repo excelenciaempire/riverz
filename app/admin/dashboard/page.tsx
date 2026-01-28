@@ -8,12 +8,10 @@ import { UsersTable } from '@/components/admin/dashboard/users-table';
 import { GenerationsTable } from '@/components/admin/dashboard/generations-table';
 import { TemplatesManager } from '@/components/admin/dashboard/templates-manager';
 import { AvatarsManager } from '@/components/admin/dashboard/avatars-manager';
-import { APIConfigManager } from '@/components/admin/dashboard/api-config-manager';
 import { LogsViewer } from '@/components/admin/dashboard/logs-viewer';
 import { CreditsManager } from '@/components/admin/dashboard/credits-manager';
 import { PricingConfig } from '@/components/admin/dashboard/pricing-config';
 import { ProductsManager } from '@/components/admin/dashboard/products-manager';
-import { KieConfigManager } from '@/components/admin/dashboard/kie-config-manager';
 import { PromptsManager } from '@/components/admin/dashboard/prompts-manager';
 import { Loading } from '@/components/admin/ui/loading';
 
@@ -55,15 +53,13 @@ export default function DashboardPage() {
   const tabs = [
     { id: 'overview', name: 'Resumen' },
     { id: 'users', name: 'Usuarios' },
-    { id: 'products', name: 'Productos e IA' },
-    { id: 'kie-config', name: 'Config KIE AI' },
+    { id: 'products', name: 'Productos' },
     { id: 'prompts', name: 'Prompts IA' },
     { id: 'generations', name: 'Generaciones' },
     { id: 'credits', name: 'Créditos' },
     { id: 'pricing', name: 'Precios' },
     { id: 'templates', name: 'Plantillas' },
     { id: 'avatars', name: 'Avatares' },
-    { id: 'api-config', name: 'APIs' },
     { id: 'logs', name: 'Logs' },
   ];
 
@@ -99,14 +95,12 @@ export default function DashboardPage() {
           {activeTab === 'overview' && <DashboardStats />}
           {activeTab === 'users' && <UsersTable />}
           {activeTab === 'products' && <ProductsManager />}
-          {activeTab === 'kie-config' && <KieConfigManager />}
           {activeTab === 'prompts' && <PromptsManager />}
           {activeTab === 'generations' && <GenerationsTable />}
           {activeTab === 'credits' && <CreditsManager />}
           {activeTab === 'pricing' && <PricingConfig />}
           {activeTab === 'templates' && <TemplatesManager />}
           {activeTab === 'avatars' && <AvatarsManager />}
-          {activeTab === 'api-config' && <APIConfigManager />}
           {activeTab === 'logs' && <LogsViewer />}
         </div>
       </div>

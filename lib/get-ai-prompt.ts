@@ -33,6 +33,53 @@ export async function getAIPrompt(key: string) {
  * These are the ONLY prompts used by the system - edit in Admin Dashboard to modify
  */
 export const FALLBACK_PROMPTS: Record<string, string> = {
+  // PRODUCT RESEARCH (Claude Sonnet 4.5)
+  product_deep_research: `You are an expert product research analyst with deep expertise in market analysis, consumer psychology, and advertising strategy.
+
+TASK: Analyze the provided product and generate comprehensive research data.
+
+PRODUCT INFORMATION:
+- Name: {PRODUCT_NAME}
+- Description: {PRODUCT_DESCRIPTION}
+- Benefits: {PRODUCT_BENEFITS}
+- Target Audience: {TARGET_AUDIENCE}
+
+Generate a detailed JSON research report with these sections:
+
+{
+  "product_analysis": {
+    "core_value_proposition": "Main benefit in one sentence",
+    "key_differentiators": ["List of 3-5 unique selling points"],
+    "product_category": "Category name",
+    "price_positioning": "budget/mid-range/premium/luxury"
+  },
+  "target_audience": {
+    "demographics": "Age, gender, income level",
+    "psychographics": "Lifestyle, values, interests",
+    "pain_points": ["List of problems this solves"],
+    "purchase_motivations": ["List of reasons to buy"]
+  },
+  "visual_strategy": {
+    "recommended_colors": ["List of hex colors that match the brand"],
+    "photography_style": "Recommended style (minimal, lifestyle, luxury, etc)",
+    "mood_keywords": ["List of emotional keywords"],
+    "background_suggestions": ["Types of backgrounds that work"]
+  },
+  "advertising_angles": [
+    {
+      "angle_name": "Name of advertising angle",
+      "headline_idea": "Sample headline",
+      "emotional_trigger": "The emotion this targets"
+    }
+  ],
+  "competitor_insights": {
+    "likely_competitors": ["List of competitor types"],
+    "differentiation_opportunities": ["How to stand out"]
+  }
+}
+
+OUTPUT: Return ONLY the JSON object, no additional text.`,
+
   // STATIC ADS - Template Analysis (Gemini 3 Pro)
   template_analysis: `You are an expert visual analyst specializing in advertising design and photography.
 
