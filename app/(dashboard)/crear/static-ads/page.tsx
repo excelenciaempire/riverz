@@ -197,9 +197,9 @@ export default function StaticAdsPage() {
     // Initial call
     poll();
     
-    // Poll every 5 seconds to avoid excessive API calls
+    // Poll every 8 seconds to reduce API calls
     // Each poll processes ONE item, so larger batches take longer
-    pollingRef.current = setInterval(poll, 5000);
+    pollingRef.current = setInterval(poll, 8000);
   };
 
   // Clone Mutation

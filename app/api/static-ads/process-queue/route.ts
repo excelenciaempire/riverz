@@ -17,10 +17,12 @@ const supabaseAdmin = createClient(
  * Async Pipeline for Static Ads Generation
  * 
  * Status Flow (each step < 60 seconds):
- * 1. pending_analysis → Process with Gemini (direct/sync)
- * 2. pending_generation → Start Nano Banana task (save generationTaskId)
+ * 1. pending_analysis → Lock to 'analyzing' → Process with Gemini (direct/sync) → pending_generation
+ * 2. pending_generation → Lock to 'generating' → Start Nano Banana task
  * 3. generating → Poll Nano Banana result
  * 4. completed → Done!
+ * 
+ * Note: Locks prevent duplicate processing when multiple polling requests occur
  */
 
 export async function POST(req: Request) {
@@ -52,10 +54,28 @@ export async function POST(req: Request) {
     // ============================================
     for (const gen of pendingAnalysis) {
       try {
+        // Lock the generation FIRST to prevent duplicate processing
+        const { data: lockData, error: lockError } = await supabaseAdmin
+          .from('generations')
+          .update({ 
+            status: 'analyzing',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', gen.id)
+          .eq('status', 'pending_analysis')
+          .select()
+          .single();
+
+        // If lock failed, skip (another process is handling it)
+        if (lockError || !lockData) {
+          console.log(`[STEP1] Skipping ${gen.id} - already locked or not found`);
+          continue;
+        }
+
         const { productName, productImages, productImage, productBenefits, templateName, templateThumbnail } = gen.input_data;
         const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
 
-        console.log(`[STEP1] Starting Gemini analysis for "${templateName}"`);
+        console.log(`[STEP1] Starting Gemini analysis for "${templateName}" (${gen.id})`);
 
         // Get system prompt
         let systemPrompt = await getPromptText('static_ads_clone');
@@ -225,7 +245,7 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
       .select('status')
       .eq('project_id', projectId);
 
-    const counts = { pending_analysis: 0, pending_generation: 0, generating: 0, completed: 0, failed: 0 };
+    const counts = { pending_analysis: 0, analyzing: 0, pending_generation: 0, generating: 0, completed: 0, failed: 0 };
     allGens?.forEach((g: any) => {
       if (counts.hasOwnProperty(g.status)) {
         counts[g.status as keyof typeof counts]++;
@@ -235,7 +255,7 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
     const total = allGens?.length || 0;
     const completed = counts.completed;
     const failed = counts.failed;
-    const inProgress = counts.pending_analysis + counts.pending_generation + counts.generating;
+    const inProgress = counts.pending_analysis + counts.analyzing + counts.pending_generation + counts.generating;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return NextResponse.json({
