@@ -81,19 +81,91 @@ export async function convertImagesToBase64(urls: string[]): Promise<string[]> {
   return results;
 }
 
-// --- Gemini 3 Pro (Analysis) ---
+// --- Gemini 3 Pro (Analysis - Async Job Based) ---
 
+/**
+ * Creates an async Gemini task using KIE.ai jobs system
+ * Returns taskId immediately, result is fetched via polling
+ */
+export async function createGeminiTask(messages: GeminiMessage[]): Promise<string> {
+  try {
+    const requestBody = {
+      model: 'gemini-3-pro-preview',
+      input: {
+        messages,
+        stream: false,
+      },
+    };
+    
+    console.log('[GEMINI] Creating async task...');
+    
+    const response = await fetch(`${KIE_BASE_URL}/api/v1/jobs/createTask`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${KIE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Gemini Task Error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.code !== 200) {
+      throw new Error(`Gemini Task Error: ${data.msg}`);
+    }
+    
+    console.log('[GEMINI] Task created:', data.data.taskId);
+    return data.data.taskId;
+  } catch (error) {
+    console.error('Error creating Gemini task:', error);
+    throw error;
+  }
+}
+
+/**
+ * Gets Gemini task result - extracts the text response
+ */
+export async function getGeminiTaskResult(taskId: string): Promise<KieTaskResult & { text?: string }> {
+  const result = await getKieTaskResult(taskId);
+  
+  if (result.status === 'SUCCESS' && result.result) {
+    // Extract text from Gemini response
+    let text = '';
+    
+    if (typeof result.result === 'string') {
+      text = result.result;
+    } else if (result.result.choices?.[0]?.message?.content) {
+      text = result.result.choices[0].message.content;
+    } else if (result.result.response) {
+      text = result.result.response;
+    } else if (result.result.content) {
+      text = result.result.content;
+    } else if (result.result.text) {
+      text = result.result.text;
+    }
+    
+    return { ...result, text };
+  }
+  
+  return result;
+}
+
+// Keep old function for backwards compatibility but mark as deprecated
+/** @deprecated Use createGeminiTask + getGeminiTaskResult for async processing */
 export async function analyzeWithGemini3Pro(messages: GeminiMessage[]) {
   try {
-    // Build request body without response_format for more flexible responses
     const requestBody = {
       model: 'gemini-3-pro',
       messages,
       stream: false,
     };
     
-    console.log('[GEMINI] Sending request to:', `${KIE_BASE_URL}/gemini-3-pro/v1/chat/completions`);
-    console.log('[GEMINI] Messages:', JSON.stringify(messages, null, 2).substring(0, 500));
+    console.log('[GEMINI] Sending SYNC request (deprecated)...');
     
     const response = await fetch(`${KIE_BASE_URL}/gemini-3-pro/v1/chat/completions`, {
       method: 'POST',
@@ -110,29 +182,14 @@ export async function analyzeWithGemini3Pro(messages: GeminiMessage[]) {
     }
 
     const data = await response.json();
-    console.log('[GEMINI] Response:', JSON.stringify(data, null, 2));
     
-    // Handle different response formats
     if (data.choices && data.choices[0]?.message?.content) {
       return data.choices[0].message.content;
     }
+    if (data.response) return data.response;
+    if (data.content) return data.content;
+    if (typeof data === 'string') return data;
     
-    // Alternative format
-    if (data.response) {
-      return data.response;
-    }
-    
-    // Direct content
-    if (data.content) {
-      return data.content;
-    }
-    
-    // If data itself is the message
-    if (typeof data === 'string') {
-      return data;
-    }
-    
-    console.error('[GEMINI] Unexpected response format:', data);
     throw new Error('Unexpected Gemini response format');
   } catch (error) {
     console.error('Error calling Gemini 3 Pro:', error);

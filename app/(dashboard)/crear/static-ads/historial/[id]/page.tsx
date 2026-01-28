@@ -40,21 +40,19 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     },
     refetchInterval: (query) => {
         const hasPending = query.state.data?.generations?.some(
-            (g: any) => ['pending_analysis', 'analyzing', 'generating', 'processing'].includes(g.status)
+            (g: any) => ['pending_analysis', 'analyzing', 'pending_generation', 'generating', 'processing'].includes(g.status)
         );
-        // Poll every 5 seconds if processing, otherwise stop
-        return hasPending ? 5000 : false;
+        // Poll every 4 seconds if processing
+        return hasPending ? 4000 : false;
     }
   });
   
   // Effect to trigger queue processing if needed
-  // Only call process-queue when there are items that need initial processing
   useEffect(() => {
     const processQueue = async () => {
-        // Only trigger processing for pending_analysis items
-        // Items in 'generating' status are already being processed by KIE.ai
+        // Trigger processing for any non-terminal status
         const needsProcessing = project?.generations?.some(
-            (g: any) => g.status === 'pending_analysis'
+            (g: any) => ['pending_analysis', 'analyzing', 'pending_generation', 'generating'].includes(g.status)
         );
         if (needsProcessing) {
             try {
@@ -72,7 +70,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     if (project) {
         processQueue();
     }
-  }, [project?.generations?.length, params.id]); // Only re-trigger when generation count changes
+  }, [project, params.id]);
 
   const toggleSelection = (id: string) => {
     setSelectedImages((prev) =>
