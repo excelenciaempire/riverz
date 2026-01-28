@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
-function getSupabaseAdmin() {
-  return createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(req: Request) {
   try {
@@ -42,10 +39,8 @@ export async function POST(req: Request) {
       return new NextResponse('Missing projectName', { status: 400 });
     }
 
-    const supabase = await createClient();
-
     // 1. Fetch Product Data
-    const { data: product, error: prodError } = await supabase
+    const { data: product, error: prodError } = await supabaseAdmin
       .from('products')
       .select('*')
       .eq('id', productId)
@@ -56,7 +51,7 @@ export async function POST(req: Request) {
     }
 
     // 2. Fetch Templates Data
-    const { data: templates, error: templError } = await supabase
+    const { data: templates, error: templError } = await supabaseAdmin
       .from('templates')
       .select('*')
       .in('id', templateIds);
@@ -71,7 +66,6 @@ export async function POST(req: Request) {
     const totalCost = templateIds.length * COST_PER_AD;
     
     // Check user's internal credits
-    const supabaseAdmin = getSupabaseAdmin();
     const { data: userData, error: userError } = await supabaseAdmin
       .from('user_credits')
       .select('credits')
@@ -105,7 +99,7 @@ export async function POST(req: Request) {
     }
 
     // Create Project
-    const { data: project, error: projectError } = await supabase
+    const { data: project, error: projectError } = await supabaseAdmin
       .from('projects')
       .insert({
         clerk_user_id: userId,
@@ -126,7 +120,7 @@ export async function POST(req: Request) {
     
     const generations = await Promise.all(
       templates.map(async (template: any) => {
-        const { data: generation, error: genError } = await supabase
+        const { data: generation, error: genError } = await supabaseAdmin
           .from('generations')
           .insert({
             clerk_user_id: userId,
