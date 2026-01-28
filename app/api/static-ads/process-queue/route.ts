@@ -1,13 +1,24 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { createKieTask, getKieTaskResult, getKieModelConfig, analyzeWithGemini3Pro, GeminiMessage, NanoBananaInput } from '@/lib/kie-client';
-import { getPromptText } from '@/lib/get-ai-prompt';
-import { withRateLimit, getRecommendedBatchSize, checkRateLimit } from '@/lib/rate-limiter';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const DEFAULT_PROMPT = `You are an expert AI Prompt Engineer for e-commerce advertising.
+Your goal is to write a perfect image generation prompt for the "Nano Banana Pro" model.
+You have a Product Image and a Template Image (style reference).
+You must create a prompt that places the Product into the context/style of the Template.
+Replace the generic product in the template with the specific User Product.
+Keep the text overlay style from the template in mind (describe where text space should be), but focus on the visual image.
+Output ONLY the prompt text.`;
 
 export async function POST(req: Request) {
   try {
@@ -17,12 +28,10 @@ export async function POST(req: Request) {
     const { projectId } = await req.json();
     if (!projectId) return new NextResponse('Missing projectId', { status: 400 });
 
-    const supabase = await createClient();
-
     // Fetch generations that need processing
     // 1. pending_analysis: Needs Gemini 3 Pro to generate prompt
     // 2. generating: Needs Nano Banana polling
-    const { data: generations, error: genError } = await supabase
+    const { data: generations, error: genError } = await supabaseAdmin
       .from('generations')
       .select('*')
       .eq('project_id', projectId)
@@ -33,11 +42,8 @@ export async function POST(req: Request) {
     const { generationModel } = await getKieModelConfig();
     const updates = [];
 
-    // Check rate limit and adjust batch size dynamically
-    const recommendedBatch = Math.min(getRecommendedBatchSize(), 5); // Max 5 per request for stability
-    
-    // Process 'pending_analysis' items based on rate limit
-    const pendingAnalysis = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, recommendedBatch || 2);
+    // Process up to 3 items per request
+    const pendingAnalysis = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, 3);
     const generating = generations.filter((g: any) => g.status === 'generating');
 
     // Process Analysis (Gemini 3 Pro) - Generate optimized prompts
@@ -57,31 +63,9 @@ export async function POST(req: Request) {
             // Use all product images, fallback to single image for backwards compat
             const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
 
-            // Determine which prompt to use based on whether we have research data
-            let systemPrompt: string;
-            let userContent: string;
-
-            if (researchData && Object.keys(researchData).length > 0) {
-                // Use the enhanced prompt with research data
-                systemPrompt = await getPromptText('static_ads_clone_with_research');
-                
-                // Replace variables in the prompt
-                systemPrompt = systemPrompt
-                    .replace('{RESEARCH_DATA}', JSON.stringify(researchData, null, 2))
-                    .replace('{PRODUCT_NAME}', productName || '')
-                    .replace('{PRODUCT_BENEFITS}', productBenefits || '')
-                    .replace('{TEMPLATE_NAME}', templateName || '');
-
-                userContent = `Genera el prompt de imagen para Nano Banana Pro. 
-Producto: ${productName}
-Template de referencia: ${templateName}
-Usa el research para crear un ad que conecte emocionalmente.`;
-
-            } else {
-                // Fallback to basic prompt without research
-                systemPrompt = await getPromptText('static_ads_clone');
-                userContent = `Product: ${productName}\nTemplate Style: ${templateName}`;
-            }
+            // Use default prompt
+            const systemPrompt = DEFAULT_PROMPT;
+            const userContent = `Product: ${productName}\nTemplate Style: ${templateName}`;
 
             // Build image content for Gemini (include multiple product images for better context)
             const imageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
@@ -112,11 +96,8 @@ Usa el research para crear un ad que conecte emocionalmente.`;
                 }
             ];
 
-            // Generate the optimized prompt using Gemini 3 Pro (with rate limiting)
-            const generatedPrompt = await withRateLimit(
-                () => analyzeWithGemini3Pro(messages),
-                3 // Max 3 retries
-            );
+            // Generate the optimized prompt using Gemini 3 Pro
+            const generatedPrompt = await analyzeWithGemini3Pro(messages);
             
             // Build Nano Banana Pro input with image references
             // IMPORTANT: Nano Banana Pro supports MAX 8 images per request
@@ -147,14 +128,11 @@ Usa el research para crear un ad que conecte emocionalmente.`;
             
             console.log(`[STATIC_ADS] Processing template ${templateName} with ${imageInputs.length} reference images`);
 
-            // Start Generation Task with Nano Banana Pro (with rate limiting)
-            const genTaskId = await withRateLimit(
-                () => createKieTask(generationModel, nanoBananaInput),
-                3 // Max 3 retries
-            );
+            // Start Generation Task with Nano Banana Pro
+            const genTaskId = await createKieTask(generationModel, nanoBananaInput);
 
             updates.push(
-                supabase.from('generations').update({
+                supabaseAdmin.from('generations').update({
                     status: 'generating',
                     input_data: { 
                         ...gen.input_data, 
@@ -167,7 +145,7 @@ Usa el research para crear un ad que conecte emocionalmente.`;
 
         } catch (error: any) {
             console.error('Analysis failed for gen', gen.id, error);
-            updates.push(supabase.from('generations').update({ 
+            updates.push(supabaseAdmin.from('generations').update({ 
                 status: 'failed', 
                 error_message: `Analysis failed: ${error.message}` 
             }).eq('id', gen.id));
@@ -201,20 +179,20 @@ Usa el research para crear un ad que conecte emocionalmente.`;
                 
                 if (resultUrl) {
                     updates.push(
-                        supabase.from('generations').update({
+                        supabaseAdmin.from('generations').update({
                             status: 'completed',
                             result_url: resultUrl
                         }).eq('id', gen.id)
                     );
                 } else {
                     console.error('No URL found in result:', taskResult.result);
-                    updates.push(supabase.from('generations').update({ 
+                    updates.push(supabaseAdmin.from('generations').update({ 
                         status: 'failed', 
                         error_message: 'No result URL found' 
                     }).eq('id', gen.id));
                 }
             } else if (taskResult.status === 'FAILED') {
-                updates.push(supabase.from('generations').update({ 
+                updates.push(supabaseAdmin.from('generations').update({ 
                     status: 'failed', 
                     error_message: taskResult.error || 'Generation failed' 
                 }).eq('id', gen.id));
@@ -228,7 +206,7 @@ Usa el research para crear un ad que conecte emocionalmente.`;
     await Promise.all(updates);
 
     // Count total statuses for better progress reporting
-    const { data: allGens } = await supabase
+    const { data: allGens } = await supabaseAdmin
       .from('generations')
       .select('status')
       .eq('project_id', projectId);
@@ -252,9 +230,6 @@ Usa el research para crear un ad que conecte emocionalmente.`;
     const inProgress = statusCounts.pending_analysis + statusCounts.generating;
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    // Check rate limit status
-    const rateLimitStatus = checkRateLimit();
-
     return NextResponse.json({ 
         success: true, 
         processedAnalysis: pendingAnalysis.length,
@@ -266,10 +241,6 @@ Usa el research para crear un ad que conecte emocionalmente.`;
           inProgress,
           percentage: progress,
           isComplete: inProgress === 0 && total > 0
-        },
-        rateLimit: {
-          canProceed: rateLimitStatus.canProceed,
-          waitMs: rateLimitStatus.waitMs
         }
     });
 
