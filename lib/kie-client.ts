@@ -199,17 +199,21 @@ export async function analyzeWithClaudeSonnet(messages: GeminiMessage[]) {
   }
 }
 
-// Keep old function for backwards compatibility but mark as deprecated
-/** @deprecated Use createGeminiTask + getGeminiTaskResult for async processing */
+// --- Gemini 3 Pro (Multimodal Image Analysis - Sync) ---
+
+/**
+ * Analyzes images with Gemini 3 Pro (supports multimodal: images + text)
+ * Use this for analyzing template images, product images, etc.
+ * Gemini 3 Pro has superior image understanding capabilities
+ */
 export async function analyzeWithGemini3Pro(messages: GeminiMessage[]) {
   try {
     const requestBody = {
-      model: 'gemini-3-pro',
       messages,
       stream: false,
     };
     
-    console.log('[GEMINI] Sending SYNC request (deprecated)...');
+    console.log('[GEMINI] Sending request to Gemini 3 Pro...');
     
     const response = await fetch(`${KIE_BASE_URL}/gemini-3-pro/v1/chat/completions`, {
       method: 'POST',
@@ -228,6 +232,7 @@ export async function analyzeWithGemini3Pro(messages: GeminiMessage[]) {
     const data = await response.json();
     
     if (data.choices && data.choices[0]?.message?.content) {
+      console.log('[GEMINI] Response received successfully');
       return data.choices[0].message.content;
     }
     if (data.response) return data.response;

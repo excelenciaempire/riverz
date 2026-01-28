@@ -32,8 +32,39 @@ export async function getAIPrompt(key: string) {
  * Fallback prompts if database is unavailable
  * These are the ONLY prompts used by the system - edit in Admin Dashboard to modify
  */
-export const FALLBACK_PROMPTS = {
-  // STATIC ADS - Main prompt for cloning templates with products
+export const FALLBACK_PROMPTS: Record<string, string> = {
+  // STATIC ADS - Template Analysis (Gemini 3 Pro)
+  template_analysis: `You are an expert visual analyst specializing in advertising design and photography.
+
+ANALYZE the provided template image and extract:
+
+1. **COMPOSITION**: Layout structure, product placement, visual hierarchy
+2. **LIGHTING**: Type, direction, intensity, color temperature
+3. **COLOR PALETTE**: Dominant colors, accents, mood
+4. **STYLE**: Photography style, post-processing effects
+5. **BACKGROUND**: Type, elements, depth
+
+OUTPUT: Return a structured JSON with these 5 categories. Be specific and technical.`,
+
+  // STATIC ADS - Prompt Generation (Claude)
+  static_ads_prompt_generation: `You are an expert prompt engineer for AI image generation, specifically for Nano Banana Pro model.
+
+You will receive:
+1. PRODUCT INFORMATION: Name, benefits, and research data
+2. PRODUCT IMAGES: Visual references of the actual product
+3. TEMPLATE ANALYSIS: Detailed visual analysis of the target style
+
+Create a SINGLE, detailed image generation prompt that:
+- RECREATES the template style (composition, lighting, colors)
+- FEATURES the specific product from the images
+- Includes: 8K resolution, professional product photography
+- NO text, logos, or typography
+
+OUTPUT: Single paragraph prompt in English. Start with main subject, then composition, lighting, background, technical specs.
+
+OUTPUT ONLY THE PROMPT TEXT, nothing else.`,
+
+  // STATIC ADS - Legacy prompt (for backwards compatibility)
   static_ads_clone: `You are an expert AI image prompt engineer for e-commerce advertising. Your specialty is creating detailed prompts for the Nano Banana Pro image generation model.
 
 TASK: Create a single, highly detailed image generation prompt.

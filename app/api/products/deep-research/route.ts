@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { analyzeWithGemini3Pro, GeminiMessage } from '@/lib/kie-client';
+import { analyzeWithClaudeSonnet, GeminiMessage } from '@/lib/kie-client';
 import { getPromptText } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
@@ -69,8 +69,8 @@ export async function POST(req: Request) {
       }
     ];
 
-    // 6. Call Gemini 3 Pro for deep research
-    const researchResponse = await analyzeWithGemini3Pro(messages);
+    // 6. Call Claude Sonnet 4.5 for deep research (multimodal - can see product images)
+    const researchResponse = await analyzeWithClaudeSonnet(messages);
 
     // 7. Parse JSON response
     let researchData;
