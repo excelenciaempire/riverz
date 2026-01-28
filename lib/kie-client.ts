@@ -155,6 +155,50 @@ export async function getGeminiTaskResult(taskId: string): Promise<KieTaskResult
   return result;
 }
 
+// --- Claude Sonnet 4.5 (Multimodal Analysis - Sync) ---
+
+/**
+ * Analyzes content with Claude Sonnet 4.5 (supports images + text)
+ * This is the recommended model for multimodal analysis in Kie.ai
+ */
+export async function analyzeWithClaudeSonnet(messages: GeminiMessage[]) {
+  try {
+    const requestBody = {
+      messages,
+      stream: false,
+    };
+    
+    console.log('[CLAUDE] Sending request to Claude Sonnet 4.5...');
+    
+    const response = await fetch(`${KIE_BASE_URL}/claude-sonnet-4-5/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${KIE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Claude API Error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    // Extract text from Claude response (OpenAI-compatible format)
+    if (data.choices && data.choices[0]?.message?.content) {
+      console.log('[CLAUDE] Response received successfully');
+      return data.choices[0].message.content;
+    }
+    
+    throw new Error('Unexpected Claude response format');
+  } catch (error) {
+    console.error('Error calling Claude Sonnet 4.5:', error);
+    throw error;
+  }
+}
+
 // Keep old function for backwards compatibility but mark as deprecated
 /** @deprecated Use createGeminiTask + getGeminiTaskResult for async processing */
 export async function analyzeWithGemini3Pro(messages: GeminiMessage[]) {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
-import { createKieTask, getKieTaskResult, getKieModelConfig, analyzeWithGemini3Pro, GeminiMessage, NanoBananaInput, imageUrlToBase64 } from '@/lib/kie-client';
+import { createKieTask, getKieTaskResult, getKieModelConfig, analyzeWithClaudeSonnet, GeminiMessage, NanoBananaInput, imageUrlToBase64 } from '@/lib/kie-client';
 import { getPromptText } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
@@ -17,12 +17,13 @@ const supabaseAdmin = createClient(
  * Async Pipeline for Static Ads Generation
  * 
  * Status Flow (each step < 60 seconds):
- * 1. pending_analysis → Lock to 'analyzing' → Process with Gemini (direct/sync) → pending_generation
+ * 1. pending_analysis → Lock to 'analyzing' → Process with Claude Sonnet 4.5 (multimodal) → pending_generation
  * 2. pending_generation → Lock to 'generating' → Start Nano Banana task
  * 3. generating → Poll Nano Banana result
  * 4. completed → Done!
  * 
- * Note: Locks prevent duplicate processing when multiple polling requests occur
+ * Note: Claude Sonnet 4.5 supports image analysis (multimodal), unlike Gemini on Kie.ai
+ * Locks prevent duplicate processing when multiple polling requests occur
  */
 
 export async function POST(req: Request) {
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
     const generating = generations.filter((g: any) => g.status === 'generating').slice(0, 3);
 
     // ============================================
-    // STEP 1: Process Gemini Analysis (Direct/Sync)
+    // STEP 1: Process Claude Sonnet Analysis (Direct/Sync with Images)
     // ============================================
     for (const gen of pendingAnalysis) {
       try {
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
         const { productName, productImages, productImage, productBenefits, templateName, templateThumbnail } = gen.input_data;
         const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
 
-        console.log(`[STEP1] Starting Gemini analysis for "${templateName}" (${gen.id})`);
+        console.log(`[STEP1] Starting Claude Sonnet analysis for "${templateName}" (${gen.id})`);
 
         // Get system prompt
         let systemPrompt = await getPromptText('static_ads_clone');
@@ -93,7 +94,7 @@ TEMPLATE: ${templateName}
 Analiza las imágenes del producto y el template. Genera un prompt detallado para Nano Banana Pro.
 `;
 
-        // Build content with images as URLs (Gemini accepts URLs)
+        // Build content with images as URLs (Claude accepts URLs in OpenAI format)
         const imageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
           { type: 'text', text: userMessage },
         ];
@@ -105,7 +106,7 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
           }
         }
 
-        // Add template
+        // Add template thumbnail
         if (templateThumbnail?.startsWith('http')) {
           imageContent.push({ type: 'image_url', image_url: { url: templateThumbnail } });
         }
@@ -115,10 +116,10 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
           { role: 'user', content: imageContent }
         ];
 
-        // Call Gemini directly (synchronous)
-        const generatedPrompt = await analyzeWithGemini3Pro(messages);
+        // Call Claude Sonnet directly (synchronous, supports multimodal)
+        const generatedPrompt = await analyzeWithClaudeSonnet(messages);
 
-        console.log(`[STEP1] Gemini completed: ${generatedPrompt.substring(0, 100)}...`);
+        console.log(`[STEP1] Claude Sonnet completed: ${generatedPrompt.substring(0, 100)}...`);
 
         // Update to pending_generation
         await supabaseAdmin.from('generations').update({
@@ -127,10 +128,10 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
         }).eq('id', gen.id);
 
       } catch (error: any) {
-        console.error('[STEP1] Gemini Error:', error);
+        console.error('[STEP1] Claude Sonnet Error:', error);
         await supabaseAdmin.from('generations').update({
           status: 'failed',
-          error_message: `Gemini analysis failed: ${error.message}`
+          error_message: `Claude analysis failed: ${error.message}`
         }).eq('id', gen.id);
       }
     }
