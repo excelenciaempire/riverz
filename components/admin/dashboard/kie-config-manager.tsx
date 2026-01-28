@@ -101,8 +101,8 @@ export function KieConfigManager() {
           <div className="mb-4">
             <Label className="text-white text-lg">Modelo de Análisis (Visión/LLM)</Label>
             <p className="text-sm text-gray-500 mt-1">
-              Usado para analizar productos y plantillas para generar prompts.
-              Busca en docs de KIE modelos tipo GPT-4 Vision, Claude 3, etc.
+              Usado para analizar productos y plantillas (con imágenes) para generar prompts.
+              Recomendado: claude-sonnet-4-5 (multimodal, balanceado en costo/calidad).
             </p>
           </div>
           
@@ -113,7 +113,7 @@ export function KieConfigManager() {
                 analysisModel: e.target.value, 
                 generationModel: config?.generationModel || '' 
               })}
-              placeholder="Ej: gpt-4o, gemini-pro-vision, qwen-vl"
+              placeholder="claude-sonnet-4-5, claude-opus-4-5, gpt-4o"
               className="bg-[#0a0a0a] border-gray-700"
             />
             <Button 

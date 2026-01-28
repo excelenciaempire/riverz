@@ -339,6 +339,12 @@ export async function getKieTaskResult(taskId: string): Promise<KieTaskResult> {
 export async function getKieModelConfig() {
   const supabase = await createClient();
   
+  const { data: analysisConfig } = await supabase
+    .from('admin_config')
+    .select('value')
+    .eq('key', 'kie_analysis_model')
+    .single();
+    
   const { data: genConfig } = await supabase
     .from('admin_config')
     .select('value')
@@ -346,8 +352,8 @@ export async function getKieModelConfig() {
     .single();
 
   return {
-    // We enforce Gemini 3 Pro for analysis as per user request
-    analysisModel: 'gemini-3-pro', 
+    // Claude Sonnet 4.5 is recommended for multimodal analysis (images + text)
+    analysisModel: analysisConfig?.value || 'claude-sonnet-4-5',
     generationModel: genConfig?.value || 'nano-banana-pro'
   };
 }
