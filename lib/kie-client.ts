@@ -90,7 +90,7 @@ export async function convertImagesToBase64(urls: string[]): Promise<string[]> {
 export async function createGeminiTask(messages: GeminiMessage[]): Promise<string> {
   try {
     const requestBody = {
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-pro',
       input: {
         messages,
         stream: false,
