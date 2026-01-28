@@ -2,16 +2,17 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { estimateBulkTime } from '@/lib/rate-limiter';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(req: Request) {
   try {
@@ -70,6 +71,7 @@ export async function POST(req: Request) {
     const totalCost = templateIds.length * COST_PER_AD;
     
     // Check user's internal credits
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: userData, error: userError } = await supabaseAdmin
       .from('user_credits')
       .select('credits')
@@ -153,7 +155,9 @@ export async function POST(req: Request) {
       })
     );
 
-    const estimate = estimateBulkTime(templateIds.length);
+    // Simple estimation
+    const estimatedMinutes = Math.ceil(templateIds.length * 0.5);
+    const batches = Math.ceil(templateIds.length / 5);
 
     return NextResponse.json({ 
       project, 
@@ -161,8 +165,8 @@ export async function POST(req: Request) {
       bulk: {
         total: templateIds.length,
         totalCreditsDeducted: totalCost,
-        estimatedMinutes: estimate.estimatedMinutes,
-        batches: estimate.batches
+        estimatedMinutes,
+        batches
       }
     });
   } catch (error: any) {
