@@ -8,7 +8,10 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/dropdown';
 import { toast } from 'sonner';
-import { Star, Check, Loader2, Zap, Clock, AlertCircle } from 'lucide-react';
+import { Star, Check, Loader2, Zap, Clock, AlertCircle, X } from 'lucide-react';
+
+// Maximum templates per generation (to control costs during testing)
+const MAX_TEMPLATES_PER_GENERATION = 2;
 import { cn } from '@/lib/utils';
 import type { Template, Product } from '@/types';
 
@@ -51,8 +54,44 @@ export default function StaticAdsPage() {
     estimatedMinutes: number;
     message: string;
   } | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cancel generation process
+  const cancelGeneration = async () => {
+    if (!currentProjectId) return;
+    
+    setIsCancelling(true);
+    try {
+      // Stop polling
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+      
+      // Call API to cancel
+      const response = await fetch(`/api/projects/${currentProjectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel' }),
+      });
+      
+      if (response.ok) {
+        toast.success('Proceso cancelado');
+        setIsProgressOpen(false);
+        setCurrentProjectId(null);
+        setSelectedTemplateIds([]);
+        setIsCloneBarVisible(false);
+      } else {
+        toast.error('Error al cancelar');
+      }
+    } catch (error) {
+      toast.error('Error al cancelar el proceso');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   const supabase = createClient();
 
@@ -234,6 +273,11 @@ export default function StaticAdsPage() {
     if (isSelected) {
       newSelected = selectedTemplateIds.filter(id => id !== template.id);
     } else {
+      // Check if we've reached the maximum
+      if (selectedTemplateIds.length >= MAX_TEMPLATES_PER_GENERATION) {
+        toast.error(`Máximo ${MAX_TEMPLATES_PER_GENERATION} plantillas por generación`);
+        return;
+      }
       newSelected = [...selectedTemplateIds, template.id];
     }
     
@@ -343,22 +387,22 @@ export default function StaticAdsPage() {
                 placeholder="Tipo"
               />
             </div>
-            {/* Select All Button */}
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (templates && selectedTemplateIds.length === templates.length) {
+            {/* Selection info */}
+            <div className="text-sm text-gray-400 whitespace-nowrap">
+              {selectedTemplateIds.length}/{MAX_TEMPLATES_PER_GENERATION} seleccionadas
+            </div>
+            {selectedTemplateIds.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
                   setSelectedTemplateIds([]);
                   setIsCloneBarVisible(false);
-                } else if (templates) {
-                  setSelectedTemplateIds(templates.map(t => t.id));
-                  setIsCloneBarVisible(true);
-                }
-              }}
-              className="border-gray-700 text-gray-300 hover:text-white whitespace-nowrap"
-            >
-              {templates && selectedTemplateIds.length === templates.length ? 'Deseleccionar Todo' : 'Seleccionar Todo'}
-            </Button>
+                }}
+                className="border-gray-700 text-gray-300 hover:text-white whitespace-nowrap"
+              >
+                Limpiar selección
+              </Button>
+            )}
           </div>
 
           {/* Templates Grid */}
@@ -685,23 +729,55 @@ export default function StaticAdsPage() {
 
             {/* Actions */}
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1 border-gray-700 hover:bg-gray-800"
-                onClick={() => {
-                  setIsProgressOpen(false);
-                  // Don't stop polling - let it continue in background
-                }}
-              >
-                Continuar Navegando
-              </Button>
-              {progressData.isComplete && currentProjectId && (
-                <Button
-                  className="flex-1 bg-[#07A498] hover:bg-[#068f84] text-white"
-                  onClick={() => router.push(`/crear/static-ads/historial/${currentProjectId}`)}
-                >
-                  Ver Resultados
-                </Button>
+              {!progressData.isComplete ? (
+                <>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10 hover:border-red-500"
+                    onClick={cancelGeneration}
+                    disabled={isCancelling}
+                  >
+                    {isCancelling ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <X className="h-4 w-4 mr-2" />
+                    )}
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-gray-700 hover:bg-gray-800"
+                    onClick={() => {
+                      setIsProgressOpen(false);
+                      // Don't stop polling - let it continue in background
+                    }}
+                  >
+                    Continuar Navegando
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-gray-700 hover:bg-gray-800"
+                    onClick={() => {
+                      setIsProgressOpen(false);
+                      setCurrentProjectId(null);
+                      setSelectedTemplateIds([]);
+                      setIsCloneBarVisible(false);
+                    }}
+                  >
+                    Cerrar
+                  </Button>
+                  {currentProjectId && (
+                    <Button
+                      className="flex-1 bg-[#07A498] hover:bg-[#068f84] text-white"
+                      onClick={() => router.push(`/crear/static-ads/historial/${currentProjectId}`)}
+                    >
+                      Ver Resultados
+                    </Button>
+                  )}
+                </>
               )}
             </div>
 
