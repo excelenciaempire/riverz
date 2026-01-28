@@ -5,7 +5,7 @@ import { createKieTask, getKieTaskResult, getKieModelConfig, analyzeWithGemini3P
 import { getPromptText } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 300; // 5 minutes - Gemini can take 90-120 seconds per analysis
 export const dynamic = 'force-dynamic';
 
 const supabaseAdmin = createClient(
