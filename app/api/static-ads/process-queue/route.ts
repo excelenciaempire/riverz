@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
-import { createKieTask, getKieTaskResult, getKieModelConfig, analyzeWithGemini3Pro, GeminiMessage, NanoBananaInput } from '@/lib/kie-client';
+import { createKieTask, getKieTaskResult, getKieModelConfig, analyzeWithGemini3Pro, GeminiMessage, NanoBananaInput, imageUrlToBase64, convertImagesToBase64 } from '@/lib/kie-client';
 import { getPromptText } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
@@ -101,23 +101,36 @@ Tu tarea: Analiza visualmente las imágenes del producto y el template. Genera u
 Genera SOLO el prompt, sin explicaciones adicionales. El prompt debe estar en inglés para mejores resultados.
 `;
 
+            // Convert images to base64 for Gemini
+            console.log(`[STATIC_ADS] Converting images to base64 for Gemini...`);
+            
             // Build image content array for Gemini
             const imageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
                 { type: 'text', text: userMessage },
             ];
             
-            // Add product images (max 4 for Gemini analysis)
+            // Add product images as base64 (max 4 for Gemini analysis)
             for (const imgUrl of allProductImages.slice(0, 4)) {
                 if (imgUrl && imgUrl.startsWith('http')) {
-                    imageContent.push({ type: 'image_url', image_url: { url: imgUrl } });
-                    console.log(`[STATIC_ADS] Added product image: ${imgUrl.substring(0, 60)}...`);
+                    try {
+                        const base64Image = await imageUrlToBase64(imgUrl);
+                        imageContent.push({ type: 'image_url', image_url: { url: base64Image } });
+                        console.log(`[STATIC_ADS] Added product image as base64`);
+                    } catch (e) {
+                        console.error(`[STATIC_ADS] Failed to convert product image: ${imgUrl}`);
+                    }
                 }
             }
             
-            // Add template image for style reference (last, so Gemini knows it's the reference)
+            // Add template image as base64 for style reference
             if (templateThumbnail && templateThumbnail.startsWith('http')) {
-                imageContent.push({ type: 'image_url', image_url: { url: templateThumbnail } });
-                console.log(`[STATIC_ADS] Added template image: ${templateThumbnail.substring(0, 60)}...`);
+                try {
+                    const base64Template = await imageUrlToBase64(templateThumbnail);
+                    imageContent.push({ type: 'image_url', image_url: { url: base64Template } });
+                    console.log(`[STATIC_ADS] Added template image as base64`);
+                } catch (e) {
+                    console.error(`[STATIC_ADS] Failed to convert template image: ${templateThumbnail}`);
+                }
             }
             
             const messages: GeminiMessage[] = [
@@ -131,38 +144,43 @@ Genera SOLO el prompt, sin explicaciones adicionales. El prompt debe estar en in
                 }
             ];
             
-            console.log(`[STATIC_ADS] Sending to Gemini with ${imageContent.length - 1} images`);
+            console.log(`[STATIC_ADS] Sending to Gemini with ${imageContent.length - 1} images (base64)`);
 
             // STEP 3: Call Gemini to generate the optimized prompt
             const generatedPrompt = await analyzeWithGemini3Pro(messages);
             
             console.log(`[STATIC_ADS] Gemini generated prompt for "${templateName}":`, generatedPrompt.substring(0, 200) + '...');
 
-            // STEP 4: Build Nano Banana Pro input
+            // STEP 4: Build Nano Banana Pro input with base64 images
             // Max 8 images: Template (1) + Product images (up to 7)
-            const imageInputs: string[] = [];
+            console.log(`[STATIC_ADS] Converting images to base64 for Nano Banana Pro...`);
+            
+            const imagesToConvert: string[] = [];
             
             // Add template first (style reference - most important)
-            if (templateThumbnail) {
-                imageInputs.push(templateThumbnail);
+            if (templateThumbnail && templateThumbnail.startsWith('http')) {
+                imagesToConvert.push(templateThumbnail);
             }
             
             // Add product images (content reference)
             for (const imgUrl of allProductImages.slice(0, 7)) {
-                if (imgUrl && imageInputs.length < 8) {
-                    imageInputs.push(imgUrl);
+                if (imgUrl && imgUrl.startsWith('http') && imagesToConvert.length < 8) {
+                    imagesToConvert.push(imgUrl);
                 }
             }
             
+            // Convert all images to base64
+            const imageInputsBase64 = await convertImagesToBase64(imagesToConvert);
+            
             const nanoBananaInput: NanoBananaInput = {
                 prompt: generatedPrompt,
-                image_input: imageInputs.filter(Boolean),
+                image_input: imageInputsBase64,
                 aspect_ratio: '4:5', // Good for social media ads
                 resolution: '2K',
                 output_format: 'png'
             };
             
-            console.log(`[STATIC_ADS] Sending to Nano Banana Pro with ${imageInputs.length} reference images`);
+            console.log(`[STATIC_ADS] Sending to Nano Banana Pro with ${imageInputsBase64.length} base64 images`);
 
             // STEP 5: Start Generation Task with Nano Banana Pro
             const genTaskId = await createKieTask(generationModel, nanoBananaInput);

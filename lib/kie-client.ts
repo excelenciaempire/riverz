@@ -20,10 +20,65 @@ export interface GeminiMessage {
 // Nano Banana Pro input interface based on Kie.ai docs
 export interface NanoBananaInput {
   prompt: string;
-  image_input?: string[]; // Up to 8 reference images
+  image_input?: string[]; // Up to 8 reference images (base64 or URLs)
   aspect_ratio?: '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '9:16' | '16:9' | '21:9' | 'auto';
   resolution?: '1K' | '2K' | '4K';
   output_format?: 'png' | 'jpg';
+}
+
+// --- Image Utilities ---
+
+/**
+ * Downloads an image from URL and converts it to base64 data URI
+ */
+export async function imageUrlToBase64(url: string): Promise<string> {
+  try {
+    console.log(`[IMAGE] Converting to base64: ${url.substring(0, 60)}...`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'image/*'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status}`);
+    }
+    
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    
+    // Return as data URI for Gemini format
+    const dataUri = `data:${contentType};base64,${base64}`;
+    console.log(`[IMAGE] Converted successfully, size: ${Math.round(base64.length / 1024)}KB`);
+    
+    return dataUri;
+  } catch (error) {
+    console.error(`[IMAGE] Error converting image:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Converts multiple image URLs to base64
+ */
+export async function convertImagesToBase64(urls: string[]): Promise<string[]> {
+  const results: string[] = [];
+  
+  for (const url of urls) {
+    if (url && url.startsWith('http')) {
+      try {
+        const base64 = await imageUrlToBase64(url);
+        results.push(base64);
+      } catch (error) {
+        console.error(`[IMAGE] Skipping failed image: ${url}`);
+        // Continue with other images
+      }
+    }
+  }
+  
+  return results;
 }
 
 // --- Gemini 3 Pro (Analysis) ---
