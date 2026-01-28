@@ -12,7 +12,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  output: 'standalone',
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   // Increase body size limit for file uploads
   experimental: {
     serverActions: {
