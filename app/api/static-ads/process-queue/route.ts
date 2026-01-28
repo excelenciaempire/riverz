@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
-import { createKieTask, getKieTaskResult, getKieModelConfig, createGeminiTask, getGeminiTaskResult, GeminiMessage, NanoBananaInput, imageUrlToBase64 } from '@/lib/kie-client';
+import { createKieTask, getKieTaskResult, getKieModelConfig, analyzeWithGemini3Pro, GeminiMessage, NanoBananaInput, imageUrlToBase64 } from '@/lib/kie-client';
 import { getPromptText } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
@@ -17,11 +17,10 @@ const supabaseAdmin = createClient(
  * Async Pipeline for Static Ads Generation
  * 
  * Status Flow (each step < 60 seconds):
- * 1. pending_analysis → Start Gemini task (save geminiTaskId)
- * 2. analyzing → Poll Gemini result
- * 3. pending_generation → Start Nano Banana task (save generationTaskId)
- * 4. generating → Poll Nano Banana result
- * 5. completed → Done!
+ * 1. pending_analysis → Process with Gemini (direct/sync)
+ * 2. pending_generation → Start Nano Banana task (save generationTaskId)
+ * 3. generating → Poll Nano Banana result
+ * 4. completed → Done!
  */
 
 export async function POST(req: Request) {
@@ -45,28 +44,18 @@ export async function POST(req: Request) {
 
     // Process ONE item per status type to keep request fast
     const pendingAnalysis = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, 1);
-    const analyzing = generations.filter((g: any) => g.status === 'analyzing').slice(0, 3);
     const pendingGeneration = generations.filter((g: any) => g.status === 'pending_generation').slice(0, 1);
     const generating = generations.filter((g: any) => g.status === 'generating').slice(0, 3);
 
     // ============================================
-    // STEP 1: Start Gemini Analysis (async)
+    // STEP 1: Process Gemini Analysis (Direct/Sync)
     // ============================================
     for (const gen of pendingAnalysis) {
       try {
-        // Lock the generation
-        const { error: lockError } = await supabaseAdmin
-          .from('generations')
-          .update({ status: 'analyzing' })
-          .eq('id', gen.id)
-          .eq('status', 'pending_analysis');
-
-        if (lockError) continue;
-
         const { productName, productImages, productImage, productBenefits, templateName, templateThumbnail } = gen.input_data;
         const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
 
-        console.log(`[STEP1] Starting Gemini for "${templateName}"`);
+        console.log(`[STEP1] Starting Gemini analysis for "${templateName}"`);
 
         // Get system prompt
         let systemPrompt = await getPromptText('static_ads_clone');
@@ -106,58 +95,28 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
           { role: 'user', content: imageContent }
         ];
 
-        // Create async Gemini task
-        const geminiTaskId = await createGeminiTask(messages);
+        // Call Gemini directly (synchronous)
+        const generatedPrompt = await analyzeWithGemini3Pro(messages);
 
-        // Save taskId
+        console.log(`[STEP1] Gemini completed: ${generatedPrompt.substring(0, 100)}...`);
+
+        // Update to pending_generation
         await supabaseAdmin.from('generations').update({
-          input_data: { ...gen.input_data, geminiTaskId }
+          status: 'pending_generation',
+          input_data: { ...gen.input_data, generatedPrompt }
         }).eq('id', gen.id);
 
-        console.log(`[STEP1] Gemini task started: ${geminiTaskId}`);
-
       } catch (error: any) {
-        console.error('[STEP1] Error:', error);
+        console.error('[STEP1] Gemini Error:', error);
         await supabaseAdmin.from('generations').update({
           status: 'failed',
-          error_message: `Gemini start failed: ${error.message}`
+          error_message: `Gemini analysis failed: ${error.message}`
         }).eq('id', gen.id);
       }
     }
 
     // ============================================
-    // STEP 2: Poll Gemini Results
-    // ============================================
-    for (const gen of analyzing) {
-      const geminiTaskId = gen.input_data?.geminiTaskId;
-      if (!geminiTaskId) continue;
-
-      try {
-        console.log(`[STEP2] Polling Gemini: ${geminiTaskId}`);
-        const result = await getGeminiTaskResult(geminiTaskId);
-
-        if (result.status === 'SUCCESS' && result.text) {
-          console.log(`[STEP2] Gemini completed: ${result.text.substring(0, 100)}...`);
-          
-          await supabaseAdmin.from('generations').update({
-            status: 'pending_generation',
-            input_data: { ...gen.input_data, generatedPrompt: result.text }
-          }).eq('id', gen.id);
-
-        } else if (result.status === 'FAILED') {
-          await supabaseAdmin.from('generations').update({
-            status: 'failed',
-            error_message: result.error || 'Gemini analysis failed'
-          }).eq('id', gen.id);
-        }
-        // PENDING/PROCESSING = keep waiting
-      } catch (error: any) {
-        console.error('[STEP2] Error:', error);
-      }
-    }
-
-    // ============================================
-    // STEP 3: Start Nano Banana Generation (async)
+    // STEP 2: Start Nano Banana Generation (async)
     // ============================================
     for (const gen of pendingGeneration) {
       try {
@@ -173,7 +132,7 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
         const { generatedPrompt, productImages, productImage, templateThumbnail } = gen.input_data;
         const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
 
-        console.log(`[STEP3] Starting Nano Banana with prompt: ${generatedPrompt?.substring(0, 80)}...`);
+        console.log(`[STEP2] Starting Nano Banana with prompt: ${generatedPrompt?.substring(0, 80)}...`);
 
         // Build image inputs (URLs for Nano Banana)
         const imageInputs: string[] = [];
@@ -200,10 +159,10 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
           input_data: { ...gen.input_data, generationTaskId }
         }).eq('id', gen.id);
 
-        console.log(`[STEP3] Nano Banana task started: ${generationTaskId}`);
+        console.log(`[STEP2] Nano Banana task started: ${generationTaskId}`);
 
       } catch (error: any) {
-        console.error('[STEP3] Error:', error);
+        console.error('[STEP2] Error:', error);
         await supabaseAdmin.from('generations').update({
           status: 'failed',
           error_message: `Generation start failed: ${error.message}`
@@ -212,14 +171,14 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
     }
 
     // ============================================
-    // STEP 4: Poll Nano Banana Results
+    // STEP 3: Poll Nano Banana Results
     // ============================================
     for (const gen of generating) {
       const taskId = gen.input_data?.generationTaskId;
       if (!taskId) continue;
 
       try {
-        console.log(`[STEP4] Polling Nano Banana: ${taskId}`);
+        console.log(`[STEP3] Polling Nano Banana: ${taskId}`);
         const result = await getKieTaskResult(taskId);
 
         if (result.status === 'SUCCESS') {
@@ -235,7 +194,7 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
           }
 
           if (resultUrl) {
-            console.log(`[STEP4] Generation completed: ${resultUrl.substring(0, 60)}...`);
+            console.log(`[STEP3] Generation completed: ${resultUrl.substring(0, 60)}...`);
             await supabaseAdmin.from('generations').update({
               status: 'completed',
               result_url: resultUrl
@@ -254,7 +213,7 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
           }).eq('id', gen.id);
         }
       } catch (error: any) {
-        console.error('[STEP4] Error:', error);
+        console.error('[STEP3] Error:', error);
       }
     }
 
@@ -266,7 +225,7 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
       .select('status')
       .eq('project_id', projectId);
 
-    const counts = { pending_analysis: 0, analyzing: 0, pending_generation: 0, generating: 0, completed: 0, failed: 0 };
+    const counts = { pending_analysis: 0, pending_generation: 0, generating: 0, completed: 0, failed: 0 };
     allGens?.forEach((g: any) => {
       if (counts.hasOwnProperty(g.status)) {
         counts[g.status as keyof typeof counts]++;
@@ -276,7 +235,7 @@ Analiza las imágenes del producto y el template. Genera un prompt detallado par
     const total = allGens?.length || 0;
     const completed = counts.completed;
     const failed = counts.failed;
-    const inProgress = counts.pending_analysis + counts.analyzing + counts.pending_generation + counts.generating;
+    const inProgress = counts.pending_analysis + counts.pending_generation + counts.generating;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return NextResponse.json({
