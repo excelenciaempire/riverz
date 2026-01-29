@@ -59,9 +59,8 @@ export async function POST(req: Request) {
       PRODUCT_WEBSITE: product.website || 'No especificado'
     });
 
-    // 4. Convert ALL product images to base64
-    // Claude Sonnet 4.5 supports multimodal - send all images for comprehensive analysis
-    const productImages = product.images || [];
+    // 4. Convert product images to base64 (limit to 3 for speed)
+    const productImages = (product.images || []).slice(0, 3);
     const imageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [];
     
     // Add text instruction first
@@ -75,10 +74,10 @@ Beneficios: ${product.benefits || 'No especificados'}
 Precio: ${product.price ? '$' + product.price : 'No especificado'}
 Categoría: ${product.category || 'General'}
 
-Las imágenes del producto se muestran a continuación. Analiza todas las imágenes para entender completamente el producto, su packaging, presentación y características visuales.`
+Analiza las imágenes del producto para entender su packaging, presentación y características visuales.`
     });
 
-    // Convert each image to base64 and add to content
+    // Convert images to base64 (max 3 for speed)
     console.log(`[DEEP-RESEARCH] Processing ${productImages.length} product images...`);
     
     for (const imageUrl of productImages) {
@@ -117,8 +116,8 @@ Las imágenes del producto se muestran a continuación. Analiza todas las imáge
     console.log(`[DEEP-RESEARCH] Calling Claude Sonnet 4.5 with ${imageContent.length - 1} images...`);
     
     const researchResponse = await analyzeWithClaudeSonnet(messages, {
-      temperature: 0.7,
-      maxTokens: 8000,
+      temperature: 0.5,
+      maxTokens: 4000,
       model: 'claude-sonnet-4-5-20250929'
     });
 
