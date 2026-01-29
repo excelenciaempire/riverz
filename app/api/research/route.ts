@@ -1,8 +1,8 @@
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { analyzeWithGemini3Pro, GeminiMessage } from '@/lib/kie-client';
-import { getPromptText } from '@/lib/get-ai-prompt';
+import { analyzeWithClaudeSonnet, GeminiMessage } from '@/lib/kie-client';
+import { getPromptWithVariables } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -45,77 +45,62 @@ export async function POST(req: Request) {
       .update({ research_status: 'processing' })
       .eq('id', productId);
 
-    // Get prompt template from DB or fallback
-    let promptTemplate: string;
-    try {
-      promptTemplate = await getPromptText('product_deep_research');
-      console.log('[RESEARCH] Got prompt template, length:', promptTemplate.length);
-    } catch (promptError) {
-      console.error('[RESEARCH] Error getting prompt:', promptError);
-      promptTemplate = `Analiza el producto "{PRODUCT_NAME}" con beneficios "{PRODUCT_BENEFITS}" y genera un perfil de comprador en formato JSON.`;
-    }
-    
-    // Replace variables in the prompt
-    const systemPrompt = promptTemplate
-      .replace(/\{PRODUCT_NAME\}/g, product.name || 'Producto')
-      .replace(/\{PRODUCT_DESCRIPTION\}/g, product.website || product.name || '')
-      .replace(/\{PRODUCT_BENEFITS\}/g, product.benefits || '')
-      .replace(/\{TARGET_AUDIENCE\}/g, 'Consumidor interesado en este tipo de producto');
+    // Get prompt template with all variables injected
+    const systemPrompt = await getPromptWithVariables('product_deep_research', {
+      PRODUCT_NAME: product.name || 'Producto',
+      PRODUCT_DESCRIPTION: product.description || product.website || '',
+      PRODUCT_PRICE: product.price ? `$${product.price}` : 'No especificado',
+      PRODUCT_BENEFITS: product.benefits || 'No especificados',
+      PRODUCT_CATEGORY: product.category || 'General',
+      PRODUCT_WEBSITE: product.website || 'No especificado'
+    });
+    console.log('[RESEARCH] Got prompt template with variables injected');
 
-    const productImageUrl = product.images?.[0];
-    console.log('[RESEARCH] Product image:', productImageUrl ? 'Present' : 'None');
-    
-    // Build messages for Gemini
-    const userContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
-      { 
-        type: 'text', 
-        text: `Analiza este producto y genera el research profundo en formato JSON válido.
-        
+    // Build messages for Claude (text only for speed on Hobby plan)
+    const userMessage = `Analiza este producto y genera el research profundo en formato JSON válido.
+
 Producto: ${product.name}
+Descripción: ${product.description || 'No disponible'}
 Beneficios: ${product.benefits || 'No especificados'}
+Precio: ${product.price ? '$' + product.price : 'No especificado'}
+Categoría: ${product.category || 'General'}
 Web: ${product.website || 'No disponible'}
 
-Responde ÚNICAMENTE con el JSON, sin markdown ni explicaciones adicionales.` 
-      }
-    ];
-    
-    // Add product image if available
-    if (productImageUrl && productImageUrl.startsWith('http')) {
-      userContent.push({ 
-        type: 'image_url', 
-        image_url: { url: productImageUrl } 
-      });
-    }
+Responde ÚNICAMENTE con el JSON, sin markdown ni explicaciones adicionales.`;
     
     const messages: GeminiMessage[] = [
       { role: 'developer', content: systemPrompt },
-      { role: 'user', content: userContent }
+      { role: 'user', content: userMessage }
     ];
 
-    // Call Gemini
+    // Call Claude Sonnet 4.5 (faster text-only for Hobby plan)
     let researchResponse: string;
     let researchData: any;
     
     try {
-      console.log('[RESEARCH] Calling Gemini 3 Pro...');
-      researchResponse = await analyzeWithGemini3Pro(messages);
-      console.log('[RESEARCH] Gemini response received, length:', researchResponse?.length || 0);
+      console.log('[RESEARCH] Calling Claude Sonnet 4.5...');
+      researchResponse = await analyzeWithClaudeSonnet(messages, {
+        temperature: 0.5,
+        maxTokens: 3000,
+        model: 'claude-sonnet-4-5-20250929'
+      });
+      console.log('[RESEARCH] Claude response received, length:', researchResponse?.length || 0);
       console.log('[RESEARCH] Response preview:', researchResponse?.substring(0, 300));
-    } catch (geminiError: any) {
-      console.error('[RESEARCH] Gemini API error:', geminiError.message);
+    } catch (claudeError: any) {
+      console.error('[RESEARCH] Claude API error:', claudeError.message);
       
       // Mark as failed instead of using fallback
       await supabase
         .from('products')
         .update({ 
           research_status: 'failed',
-          research_data: { error: geminiError.message, timestamp: new Date().toISOString() }
+          research_data: { error: claudeError.message, timestamp: new Date().toISOString() }
         })
         .eq('id', productId);
       
       return NextResponse.json({ 
         success: false, 
-        error: `Error de IA: ${geminiError.message}`,
+        error: `Error de IA: ${claudeError.message}`,
         status: 'failed' 
       }, { status: 500 });
     }
