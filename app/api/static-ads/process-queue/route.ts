@@ -16,7 +16,7 @@ import {
 import { getPromptWithVariables, getPromptText } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
-export const maxDuration = 300; // 5 minutes for parallel processing
+export const maxDuration = 60; // Keep low for Hobby plan compatibility
 export const dynamic = 'force-dynamic';
 
 const supabaseAdmin = createClient(
@@ -24,11 +24,12 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Concurrency limits to avoid rate limiting
-const PARALLEL_GEMINI = 5;   // Max concurrent Gemini calls
-const PARALLEL_CLAUDE = 5;   // Max concurrent Claude calls  
-const PARALLEL_NANO = 10;    // Max concurrent Nano Banana tasks
-const PARALLEL_POLL = 15;    // Max concurrent polling operations
+// Concurrency limits - REDUCED for Hobby plan (10s timeout)
+// Process one at a time to stay within timeout
+const PARALLEL_GEMINI = 1;   // One Gemini call per request
+const PARALLEL_CLAUDE = 1;   // One Claude call per request  
+const PARALLEL_NANO = 2;     // Two Nano Banana tasks (fast to start)
+const PARALLEL_POLL = 5;     // Polling is fast, can do more
 
 /**
  * Static Ads Generation Pipeline - PARALLEL PROCESSING
