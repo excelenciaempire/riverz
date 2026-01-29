@@ -38,8 +38,11 @@ export function injectVariables(template: string, variables: Record<string, stri
   let result = template;
   
   for (const [key, value] of Object.entries(variables)) {
-    const placeholder = new RegExp(`\\{${key}\\}`, 'g');
-    result = result.replace(placeholder, value || '');
+    // Use simple string replace for reliability
+    const placeholder = `{${key}}`;
+    const replacement = value ?? '';
+    result = result.split(placeholder).join(replacement);
+    console.log(`[INJECT] ${key}: "${placeholder}" -> "${replacement.substring(0, 50)}..."`);
   }
   
   return result;

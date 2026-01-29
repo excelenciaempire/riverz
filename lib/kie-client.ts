@@ -276,9 +276,11 @@ export async function analyzeWithClaudeSonnet(
       max_tokens: maxTokens,
     };
     
-    console.log(`[CLAUDE] Sending request to ${model}...`);
+    const endpoint = `${KIE_BASE_URL}/claude-sonnet-4-5/v1/chat/completions`;
+    console.log(`[CLAUDE] Sending request to endpoint: ${endpoint}`);
+    console.log(`[CLAUDE] Model: ${model}, Temperature: ${temperature}, MaxTokens: ${maxTokens}`);
     
-    const response = await fetch(`${KIE_BASE_URL}/claude-sonnet-4-5/v1/chat/completions`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${KIE_API_KEY}`,
