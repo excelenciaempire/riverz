@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabase/client';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 export interface GenerationUpdate {
@@ -32,7 +32,7 @@ export function subscribeToGenerations(
   onUpdate: (generation: GenerationUpdate) => void,
   onProgress: (progress: ProgressState) => void
 ): () => void {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   
   let channel: RealtimeChannel | null = null;
   let generations = new Map<string, { status: string; result_url?: string }>();
