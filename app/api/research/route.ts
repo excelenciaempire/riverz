@@ -1,11 +1,11 @@
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { analyzeWithClaudeSonnet, GeminiMessage } from '@/lib/kie-client';
+import { analyzeWithClaudeSonnet, GeminiMessage, imageUrlToBase64 } from '@/lib/kie-client';
 import { getPromptWithVariables } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 120; // 2 minutes for deep research on Render
 export const dynamic = 'force-dynamic';
 
 const supabase = createClient(
@@ -56,8 +56,11 @@ export async function POST(req: Request) {
     });
     console.log('[RESEARCH] Got prompt template with variables injected');
 
-    // Build messages for Claude (text only for speed on Hobby plan)
-    const userMessage = `Analiza este producto y genera el research profundo en formato JSON válido.
+    // Build messages for Claude with images (Render has longer timeout)
+    const userContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
+      {
+        type: 'text',
+        text: `Analiza este producto y genera el research profundo en formato JSON válido.
 
 Producto: ${product.name}
 Descripción: ${product.description || 'No disponible'}
@@ -66,22 +69,39 @@ Precio: ${product.price ? '$' + product.price : 'No especificado'}
 Categoría: ${product.category || 'General'}
 Web: ${product.website || 'No disponible'}
 
-Responde ÚNICAMENTE con el JSON, sin markdown ni explicaciones adicionales.`;
+Analiza también las imágenes del producto para entender mejor su presentación visual.
+Responde ÚNICAMENTE con el JSON, sin markdown ni explicaciones adicionales.`
+      }
+    ];
+
+    // Add up to 3 product images for visual analysis
+    const productImages = (product.images || []).slice(0, 3);
+    for (const imgUrl of productImages) {
+      if (imgUrl?.startsWith('http')) {
+        try {
+          const base64 = await imageUrlToBase64(imgUrl);
+          userContent.push({ type: 'image_url', image_url: { url: base64 } });
+          console.log('[RESEARCH] Added product image for analysis');
+        } catch (imgErr) {
+          console.warn('[RESEARCH] Could not load image:', imgUrl);
+        }
+      }
+    }
     
     const messages: GeminiMessage[] = [
       { role: 'developer', content: systemPrompt },
-      { role: 'user', content: userMessage }
+      { role: 'user', content: userContent }
     ];
 
-    // Call Claude Sonnet 4.5 (faster text-only for Hobby plan)
+    // Call Claude Sonnet 4.5 with full analysis (Render supports longer timeouts)
     let researchResponse: string;
     let researchData: any;
     
     try {
-      console.log('[RESEARCH] Calling Claude Sonnet 4.5...');
+      console.log('[RESEARCH] Calling Claude Sonnet 4.5 with', userContent.length - 1, 'images...');
       researchResponse = await analyzeWithClaudeSonnet(messages, {
-        temperature: 0.5,
-        maxTokens: 3000,
+        temperature: 0.7,
+        maxTokens: 6000,
         model: 'claude-sonnet-4-5-20250929'
       });
       console.log('[RESEARCH] Claude response received, length:', researchResponse?.length || 0);
