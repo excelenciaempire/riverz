@@ -5,15 +5,18 @@ import {
   createKieTask, 
   getKieTaskResult, 
   getKieModelConfig, 
-  analyzeWithGemini3Pro,
+  analyzeWithGeminiFlash2,
   analyzeWithClaudeSonnet,
+  imageUrlToBase64,
+  stripBase64Prefix,
+  downloadImage,
   GeminiMessage, 
   NanoBananaInput 
 } from '@/lib/kie-client';
-import { getPromptText } from '@/lib/get-ai-prompt';
+import { getPromptWithVariables, getPromptText } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
-export const maxDuration = 55; // Under 60s for Vercel
+export const maxDuration = 300; // 5 minutes for parallel processing
 export const dynamic = 'force-dynamic';
 
 const supabaseAdmin = createClient(
@@ -21,20 +24,100 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Concurrency limits to avoid rate limiting
+const PARALLEL_GEMINI = 5;   // Max concurrent Gemini calls
+const PARALLEL_CLAUDE = 5;   // Max concurrent Claude calls  
+const PARALLEL_NANO = 10;    // Max concurrent Nano Banana tasks
+const PARALLEL_POLL = 15;    // Max concurrent polling operations
+
 /**
- * Static Ads Generation Pipeline
+ * Static Ads Generation Pipeline - PARALLEL PROCESSING
  * 
- * NEW FLOW (4 Steps):
- * 1. pending_analysis → Gemini 3 Pro analyzes template image → pending_prompt
- * 2. pending_prompt → Claude generates image prompt (product + template analysis) → pending_generation
- * 3. pending_generation → Nano Banana Pro creates image → generating
- * 4. generating → Poll Kie.ai for result → completed
+ * Status Flow:
+ * pending_analysis → analyzing_template → pending_prompt → 
+ * generating_prompt → pending_generation → generating → completed/failed
  * 
  * Models Used:
- * - Gemini 3 Pro: Multimodal template analysis (sees images)
- * - Claude Sonnet 4.5: Prompt generation (combines product info + template analysis)
+ * - Gemini Flash 2.0: Fast template analysis (multimodal)
+ * - Claude Sonnet 4.5: Detailed prompt generation
  * - Nano Banana Pro: Image generation (max 8 reference images)
+ * 
+ * All templates are processed in parallel for maximum speed.
  */
+
+// Helper: Lock a generation to prevent duplicate processing
+async function lockGeneration(id: string, fromStatus: string, toStatus: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from('generations')
+    .update({ 
+      status: toStatus,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .eq('status', fromStatus)
+    .select()
+    .single();
+  
+  return !error && !!data;
+}
+
+// Helper: Update generation status with error
+async function failGeneration(id: string, errorMessage: string) {
+  await supabaseAdmin.from('generations').update({
+    status: 'failed',
+    error_message: errorMessage,
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+}
+
+// Helper: Save generation result and upload to storage
+async function saveGenerationResult(id: string, kieUrl: string, projectId: string) {
+  try {
+    // Download image from kie.ai
+    const imageBuffer = await downloadImage(kieUrl);
+    
+    // Upload to Supabase Storage
+    const fileName = `${projectId}/${id}_${Date.now()}.png`;
+    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+      .from('generations')
+      .upload(fileName, imageBuffer, {
+        contentType: 'image/png',
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error(`[STORAGE] Upload failed for ${id}:`, uploadError);
+      // Fall back to kie.ai URL if upload fails
+      await supabaseAdmin.from('generations').update({
+        status: 'completed',
+        result_url: kieUrl,
+        updated_at: new Date().toISOString()
+      }).eq('id', id);
+      return;
+    }
+
+    // Get public URL
+    const { data: urlData } = supabaseAdmin.storage
+      .from('generations')
+      .getPublicUrl(fileName);
+
+    await supabaseAdmin.from('generations').update({
+      status: 'completed',
+      result_url: urlData.publicUrl,
+      updated_at: new Date().toISOString()
+    }).eq('id', id);
+
+    console.log(`[STORAGE] Saved to: ${urlData.publicUrl}`);
+  } catch (error) {
+    console.error(`[STORAGE] Error saving ${id}:`, error);
+    // Fall back to kie.ai URL
+    await supabaseAdmin.from('generations').update({
+      status: 'completed',
+      result_url: kieUrl,
+      updated_at: new Date().toISOString()
+    }).eq('id', id);
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -52,325 +135,337 @@ export async function POST(req: Request) {
       .in('status', ['pending_analysis', 'pending_prompt', 'pending_generation', 'generating']);
 
     if (genError) throw genError;
+    if (!generations || generations.length === 0) {
+      // Return current progress even if nothing to process
+      return await returnProgress(projectId);
+    }
 
     const { generationModel } = await getKieModelConfig();
 
-    // Process ONE item per status type to keep request fast (<55s)
-    const pendingAnalysis = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, 1);
-    const pendingPrompt = generations.filter((g: any) => g.status === 'pending_prompt').slice(0, 1);
-    const pendingGeneration = generations.filter((g: any) => g.status === 'pending_generation').slice(0, 1);
-    const generating = generations.filter((g: any) => g.status === 'generating').slice(0, 3);
+    // Group by status for parallel processing
+    const pendingAnalysis = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, PARALLEL_GEMINI);
+    const pendingPrompt = generations.filter((g: any) => g.status === 'pending_prompt').slice(0, PARALLEL_CLAUDE);
+    const pendingGeneration = generations.filter((g: any) => g.status === 'pending_generation').slice(0, PARALLEL_NANO);
+    const generating = generations.filter((g: any) => g.status === 'generating').slice(0, PARALLEL_POLL);
 
     // ============================================
-    // STEP 1: Gemini 3 Pro analyzes template image
+    // STEP 1: Gemini Flash 2.0 analyzes templates (PARALLEL)
     // ============================================
-    for (const gen of pendingAnalysis) {
-      try {
-        // Lock to prevent duplicate processing
-        const { data: lockData, error: lockError } = await supabaseAdmin
-          .from('generations')
-          .update({ 
-            status: 'analyzing_template',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', gen.id)
-          .eq('status', 'pending_analysis')
-          .select()
-          .single();
+    if (pendingAnalysis.length > 0) {
+      console.log(`[STEP1] Processing ${pendingAnalysis.length} templates with Gemini Flash 2.0...`);
+      
+      await Promise.all(
+        pendingAnalysis.map(async (gen: any) => {
+          try {
+            // Lock
+            const locked = await lockGeneration(gen.id, 'pending_analysis', 'analyzing_template');
+            if (!locked) {
+              console.log(`[STEP1] Skipping ${gen.id} - already locked`);
+              return;
+            }
 
-        if (lockError || !lockData) {
-          console.log(`[STEP1] Skipping ${gen.id} - already locked`);
-          continue;
-        }
+            const { templateName, templateThumbnail } = gen.input_data;
+            console.log(`[STEP1] Analyzing: "${templateName}" (${gen.id})`);
 
-        const { templateName, templateThumbnail } = gen.input_data;
-        console.log(`[STEP1] Gemini analyzing template: "${templateName}" (${gen.id})`);
+            // Convert template image to base64
+            const templateBase64 = await imageUrlToBase64(templateThumbnail);
 
-        // Get template analysis prompt
-        const analysisPrompt = await getPromptText('template_analysis');
+            // Get template analysis prompt
+            const analysisPrompt = await getPromptText('template_analysis');
 
-        // Build messages for Gemini (multimodal)
-        const messages: GeminiMessage[] = [
-          { role: 'developer', content: analysisPrompt },
-          { 
-            role: 'user', 
-            content: [
-              { type: 'text', text: `Analyze this advertising template image for: ${templateName}` },
-              { type: 'image_url', image_url: { url: templateThumbnail } }
-            ]
-          }
-        ];
+            // Build messages for Gemini Flash 2.0 (multimodal)
+            const messages: GeminiMessage[] = [
+              { role: 'developer', content: analysisPrompt },
+              { 
+                role: 'user', 
+                content: [
+                  { type: 'text', text: `Analyze this advertising template image for: ${templateName}` },
+                  { type: 'image_url', image_url: { url: templateBase64 } }
+                ]
+              }
+            ];
 
-        // Call Gemini 3 Pro for template analysis
-        const templateAnalysis = await analyzeWithGemini3Pro(messages);
+            // Call Gemini Flash 2.0 (fast multimodal)
+            const templateAnalysis = await analyzeWithGeminiFlash2(messages, { temperature: 0.4 });
 
-        console.log(`[STEP1] Gemini completed. Analysis length: ${templateAnalysis.length}`);
+            console.log(`[STEP1] Gemini completed for ${gen.id}. Analysis: ${templateAnalysis.length} chars`);
 
-        // Save analysis and move to next step
-        await supabaseAdmin.from('generations').update({
-          status: 'pending_prompt',
-          input_data: { ...gen.input_data, templateAnalysis }
-        }).eq('id', gen.id);
-
-      } catch (error: any) {
-        console.error('[STEP1] Gemini Error:', error);
-        await supabaseAdmin.from('generations').update({
-          status: 'failed',
-          error_message: `Template analysis failed: ${error.message}`
-        }).eq('id', gen.id);
-      }
-    }
-
-    // ============================================
-    // STEP 2: Claude generates image prompt
-    // ============================================
-    for (const gen of pendingPrompt) {
-      try {
-        // Lock
-        const { data: lockData, error: lockError } = await supabaseAdmin
-          .from('generations')
-          .update({ 
-            status: 'generating_prompt',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', gen.id)
-          .eq('status', 'pending_prompt')
-          .select()
-          .single();
-
-        if (lockError || !lockData) {
-          console.log(`[STEP2] Skipping ${gen.id} - already locked`);
-          continue;
-        }
-
-        const { 
-          productName, 
-          productBenefits, 
-          productImages, 
-          productImage,
-          researchData,
-          templateName,
-          templateAnalysis 
-        } = gen.input_data;
-
-        const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
-
-        console.log(`[STEP2] Claude generating prompt for: "${templateName}" + "${productName}" (${gen.id})`);
-
-        // Get prompt generation template
-        const promptGenerationTemplate = await getPromptText('static_ads_prompt_generation');
-
-        // Build user message with all context
-        const userMessage = `
-PRODUCT INFORMATION:
-- Name: ${productName}
-- Benefits: ${productBenefits || 'Premium quality product'}
-- Research Data: ${researchData ? JSON.stringify(researchData).substring(0, 1000) : 'Not available'}
-
-TEMPLATE ANALYSIS:
-${templateAnalysis}
-
-Generate a detailed prompt for Nano Banana Pro to create an ad image that combines this product with the template style.
-`;
-
-        // Build content with product images (max 3 for Claude context)
-        const imageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
-          { type: 'text', text: userMessage },
-        ];
-
-        // Add product images (max 3)
-        for (const imgUrl of allProductImages.slice(0, 3)) {
-          if (imgUrl?.startsWith('http')) {
-            imageContent.push({ type: 'image_url', image_url: { url: imgUrl } });
-          }
-        }
-
-        const messages: GeminiMessage[] = [
-          { role: 'developer', content: promptGenerationTemplate },
-          { role: 'user', content: imageContent }
-        ];
-
-        // Call Claude to generate the image prompt
-        const generatedPrompt = await analyzeWithClaudeSonnet(messages);
-
-        console.log(`[STEP2] Claude completed. Prompt: ${generatedPrompt.substring(0, 100)}...`);
-
-        // Save prompt and move to next step
-        await supabaseAdmin.from('generations').update({
-          status: 'pending_generation',
-          input_data: { ...gen.input_data, generatedPrompt }
-        }).eq('id', gen.id);
-
-      } catch (error: any) {
-        console.error('[STEP2] Claude Error:', error);
-        await supabaseAdmin.from('generations').update({
-          status: 'failed',
-          error_message: `Prompt generation failed: ${error.message}`
-        }).eq('id', gen.id);
-      }
-    }
-
-    // ============================================
-    // STEP 3: Nano Banana Pro creates image
-    // ============================================
-    for (const gen of pendingGeneration) {
-      try {
-        // Lock
-        const { error: lockError } = await supabaseAdmin
-          .from('generations')
-          .update({ 
-            status: 'generating',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', gen.id)
-          .eq('status', 'pending_generation');
-
-        if (lockError) continue;
-
-        const { generatedPrompt, productImages, productImage, templateThumbnail } = gen.input_data;
-        const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
-
-        console.log(`[STEP3] Nano Banana starting. Prompt: ${generatedPrompt?.substring(0, 80)}...`);
-
-        // Build image inputs (max 8 total for Nano Banana Pro)
-        // Priority: 1 template + up to 7 product images
-        const imageInputs: string[] = [];
-        
-        // Add template first (style reference)
-        if (templateThumbnail?.startsWith('http')) {
-          imageInputs.push(templateThumbnail);
-        }
-        
-        // Add product images (up to 7 more)
-        for (const imgUrl of allProductImages.slice(0, 7)) {
-          if (imgUrl?.startsWith('http') && imageInputs.length < 8) {
-            imageInputs.push(imgUrl);
-          }
-        }
-
-        const nanoBananaInput: NanoBananaInput = {
-          prompt: generatedPrompt,
-          image_input: imageInputs,
-          aspect_ratio: '4:5',
-          resolution: '2K',
-          output_format: 'png'
-        };
-
-        const generationTaskId = await createKieTask(generationModel, nanoBananaInput);
-
-        await supabaseAdmin.from('generations').update({
-          input_data: { ...gen.input_data, generationTaskId }
-        }).eq('id', gen.id);
-
-        console.log(`[STEP3] Nano Banana task created: ${generationTaskId}`);
-
-      } catch (error: any) {
-        console.error('[STEP3] Nano Banana Error:', error);
-        await supabaseAdmin.from('generations').update({
-          status: 'failed',
-          error_message: `Image generation failed: ${error.message}`
-        }).eq('id', gen.id);
-      }
-    }
-
-    // ============================================
-    // STEP 4: Poll Nano Banana results
-    // ============================================
-    for (const gen of generating) {
-      const taskId = gen.input_data?.generationTaskId;
-      if (!taskId) continue;
-
-      try {
-        console.log(`[STEP4] Polling Nano Banana: ${taskId}`);
-        const result = await getKieTaskResult(taskId);
-
-        if (result.status === 'SUCCESS') {
-          // Extract result URL from various possible formats
-          let resultUrl = '';
-          if (typeof result.result === 'string') {
-            resultUrl = result.result;
-          } else if (Array.isArray(result.result)) {
-            resultUrl = result.result[0];
-          } else if (result.result?.url) {
-            resultUrl = result.result.url;
-          } else if (result.result?.output) {
-            resultUrl = Array.isArray(result.result.output) 
-              ? result.result.output[0] 
-              : result.result.output;
-          }
-
-          if (resultUrl) {
-            console.log(`[STEP4] SUCCESS! Image: ${resultUrl.substring(0, 60)}...`);
+            // Save analysis and move to next step
             await supabaseAdmin.from('generations').update({
-              status: 'completed',
-              result_url: resultUrl
+              status: 'pending_prompt',
+              input_data: { ...gen.input_data, templateAnalysis },
+              updated_at: new Date().toISOString()
             }).eq('id', gen.id);
-          } else {
-            await supabaseAdmin.from('generations').update({
-              status: 'failed',
-              error_message: 'No result URL in response'
-            }).eq('id', gen.id);
-          }
 
-        } else if (result.status === 'FAILED') {
-          await supabaseAdmin.from('generations').update({
-            status: 'failed',
-            error_message: result.error || 'Generation failed'
-          }).eq('id', gen.id);
-        }
-        // PENDING/PROCESSING = keep waiting
-        
-      } catch (error: any) {
-        console.error('[STEP4] Polling Error:', error);
-      }
+          } catch (error: any) {
+            console.error(`[STEP1] Error for ${gen.id}:`, error.message);
+            await failGeneration(gen.id, `Template analysis failed: ${error.message}`);
+          }
+        })
+      );
     }
 
     // ============================================
-    // Calculate and Return Progress
+    // STEP 2: Claude generates image prompts (PARALLEL)
     // ============================================
-    const { data: allGens } = await supabaseAdmin
-      .from('generations')
-      .select('status')
-      .eq('project_id', projectId);
+    if (pendingPrompt.length > 0) {
+      console.log(`[STEP2] Processing ${pendingPrompt.length} prompts with Claude Sonnet 4.5...`);
+      
+      await Promise.all(
+        pendingPrompt.map(async (gen: any) => {
+          try {
+            // Lock
+            const locked = await lockGeneration(gen.id, 'pending_prompt', 'generating_prompt');
+            if (!locked) {
+              console.log(`[STEP2] Skipping ${gen.id} - already locked`);
+              return;
+            }
 
-    const counts = { 
-      pending_analysis: 0, 
-      analyzing_template: 0,
-      pending_prompt: 0, 
-      generating_prompt: 0,
-      pending_generation: 0, 
-      generating: 0, 
-      completed: 0, 
-      failed: 0 
-    };
-    
-    allGens?.forEach((g: any) => {
-      if (counts.hasOwnProperty(g.status)) {
-        counts[g.status as keyof typeof counts]++;
-      }
-    });
+            const { 
+              productName,
+              productDescription,
+              productBenefits,
+              productPrice,
+              productCategory,
+              productImages, 
+              productImage,
+              researchData,
+              templateName,
+              templateThumbnail,
+              templateAnalysis 
+            } = gen.input_data;
 
-    const total = allGens?.length || 0;
-    const completed = counts.completed;
-    const failed = counts.failed;
-    const inProgress = total - completed - failed;
-    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+            const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
 
-    return NextResponse.json({
-      success: true,
-      progress: {
-        total,
-        completed,
-        failed,
-        inProgress,
-        percentage,
-        isComplete: inProgress === 0 && total > 0,
-        details: counts
-      }
-    });
+            console.log(`[STEP2] Generating prompt for: "${productName}" + "${templateName}" (${gen.id})`);
+
+            // Get prompt generation template with variables
+            const promptGenerationTemplate = await getPromptWithVariables('static_ads_prompt_generation', {
+              PRODUCT_NAME: productName || 'Product',
+              PRODUCT_DESCRIPTION: productDescription || '',
+              PRODUCT_BENEFITS: productBenefits || 'Premium quality',
+              PRODUCT_PRICE: productPrice || 'Not specified',
+              PRODUCT_CATEGORY: productCategory || 'General',
+              DEEP_RESEARCH_JSON: researchData ? JSON.stringify(researchData) : 'Not available',
+              GEMINI_ANALYSIS_TEXT: templateAnalysis || 'Analysis not available',
+              TEMPLATE_NAME: templateName || 'Template'
+            });
+
+            // Build content with images
+            const imageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
+              { type: 'text', text: 'Based on the product information and template analysis provided in the system prompt, generate the image prompt.' }
+            ];
+
+            // Add template image first
+            if (templateThumbnail?.startsWith('http')) {
+              try {
+                const templateBase64 = await imageUrlToBase64(templateThumbnail);
+                imageContent.push({ type: 'image_url', image_url: { url: templateBase64 } });
+              } catch (e) {
+                console.log(`[STEP2] Could not add template image: ${e}`);
+              }
+            }
+
+            // Add product images (max 3 for context efficiency)
+            for (const imgUrl of allProductImages.slice(0, 3)) {
+              if (imgUrl?.startsWith('http')) {
+                try {
+                  const imgBase64 = await imageUrlToBase64(imgUrl);
+                  imageContent.push({ type: 'image_url', image_url: { url: imgBase64 } });
+                } catch (e) {
+                  console.log(`[STEP2] Could not add product image: ${e}`);
+                }
+              }
+            }
+
+            const messages: GeminiMessage[] = [
+              { role: 'developer', content: promptGenerationTemplate },
+              { role: 'user', content: imageContent }
+            ];
+
+            // Call Claude Sonnet 4.5
+            const generatedPrompt = await analyzeWithClaudeSonnet(messages, {
+              temperature: 0.7,
+              maxTokens: 4096
+            });
+
+            console.log(`[STEP2] Claude completed for ${gen.id}. Prompt: ${generatedPrompt.substring(0, 80)}...`);
+
+            // Save prompt and move to next step
+            await supabaseAdmin.from('generations').update({
+              status: 'pending_generation',
+              input_data: { ...gen.input_data, generatedPrompt },
+              updated_at: new Date().toISOString()
+            }).eq('id', gen.id);
+
+          } catch (error: any) {
+            console.error(`[STEP2] Error for ${gen.id}:`, error.message);
+            await failGeneration(gen.id, `Prompt generation failed: ${error.message}`);
+          }
+        })
+      );
+    }
+
+    // ============================================
+    // STEP 3: Nano Banana Pro creates images (PARALLEL)
+    // ============================================
+    if (pendingGeneration.length > 0) {
+      console.log(`[STEP3] Starting ${pendingGeneration.length} Nano Banana Pro generations...`);
+      
+      await Promise.all(
+        pendingGeneration.map(async (gen: any) => {
+          try {
+            // Lock
+            const locked = await lockGeneration(gen.id, 'pending_generation', 'generating');
+            if (!locked) {
+              console.log(`[STEP3] Skipping ${gen.id} - already locked`);
+              return;
+            }
+
+            const { generatedPrompt, productImages, productImage } = gen.input_data;
+            const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
+
+            console.log(`[STEP3] Starting Nano Banana for ${gen.id}`);
+
+            // Convert product images to base64 (max 8)
+            const imageInputs: string[] = [];
+            
+            for (const imgUrl of allProductImages.slice(0, 8)) {
+              if (imgUrl?.startsWith('http')) {
+                try {
+                  const dataUri = await imageUrlToBase64(imgUrl);
+                  const cleanBase64 = stripBase64Prefix(dataUri);
+                  imageInputs.push(cleanBase64);
+                } catch (e) {
+                  console.log(`[STEP3] Could not convert image: ${e}`);
+                }
+              }
+              if (imageInputs.length >= 8) break;
+            }
+
+            const nanoBananaInput: NanoBananaInput = {
+              prompt: generatedPrompt,
+              image_input: imageInputs,
+              aspect_ratio: '1:1',
+              resolution: '2K',
+              output_format: 'png'
+            };
+
+            const generationTaskId = await createKieTask(generationModel, nanoBananaInput);
+
+            await supabaseAdmin.from('generations').update({
+              input_data: { ...gen.input_data, generationTaskId },
+              updated_at: new Date().toISOString()
+            }).eq('id', gen.id);
+
+            console.log(`[STEP3] Task created for ${gen.id}: ${generationTaskId}`);
+
+          } catch (error: any) {
+            console.error(`[STEP3] Error for ${gen.id}:`, error.message);
+            await failGeneration(gen.id, `Image generation failed: ${error.message}`);
+          }
+        })
+      );
+    }
+
+    // ============================================
+    // STEP 4: Poll Nano Banana results (PARALLEL)
+    // ============================================
+    if (generating.length > 0) {
+      console.log(`[STEP4] Polling ${generating.length} Nano Banana tasks...`);
+      
+      await Promise.all(
+        generating.map(async (gen: any) => {
+          const taskId = gen.input_data?.generationTaskId;
+          if (!taskId) return;
+
+          try {
+            const result = await getKieTaskResult(taskId);
+
+            if (result.status === 'SUCCESS') {
+              // Extract result URL
+              let resultUrl = '';
+              if (typeof result.result === 'string') {
+                resultUrl = result.result;
+              } else if (Array.isArray(result.result)) {
+                resultUrl = result.result[0];
+              } else if (result.result?.url) {
+                resultUrl = result.result.url;
+              } else if (result.result?.output) {
+                resultUrl = Array.isArray(result.result.output) 
+                  ? result.result.output[0] 
+                  : result.result.output;
+              }
+
+              if (resultUrl) {
+                console.log(`[STEP4] SUCCESS for ${gen.id}! Saving to storage...`);
+                // Download from kie.ai and upload to our storage
+                await saveGenerationResult(gen.id, resultUrl, projectId);
+              } else {
+                await failGeneration(gen.id, 'No result URL in response');
+              }
+
+            } else if (result.status === 'FAILED') {
+              await failGeneration(gen.id, result.error || 'Generation failed');
+            }
+            // PENDING/PROCESSING = keep waiting
+            
+          } catch (error: any) {
+            console.error(`[STEP4] Polling error for ${gen.id}:`, error.message);
+          }
+        })
+      );
+    }
+
+    // Return current progress
+    return await returnProgress(projectId);
 
   } catch (error: any) {
     console.error('Error processing queue:', error);
     return new NextResponse('Internal Error', { status: 500 });
   }
+}
+
+// Helper: Calculate and return progress
+async function returnProgress(projectId: string) {
+  const { data: allGens } = await supabaseAdmin
+    .from('generations')
+    .select('status')
+    .eq('project_id', projectId);
+
+  const counts = { 
+    pending_analysis: 0, 
+    analyzing_template: 0,
+    pending_prompt: 0, 
+    generating_prompt: 0,
+    pending_generation: 0, 
+    generating: 0, 
+    completed: 0, 
+    failed: 0 
+  };
+  
+  allGens?.forEach((g: any) => {
+    if (counts.hasOwnProperty(g.status)) {
+      counts[g.status as keyof typeof counts]++;
+    }
+  });
+
+  const total = allGens?.length || 0;
+  const completed = counts.completed;
+  const failed = counts.failed;
+  const inProgress = total - completed - failed;
+  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  return NextResponse.json({
+    success: true,
+    progress: {
+      total,
+      completed,
+      failed,
+      inProgress,
+      percentage,
+      isComplete: inProgress === 0 && total > 0,
+      details: counts
+    }
+  });
 }

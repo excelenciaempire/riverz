@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Download, Check, Edit2, Loader2, Save, Undo2, X, Sparkles } from 'lucide-react';
+import { ArrowLeft, Download, Check, Edit2, Loader2, Save, Undo2, X, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -14,6 +14,8 @@ interface Generation {
   result_url: string;
   status: string;
   input_data: any;
+  version?: number;
+  parent_id?: string;
 }
 
 interface ProjectDetail {
@@ -100,65 +102,46 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     toast.success('Descarga iniciada');
   };
 
-  // Edit Mutation
+  // Edit Mutation - Uses new static-ads edit endpoint
   const editMutation = useMutation({
     mutationFn: async () => {
       if (!editingImage) return;
       setIsGenerating(true);
       setGeneratedEditUrl(null);
 
-      // 1. Start Task
-      const startRes = await fetch('/api/ai/edit-image', {
+      // Call the new edit endpoint which handles Claude + Nano Banana internally
+      const response = await fetch('/api/static-ads/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: editPrompt,
-          imageUrl: editingImage.result_url,
-          generationId: editingImage.id
+          generationId: editingImage.id,
+          editInstructions: editPrompt
         }),
       });
 
-      if (!startRes.ok) {
-        const errorData = await startRes.json().catch(() => ({}));
-        if (startRes.status === 402) {
-          throw new Error(`Créditos insuficientes. Necesitas ${errorData.required || 14} créditos.`);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        if (response.status === 402) {
+          throw new Error(`Créditos insuficientes.`);
         }
-        throw new Error(errorData.error || 'Error starting edit');
+        throw new Error(data.error || 'Error al editar imagen');
       }
-      
-      const { taskId } = await startRes.json();
 
-      // 2. Poll Status with timeout
-      const maxAttempts = 60; // Max 2 minutes (60 * 2 seconds)
-      let attempts = 0;
-      
-      const poll = async (): Promise<string> => {
-        attempts++;
-        if (attempts > maxAttempts) {
-          throw new Error('Timeout: La generación está tardando demasiado');
-        }
-        
-        const statusRes = await fetch(`/api/ai/task-status/${taskId}`);
-        if (!statusRes.ok) throw new Error('Error checking status');
-        const statusData = await statusRes.json();
-
-        if (statusData.data?.status === 'SUCCESS' && statusData.data?.result) {
-          return statusData.data.result;
-        } else if (statusData.data?.status === 'FAILED') {
-          throw new Error('La generación falló');
-        } else {
-          // Wait and retry
-          await new Promise(r => setTimeout(r, 2000));
-          return poll();
-        }
+      return {
+        resultUrl: data.resultUrl,
+        newGenerationId: data.newGenerationId,
+        version: data.version
       };
-
-      return poll();
     },
-    onSuccess: (url) => {
-      setGeneratedEditUrl(url);
+    onSuccess: (result) => {
+      if (result) {
+        setGeneratedEditUrl(result.resultUrl);
+        toast.success(`Edición completada - Versión ${result.version || 2}`);
+        // Refresh the project to show the new version
+        queryClient.invalidateQueries({ queryKey: ['project', params.id] });
+      }
       setIsGenerating(false);
-      toast.success('Edición completada - Revisa el resultado');
     },
     onError: (error: any) => {
       setIsGenerating(false);
@@ -168,32 +151,63 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   });
 
   const handleSaveEdit = async () => {
-    if (!editingImage || !generatedEditUrl) return;
-    
-    try {
-      // Save the edited image to the database
-      const response = await fetch('/api/ai/save-edit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          generationId: editingImage.id,
-          newImageUrl: generatedEditUrl
-        }),
+    // The new edit endpoint already saves the image, so we just need to close the drawer
+    toast.success('Imagen guardada');
+    setEditingImage(null);
+    setGeneratedEditUrl(null);
+    setEditPrompt('');
+    // Refresh is already done in the mutation onSuccess
+  };
+
+  // Delete single generation
+  const deleteGenerationMutation = useMutation({
+    mutationFn: async (generationId: string) => {
+      const response = await fetch(`/api/generations/${generationId}`, {
+        method: 'DELETE',
       });
-      
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Error al guardar');
-      }
-      
-      toast.success('Imagen guardada en el proyecto');
-      setEditingImage(null);
-      setGeneratedEditUrl(null);
-      setEditPrompt('');
+      if (!response.ok) throw new Error('Error al eliminar');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success('Imagen eliminada');
       queryClient.invalidateQueries({ queryKey: ['project', params.id] });
-    } catch (error: any) {
-      toast.error(error.message || 'Error al guardar la imagen');
+    },
+    onError: () => {
+      toast.error('Error al eliminar la imagen');
     }
+  });
+
+  // Delete entire project
+  const deleteProjectMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/projects/${params.id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Error al eliminar');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success('Proyecto eliminado');
+      router.push('/crear/static-ads/historial');
+    },
+    onError: () => {
+      toast.error('Error al eliminar el proyecto');
+    }
+  });
+
+  const handleDeleteSelected = () => {
+    if (selectedImages.length === 0) return;
+    if (!confirm(`¿Eliminar ${selectedImages.length} imagen(es) seleccionadas?`)) return;
+    
+    selectedImages.forEach(id => {
+      deleteGenerationMutation.mutate(id);
+    });
+    setSelectedImages([]);
+  };
+
+  const handleDeleteProject = () => {
+    if (!confirm('¿Eliminar todo el proyecto y todas sus imágenes?')) return;
+    deleteProjectMutation.mutate();
   };
 
   if (isLoading) {
@@ -230,14 +244,32 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               {selectedImages.length === project?.generations.length ? 'Deseleccionar' : 'Seleccionar Todo'}
             </Button>
             {selectedImages.length > 0 && (
-              <Button
-                onClick={handleDownload}
-                className="bg-[#07A498] text-white hover:bg-[#068f84]"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Descargar ({selectedImages.length})
-              </Button>
+              <>
+                <Button
+                  onClick={handleDownload}
+                  className="bg-[#07A498] text-white hover:bg-[#068f84]"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Descargar ({selectedImages.length})
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDeleteSelected}
+                  className="border-red-500/50 text-red-400 hover:bg-red-500/10 hover:border-red-500"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar ({selectedImages.length})
+                </Button>
+              </>
             )}
+            <Button
+              variant="outline"
+              onClick={handleDeleteProject}
+              className="border-gray-700 text-gray-400 hover:text-red-400 hover:border-red-500/50"
+              title="Eliminar proyecto completo"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
@@ -270,6 +302,13 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               )}>
                 {selectedImages.includes(gen.id) && <Check className="h-4 w-4" />}
               </div>
+
+              {/* Version Badge */}
+              {gen.version && gen.version > 1 && (
+                <div className="absolute top-3 left-3 px-2 py-0.5 text-xs font-medium bg-purple-500/80 text-white rounded-full pointer-events-none">
+                  v{gen.version}
+                </div>
+              )}
 
               {/* Actions Overlay */}
               <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full transition-transform group-hover:translate-y-0 bg-gradient-to-t from-black/90 to-transparent flex justify-center">

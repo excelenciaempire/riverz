@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
@@ -8,10 +8,11 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/dropdown';
 import { toast } from 'sonner';
-import { Star, Check, Loader2, Zap, Clock, AlertCircle, X } from 'lucide-react';
+import { Star, Check, Loader2, Zap, Clock, AlertCircle, X, Image as ImageIcon } from 'lucide-react';
+import { subscribeToGenerations, ProgressState } from '@/lib/realtime-helper';
 
-// Maximum templates per generation (to control costs during testing)
-const MAX_TEMPLATES_PER_GENERATION = 2;
+// Maximum templates per generation - now supports parallel processing
+const MAX_TEMPLATES_PER_GENERATION = 25;
 import { cn } from '@/lib/utils';
 import type { Template, Product } from '@/types';
 
@@ -64,10 +65,14 @@ export default function StaticAdsPage() {
     
     setIsCancelling(true);
     try {
-      // Stop polling
+      // Stop polling and realtime
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
         pollingRef.current = null;
+      }
+      if (realtimeCleanupRef.current) {
+        realtimeCleanupRef.current();
+        realtimeCleanupRef.current = null;
       }
       
       // Call API to cancel
@@ -83,6 +88,7 @@ export default function StaticAdsPage() {
         setCurrentProjectId(null);
         setSelectedTemplateIds([]);
         setIsCloneBarVisible(false);
+        setCompletedImages([]);
       } else {
         toast.error('Error al cancelar');
       }
@@ -154,41 +160,68 @@ export default function StaticAdsPage() {
     }
   }, [selectedTemplateIds.length]);
 
-  // Cleanup polling on unmount
+  // Cleanup polling and realtime on unmount
   useEffect(() => {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (realtimeCleanupRef.current) realtimeCleanupRef.current();
     };
   }, []);
 
-  // Poll for progress - calls process-queue to advance the pipeline
+  // Realtime subscription ref
+  const realtimeCleanupRef = useRef<(() => void) | null>(null);
+  const [completedImages, setCompletedImages] = useState<string[]>([]);
+
+  // Start realtime subscription and polling for progress
   const startPolling = (projectId: string) => {
     if (pollingRef.current) clearInterval(pollingRef.current);
+    if (realtimeCleanupRef.current) realtimeCleanupRef.current();
     
+    // Subscribe to realtime updates
+    realtimeCleanupRef.current = subscribeToGenerations(
+      projectId,
+      // On individual update
+      (generation) => {
+        console.log(`[REALTIME] Generation updated: ${generation.id} -> ${generation.status}`);
+        if (generation.status === 'completed' && generation.result_url) {
+          setCompletedImages(prev => {
+            if (!prev.includes(generation.result_url!)) {
+              return [...prev, generation.result_url!];
+            }
+            return prev;
+          });
+        }
+      },
+      // On progress update
+      (progress: ProgressState) => {
+        setProgressData({
+          percentage: progress.percentage,
+          completed: progress.completed,
+          total: progress.total,
+          failed: progress.failed,
+          inProgress: progress.inProgress,
+          isComplete: progress.isComplete
+        });
+
+        if (progress.isComplete) {
+          // Stop polling when complete
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          toast.success(`¡${progress.completed} imágenes generadas!`);
+          setTimeout(() => {
+            router.push(`/crear/static-ads/historial/${projectId}`);
+          }, 1500);
+        }
+      }
+    );
+    
+    // Also poll to advance the pipeline (triggers processing)
     const poll = async () => {
       try {
-        // Call process queue to advance items in the pipeline
-        const processRes = await fetch('/api/static-ads/process-queue', {
+        await fetch('/api/static-ads/process-queue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ projectId }),
         });
-        
-        if (processRes.ok) {
-          const data = await processRes.json();
-          
-          if (data.progress) {
-            setProgressData(data.progress);
-            
-            if (data.progress.isComplete) {
-              if (pollingRef.current) clearInterval(pollingRef.current);
-              toast.success(`¡${data.progress.completed} imágenes generadas!`);
-              setTimeout(() => {
-                router.push(`/crear/static-ads/historial/${projectId}`);
-              }, 1500);
-            }
-          }
-        }
       } catch (error) {
         console.error('Polling error:', error);
       }
@@ -197,10 +230,17 @@ export default function StaticAdsPage() {
     // Initial call
     poll();
     
-    // Poll every 8 seconds to reduce API calls
-    // Each poll processes ONE item, so larger batches take longer
-    pollingRef.current = setInterval(poll, 8000);
+    // Poll every 3 seconds for parallel processing
+    // This triggers the backend to process batches in parallel
+    pollingRef.current = setInterval(poll, 3000);
   };
+
+  // Cleanup realtime subscription on unmount
+  useEffect(() => {
+    return () => {
+      if (realtimeCleanupRef.current) realtimeCleanupRef.current();
+    };
+  }, []);
 
   // Clone Mutation
   const cloneMutation = useMutation({
@@ -222,6 +262,7 @@ export default function StaticAdsPage() {
     },
     onSuccess: (data) => {
       setCurrentProjectId(data.project.id);
+      setCompletedImages([]); // Reset completed images
       setProgressData({
         percentage: 0,
         completed: 0,
@@ -231,9 +272,9 @@ export default function StaticAdsPage() {
         isComplete: false
       });
       
-      toast.success(`Iniciando generación de ${data.bulk?.total} imágenes...`);
+      toast.success(`Iniciando generación de ${data.bulk?.total} imágenes en paralelo...`);
       
-      // Start polling for real progress
+      // Start realtime subscription and polling
       startPolling(data.project.id);
     },
     onError: (error) => {
@@ -718,6 +759,31 @@ export default function StaticAdsPage() {
                 />
               </div>
             </div>
+
+            {/* Real-time Image Previews */}
+            {completedImages.length > 0 && !progressData.isComplete && (
+              <div className="mb-4">
+                <p className="mb-2 text-xs text-gray-400 flex items-center gap-1">
+                  <ImageIcon className="h-3 w-3" />
+                  Imágenes generadas ({completedImages.length})
+                </p>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {completedImages.slice(-6).map((url, idx) => (
+                    <img
+                      key={idx}
+                      src={url}
+                      alt={`Generated ${idx + 1}`}
+                      className="h-16 w-16 rounded-lg object-cover border border-gray-700 animate-in fade-in slide-in-from-right-2 duration-300"
+                    />
+                  ))}
+                  {completedImages.length > 6 && (
+                    <div className="h-16 w-16 rounded-lg bg-gray-800 flex items-center justify-center text-xs text-gray-400">
+                      +{completedImages.length - 6}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Failed Warning */}
             {progressData.failed > 0 && (
