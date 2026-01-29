@@ -1,17 +1,11 @@
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { 
-  analyzeWithClaudeSonnet, 
-  GeminiMessage,
-  imageUrlToBase64,
-  stripBase64Prefix,
-  getMediaTypeFromDataUri
-} from '@/lib/kie-client';
+import { analyzeWithClaudeSonnet, GeminiMessage } from '@/lib/kie-client';
 import { getPromptWithVariables } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120; // Allow up to 120 seconds for deep research with multiple images
+export const maxDuration = 60; // Hobby plan has 10s limit, Pro has 60s
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
@@ -59,65 +53,30 @@ export async function POST(req: Request) {
       PRODUCT_WEBSITE: product.website || 'No especificado'
     });
 
-    // 4. Convert product images to base64 (limit to 3 for speed)
-    const productImages = (product.images || []).slice(0, 3);
-    const imageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [];
-    
-    // Add text instruction first
-    imageContent.push({
-      type: 'text',
-      text: `Analiza este producto y genera el research profundo en formato JSON.
+    // 4. Prepare text-only request (no images for speed on Hobby plan)
+    const userMessage = `Analiza este producto y genera el research profundo en formato JSON.
       
 Producto: ${product.name}
 Descripción: ${product.description || 'No disponible'}
 Beneficios: ${product.benefits || 'No especificados'}
 Precio: ${product.price ? '$' + product.price : 'No especificado'}
 Categoría: ${product.category || 'General'}
+Website: ${product.website || 'No especificado'}
 
-Analiza las imágenes del producto para entender su packaging, presentación y características visuales.`
-    });
+Genera el análisis basándote en esta información del producto.`;
 
-    // Convert images to base64 (max 3 for speed)
-    console.log(`[DEEP-RESEARCH] Processing ${productImages.length} product images...`);
-    
-    for (const imageUrl of productImages) {
-      if (imageUrl && imageUrl.startsWith('http')) {
-        try {
-          // Download and convert to base64
-          const dataUri = await imageUrlToBase64(imageUrl);
-          
-          // For Claude via kie.ai, we can send as data URI
-          imageContent.push({
-            type: 'image_url',
-            image_url: { url: dataUri }
-          });
-          
-          console.log(`[DEEP-RESEARCH] Added image: ${imageUrl.substring(0, 50)}...`);
-        } catch (imgError) {
-          console.error(`[DEEP-RESEARCH] Failed to process image: ${imageUrl}`, imgError);
-          // Continue with other images
-        }
-      }
-    }
-
-    // 5. Prepare Claude Messages
+    // 5. Prepare messages (text only for speed)
     const messages: GeminiMessage[] = [
-      {
-        role: 'developer',
-        content: systemPrompt
-      },
-      {
-        role: 'user',
-        content: imageContent
-      }
+      { role: 'developer', content: systemPrompt },
+      { role: 'user', content: userMessage }
     ];
 
-    // 6. Call Claude Sonnet 4.5 for deep research
-    console.log(`[DEEP-RESEARCH] Calling Claude Sonnet 4.5 with ${imageContent.length - 1} images...`);
+    // 6. Call Claude for deep research (text only, faster)
+    console.log(`[DEEP-RESEARCH] Calling Claude (text only for speed)...`);
     
     const researchResponse = await analyzeWithClaudeSonnet(messages, {
       temperature: 0.5,
-      maxTokens: 4000,
+      maxTokens: 3000,
       model: 'claude-sonnet-4-5-20250929'
     });
 
@@ -168,8 +127,7 @@ Analiza las imágenes del producto para entender su packaging, presentación y c
     return NextResponse.json({ 
       success: true, 
       researchData,
-      status: 'completed',
-      imagesProcessed: imageContent.length - 1 // Subtract the text content
+      status: 'completed'
     });
 
   } catch (error: any) {
