@@ -26,8 +26,11 @@ export default clerkMiddleware(async (auth, request) => {
 
   // Protect all other routes - require authentication
   if (!userId) {
-    const signInUrl = new URL('/sign-in', request.url);
-    signInUrl.searchParams.set('redirect_url', request.url);
+    // Use APP_URL to avoid Render internal URL (localhost:10000)
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.url;
+    const pathname = new URL(request.url).pathname;
+    const signInUrl = new URL('/sign-in', baseUrl);
+    signInUrl.searchParams.set('redirect_url', `${baseUrl}${pathname}`);
     return NextResponse.redirect(signInUrl);
   }
 
