@@ -24,12 +24,11 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Concurrency limits - Optimized for Vercel (10s timeout on Hobby, 60s on Pro)
-// Process 1 at a time to fit within timeout
-const PARALLEL_GEMINI = 1;   // 1 Gemini analysis (takes ~5-8s)
-const PARALLEL_CLAUDE = 1;   // 1 Claude prompt (takes ~3-5s)
-const PARALLEL_NANO = 2;     // 2 Nano Banana tasks (async, fast to start)
-const PARALLEL_POLL = 5;     // 5 polling operations (fast)
+// Concurrency limits - Optimized for Render Starter (400s timeout)
+const PARALLEL_GEMINI = 3;   // 3 Gemini analyses in parallel
+const PARALLEL_CLAUDE = 2;   // 2 Claude prompts in parallel
+const PARALLEL_NANO = 5;     // 5 Nano Banana tasks
+const PARALLEL_POLL = 10;    // 10 polling operations
 
 /**
  * Static Ads Generation Pipeline - PARALLEL PROCESSING
@@ -206,17 +205,28 @@ export async function POST(req: Request) {
         pendingAnalysis.map(async (gen: any) => {
           try {
             // Lock
+            console.log(`[STEP1] Attempting lock for ${gen.id}...`);
             const locked = await lockGeneration(gen.id, 'pending_analysis', 'analyzing_template');
             if (!locked) {
               console.log(`[STEP1] Skipping ${gen.id} - already locked`);
               return;
             }
+            console.log(`[STEP1] Lock acquired for ${gen.id}`);
 
-            const { templateName, templateThumbnail } = gen.input_data;
-            console.log(`[STEP1] Analyzing: "${templateName}" (${gen.id})`);
+            const inputData = gen.input_data;
+            console.log(`[STEP1] Input data keys:`, Object.keys(inputData || {}));
+            
+            const { templateName, templateThumbnail } = inputData || {};
+            console.log(`[STEP1] Analyzing: "${templateName}" thumbnail: ${templateThumbnail?.substring(0, 50)}...`);
+            
+            if (!templateThumbnail) {
+              throw new Error('Missing templateThumbnail in input_data');
+            }
 
             // Convert template image to base64
+            console.log(`[STEP1] Converting image to base64...`);
             const templateBase64 = await imageUrlToBase64(templateThumbnail);
+            console.log(`[STEP1] Image converted, size: ${templateBase64.length} chars`);
 
             // Get template analysis prompt
             const analysisPrompt = await getPromptText('template_analysis');
@@ -233,9 +243,9 @@ export async function POST(req: Request) {
               }
             ];
 
-            // Call Gemini Flash 2.0 (fast multimodal) - use low temp for faster response
+            // Call Gemini Flash 2.0 (fast multimodal)
+            console.log(`[STEP1] Calling Gemini Flash 2.0 for ${gen.id}...`);
             const templateAnalysis = await analyzeWithGeminiFlash2(messages, { temperature: 0.3 });
-
             console.log(`[STEP1] Gemini completed for ${gen.id}. Analysis: ${templateAnalysis.length} chars`);
 
             // Save analysis and move to next step
