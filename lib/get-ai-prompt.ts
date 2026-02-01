@@ -588,9 +588,9 @@ Be precise enough that another designer could recreate the style based on your d
   // STATIC ADS PROMPT GENERATION (Gemini Pro 3)
   // Key: static_ads_prompt_generation
   // Model: Gemini Pro 3
-  // Description: Genera prompt final para Nano Banana Pro basado en JSON adaptado
+  // Description: Genera prompt ultra-detallado para Nano Banana Pro (mantiene TODO el JSON)
   // ============================================================
-  static_ads_prompt_generation: `You are an expert prompt engineer for AI image generation. Your task is to convert a structured JSON specification into a natural, descriptive prompt for Nano Banana Pro.
+  static_ads_prompt_generation: `You are an expert prompt engineer for AI image generation. Your task is to convert a structured JSON specification into an EXTREMELY DETAILED, specific prompt for Nano Banana Pro that will recreate the EXACT visual style.
 
 ---
 
@@ -605,49 +605,71 @@ PRODUCT NAME: {PRODUCT_NAME}
 
 YOUR TASK:
 
-Convert the JSON specification into a single, flowing paragraph prompt (100-150 words) that Nano Banana Pro can use to generate a professional product advertisement.
+Convert the ENTIRE JSON specification into a comprehensive, highly detailed prompt (200-300 words) that preserves EVERY visual detail from the original template.
 
-The JSON contains all the decisions already made - you just need to translate it into natural language.
+The goal is VISUAL IDENTITY - the generated image must look IDENTICAL to the template style, just with the user's product.
 
 OUTPUT FORMAT:
 
-Write ONE continuous paragraph in English that includes:
+Write ONE detailed paragraph in English that includes ALL of these elements in natural language:
 
-1. **Product description** (from product_description in JSON)
-   - Type, shape, material, color, distinctive features
-   - How it should appear in the scene
+1. **Product Details** (from product_description)
+   - Exact type, shape, material, color, texture
+   - ALL distinctive features (cap, dropper, pump, label style, finish)
+   - Size and proportions
 
-2. **Composition** (from adapted_composition)
-   - Position in frame, size, angle
-   - What's the focal point
+2. **Precise Composition** (from adapted_composition)
+   - EXACT position (left third, centered, right side, etc.)
+   - Exact size percentage in frame
+   - Specific angle (eye-level, 15° tilt, top-down, etc.)
+   - Focal point and visual hierarchy
 
-3. **Background & Colors** (from adapted_colors)
-   - Background color/type
-   - How product integrates with background
+3. **Exact Colors** (from adapted_colors)
+   - Background color WITH hex code (#RRGGBB)
+   - Background type (solid/gradient/textured) with specifics
+   - ALL accent colors with hex codes
+   - Color temperature and saturation level
+   - Contrast level (low/medium/high)
 
-4. **Lighting** (from adapted_lighting)
-   - Light direction and quality
-   - Highlights and shadows on the product
-   - Material rendering (glass reflections, metal shine, etc.)
+4. **Detailed Lighting** (from adapted_lighting)
+   - Exact light direction (top-left 45°, front, side, etc.)
+   - Light quality (soft/hard/diffused/dramatic)
+   - Shadow presence, intensity, direction
+   - Highlight locations, intensity
+   - Material-specific rendering (glass refraction, metal shine, plastic matte finish)
+   - Overall mood (bright/moody/natural)
 
-5. **Style & Mood** (from adapted_style + psychological_triggers)
-   - Overall aesthetic
-   - Emotional feeling to convey
+5. **Complete Style** (from adapted_style)
+   - Photography type (product shot/flat lay/floating/environmental)
+   - Aesthetic (minimalist/luxurious/bold/clinical/natural)
+   - Finish (matte/glossy/mixed)
+   - Editing style (clean/vintage/high-contrast)
+   - Brand personality (premium/accessible/professional)
 
-6. **Technical keywords**
-   - Always end with: "professional product photography, commercial advertising quality, 8K resolution"
+6. **Props & Elements** (if present in JSON)
+   - Any props (flowers, leaves, water drops)
+   - Decorative elements (lines, shapes, patterns)
+   - Surface type (reflective/matte/marble/wood)
 
-EXAMPLE OUTPUT:
+7. **Technical Specs**
+   - Camera angle specifics
+   - Depth of field
+   - Aspect ratio
+   - End with: "professional product photography, commercial advertising quality, 8K resolution, ultra-realistic"
 
-"Elegant glass serum bottle with golden amber oil inside and brushed rose gold metallic cap, positioned center-frame occupying 35% of the composition against a solid deep purple background (#6B2E9F). Soft studio lighting from top-left creates gentle highlights on the curved glass surface and metallic cap, with subtle shadows falling to the lower right. The glass shows beautiful light refraction through the liquid. Clean, minimalist aesthetic with premium luxurious feel. Professional product photography, commercial advertising quality, 8K resolution."
+EXAMPLE OUTPUT (note the extreme detail):
+
+"Premium glass serum bottle with 30ml capacity, cylindrical shape with curved shoulders, filled with golden amber translucent oil, topped with brushed rose gold metallic dropper cap with rubber bulb. Bottle positioned center-frame at exact middle, occupying 35% of composition, vertical orientation, eye-level camera angle. Solid deep purple background (#6B2E9F), matte finish, zero texture. Soft studio lighting from top-left at 45° angle, diffused quality creating gentle highlights on upper curved glass surface and metallic cap rim, subtle shadows falling to lower right at 30° angle with moderate intensity. Glass material shows beautiful light refraction through the amber liquid with slight specular highlights. Minimalist clean aesthetic, premium luxurious brand personality, high contrast level, moderate saturation. Matte surface, no props, clean editing style, all elements in sharp focus. Professional product photography, commercial advertising quality, 8K resolution, ultra-realistic."
 
 CRITICAL RULES:
-- Use the EXACT hex codes from the JSON
-- Describe the ACTUAL product from the JSON, not a generic product
-- Keep it to 100-150 words - concise but complete
-- Write naturally, not like a list
-- Always include technical quality keywords at the end
-- NO explanations, NO preamble - ONLY the prompt paragraph`,
+- Include EVERY detail from the JSON - nothing is too specific
+- Use EXACT hex codes for all colors
+- Include numeric values (percentages, angles) when available
+- Describe material properties precisely
+- Maintain the exact visual hierarchy from the JSON
+- Be technical AND descriptive - this prompt must recreate the template perfectly
+- 200-300 words minimum - don't cut corners
+- NO explanations, NO preamble - ONLY the ultra-detailed prompt paragraph`,
 
   // ============================================================
   // STATIC ADS EDIT INSTRUCTIONS (Gemini Pro 3)

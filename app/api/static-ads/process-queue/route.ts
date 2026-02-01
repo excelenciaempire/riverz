@@ -167,13 +167,13 @@ async function processGeneration(gen: any, generationModel: string, projectId: s
       const allImages: string[] = inputData.productImages || (inputData.productImage ? [inputData.productImage] : []);
       const imageInputs = allImages.slice(0, 8).filter((url: string) => url?.startsWith('http'));
 
-      const nanoBananaInput: NanoBananaInput = {
-        prompt: inputData.generatedPrompt,
-        image_input: imageInputs,
-        aspect_ratio: '1:1',
-        resolution: '2K',
-        output_format: 'png'
-      };
+            const nanoBananaInput: NanoBananaInput = {
+              prompt: inputData.generatedPrompt,
+              image_input: imageInputs,
+              aspect_ratio: '3:4',
+              resolution: '2K',
+              output_format: 'png'
+            };
 
       const taskId = await createKieTask(generationModel, nanoBananaInput);
       inputData.generationTaskId = taskId;

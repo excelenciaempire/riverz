@@ -332,9 +332,9 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </div>
         )}
 
-        {/* Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {project?.generations.map((gen) => {
+        {/* Grid - Modern 3:4 Design */}
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          {project?.generations.map((gen, idx) => {
             const isCompleted = gen.status === 'completed';
             const isFailed = gen.status === 'failed';
             const isPending = !isCompleted && !isFailed;
@@ -344,106 +344,134 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               <div
                 key={gen.id}
                 className={cn(
-                  "group relative aspect-square overflow-hidden rounded-xl border-2 transition-all",
-                  isCompleted && selectedImages.includes(gen.id) ? "border-[#07A498]" : "border-gray-800",
-                  isCompleted && "hover:border-gray-600 bg-[#1a2332]",
-                  isPending && "bg-[#0d1117]",
-                  isFailed && "bg-red-950/20 border-red-900/50"
+                  "group relative rounded-2xl border transition-all duration-300 overflow-hidden",
+                  "bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f]",
+                  isCompleted && selectedImages.includes(gen.id) 
+                    ? "border-[#07A498] shadow-lg shadow-[#07A498]/20" 
+                    : "border-gray-800/50 hover:border-gray-700"
                 )}
+                style={{ animationDelay: `${idx * 50}ms` }}
               >
-                {/* Completed - Show image */}
-                {isCompleted && gen.result_url && (
-                  <>
-                    <img
-                      src={gen.result_url}
-                      alt="Generated"
-                      className="h-full w-full object-cover"
-                    />
-                    
-                    {/* Selection Overlay */}
-                    <div 
-                      className="absolute inset-0 cursor-pointer"
-                      onClick={() => toggleSelection(gen.id)}
-                    />
-
-                    {/* Checkbox */}
-                    <div className={cn(
-                      "absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full border transition-all pointer-events-none",
-                      selectedImages.includes(gen.id) ? "bg-[#07A498] border-[#07A498] text-white" : "border-white/50 bg-black/30"
-                    )}>
-                      {selectedImages.includes(gen.id) && <Check className="h-4 w-4" />}
-                    </div>
-
-                    {/* Version Badge */}
-                    {gen.version && gen.version > 1 && (
-                      <div className="absolute top-3 left-3 px-2 py-0.5 text-xs font-medium bg-purple-500/80 text-white rounded-full pointer-events-none">
-                        v{gen.version}
+                {/* Image Container with 3:4 aspect ratio */}
+                <div className="relative aspect-[3/4] overflow-hidden bg-[#0a0a0a]">
+                  {isCompleted && gen.result_url ? (
+                    <>
+                      <img
+                        src={gen.result_url}
+                        alt="Generated"
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        onClick={() => toggleSelection(gen.id)}
+                      />
+                      
+                      {/* Checkmark Overlay */}
+                      <div
+                        className={cn(
+                          "absolute inset-0 flex items-center justify-center bg-[#07A498]/20 backdrop-blur-sm transition-opacity cursor-pointer",
+                          selectedImages.includes(gen.id) ? "opacity-100" : "opacity-0"
+                        )}
+                        onClick={() => toggleSelection(gen.id)}
+                      >
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#07A498] shadow-xl">
+                          <Check className="h-8 w-8 text-white" />
+                        </div>
                       </div>
-                    )}
 
-                    {/* Actions Overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full transition-transform group-hover:translate-y-0 bg-gradient-to-t from-black/90 to-transparent flex justify-center">
-                      <Button
-                        size="sm"
-                        variant="secondary"
+                      {/* Version Badge */}
+                      {gen.version && gen.version > 1 && (
+                        <div className="absolute top-3 left-3 px-2 py-0.5 text-xs font-medium bg-purple-500/90 text-white rounded-full pointer-events-none">
+                          v{gen.version}
+                        </div>
+                      )}
+                    </>
+                  ) : isPending ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+                      {/* Template thumbnail blurred background */}
+                      {gen.input_data?.templateThumbnail && (
+                        <img 
+                          src={gen.input_data.templateThumbnail} 
+                          alt="" 
+                          className="absolute inset-0 h-full w-full object-cover opacity-10 blur-md"
+                        />
+                      )}
+                      
+                      {/* Loading Content */}
+                      <div className="relative z-10 flex flex-col items-center text-center">
+                        {/* Animated Icon */}
+                        {status.icon === 'loader' && (
+                          <div className="relative mb-4">
+                            <div className="absolute inset-0 rounded-full bg-[#07A498]/20 animate-ping" />
+                            <Sparkles className={cn("h-14 w-14 relative z-10 animate-spin", status.color)} />
+                          </div>
+                        )}
+                        {status.icon === 'clock' && (
+                          <Clock className={cn("h-14 w-14 mb-4", status.color)} />
+                        )}
+                        
+                        {/* Status Label */}
+                        <p className={cn("text-base font-bold text-center mb-3", status.color)}>
+                          {status.label}
+                        </p>
+                        
+                        {/* Progress Bar */}
+                        <div className="w-full max-w-[75%] mb-3">
+                          <div className="h-1.5 bg-gray-800/50 rounded-full overflow-hidden">
+                            <div className={cn("h-full rounded-full animate-progress", 
+                              status.color.replace('text-', 'bg-')
+                            )} />
+                          </div>
+                        </div>
+                        
+                        {/* Template Name */}
+                        <p className="text-xs text-gray-500 px-2 line-clamp-2 max-w-full">
+                          {gen.input_data?.templateName || `Imagen ${idx + 1}`}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-red-950/20 to-red-900/10">
+                      <AlertCircle className="h-14 w-14 mb-3 text-red-400" />
+                      <p className="text-base font-bold text-center text-red-400 mb-2">Error</p>
+                      <p className="text-xs text-center text-red-400/70 px-2 line-clamp-3">
+                        {gen.input_data?.templateName || 'Error en generación'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Info Bar */}
+                <div className="p-3 flex items-center justify-between border-t border-gray-800/50">
+                  {isCompleted ? (
+                    <>
+                      <input
+                        type="checkbox"
+                        checked={selectedImages.includes(gen.id)}
+                        onChange={() => toggleSelection(gen.id)}
+                        className="h-4 w-4 cursor-pointer rounded accent-[#07A498]"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditingImage(gen);
-                          setGeneratedEditUrl(null);
                           setEditPrompt('');
+                          setGeneratedEditUrl(null);
                         }}
-                        className="bg-white/90 text-black hover:bg-white"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#07A498]/10 text-[#07A498] text-xs font-medium transition hover:bg-[#07A498]/20"
                       >
-                        <Edit2 className="mr-2 h-3 w-3" />
-                        Editar con IA
-                      </Button>
+                        <Edit2 className="h-3.5 w-3.5" />
+                        Editar
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-gray-500 w-full">
+                      <div className={cn("h-2 w-2 rounded-full animate-pulse", 
+                        status.color.replace('text-', 'bg-')
+                      )} />
+                      <span className="flex-1 truncate">{status.label}...</span>
+                      <span className="text-[10px] text-[#07A498] font-mono">100%</span>
                     </div>
-                  </>
-                )}
-
-                {/* Pending - Show loading state */}
-                {isPending && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-                    {/* Template thumbnail as background (blurred) */}
-                    {gen.input_data?.templateThumbnail && (
-                      <img 
-                        src={gen.input_data.templateThumbnail} 
-                        alt="" 
-                        className="absolute inset-0 h-full w-full object-cover opacity-20 blur-sm"
-                      />
-                    )}
-                    
-                    <div className="relative z-10 flex flex-col items-center text-center">
-                      {status.icon === 'loader' && (
-                        <Loader2 className={cn("h-8 w-8 animate-spin mb-3", status.color)} />
-                      )}
-                      {status.icon === 'clock' && (
-                        <Clock className={cn("h-8 w-8 mb-3", status.color)} />
-                      )}
-                      <span className={cn("text-sm font-medium", status.color)}>
-                        {status.label}
-                      </span>
-                      {gen.input_data?.templateName && (
-                        <span className="text-xs text-gray-500 mt-1 line-clamp-1">
-                          {gen.input_data.templateName}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Failed - Show error state */}
-                {isFailed && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-                    <AlertCircle className="h-8 w-8 text-red-400 mb-3" />
-                    <span className="text-sm font-medium text-red-400">Error</span>
-                    {gen.input_data?.templateName && (
-                      <span className="text-xs text-gray-500 mt-1 line-clamp-1">
-                        {gen.input_data.templateName}
-                      </span>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}
