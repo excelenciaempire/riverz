@@ -4,18 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton, useClerk } from '@clerk/nextjs';
 import {
-  Sparkles,
-  FileEdit,
   Package,
   History,
   Settings,
   LogOut,
-  Camera,
   Layout,
-  Images,
   Video,
   FileVideo,
-  Search,
   Image as ImageIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,9 +20,7 @@ const navigationGroups = [
   {
     title: 'Imagenes',
     items: [
-      { name: 'Lifestyle', href: '/crear/lifestyle', icon: Camera },
       { name: 'Static Ads', href: '/crear/static-ads', icon: Layout },
-      { name: 'Carruseles', href: '/crear/carruseles', icon: Images },
       { name: 'Editar Foto', href: '/crear/editar-foto', icon: ImageIcon },
       { name: 'Historial', href: '/crear/static-ads/historial', icon: History },
     ],
@@ -36,15 +29,14 @@ const navigationGroups = [
     title: 'Videos',
     items: [
       { name: 'Crear', href: '/crear', icon: Video },
-      { name: 'Historial', href: '/historial', icon: History },
-      { name: 'Contenido', href: '/contenido', icon: FileVideo },
+      { name: 'UGC', href: '/crear/ugc', icon: FileVideo },
+      { name: 'Clips', href: '/crear/clips', icon: FileVideo },
     ],
   },
   {
     title: 'Marca',
     items: [
       { name: 'Mis Productos', href: '/marcas', icon: Package },
-      { name: 'Research', href: '/research', icon: Search },
     ],
   },
 ];
