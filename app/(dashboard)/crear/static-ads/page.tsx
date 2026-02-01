@@ -335,9 +335,18 @@ export default function StaticAdsPage() {
     setIsCloneBarVisible(newSelected.length > 0);
   };
 
+  // Check if selected product has completed research
+  const selectedProductData = products?.find(p => p.id === selectedProduct);
+  const hasCompletedResearch = selectedProductData?.research_status === 'completed';
+  const needsResearch = selectedProduct && !hasCompletedResearch;
+
   const initiateCloneProcess = () => {
     if (!selectedProduct) {
       toast.error('Selecciona un producto primero');
+      return;
+    }
+    if (!hasCompletedResearch) {
+      toast.error('Debes completar el research del producto antes de clonar templates');
       return;
     }
     setIsProjectModalOpen(true);
@@ -621,6 +630,22 @@ export default function StaticAdsPage() {
               </div>
             </div>
 
+            {/* Research Warning */}
+            {needsResearch && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <AlertCircle className="h-4 w-4 text-amber-500" />
+                <span className="text-xs text-amber-400">Research requerido</span>
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => router.push(`/marcas/${selectedProduct}`)}
+                  className="text-xs text-amber-500 hover:text-amber-400 p-0 h-auto"
+                >
+                  Completar
+                </Button>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex items-center gap-2">
               <Button
@@ -635,8 +660,8 @@ export default function StaticAdsPage() {
               </Button>
               <Button
                 onClick={initiateCloneProcess}
-                disabled={cloneMutation.isPending || !selectedProduct}
-                className="bg-[#07A498] text-white hover:bg-[#068f84] px-6 py-5 rounded-xl shadow-lg shadow-[#07A498]/20"
+                disabled={cloneMutation.isPending || !selectedProduct || needsResearch}
+                className="bg-[#07A498] text-white hover:bg-[#068f84] px-6 py-5 rounded-xl shadow-lg shadow-[#07A498]/20 disabled:opacity-50"
               >
                 {cloneMutation.isPending ? (
                   <>

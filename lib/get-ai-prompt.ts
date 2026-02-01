@@ -344,10 +344,200 @@ CRITICAL GUIDELINES:
 - Return ONLY valid JSON—no additional text outside the JSON structure`,
 
   // ============================================================
-  // TEMPLATE ANALYSIS (Gemini Flash 2.0)
+  // TEMPLATE ANALYSIS JSON (Gemini Pro 3)
+  // Key: template_analysis_json
+  // Model: Gemini Pro 3
+  // Description: Análisis estructurado en JSON del template para clonación
+  // ============================================================
+  template_analysis_json: `You are an expert visual analyst specializing in advertising design and product photography. Analyze the provided template image and extract ALL visual details in a structured JSON format.
+
+The template image has been provided to you in this conversation.
+
+---
+
+OUTPUT: Return ONLY a valid JSON object with NO additional text before or after. The JSON must follow this exact structure:
+
+{
+  "composition": {
+    "layout_type": "centered | rule_of_thirds | asymmetric | grid | diagonal | split",
+    "product_position": {
+      "horizontal": "left | center | right | left_third | right_third",
+      "vertical": "top | middle | bottom | top_third | bottom_third",
+      "size_percentage": 30
+    },
+    "visual_hierarchy": ["first_element", "second_element", "third_element"],
+    "negative_space": "minimal | moderate | abundant",
+    "balance": "symmetric | asymmetric | dynamic"
+  },
+  
+  "colors": {
+    "background_primary": "#HEXCODE",
+    "background_secondary": "#HEXCODE or null",
+    "background_type": "solid | gradient | textured | photographic | split",
+    "accent_colors": ["#HEX1", "#HEX2"],
+    "color_temperature": "warm | cool | neutral",
+    "saturation_level": "muted | moderate | vibrant",
+    "contrast_level": "low | medium | high"
+  },
+  
+  "lighting": {
+    "primary_direction": "front | top | top_left | top_right | side_left | side_right | back | ambient",
+    "quality": "soft | hard | diffused | dramatic",
+    "shadows": {
+      "presence": true,
+      "intensity": "subtle | moderate | strong",
+      "direction": "below | right | left | none"
+    },
+    "highlights": {
+      "presence": true,
+      "intensity": "subtle | moderate | strong",
+      "location": "top | edges | specular"
+    },
+    "mood": "bright | moody | dramatic | natural | studio"
+  },
+  
+  "style": {
+    "photography_type": "product_shot | lifestyle | flat_lay | environmental | hero_shot | floating",
+    "aesthetic": "minimalist | luxurious | bold | playful | clinical | natural | editorial",
+    "finish": "matte | glossy | mixed",
+    "editing_style": "clean | vintage | high_contrast | soft | cinematic",
+    "brand_personality": "premium | accessible | professional | fun | sophisticated"
+  },
+  
+  "text_elements": {
+    "has_headline": true,
+    "headline_position": "top | bottom | overlay | side",
+    "headline_style": "bold | elegant | modern | playful",
+    "has_subtext": true,
+    "subtext_position": "below_headline | bottom | side",
+    "text_color": "#HEXCODE",
+    "text_alignment": "left | center | right"
+  },
+  
+  "props_and_elements": {
+    "has_props": false,
+    "prop_types": ["flowers", "leaves", "water_drops", "fabric", "geometric_shapes"],
+    "decorative_elements": ["lines", "dots", "icons", "patterns"],
+    "surface_type": "none | reflective | matte | textured | marble | wood"
+  },
+  
+  "technical": {
+    "aspect_ratio": "1:1 | 4:5 | 9:16 | 16:9",
+    "depth_of_field": "shallow | deep | all_in_focus",
+    "camera_angle": "eye_level | slightly_above | top_down | low_angle",
+    "perspective": "flat | dimensional | isometric"
+  },
+  
+  "replication_notes": "Brief 2-3 sentence description of the most critical elements to replicate this exact style"
+}
+
+CRITICAL RULES:
+- Be PRECISE with hex codes - analyze the actual colors in the image
+- Choose the MOST accurate option from the provided choices
+- If an element doesn't exist, use null or false
+- The "replication_notes" should capture the ESSENCE of what makes this template unique
+- Return ONLY valid JSON - no explanations, no markdown, no additional text`,
+
+  // ============================================================
+  // TEMPLATE ADAPTATION (Gemini Pro 3)
+  // Key: template_adaptation
+  // Model: Gemini Pro 3
+  // Description: Adapta el análisis JSON del template al producto específico
+  // ============================================================
+  template_adaptation: `You are an expert creative director. Your task is to take a template analysis JSON and adapt it specifically for a product, incorporating insights from buyer persona research.
+
+---
+
+TEMPLATE ANALYSIS JSON:
+{TEMPLATE_JSON}
+
+---
+
+PRODUCT INFORMATION:
+Name: {PRODUCT_NAME}
+Description: {PRODUCT_DESCRIPTION}
+Benefits: {PRODUCT_BENEFITS}
+Category: {PRODUCT_CATEGORY}
+
+---
+
+BUYER PERSONA RESEARCH:
+{RESEARCH_JSON}
+
+---
+
+YOUR TASK:
+
+Take the template JSON and create an ADAPTED version that:
+1. Keeps the EXACT visual style (colors, composition, lighting, aesthetic)
+2. Describes how the SPECIFIC product should appear in this style
+3. Incorporates subtle psychological triggers from the research
+4. Maintains all technical specifications
+
+OUTPUT: Return ONLY a valid JSON object with this structure:
+
+{
+  "product_description": {
+    "type": "Specific product type (e.g., glass serum bottle, cream jar, supplement bottle)",
+    "shape": "Cylindrical, rectangular, round, etc.",
+    "material": "Glass, plastic, metal, etc.",
+    "color": "Product's actual color",
+    "label_description": "Brief description of label style",
+    "distinctive_features": ["cap type", "dropper", "pump", "texture"]
+  },
+  
+  "adapted_composition": {
+    "product_position": "Exact position from template",
+    "product_size": "Size relative to frame",
+    "product_angle": "How product should be angled",
+    "focal_point": "What should draw the eye first"
+  },
+  
+  "adapted_colors": {
+    "background": "#HEXCODE from template",
+    "background_type": "Type from template",
+    "accent_colors": ["From template"],
+    "product_integration": "How product colors work with background"
+  },
+  
+  "adapted_lighting": {
+    "setup": "Lighting setup from template",
+    "product_highlights": "Where highlights should appear on THIS product",
+    "product_shadows": "Shadow treatment for THIS product",
+    "material_rendering": "How to render glass/plastic/metal based on lighting"
+  },
+  
+  "adapted_style": {
+    "aesthetic": "From template",
+    "mood": "From template + research emotional needs",
+    "brand_feel": "How to convey trust/luxury/transformation based on research"
+  },
+  
+  "psychological_triggers": {
+    "primary_emotion": "Main emotion to evoke based on research",
+    "visual_cues": ["Specific visual elements that trigger this emotion"],
+    "subtle_adjustments": "Any minor tweaks to better resonate with target"
+  },
+  
+  "final_prompt_elements": {
+    "must_include": ["Critical elements that MUST be in final prompt"],
+    "style_keywords": ["Key style words to use"],
+    "avoid": ["Things to NOT include"]
+  }
+}
+
+CRITICAL RULES:
+- PRESERVE the template's visual identity exactly
+- DESCRIBE the actual product, not a generic product
+- INCORPORATE research insights subtly (don't be heavy-handed)
+- Return ONLY valid JSON - no explanations
+- The output should enable generating a prompt that recreates the template with THIS specific product`,
+
+  // ============================================================
+  // TEMPLATE ANALYSIS (Gemini Flash 2.0) - LEGACY
   // Key: template_analysis
   // Model: Gemini Flash 2.0
-  // Description: Análisis detallado del estilo visual de plantillas
+  // Description: Análisis detallado del estilo visual de plantillas (texto libre)
   // ============================================================
   template_analysis: `You are an expert visual analyst specializing in advertising design, photography, and graphic composition. Your task is to analyze the provided advertising template image and extract comprehensive information about its visual style, design elements, and artistic approach.
 
@@ -395,144 +585,81 @@ Provide a concise summary: one paragraph capturing the essence of the visual sty
 Be precise enough that another designer could recreate the style based on your description. Write naturally and descriptively. Be thorough but concise—focus on what matters most for replicating this visual approach.`,
 
   // ============================================================
-  // STATIC ADS PROMPT GENERATION (Claude Sonnet 4.5)
+  // STATIC ADS PROMPT GENERATION (Gemini Pro 3)
   // Key: static_ads_prompt_generation
-  // Model: Claude Sonnet 4.5
-  // Description: Genera instrucciones específicas para Nano Banana Pro
+  // Model: Gemini Pro 3
+  // Description: Genera prompt final para Nano Banana Pro basado en JSON adaptado
   // ============================================================
-  static_ads_prompt_generation: `You are an expert creative director for product advertising. Your job is to create a concise, artistic description for an AI image generator that will produce a beautiful product advertisement.
-
-Focus on the overall mood, style, and composition rather than ultra-specific technical measurements. The AI model works best with natural, descriptive language—not engineering specifications.
+  static_ads_prompt_generation: `You are an expert prompt engineer for AI image generation. Your task is to convert a structured JSON specification into a natural, descriptive prompt for Nano Banana Pro.
 
 ---
 
-PRODUCT INFORMATION:
-Name: {PRODUCT_NAME}
-Description: {PRODUCT_DESCRIPTION}
-Benefits: {PRODUCT_BENEFITS}
-Price: {PRODUCT_PRICE}
-Category: {PRODUCT_CATEGORY}
+ADAPTED TEMPLATE JSON:
+{ADAPTED_JSON}
 
 ---
 
-DEEP RESEARCH (Buyer Persona):
-{DEEP_RESEARCH_JSON}
+PRODUCT NAME: {PRODUCT_NAME}
 
 ---
 
-TEMPLATE STYLE ANALYSIS (From Gemini):
-{GEMINI_ANALYSIS_TEXT}
+YOUR TASK:
 
----
+Convert the JSON specification into a single, flowing paragraph prompt (100-150 words) that Nano Banana Pro can use to generate a professional product advertisement.
 
-TEMPLATE NAME:
-{TEMPLATE_NAME}
-
----
-
-The product images and template reference image have been provided to you in this conversation.
-
----
-
-YOUR MISSION:
-
-You are the CREATIVE STRATEGIST. You must:
-1. Analyze the deep research and understand what will emotionally resonate with this audience
-2. Study the template analysis and understand its exact visual composition
-3. Make strategic decisions about how to adapt the template style to this specific product
-4. Consider subtle adjustments based on the target psychographic
-5. Translate ALL of those decisions into direct, technical instructions for Nano Banana Pro
-
-CRITICAL UNDERSTANDING:
-- The template analysis tells you WHAT the original looks like
-- The deep research tells you WHO you're creating for and WHAT they need to feel
-- YOU decide HOW to combine both
-- Nano Banana Pro just executes your specific instructions
-
-YOUR CREATIVE DECISION-MAKING PROCESS:
-
-Step 1 - Understand the Emotional Goal:
-Based on the deep research, what does this person need to FEEL when they see this ad? Do they need confidence? Luxury? Trust? Relief? Hope? What are their fears that we're addressing? What transformation are they seeking?
-
-Step 2 - Analyze the Template's Visual DNA:
-Based on Gemini's analysis: exact colors (get specific hex codes), precise composition and layout, lighting setup details, mood and atmosphere, typography style, all technical details.
-
-Step 3 - Make Strategic Adaptations:
-Based on steps 1 & 2: Should you keep the same colors or adjust saturation? Should the product be larger/smaller for emphasis? Should lighting be softer/harder based on the emotional goal? What subtle touches align with the psychographic?
-
-Step 4 - Translate to Direct Instructions:
-Write instructions that tell Nano Banana Pro EXACTLY what to create, with zero room for interpretation.
-
----
+The JSON contains all the decisions already made - you just need to translate it into natural language.
 
 OUTPUT FORMAT:
 
-Write a concise, descriptive prompt of 100-150 words in English that captures the essence of the scene.
+Write ONE continuous paragraph in English that includes:
 
-USE THIS STRUCTURE:
+1. **Product description** (from product_description in JSON)
+   - Type, shape, material, color, distinctive features
+   - How it should appear in the scene
 
-**Product & Scene (30%):** Natural description of the product and its key visual characteristics. What it is, what it looks like.
+2. **Composition** (from adapted_composition)
+   - Position in frame, size, angle
+   - What's the focal point
 
-**Composition & Style (30%):** Overall mood, visual style from the template analysis. How the scene is arranged, what aesthetic it follows.
+3. **Background & Colors** (from adapted_colors)
+   - Background color/type
+   - How product integrates with background
 
-**Lighting & Atmosphere (25%):** Lighting approach, mood, atmosphere. Describe the feeling rather than exact technical specs.
+4. **Lighting** (from adapted_lighting)
+   - Light direction and quality
+   - Highlights and shadows on the product
+   - Material rendering (glass reflections, metal shine, etc.)
 
-**Background & Context (15%):** Background treatment, colors, any supporting elements or environmental context.
+5. **Style & Mood** (from adapted_style + psychological_triggers)
+   - Overall aesthetic
+   - Emotional feeling to convey
 
-EXAMPLE:
+6. **Technical keywords**
+   - Always end with: "professional product photography, commercial advertising quality, 8K resolution"
 
-✅ GOOD PROMPT:
-"Elegant glass serum bottle with golden amber oil and rose gold metallic cap, centered in frame against a rich deep purple background. Professional product photography with soft studio lighting from above-left creating gentle highlights on the cap and subtle shadows. Clean, minimalist composition with the bottle as the focal point. The glass shows beautiful light refraction through the golden liquid. Premium cosmetic advertising aesthetic, high-end beauty product styling, 8K quality."
+EXAMPLE OUTPUT:
+
+"Elegant glass serum bottle with golden amber oil inside and brushed rose gold metallic cap, positioned center-frame occupying 35% of the composition against a solid deep purple background (#6B2E9F). Soft studio lighting from top-left creates gentle highlights on the curved glass surface and metallic cap, with subtle shadows falling to the lower right. The glass shows beautiful light refraction through the liquid. Clean, minimalist aesthetic with premium luxurious feel. Professional product photography, commercial advertising quality, 8K resolution."
 
 CRITICAL RULES:
-
-1. **Be descriptive but natural:** Focus on visual qualities, not exact measurements
-2. **Use color descriptors:** Rich colors, warm/cool tones, specific color names (e.g., "deep navy blue", "rose gold")
-3. **Describe composition naturally:** "Centered", "positioned prominently", "fills the frame"
-4. **Natural lighting descriptions:** "Soft studio lighting", "dramatic side lighting", "bright and airy"
-5. **Material descriptions:** "Glass with reflective highlights", "brushed metal finish", "matte texture"
-6. **Include style keywords:** "Professional product photography", "commercial advertising", "premium aesthetic", "8K quality"
-7. **Mood and atmosphere:** Describe the feeling - "luxurious", "clean and minimal", "dramatic and bold"
-8. **Keep it concise:** 100-150 words maximum - quality over quantity
-
-STRATEGIC ADAPTATION BASED ON RESEARCH:
-
-Make subtle adjustments to the template style based on the target audience psychology:
-
-- If target values **trust** → Emphasize clarity, sharp focus, realistic lighting, clean composition
-- If target seeks **transformation** → Make the product prominent, bright and aspirational lighting
-- If target is **skeptical** → Keep it realistic and straightforward, avoid over-stylization
-- If target desires **luxury** → Enhance premium aesthetics, refined color palette, elegant lighting
-- If target needs **confidence** → Bold, centered composition, strong presence, dramatic styling
-
-Weave these adjustments naturally into your description without being explicit about the psychology.
-
----
-
-NOW, YOUR TASK:
-
-Analyze all the provided information above. Make all creative decisions based on:
-1. The template's visual style from Gemini's analysis
-2. The emotional needs of the buyer persona from deep research
-3. The product's physical characteristics
-
-Then output ONLY a concise, descriptive prompt (100-150 words) in one continuous paragraph.
-
-NO explanations. NO meta-commentary. NO preamble. Just the natural, artistic description.
-
-Focus on creating a beautiful, professional advertisement that will emotionally resonate with the target audience while maintaining the template's aesthetic.`,
+- Use the EXACT hex codes from the JSON
+- Describe the ACTUAL product from the JSON, not a generic product
+- Keep it to 100-150 words - concise but complete
+- Write naturally, not like a list
+- Always include technical quality keywords at the end
+- NO explanations, NO preamble - ONLY the prompt paragraph`,
 
   // ============================================================
-  // STATIC ADS EDIT INSTRUCTIONS (Claude Sonnet 4.5)
+  // STATIC ADS EDIT INSTRUCTIONS (Gemini Pro 3)
   // Key: static_ads_edit_instructions
-  // Model: Claude Sonnet 4.5
+  // Model: Gemini Pro 3
   // Description: Procesa ediciones del usuario y genera nuevo prompt
   // ============================================================
-  static_ads_edit_instructions: `You are an expert image editing prompt engineer. Your task is to take an original image generation prompt and user-provided edit instructions, then create an optimized new prompt for Nano Banana Pro that applies those changes while maintaining the overall style and quality.
+  static_ads_edit_instructions: `You are an expert image editing prompt engineer. Take an original prompt and user edit instructions to create a new optimized prompt for Nano Banana Pro.
 
 ---
 
-ORIGINAL PROMPT USED TO GENERATE CURRENT IMAGE:
+ORIGINAL PROMPT:
 {ORIGINAL_PROMPT}
 
 ---
@@ -542,101 +669,39 @@ USER'S EDIT INSTRUCTIONS (in Spanish):
 
 ---
 
-CONTEXT ABOUT CURRENT IMAGE:
+CONTEXT:
 Product: {PRODUCT_NAME}
-Template: {TEMPLATE_NAME}
 
-The current generated image has been provided to you in this conversation for reference.
+The current generated image has been provided for reference.
 
 ---
 
 YOUR TASK:
 
-Create a new optimized prompt that:
-- Maintains the core visual style and composition of the original
-- Implements the specific changes requested by the user
-- Preserves all elements the user didn't ask to change
-- Ensures the edit feels natural and professional
-- Maintains all the ultra-specific technical details from the original
+Create a new prompt (100-150 words) that:
+1. Keeps the original style and composition
+2. Applies the user's requested changes
+3. Maintains everything the user didn't ask to change
 
-COMMON EDIT TYPES & HOW TO HANDLE THEM:
+COMMON EDITS:
+- "Cambia el fondo a [color]" → Update background color
+- "Más grande/pequeño" → Adjust product size description
+- "Más iluminación" → Brighten the lighting description
+- "Más dramático" → Increase contrast, stronger shadows
+- "Agrega [elemento]" → Add the element to the scene
+- "Quita [elemento]" → Remove from description
+- "Más minimalista" → Simplify, remove decorative elements
+- "Más lujo/premium" → Enhance premium descriptors
 
-**Color Changes:**
-- "Cambia el fondo a azul" → Modify background color hex code specifically
-- "Haz el producto más brillante" → Adjust lighting values and highlight intensities with specific percentages
-- "Quiero colores más vivos" → Increase saturation percentages precisely
+OUTPUT:
+Write ONE continuous paragraph in English (100-150 words) that is the NEW complete prompt.
 
-**Composition Adjustments:**
-- "Haz el producto más grande" → Adjust product frame occupation percentage (e.g., from 32% to 42%)
-- "Centra el producto" → Modify positioning coordinates to exact center
-- "Acerca más la cámara" → Reduce camera distance value and adjust perspective
+Include:
+- All original elements that weren't changed
+- The user's requested modifications integrated naturally
+- End with "professional product photography, commercial advertising quality, 8K resolution"
 
-**Lighting Changes:**
-- "Más iluminación" → Increase overall brightness, specify luminosity increase percentage
-- "Sombras más suaves" → Adjust shadow opacity percentage and feather radius
-- "Más dramático" → Enhance contrast values and lighting intensity with specific numbers
-
-**Style Modifications:**
-- "Más minimalista" → Simplify composition (remove specified elements), reduce atmospheric effects
-- "Más lujo" → Enhance premium cues (increase reflectivity percentages, refine color precision)
-- "Más casual" → Relax formality (adjust lighting softness, modify composition structure)
-
-**Element Additions:**
-- "Agrega flores" → Integrate new props with specific descriptions, positions, and sizes
-- "Incluye texto" → Note text zones with exact coordinates (actual text added in post)
-- "Más contexto" → Add environmental elements with precise specifications
-
-**Element Removals:**
-- "Quita el fondo texturizado" → Simplify to solid color with hex code
-- "Sin props" → Remove supporting elements completely, maintain clean composition
-- "Más limpio" → Reduce atmospheric elements, simplify scene
-
-PROMPT CONSTRUCTION STRATEGY:
-
-1. **Start with the original prompt structure** - Keep all technical specifics
-2. **Identify what needs to change** - Parse user instructions precisely
-3. **Preserve everything else explicitly** - Maintain all unchanged specs
-4. **Integrate changes with measurements** - All changes must have specific values
-5. **Maintain technical quality standards** - Keep all technical parameters
-6. **Ensure coherent final result** - Changes must work together logically
-
-IMPORTANT RULES:
-
-- **Be precise about changes:** "background changed from #6B2E9F to deep navy blue #1A2745"
-- **Maintain style consistency:** Don't accidentally shift the aesthetic
-- **Keep all measurements:** Preserve cm, mm, pixels, percentages, degrees from original
-- **Update related specs:** If product size changes, update shadows, lighting accordingly
-- **Stay realistic:** Don't request impossible compositions
-- **Preserve technical quality:** Keep resolution, focus, rendering quality specs
-
----
-
-OUTPUT FORMAT:
-
-Provide ONLY the new Nano Banana Pro prompt as a single continuous paragraph of 350-550 words in English.
-
-The new prompt must:
-- Incorporate all requested changes with specific measurements
-- Maintain original style and technical specifications where not changed
-- Be ultra-specific with exact values (cm, hex codes, percentages, degrees)
-- Follow the same structure as the original prompt
-- Include NO explanations, NO preamble, NO commentary
-
-EXAMPLE:
-
-**Original:** "Cylindrical glass bottle, 12cm height, centered at x:512 y:512 occupying 32% of frame, background solid purple #6B2E9F..."
-
-**User Edit:** "Cambia el fondo a azul oscuro y haz el producto un poco más grande"
-
-**Your Output:** "Cylindrical glass bottle, 12cm height, centered at x:512 y:512 occupying 40% of frame (increased from 32%), background solid deep navy blue #1A2745 (changed from purple #6B2E9F), completely uniform with no gradient or texture..."
-
----
-
-NOW, YOUR TASK:
-
-Based on the original prompt and user's edit instructions provided above, generate the new optimized prompt for Nano Banana Pro.
-
-Output ONLY the new prompt paragraph. Nothing else.`,
+NO explanations. NO preamble. ONLY the new prompt paragraph.`,
 
   // ============================================================
   // LEGACY: Static Ads Clone (backwards compatibility)

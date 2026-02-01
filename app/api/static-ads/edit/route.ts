@@ -4,18 +4,17 @@ import { createClient } from '@supabase/supabase-js';
 import { 
   createKieTask, 
   getKieTaskResult,
-  analyzeWithClaudeSonnet,
+  getKieModelConfig, 
+  analyzeWithGemini3Pro,
   imageUrlToBase64,
-  stripBase64Prefix,
   downloadImage,
-  pollKieTaskUntilComplete,
-  GeminiMessage,
-  NanoBananaInput
+  GeminiMessage, 
+  NanoBananaInput 
 } from '@/lib/kie-client';
 import { getPromptWithVariables } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
-export const maxDuration = 180; // 3 minutes for edit process
+export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
 const supabaseAdmin = createClient(
@@ -24,234 +23,256 @@ const supabaseAdmin = createClient(
 );
 
 /**
- * Edit an existing generated image
+ * Edit a generated static ad with AI
  * 
- * Flow:
- * 1. User provides edit instructions (in Spanish)
- * 2. Claude creates a modified prompt based on original + instructions
- * 3. Nano Banana Pro generates a new image
- * 4. Save as new version
+ * POST /api/static-ads/edit
+ * Body: {
+ *   generationId: string,
+ *   editInstructions: string (in Spanish)
+ * }
  */
-
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
     if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
-    const { generationId, editInstructions } = await req.json();
-    
+    const body = await req.json();
+    const { generationId, editInstructions } = body;
+
     if (!generationId) {
-      return new NextResponse('Missing generationId', { status: 400 });
+      return NextResponse.json({ error: 'Missing generationId' }, { status: 400 });
     }
-    if (!editInstructions || editInstructions.trim().length === 0) {
-      return new NextResponse('Missing editInstructions', { status: 400 });
+    if (!editInstructions?.trim()) {
+      return NextResponse.json({ error: 'Missing editInstructions' }, { status: 400 });
     }
 
-    // 1. Fetch the original generation
-    const { data: generation, error: genError } = await supabaseAdmin
+    console.log(`[EDIT] Starting edit for ${generationId}`);
+
+    // Fetch the original generation
+    const { data: generation, error: fetchError } = await supabaseAdmin
       .from('generations')
       .select('*')
       .eq('id', generationId)
+      .eq('clerk_user_id', userId)
       .single();
 
-    if (genError || !generation) {
-      return new NextResponse('Generation not found', { status: 404 });
+    if (fetchError || !generation) {
+      return NextResponse.json({ error: 'Generation not found' }, { status: 404 });
     }
 
-    // 2. Get original data
-    const {
-      generatedPrompt,
-      productName,
-      productImages,
-      productImage,
-      templateName
-    } = generation.input_data || {};
-
-    const currentImageUrl = generation.result_url;
-    
-    if (!currentImageUrl) {
-      return new NextResponse('Original image not found', { status: 400 });
+    if (generation.status !== 'completed' || !generation.result_url) {
+      return NextResponse.json({ error: 'Can only edit completed generations' }, { status: 400 });
     }
 
-    if (!generatedPrompt) {
-      return new NextResponse('Original prompt not found', { status: 400 });
+    const { input_data, result_url, project_id } = generation;
+    const { productName, generatedPrompt, productImages, productImage } = input_data || {};
+
+    // Check credits
+    const { data: userCredits } = await supabaseAdmin
+      .from('user_credits')
+      .select('credits')
+      .eq('clerk_user_id', userId)
+      .single();
+
+    const editCost = 14; // Same cost as a new generation
+    if (!userCredits || userCredits.credits < editCost) {
+      return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
     }
 
-    console.log(`[EDIT] Starting edit for generation ${generationId}`);
-    console.log(`[EDIT] Instructions: ${editInstructions}`);
+    // Deduct credits
+    await supabaseAdmin
+      .from('user_credits')
+      .update({ credits: userCredits.credits - editCost })
+      .eq('clerk_user_id', userId);
 
-    // 3. Get the edit prompt template
+    console.log(`[EDIT] Generating new prompt with edit instructions...`);
+
+    // Get edit prompt template
     const editPromptTemplate = await getPromptWithVariables('static_ads_edit_instructions', {
-      ORIGINAL_PROMPT: generatedPrompt,
+      ORIGINAL_PROMPT: generatedPrompt || 'Professional product photography',
       USER_EDIT_INSTRUCTIONS: editInstructions,
-      PRODUCT_NAME: productName || 'Product',
-      TEMPLATE_NAME: templateName || 'Template'
+      PRODUCT_NAME: productName || 'Product'
     });
 
-    // 4. Convert current image to base64
-    const currentImageBase64 = await imageUrlToBase64(currentImageUrl);
+    // Convert current image to base64 for reference
+    let currentImageBase64 = '';
+    try {
+      currentImageBase64 = await imageUrlToBase64(result_url);
+    } catch (e) {
+      console.log(`[EDIT] Could not convert current image: ${e}`);
+    }
 
-    // 5. Build Claude messages
-    const messages: GeminiMessage[] = [
-      { role: 'developer', content: editPromptTemplate },
-      { 
-        role: 'user', 
-        content: [
-          { type: 'text', text: 'Based on the original prompt and edit instructions, generate the modified prompt.' },
-          { type: 'image_url', image_url: { url: currentImageBase64 } }
-        ]
-      }
+    // Build messages for Gemini
+    const imageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
+      { type: 'text', text: 'Generate the edited prompt based on the user instructions.' }
     ];
 
-    // 6. Call Claude to generate modified prompt
-    console.log('[EDIT] Calling Claude for modified prompt...');
-    const modifiedPrompt = await analyzeWithClaudeSonnet(messages, {
-      temperature: 0.7,
-      maxTokens: 4096
-    });
-
-    console.log(`[EDIT] Modified prompt: ${modifiedPrompt.substring(0, 100)}...`);
-
-    // 7. Prepare images for Nano Banana (current image + product images)
-    const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
-    const imageInputs: string[] = [];
-
-    // Add current image first (main reference)
-    imageInputs.push(stripBase64Prefix(currentImageBase64));
-
-    // Add product images (max 7 more)
-    for (const imgUrl of allProductImages.slice(0, 7)) {
-      if (imgUrl?.startsWith('http') && imageInputs.length < 8) {
-        try {
-          const dataUri = await imageUrlToBase64(imgUrl);
-          imageInputs.push(stripBase64Prefix(dataUri));
-        } catch (e) {
-          console.log(`[EDIT] Could not convert product image: ${e}`);
-        }
-      }
+    if (currentImageBase64) {
+      imageContent.push({ type: 'image_url', image_url: { url: currentImageBase64 } });
     }
 
-    // 8. Create Nano Banana task
-    console.log('[EDIT] Creating Nano Banana task...');
+    const messages: GeminiMessage[] = [
+      { role: 'developer', content: editPromptTemplate },
+      { role: 'user', content: imageContent }
+    ];
+
+    // Generate new prompt with Gemini
+    const newPrompt = await analyzeWithGemini3Pro(messages, {
+      temperature: 0.5,
+      maxTokens: 500
+    });
+
+    console.log(`[EDIT] New prompt generated: ${newPrompt.substring(0, 80)}...`);
+
+    // Prepare product images (max 8)
+    const allImages: string[] = productImages || (productImage ? [productImage] : []);
+    const imageInputs = allImages.slice(0, 7).filter(url => url?.startsWith('http'));
+    
+    // Add the current generated image as reference (if we have space)
+    if (imageInputs.length < 8 && result_url?.startsWith('http')) {
+      imageInputs.push(result_url);
+    }
+
+    console.log(`[EDIT] Creating Nano Banana task with ${imageInputs.length} images...`);
+
+    // Get generation model config
+    const { generationModel } = await getKieModelConfig();
+
+    // Create new generation task
     const nanoBananaInput: NanoBananaInput = {
-      prompt: modifiedPrompt,
+      prompt: newPrompt,
       image_input: imageInputs,
       aspect_ratio: '1:1',
       resolution: '2K',
       output_format: 'png'
     };
 
-    const taskId = await createKieTask('nano-banana-pro', nanoBananaInput);
+    const taskId = await createKieTask(generationModel, nanoBananaInput);
     console.log(`[EDIT] Task created: ${taskId}`);
 
-    // 9. Poll for result
-    const result = await pollKieTaskUntilComplete(taskId, {
-      intervalMs: 5000,
-      maxAttempts: 36, // 3 minutes max
-      onProgress: (status, attempt) => {
-        console.log(`[EDIT] Polling ${taskId}: ${status} (attempt ${attempt})`);
-      }
-    });
-
-    if (result.status !== 'SUCCESS') {
-      console.error('[EDIT] Generation failed:', result.error);
-      return NextResponse.json({
-        success: false,
-        error: result.error || 'Image generation failed'
-      }, { status: 500 });
-    }
-
-    // 10. Extract result URL
-    let resultUrl = '';
-    if (typeof result.result === 'string') {
-      resultUrl = result.result;
-    } else if (Array.isArray(result.result)) {
-      resultUrl = result.result[0];
-    } else if (result.result?.url) {
-      resultUrl = result.result.url;
-    } else if (result.result?.output) {
-      resultUrl = Array.isArray(result.result.output) 
-        ? result.result.output[0] 
-        : result.result.output;
-    }
-
-    if (!resultUrl) {
-      return NextResponse.json({
-        success: false,
-        error: 'No result URL in response'
-      }, { status: 500 });
-    }
-
-    // 11. Download and upload to our storage
-    console.log('[EDIT] Downloading and uploading to storage...');
-    const imageBuffer = await downloadImage(resultUrl);
-    
-    const fileName = `${generation.project_id}/${generationId}_edit_${Date.now()}.png`;
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-      .from('generations')
-      .upload(fileName, imageBuffer, {
-        contentType: 'image/png',
-        upsert: true
-      });
-
-    let finalUrl = resultUrl;
-    if (!uploadError && uploadData) {
-      const { data: urlData } = supabaseAdmin.storage
-        .from('generations')
-        .getPublicUrl(fileName);
-      finalUrl = urlData.publicUrl;
-    }
-
-    // 12. Get current version number
-    const currentVersion = generation.version || 1;
-
-    // 13. Create new generation record for the edited version
+    // Create a new generation record for the edit
     const { data: newGeneration, error: insertError } = await supabaseAdmin
       .from('generations')
       .insert({
-        project_id: generation.project_id,
-        user_id: generation.user_id,
-        type: 'static_ad',
-        status: 'completed',
-        result_url: finalUrl,
-        parent_id: generationId, // Link to original
-        version: currentVersion + 1,
+        clerk_user_id: userId,
+        type: 'static_ad_generation',
+        status: 'generating',
+        project_id: project_id,
+        cost: editCost,
         input_data: {
-          ...generation.input_data,
-          generatedPrompt: modifiedPrompt,
-          editInstructions,
-          previousVersionId: generationId
+          ...input_data,
+          generatedPrompt: newPrompt,
+          generationTaskId: taskId,
+          editedFrom: generationId,
+          editInstructions: editInstructions
         }
       })
       .select()
       .single();
 
     if (insertError) {
-      console.error('[EDIT] Failed to save new version:', insertError);
-      // Still return success with the URL
-      return NextResponse.json({
-        success: true,
-        resultUrl: finalUrl,
-        modifiedPrompt,
-        warning: 'Image created but version tracking failed'
-      });
+      console.error('[EDIT] Failed to create generation record:', insertError);
+      // Refund credits
+      await supabaseAdmin
+        .from('user_credits')
+        .update({ credits: userCredits.credits })
+        .eq('clerk_user_id', userId);
+      return NextResponse.json({ error: 'Failed to create edit record' }, { status: 500 });
     }
 
-    console.log(`[EDIT] Edit complete! New version ${currentVersion + 1}: ${finalUrl}`);
+    // Poll for result (with timeout)
+    console.log(`[EDIT] Polling for result...`);
+    const maxAttempts = 60;
+    const pollInterval = 3000;
 
-    return NextResponse.json({
-      success: true,
-      newGenerationId: newGeneration.id,
-      resultUrl: finalUrl,
-      modifiedPrompt,
-      version: currentVersion + 1
-    });
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+      try {
+        const result = await getKieTaskResult(taskId);
+
+        if (result.status === 'SUCCESS') {
+          let resultUrl = '';
+          if (typeof result.result === 'string') {
+            resultUrl = result.result;
+          } else if (Array.isArray(result.result)) {
+            resultUrl = result.result[0];
+          } else if (result.result?.url) {
+            resultUrl = result.result.url;
+          } else if (result.result?.output) {
+            resultUrl = Array.isArray(result.result.output) 
+              ? result.result.output[0] 
+              : result.result.output;
+          }
+
+          if (resultUrl) {
+            // Download and upload to storage
+            try {
+              const imageBuffer = await downloadImage(resultUrl);
+              const fileName = `${project_id}/${newGeneration.id}_${Date.now()}.png`;
+              
+              await supabaseAdmin.storage
+                .from('generations')
+                .upload(fileName, imageBuffer, { contentType: 'image/png', upsert: true });
+
+              const { data: urlData } = supabaseAdmin.storage
+                .from('generations')
+                .getPublicUrl(fileName);
+
+              resultUrl = urlData.publicUrl;
+            } catch (e) {
+              console.log(`[EDIT] Storage upload failed, using kie.ai URL: ${e}`);
+            }
+
+            // Update generation with result
+            await supabaseAdmin.from('generations').update({
+              status: 'completed',
+              result_url: resultUrl,
+              updated_at: new Date().toISOString()
+            }).eq('id', newGeneration.id);
+
+            console.log(`[EDIT] SUCCESS! Result: ${resultUrl}`);
+            return NextResponse.json({
+              success: true,
+              generationId: newGeneration.id,
+              resultUrl,
+              prompt: newPrompt
+            });
+          }
+        } else if (result.status === 'FAILED') {
+          await supabaseAdmin.from('generations').update({
+            status: 'failed',
+            error_message: result.error || 'Generation failed',
+            updated_at: new Date().toISOString()
+          }).eq('id', newGeneration.id);
+
+          // Refund credits on failure
+          await supabaseAdmin
+            .from('user_credits')
+            .update({ credits: userCredits.credits })
+            .eq('clerk_user_id', userId);
+
+          return NextResponse.json({ 
+            error: result.error || 'Generation failed' 
+          }, { status: 500 });
+        }
+        // PENDING/PROCESSING - continue polling
+      } catch (pollError: any) {
+        console.error(`[EDIT] Poll error:`, pollError.message);
+      }
+    }
+
+    // Timeout - mark as failed
+    await supabaseAdmin.from('generations').update({
+      status: 'failed',
+      error_message: 'Generation timed out',
+      updated_at: new Date().toISOString()
+    }).eq('id', newGeneration.id);
+
+    return NextResponse.json({ error: 'Generation timed out' }, { status: 504 });
 
   } catch (error: any) {
     console.error('[EDIT] Error:', error);
-    return NextResponse.json({
-      success: false,
-      error: error.message || 'Internal error'
-    }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
