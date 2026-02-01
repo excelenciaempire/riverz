@@ -24,11 +24,12 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Concurrency limits - Optimized for Render Starter (400s timeout)
-const PARALLEL_GEMINI = 3;   // 3 Gemini analyses in parallel
-const PARALLEL_CLAUDE = 2;   // 2 Claude prompts in parallel (slower, heavier)
-const PARALLEL_NANO = 5;     // 5 Nano Banana tasks (async, fast to start)
-const PARALLEL_POLL = 10;    // 10 polling operations
+// Concurrency limits - Optimized for Vercel (10s timeout on Hobby, 60s on Pro)
+// Process 1 at a time to fit within timeout
+const PARALLEL_GEMINI = 1;   // 1 Gemini analysis (takes ~5-8s)
+const PARALLEL_CLAUDE = 1;   // 1 Claude prompt (takes ~3-5s)
+const PARALLEL_NANO = 2;     // 2 Nano Banana tasks (async, fast to start)
+const PARALLEL_POLL = 5;     // 5 polling operations (fast)
 
 /**
  * Static Ads Generation Pipeline - PARALLEL PROCESSING
@@ -232,8 +233,8 @@ export async function POST(req: Request) {
               }
             ];
 
-            // Call Gemini Flash 2.0 (fast multimodal)
-            const templateAnalysis = await analyzeWithGeminiFlash2(messages, { temperature: 0.4 });
+            // Call Gemini Flash 2.0 (fast multimodal) - use low temp for faster response
+            const templateAnalysis = await analyzeWithGeminiFlash2(messages, { temperature: 0.3 });
 
             console.log(`[STEP1] Gemini completed for ${gen.id}. Analysis: ${templateAnalysis.length} chars`);
 
@@ -330,10 +331,10 @@ export async function POST(req: Request) {
               { role: 'user', content: imageContent }
             ];
 
-            // Call Claude Sonnet 4.5
+            // Call Claude Sonnet 4.5 - reduced tokens for faster response
             const generatedPrompt = await analyzeWithClaudeSonnet(messages, {
-              temperature: 0.7,
-              maxTokens: 4096
+              temperature: 0.6,
+              maxTokens: 1500
             });
 
             console.log(`[STEP2] Claude completed for ${gen.id}. Prompt: ${generatedPrompt.substring(0, 80)}...`);

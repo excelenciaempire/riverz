@@ -4,6 +4,17 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "functions": {
+    "app/api/static-ads/process-queue/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/research/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/products/deep-research/route.ts": {
+      "maxDuration": 60
+    }
+  },
   "git": {
     "deploymentEnabled": {
       "main": true
