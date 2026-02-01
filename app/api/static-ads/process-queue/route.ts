@@ -244,18 +244,27 @@ export async function POST(req: Request) {
 
     if (error) throw error;
     
-    console.log(`[PROCESS-QUEUE] Processing ${generations?.length || 0} generations in parallel`);
+    console.log(`[PROCESS-QUEUE] Found ${generations?.length || 0} generations to process`);
     
     if (!generations || generations.length === 0) {
       return await returnProgress(projectId);
     }
 
+    console.log(`[PROCESS-QUEUE] Generation statuses: ${generations.map(g => g.status).join(', ')}`);
+
     const { generationModel } = await getKieModelConfig();
 
     // Process ALL generations in parallel - each one goes through its full pipeline
-    await Promise.all(
-      generations.map(gen => processGeneration(gen, generationModel, projectId))
+    const results = await Promise.allSettled(
+      generations.map((gen) => processGeneration(gen, generationModel, projectId))
     );
+
+    // Log any failures
+    results.forEach((result, idx) => {
+      if (result.status === 'rejected') {
+        console.error(`[PROCESS-QUEUE] Generation ${generations[idx].id.slice(0,8)} failed:`, result.reason);
+      }
+    });
 
     return await returnProgress(projectId);
 
