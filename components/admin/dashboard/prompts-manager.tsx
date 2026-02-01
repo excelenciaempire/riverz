@@ -25,10 +25,11 @@ interface AIPrompt {
 }
 
 const CATEGORIES = [
-  { value: 'product_research', label: '🔬 Research de Producto', description: 'Prompts para analizar productos' },
-  { value: 'template_analysis', label: '🎨 Análisis de Plantillas', description: 'Prompts para analizar estilos visuales' },
-  { value: 'prompt_generation', label: '✨ Generación de Prompts', description: 'Prompts para crear prompts de imágenes' },
-  { value: 'image_generation', label: '🖼️ Generación de Imágenes', description: 'Prompts directos para generar imágenes' },
+  { value: 'product_research', label: '🔬 Research', description: 'Análisis profundo del producto y buyer persona' },
+  { value: 'template_analysis', label: '🎨 Análisis Template', description: 'Analiza estructura JSON de plantillas' },
+  { value: 'template_adaptation', label: '🔄 Adaptación', description: 'Adapta template JSON al producto' },
+  { value: 'prompt_generation', label: '✨ Generación Prompt', description: 'Genera prompt para Nano Banana' },
+  { value: 'editing', label: '✏️ Edición', description: 'Procesa ediciones de usuario' },
   { value: 'other', label: '📁 Otros', description: 'Prompts de uso general' }
 ];
 
@@ -254,39 +255,32 @@ export function PromptsManager() {
 
       {/* Info Panel - Pipeline Explanation */}
       <div className="rounded-xl border border-gray-800 bg-gradient-to-r from-[#141414] to-[#1a1a1a] p-5">
-        <h3 className="text-sm font-medium text-gray-300 mb-3">📋 Flujo de Static Ads</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
-            <span className="text-lg">1️⃣</span>
-            <div>
-              <p className="font-medium text-white">Research</p>
-              <p className="text-gray-500">Claude Sonnet 4.5</p>
-              <code className="text-brand-accent/80 text-[10px]">product_deep_research</code>
-            </div>
+        <h3 className="text-sm font-medium text-gray-300 mb-3">📋 Pipeline de Static Ads (Gemini Pro 3 + Nano Banana)</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+          <div className="p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
+            <p className="font-medium text-white text-[11px]">1. Research</p>
+            <p className="text-gray-500">Gemini Pro 3</p>
+            <code className="text-brand-accent/80 text-[9px]">product_deep_research</code>
           </div>
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
-            <span className="text-lg">2️⃣</span>
-            <div>
-              <p className="font-medium text-white">Análisis Template</p>
-              <p className="text-gray-500">Gemini Flash 2.0</p>
-              <code className="text-brand-accent/80 text-[10px]">template_analysis</code>
-            </div>
+          <div className="p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
+            <p className="font-medium text-white text-[11px]">2. Análisis JSON</p>
+            <p className="text-gray-500">Gemini Pro 3</p>
+            <code className="text-brand-accent/80 text-[9px]">template_analysis_json</code>
           </div>
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
-            <span className="text-lg">3️⃣</span>
-            <div>
-              <p className="font-medium text-white">Genera Prompt</p>
-              <p className="text-gray-500">Claude Sonnet 4.5</p>
-              <code className="text-brand-accent/80 text-[10px]">static_ads_prompt_generation</code>
-            </div>
+          <div className="p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
+            <p className="font-medium text-white text-[11px]">3. Adaptación</p>
+            <p className="text-gray-500">Gemini Pro 3</p>
+            <code className="text-brand-accent/80 text-[9px]">template_adaptation</code>
           </div>
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
-            <span className="text-lg">4️⃣</span>
-            <div>
-              <p className="font-medium text-white">Crea Imagen</p>
-              <p className="text-gray-500">Nano Banana Pro</p>
-              <code className="text-gray-500 text-[10px]">Sin prompt configurable</code>
-            </div>
+          <div className="p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
+            <p className="font-medium text-white text-[11px]">4. Genera Prompt</p>
+            <p className="text-gray-500">Gemini Pro 3</p>
+            <code className="text-brand-accent/80 text-[9px]">static_ads_prompt_generation</code>
+          </div>
+          <div className="p-3 rounded-lg bg-[#0a0a0a] border border-[#07A498]/30">
+            <p className="font-medium text-white text-[11px]">5. Imagen</p>
+            <p className="text-[#07A498]">Nano Banana Pro</p>
+            <code className="text-gray-500 text-[9px]">Prompt generado</code>
           </div>
         </div>
       </div>

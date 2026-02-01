@@ -270,21 +270,10 @@ export default function StaticAdsPage() {
       return response.json();
     },
     onSuccess: (data) => {
-      setCurrentProjectId(data.project.id);
-      setCompletedImages([]); // Reset completed images
-      setProgressData({
-        percentage: 0,
-        completed: 0,
-        total: data.bulk?.total || selectedTemplateIds.length,
-        failed: 0,
-        inProgress: data.bulk?.total || selectedTemplateIds.length,
-        isComplete: false
-      });
+      toast.success(`Iniciando generación de ${data.bulk?.total || selectedTemplateIds.length} imágenes...`);
       
-      toast.success(`Iniciando generación de ${data.bulk?.total} imágenes en paralelo...`);
-      
-      // Start realtime subscription and polling
-      startPolling(data.project.id);
+      // Redirect immediately to project page - no popup
+      router.push(`/crear/static-ads/historial/${data.project.id}`);
     },
     onError: (error) => {
       setIsProgressOpen(false);

@@ -22,12 +22,8 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Concurrency limits - Maximized for speed
-const PARALLEL_STEP1 = 10;  // Template analysis (Gemini) - lightweight
-const PARALLEL_STEP2 = 10;  // Adaptation (Gemini) - lightweight
-const PARALLEL_STEP3 = 10;  // Prompt generation (Gemini) - lightweight
-const PARALLEL_STEP4 = 10;  // Nano Banana tasks creation
-const PARALLEL_POLL = 20;   // Polling operations
+// Concurrency limits - Process ALL in parallel
+const MAX_PARALLEL = 25; // Maximum concurrent operations
 
 /**
  * Static Ads Generation Pipeline - NEW ARCHITECTURE
@@ -152,7 +148,7 @@ function parseJsonFromResponse(response: string): any {
 
 export async function POST(req: Request) {
   try {
-    console.log('[PROCESS-QUEUE] Starting new pipeline...');
+    console.log('[PROCESS-QUEUE] Starting parallel pipeline...');
     
     const { userId } = await auth();
     if (!userId) return new NextResponse('Unauthorized', { status: 401 });
@@ -161,14 +157,14 @@ export async function POST(req: Request) {
     const { projectId } = body;
     if (!projectId) return new NextResponse('Missing projectId', { status: 400 });
 
-    // CLEANUP: Reset stuck generations (older than 3 minutes)
-    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    // CLEANUP: Reset stuck generations (older than 2 minutes)
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
     
     await supabaseAdmin.from('generations')
       .update({ status: 'pending_analysis', updated_at: new Date().toISOString() })
       .eq('project_id', projectId)
       .in('status', ['analyzing', 'adapting', 'generating_prompt'])
-      .lt('updated_at', threeMinutesAgo);
+      .lt('updated_at', twoMinutesAgo);
 
     // Fetch all generations that need processing
     const { data: generations, error: genError } = await supabaseAdmin
@@ -190,28 +186,30 @@ export async function POST(req: Request) {
 
     const { generationModel } = await getKieModelConfig();
 
-    // Group by status for parallel processing
-    const step1Queue = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, PARALLEL_STEP1);
-    const step2Queue = generations.filter((g: any) => g.status === 'analyzing' && g.input_data?.templateAnalysisJson).slice(0, PARALLEL_STEP2);
-    const step3Queue = generations.filter((g: any) => g.status === 'adapting' && g.input_data?.adaptedJson).slice(0, PARALLEL_STEP3);
-    // Step 4: pending_generation WITH prompt but WITHOUT taskId (ready to create Nano task)
+    // Process ALL generations in parallel - each advances through its applicable step
+    const allPromises: Promise<void>[] = [];
+    
+    // Step 1: Template analysis
+    const step1Queue = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, MAX_PARALLEL);
+    // Step 2: Adaptation
+    const step2Queue = generations.filter((g: any) => g.status === 'analyzing' && g.input_data?.templateAnalysisJson).slice(0, MAX_PARALLEL);
+    // Step 3: Prompt generation
+    const step3Queue = generations.filter((g: any) => g.status === 'adapting' && g.input_data?.adaptedJson).slice(0, MAX_PARALLEL);
+    // Step 4: Create Nano task
     const step4Queue = generations.filter((g: any) => 
       g.status === 'pending_generation' && 
       g.input_data?.generatedPrompt && 
       !g.input_data?.generationTaskId
-    ).slice(0, PARALLEL_STEP4);
-    const step5Queue = generations.filter((g: any) => g.status === 'generating' && g.input_data?.generationTaskId).slice(0, PARALLEL_POLL);
+    ).slice(0, MAX_PARALLEL);
+    // Step 5: Poll results
+    const step5Queue = generations.filter((g: any) => g.status === 'generating' && g.input_data?.generationTaskId).slice(0, MAX_PARALLEL);
     
-    console.log(`[QUEUES] Step1:${step1Queue.length} Step2:${step2Queue.length} Step3:${step3Queue.length} Step4:${step4Queue.length} Step5:${step5Queue.length}`);
+    console.log(`[QUEUES] S1:${step1Queue.length} S2:${step2Queue.length} S3:${step3Queue.length} S4:${step4Queue.length} S5:${step5Queue.length}`);
 
-    // ============================================
-    // STEP 1: Template Analysis to JSON (Gemini Pro 3)
-    // ============================================
-    if (step1Queue.length > 0) {
-      console.log(`[STEP1] Analyzing ${step1Queue.length} templates with Gemini Pro 3...`);
-      
-      await Promise.all(
-        step1Queue.map(async (gen: any) => {
+    // Run ALL steps in parallel - each generation advances independently
+    await Promise.all([
+      // STEP 1: Template Analysis to JSON
+      ...step1Queue.map(async (gen: any) => {
           try {
             const locked = await lockGeneration(gen.id, 'pending_analysis', 'analyzing');
             if (!locked) return;
@@ -265,18 +263,9 @@ export async function POST(req: Request) {
             console.error(`[STEP1] Error ${gen.id}:`, error.message);
             await failGeneration(gen.id, `Template analysis failed: ${error.message}`);
           }
-        })
-      );
-    }
-
-    // ============================================
-    // STEP 2: Adapt JSON to Product (Gemini Pro 3)
-    // ============================================
-    if (step2Queue.length > 0) {
-      console.log(`[STEP2] Adapting ${step2Queue.length} templates to products...`);
-      
-      await Promise.all(
-        step2Queue.map(async (gen: any) => {
+        }),
+      // STEP 2: Adapt JSON to Product
+      ...step2Queue.map(async (gen: any) => {
           try {
             const locked = await lockGeneration(gen.id, 'analyzing', 'adapting');
             if (!locked) return;
@@ -322,18 +311,9 @@ export async function POST(req: Request) {
             console.error(`[STEP2] Error ${gen.id}:`, error.message);
             await failGeneration(gen.id, `Adaptation failed: ${error.message}`);
           }
-        })
-      );
-    }
-
-    // ============================================
-    // STEP 3: Generate Final Prompt (Gemini Pro 3)
-    // ============================================
-    if (step3Queue.length > 0) {
-      console.log(`[STEP3] Generating ${step3Queue.length} prompts...`);
-      
-      await Promise.all(
-        step3Queue.map(async (gen: any) => {
+        }),
+      // STEP 3: Generate Final Prompt
+      ...step3Queue.map(async (gen: any) => {
           try {
             const locked = await lockGeneration(gen.id, 'adapting', 'generating_prompt');
             if (!locked) return;
@@ -371,18 +351,9 @@ export async function POST(req: Request) {
             console.error(`[STEP3] Error ${gen.id}:`, error.message);
             await failGeneration(gen.id, `Prompt generation failed: ${error.message}`);
           }
-        })
-      );
-    }
-
-    // ============================================
-    // STEP 4: Create Nano Banana Tasks
-    // ============================================
-    if (step4Queue.length > 0) {
-      console.log(`[STEP4] Creating ${step4Queue.length} Nano Banana tasks...`);
-      
-      await Promise.all(
-        step4Queue.map(async (gen: any) => {
+        }),
+      // STEP 4: Create Nano Banana Tasks
+      ...step4Queue.map(async (gen: any) => {
           try {
             const locked = await lockGeneration(gen.id, 'pending_generation', 'generating');
             if (!locked) return;
@@ -423,18 +394,9 @@ export async function POST(req: Request) {
             console.error(`[STEP4] Error ${gen.id}:`, error.message);
             await failGeneration(gen.id, `Image generation failed: ${error.message}`);
           }
-        })
-      );
-    }
-
-    // ============================================
-    // STEP 5: Poll Nano Banana Results
-    // ============================================
-    if (step5Queue.length > 0) {
-      console.log(`[STEP5] Polling ${step5Queue.length} tasks...`);
-      
-      await Promise.all(
-        step5Queue.map(async (gen: any) => {
+        }),
+      // STEP 5: Poll Nano Banana Results
+      ...step5Queue.map(async (gen: any) => {
           const taskId = gen.input_data?.generationTaskId;
           if (!taskId) return;
 
@@ -471,8 +433,7 @@ export async function POST(req: Request) {
             console.error(`[STEP5] Poll error ${gen.id}:`, error.message);
           }
         })
-      );
-    }
+    ]);
 
     return await returnProgress(projectId);
 
