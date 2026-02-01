@@ -394,9 +394,20 @@ export async function POST(req: Request) {
             }
 
             const { generatedPrompt, productImages, productImage } = gen.input_data;
+            
+            // Skip if prompt is not ready yet
+            if (!generatedPrompt || generatedPrompt.trim() === '') {
+              console.log(`[STEP3] ${gen.id} - prompt not ready yet, releasing lock`);
+              await supabaseAdmin.from('generations').update({
+                status: 'pending_generation',
+                updated_at: new Date().toISOString()
+              }).eq('id', gen.id);
+              return;
+            }
+
             const allProductImages: string[] = productImages || (productImage ? [productImage] : []);
 
-            console.log(`[STEP3] Starting Nano Banana for ${gen.id}`);
+            console.log(`[STEP3] Starting Nano Banana for ${gen.id} with prompt: ${generatedPrompt.substring(0, 50)}...`);
 
             // Convert product images to base64 (max 8)
             const imageInputs: string[] = [];
@@ -414,6 +425,8 @@ export async function POST(req: Request) {
               if (imageInputs.length >= 8) break;
             }
 
+            console.log(`[STEP3] ${gen.id} - Prompt length: ${generatedPrompt.length}, Images: ${imageInputs.length}`);
+
             const nanoBananaInput: NanoBananaInput = {
               prompt: generatedPrompt,
               image_input: imageInputs,
@@ -422,6 +435,7 @@ export async function POST(req: Request) {
               output_format: 'png'
             };
 
+            console.log(`[STEP3] ${gen.id} - Creating Nano Banana task with ${imageInputs.length} images`);
             const generationTaskId = await createKieTask(generationModel, nanoBananaInput);
 
             await supabaseAdmin.from('generations').update({
