@@ -7,8 +7,6 @@ import {
   getKieModelConfig, 
   analyzeWithGemini3Pro,
   analyzeWithClaudeSonnet,
-  imageUrlToBase64,
-  stripBase64Prefix,
   downloadImage,
   GeminiMessage, 
   NanoBananaInput 
@@ -409,21 +407,10 @@ export async function POST(req: Request) {
 
             console.log(`[STEP3] Starting Nano Banana for ${gen.id} with prompt: ${generatedPrompt.substring(0, 50)}...`);
 
-            // Convert product images to base64 (max 8)
-            const imageInputs: string[] = [];
-            
-            for (const imgUrl of allProductImages.slice(0, 8)) {
-              if (imgUrl?.startsWith('http')) {
-                try {
-                  const dataUri = await imageUrlToBase64(imgUrl);
-                  const cleanBase64 = stripBase64Prefix(dataUri);
-                  imageInputs.push(cleanBase64);
-                } catch (e) {
-                  console.log(`[STEP3] Could not convert image: ${e}`);
-                }
-              }
-              if (imageInputs.length >= 8) break;
-            }
+            // Use URLs directly (Nano Banana doesn't accept base64, only HTTP URLs)
+            const imageInputs: string[] = allProductImages
+              .slice(0, 8)
+              .filter(url => url?.startsWith('http'));
 
             console.log(`[STEP3] ${gen.id} - Prompt length: ${generatedPrompt.length}, Images: ${imageInputs.length}`);
 

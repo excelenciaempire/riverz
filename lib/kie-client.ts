@@ -296,13 +296,20 @@ export async function analyzeWithClaudeSonnet(
 
     const data = await response.json();
     
+    console.log('[CLAUDE] Response structure:', JSON.stringify(data).substring(0, 500));
+    
     // Extract text from Claude response (OpenAI-compatible format)
     if (data.choices && data.choices[0]?.message?.content) {
       console.log('[CLAUDE] Response received successfully');
       return data.choices[0].message.content;
     }
     
-    throw new Error('Unexpected Claude response format');
+    // Check if error response from Kie.ai
+    if (data.code || data.msg) {
+      throw new Error(`Claude API Error: ${data.msg || data.code}`);
+    }
+    
+    throw new Error(`Unexpected Claude response format: ${JSON.stringify(data).substring(0, 200)}`);
   } catch (error) {
     console.error('Error calling Claude Sonnet 4.5:', error);
     throw error;
@@ -459,6 +466,7 @@ export async function createKieTask(model: string, input: NanoBananaInput | any)
       if (validImages.length > 0) {
         requestBody.input.image_input = validImages;
         console.log(`[KIE] Including ${validImages.length} reference images`);
+        console.log(`[KIE] Image 0 preview: ${validImages[0]?.substring(0, 100)}...`);
       }
     }
 
