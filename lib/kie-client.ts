@@ -311,19 +311,28 @@ export async function analyzeWithClaudeSonnet(
 
 // --- Gemini 3 Pro (Multimodal Image Analysis - Sync) ---
 
+interface GeminiOptions {
+  temperature?: number;
+  maxTokens?: number;
+}
+
 /**
  * Analyzes images with Gemini 3 Pro (supports multimodal: images + text)
  * Use this for analyzing template images, product images, etc.
  * Gemini 3 Pro has superior image understanding capabilities
  */
-export async function analyzeWithGemini3Pro(messages: GeminiMessage[]) {
+export async function analyzeWithGemini3Pro(messages: GeminiMessage[], options: GeminiOptions = {}) {
   try {
+    const { temperature = 0.7, maxTokens = 8000 } = options;
+    
     const requestBody = {
       messages,
       stream: false,
+      temperature,
+      max_tokens: maxTokens,
     };
     
-    console.log('[GEMINI] Sending request to Gemini 3 Pro...');
+    console.log(`[GEMINI] Sending request to Gemini 3 Pro... (temp: ${temperature}, maxTokens: ${maxTokens})`);
     
     const response = await fetch(`${KIE_BASE_URL}/gemini-3-pro/v1/chat/completions`, {
       method: 'POST',

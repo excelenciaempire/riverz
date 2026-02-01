@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { analyzeWithClaudeSonnet, GeminiMessage } from '@/lib/kie-client';
+import { analyzeWithGemini3Pro, GeminiMessage } from '@/lib/kie-client';
 import { getPromptWithVariables } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
@@ -71,13 +71,12 @@ Genera el análisis basándote en esta información del producto.`;
       { role: 'user', content: userMessage }
     ];
 
-    // 6. Call Claude for deep research (text only, faster)
-    console.log(`[DEEP-RESEARCH] Calling Claude (text only for speed)...`);
+    // 6. Call Gemini 3 Pro for deep research (text only, faster)
+    console.log(`[DEEP-RESEARCH] Calling Gemini 3 Pro (text only for speed)...`);
     
-    const researchResponse = await analyzeWithClaudeSonnet(messages, {
+    const researchResponse = await analyzeWithGemini3Pro(messages, {
       temperature: 0.5,
-      maxTokens: 3000,
-      model: 'claude-sonnet-4-5-20250929'
+      maxTokens: 3000
     });
 
     // 7. Parse JSON response

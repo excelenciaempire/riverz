@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { analyzeWithClaudeSonnet, GeminiMessage, imageUrlToBase64 } from '@/lib/kie-client';
+import { analyzeWithGemini3Pro, GeminiMessage, imageUrlToBase64 } from '@/lib/kie-client';
 import { getPromptWithVariables } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
@@ -93,34 +93,33 @@ Responde ÚNICAMENTE con el JSON, sin markdown ni explicaciones adicionales.`
       { role: 'user', content: userContent }
     ];
 
-    // Call Claude Sonnet 4.5 with full analysis (Render supports longer timeouts)
+    // Call Gemini 3 Pro with full analysis (Render supports longer timeouts)
     let researchResponse: string;
     let researchData: any;
     
     try {
-      console.log('[RESEARCH] Calling Claude Sonnet 4.5 with', userContent.length - 1, 'images...');
-      researchResponse = await analyzeWithClaudeSonnet(messages, {
+      console.log('[RESEARCH] Calling Gemini 3 Pro with', userContent.length - 1, 'images...');
+      researchResponse = await analyzeWithGemini3Pro(messages, {
         temperature: 0.7,
-        maxTokens: 6000,
-        model: 'claude-sonnet-4-5-20250929'
+        maxTokens: 6000
       });
-      console.log('[RESEARCH] Claude response received, length:', researchResponse?.length || 0);
+      console.log('[RESEARCH] Gemini response received, length:', researchResponse?.length || 0);
       console.log('[RESEARCH] Response preview:', researchResponse?.substring(0, 300));
-    } catch (claudeError: any) {
-      console.error('[RESEARCH] Claude API error:', claudeError.message);
+    } catch (geminiError: any) {
+      console.error('[RESEARCH] Gemini API error:', geminiError.message);
       
       // Mark as failed instead of using fallback
       await supabase
         .from('products')
         .update({ 
           research_status: 'failed',
-          research_data: { error: claudeError.message, timestamp: new Date().toISOString() }
+          research_data: { error: geminiError.message, timestamp: new Date().toISOString() }
         })
         .eq('id', productId);
       
       return NextResponse.json({ 
         success: false, 
-        error: `Error de IA: ${claudeError.message}`,
+        error: `Error de IA: ${geminiError.message}`,
         status: 'failed' 
       }, { status: 500 });
     }
