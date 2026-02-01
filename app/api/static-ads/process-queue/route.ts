@@ -47,18 +47,39 @@ const PARALLEL_POLL = 10;    // 10 polling operations
 
 // Helper: Lock a generation to prevent duplicate processing
 async function lockGeneration(id: string, fromStatus: string, toStatus: string): Promise<boolean> {
-  const { data, error } = await supabaseAdmin
-    .from('generations')
-    .update({ 
-      status: toStatus,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', id)
-    .eq('status', fromStatus)
-    .select()
-    .single();
+  console.log(`[LOCK] Attempting ${id}: ${fromStatus} → ${toStatus}`);
+  const startTime = Date.now();
   
-  return !error && !!data;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('generations')
+      .update({ 
+        status: toStatus,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('status', fromStatus)
+      .select()
+      .single();
+    
+    const duration = Date.now() - startTime;
+    
+    if (error) {
+      console.log(`[LOCK] Failed ${id} (${duration}ms): ${error.message}`);
+      return false;
+    }
+    
+    if (!data) {
+      console.log(`[LOCK] No data ${id} (${duration}ms) - status was not ${fromStatus}`);
+      return false;
+    }
+    
+    console.log(`[LOCK] Success ${id} (${duration}ms)`);
+    return true;
+  } catch (err: any) {
+    console.error(`[LOCK] Exception ${id}:`, err.message);
+    return false;
+  }
 }
 
 // Helper: Update generation status with error
@@ -223,10 +244,16 @@ export async function POST(req: Request) {
               throw new Error('Missing templateThumbnail in input_data');
             }
 
-            // Convert template image to base64
+            // Convert template image to base64 with timeout
             console.log(`[STEP1] Converting image to base64...`);
-            const templateBase64 = await imageUrlToBase64(templateThumbnail);
-            console.log(`[STEP1] Image converted, size: ${templateBase64.length} chars`);
+            const imageStartTime = Date.now();
+            const templateBase64 = await Promise.race([
+              imageUrlToBase64(templateThumbnail),
+              new Promise<string>((_, reject) => 
+                setTimeout(() => reject(new Error('Image conversion timeout (30s)')), 30000)
+              )
+            ]);
+            console.log(`[STEP1] Image converted in ${Date.now() - imageStartTime}ms, size: ${templateBase64.length} chars`);
 
             // Get template analysis prompt
             const analysisPrompt = await getPromptText('template_analysis');
@@ -243,10 +270,16 @@ export async function POST(req: Request) {
               }
             ];
 
-            // Call Gemini Flash 2.0 (fast multimodal)
+            // Call Gemini Flash 2.0 (fast multimodal) with timeout
             console.log(`[STEP1] Calling Gemini Flash 2.0 for ${gen.id}...`);
-            const templateAnalysis = await analyzeWithGeminiFlash2(messages, { temperature: 0.3 });
-            console.log(`[STEP1] Gemini completed for ${gen.id}. Analysis: ${templateAnalysis.length} chars`);
+            const geminiStartTime = Date.now();
+            const templateAnalysis = await Promise.race([
+              analyzeWithGeminiFlash2(messages, { temperature: 0.3 }),
+              new Promise<string>((_, reject) => 
+                setTimeout(() => reject(new Error('Gemini Flash timeout (60s)')), 60000)
+              )
+            ]);
+            console.log(`[STEP1] Gemini completed for ${gen.id} in ${Date.now() - geminiStartTime}ms. Analysis: ${templateAnalysis.length} chars`);
 
             // Save analysis and move to next step
             await supabaseAdmin.from('generations').update({
