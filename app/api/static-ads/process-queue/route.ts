@@ -34,15 +34,14 @@ const PARALLEL_POLL = 10;    // 10 polling operations
  * Static Ads Generation Pipeline - PARALLEL PROCESSING
  * 
  * Status Flow:
- * pending_analysis → analyzing_template → pending_prompt → 
- * generating_prompt → pending_generation → generating → completed/failed
+ * pending_analysis → analyzing (Step 1: Gemini analyzes template) →
+ * pending_generation (Step 2: Claude generates prompt) → 
+ * generating (Step 3: Nano Banana creates image) → completed/failed
  * 
  * Models Used:
- * - Gemini Flash 2.0: Fast template analysis (multimodal)
- * - Claude Sonnet 4.5: Detailed prompt generation
- * - Nano Banana Pro: Image generation (max 8 reference images)
- * 
- * All templates are processed in parallel for maximum speed.
+ * - Gemini 3 Pro: Template analysis (kie.ai)
+ * - Claude Sonnet 4.5: Prompt generation (kie.ai)
+ * - Nano Banana Pro: Image generation (kie.ai)
  */
 
 // Helper: Lock a generation to prevent duplicate processing
@@ -156,31 +155,22 @@ export async function POST(req: Request) {
     // CLEANUP: Reset stuck generations (older than 2 minutes in intermediate states)
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
     
-    // Reset analyzing_template → pending_analysis
+    // Reset analyzing → pending_analysis (Step 1 stuck)
     await supabaseAdmin.from('generations')
       .update({ status: 'pending_analysis', updated_at: new Date().toISOString() })
       .eq('project_id', projectId)
-      .eq('status', 'analyzing_template')
-      .lt('updated_at', twoMinutesAgo);
-    
-    // Reset generating_prompt → pending_prompt  
-    await supabaseAdmin.from('generations')
-      .update({ status: 'pending_prompt', updated_at: new Date().toISOString() })
-      .eq('project_id', projectId)
-      .eq('status', 'generating_prompt')
+      .eq('status', 'analyzing')
       .lt('updated_at', twoMinutesAgo);
 
-    // Note: 'generating' with taskId should continue polling, 
-    // those without taskId that are stuck get reset in the filter below
+    // Note: 'generating' with taskId should continue polling
 
-    // Fetch all generations that need processing (including intermediate states)
+    // Fetch all generations that need processing
     const { data: generations, error: genError } = await supabaseAdmin
       .from('generations')
       .select('*')
       .eq('project_id', projectId)
       .in('status', [
-        'pending_analysis', 'analyzing_template',
-        'pending_prompt', 'generating_prompt', 
+        'pending_analysis', 'analyzing',
         'pending_generation', 'generating'
       ]);
 
@@ -199,22 +189,13 @@ export async function POST(req: Request) {
     const { generationModel } = await getKieModelConfig();
     console.log('[PROCESS-QUEUE] Using generation model:', generationModel);
 
-    // Group by status for parallel processing (only pick up pending states, not locked ones)
+    // Group by status for parallel processing
     const pendingAnalysis = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, PARALLEL_GEMINI);
-    const pendingPrompt = generations.filter((g: any) => g.status === 'pending_prompt').slice(0, PARALLEL_CLAUDE);
+    const needsPrompt = generations.filter((g: any) => 
+      g.status === 'analyzing' && g.input_data?.templateAnalysis
+    ).slice(0, PARALLEL_CLAUDE);
     const pendingGeneration = generations.filter((g: any) => g.status === 'pending_generation').slice(0, PARALLEL_NANO);
     const generating = generations.filter((g: any) => g.status === 'generating' && g.input_data?.generationTaskId).slice(0, PARALLEL_POLL);
-    
-    // Reset stuck 'generating' without taskId back to pending_generation
-    const stuckGenerating = generations.filter((g: any) => g.status === 'generating' && !g.input_data?.generationTaskId);
-    if (stuckGenerating.length > 0) {
-      console.log(`[CLEANUP] Resetting ${stuckGenerating.length} stuck 'generating' records`);
-      await Promise.all(stuckGenerating.map((g: any) => 
-        supabaseAdmin.from('generations')
-          .update({ status: 'pending_generation', updated_at: new Date().toISOString() })
-          .eq('id', g.id)
-      ));
-    }
 
     // ============================================
     // STEP 1: Gemini Flash 2.0 analyzes templates (PARALLEL)
@@ -227,7 +208,7 @@ export async function POST(req: Request) {
           try {
             // Lock
             console.log(`[STEP1] Attempting lock for ${gen.id}...`);
-            const locked = await lockGeneration(gen.id, 'pending_analysis', 'analyzing_template');
+            const locked = await lockGeneration(gen.id, 'pending_analysis', 'analyzing');
             if (!locked) {
               console.log(`[STEP1] Skipping ${gen.id} - already locked`);
               return;
@@ -281,9 +262,8 @@ export async function POST(req: Request) {
             ]);
             console.log(`[STEP1] Gemini 3 Pro completed for ${gen.id} in ${Date.now() - geminiStartTime}ms. Analysis: ${templateAnalysis.length} chars`);
 
-            // Save analysis and move to next step
+            // Save analysis - keep status 'analyzing' so Step 2 can pick it up
             await supabaseAdmin.from('generations').update({
-              status: 'pending_prompt',
               input_data: { ...gen.input_data, templateAnalysis },
               updated_at: new Date().toISOString()
             }).eq('id', gen.id);
@@ -299,16 +279,16 @@ export async function POST(req: Request) {
     // ============================================
     // STEP 2: Claude generates image prompts (PARALLEL)
     // ============================================
-    if (pendingPrompt.length > 0) {
-      console.log(`[STEP2] Processing ${pendingPrompt.length} prompts with Claude Sonnet 4.5...`);
+    if (needsPrompt.length > 0) {
+      console.log(`[STEP2] Processing ${needsPrompt.length} prompts with Claude Sonnet 4.5...`);
       
       await Promise.all(
-        pendingPrompt.map(async (gen: any) => {
+        needsPrompt.map(async (gen: any) => {
           try {
-            // Lock
-            const locked = await lockGeneration(gen.id, 'pending_prompt', 'generating_prompt');
+            // Lock: analyzing (with templateAnalysis) → pending_generation
+            const locked = await lockGeneration(gen.id, 'analyzing', 'pending_generation');
             if (!locked) {
-              console.log(`[STEP2] Skipping ${gen.id} - already locked`);
+              console.log(`[STEP2] Skipping ${gen.id} - already processing`);
               return;
             }
 
