@@ -22,12 +22,12 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Concurrency limits - Optimized for Render Starter
-const PARALLEL_STEP1 = 3;  // Template analysis (Gemini)
-const PARALLEL_STEP2 = 3;  // Adaptation (Gemini)
-const PARALLEL_STEP3 = 3;  // Prompt generation (Gemini)
-const PARALLEL_STEP4 = 5;  // Nano Banana tasks
-const PARALLEL_POLL = 10;  // Polling operations
+// Concurrency limits - Maximized for speed
+const PARALLEL_STEP1 = 10;  // Template analysis (Gemini) - lightweight
+const PARALLEL_STEP2 = 10;  // Adaptation (Gemini) - lightweight
+const PARALLEL_STEP3 = 10;  // Prompt generation (Gemini) - lightweight
+const PARALLEL_STEP4 = 10;  // Nano Banana tasks creation
+const PARALLEL_POLL = 20;   // Polling operations
 
 /**
  * Static Ads Generation Pipeline - NEW ARCHITECTURE
@@ -194,8 +194,15 @@ export async function POST(req: Request) {
     const step1Queue = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, PARALLEL_STEP1);
     const step2Queue = generations.filter((g: any) => g.status === 'analyzing' && g.input_data?.templateAnalysisJson).slice(0, PARALLEL_STEP2);
     const step3Queue = generations.filter((g: any) => g.status === 'adapting' && g.input_data?.adaptedJson).slice(0, PARALLEL_STEP3);
-    const step4Queue = generations.filter((g: any) => g.status === 'generating_prompt' && g.input_data?.generatedPrompt).slice(0, PARALLEL_STEP4);
+    // Step 4: pending_generation WITH prompt but WITHOUT taskId (ready to create Nano task)
+    const step4Queue = generations.filter((g: any) => 
+      g.status === 'pending_generation' && 
+      g.input_data?.generatedPrompt && 
+      !g.input_data?.generationTaskId
+    ).slice(0, PARALLEL_STEP4);
     const step5Queue = generations.filter((g: any) => g.status === 'generating' && g.input_data?.generationTaskId).slice(0, PARALLEL_POLL);
+    
+    console.log(`[QUEUES] Step1:${step1Queue.length} Step2:${step2Queue.length} Step3:${step3Queue.length} Step4:${step4Queue.length} Step5:${step5Queue.length}`);
 
     // ============================================
     // STEP 1: Template Analysis to JSON (Gemini Pro 3)
