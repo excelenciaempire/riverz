@@ -5,7 +5,7 @@ import {
   createKieTask, 
   getKieTaskResult, 
   getKieModelConfig, 
-  analyzeWithGeminiFlash2,
+  analyzeWithGemini3Pro,
   analyzeWithClaudeSonnet,
   imageUrlToBase64,
   stripBase64Prefix,
@@ -220,7 +220,7 @@ export async function POST(req: Request) {
     // STEP 1: Gemini Flash 2.0 analyzes templates (PARALLEL)
     // ============================================
     if (pendingAnalysis.length > 0) {
-      console.log(`[STEP1] Processing ${pendingAnalysis.length} templates with Gemini Flash 2.0...`);
+      console.log(`[STEP1] Processing ${pendingAnalysis.length} templates with Gemini 3 Pro (kie.ai)...`);
       
       await Promise.all(
         pendingAnalysis.map(async (gen: any) => {
@@ -270,16 +270,16 @@ export async function POST(req: Request) {
               }
             ];
 
-            // Call Gemini Flash 2.0 (fast multimodal) with timeout
-            console.log(`[STEP1] Calling Gemini Flash 2.0 for ${gen.id}...`);
+            // Call Gemini 3 Pro via kie.ai (same as research) with timeout
+            console.log(`[STEP1] Calling Gemini 3 Pro (kie.ai) for ${gen.id}...`);
             const geminiStartTime = Date.now();
             const templateAnalysis = await Promise.race([
-              analyzeWithGeminiFlash2(messages, { temperature: 0.3 }),
+              analyzeWithGemini3Pro(messages, { temperature: 0.4, maxTokens: 2000 }),
               new Promise<string>((_, reject) => 
-                setTimeout(() => reject(new Error('Gemini Flash timeout (60s)')), 60000)
+                setTimeout(() => reject(new Error('Gemini 3 Pro timeout (90s)')), 90000)
               )
             ]);
-            console.log(`[STEP1] Gemini completed for ${gen.id} in ${Date.now() - geminiStartTime}ms. Analysis: ${templateAnalysis.length} chars`);
+            console.log(`[STEP1] Gemini 3 Pro completed for ${gen.id} in ${Date.now() - geminiStartTime}ms. Analysis: ${templateAnalysis.length} chars`);
 
             // Save analysis and move to next step
             await supabaseAdmin.from('generations').update({
