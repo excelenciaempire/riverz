@@ -7,6 +7,7 @@ import {
   getKieModelConfig, 
   analyzeWithGemini3Pro,
   analyzeWithClaudeSonnet,
+  imageUrlToBase64,
   downloadImage,
   GeminiMessage, 
   NanoBananaInput 
