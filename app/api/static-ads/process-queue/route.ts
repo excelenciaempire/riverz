@@ -121,10 +121,15 @@ async function saveGenerationResult(id: string, kieUrl: string, projectId: strin
 
 export async function POST(req: Request) {
   try {
+    console.log('[PROCESS-QUEUE] Starting...');
+    
     const { userId } = await auth();
+    console.log('[PROCESS-QUEUE] Auth userId:', userId ? 'present' : 'missing');
     if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
-    const { projectId } = await req.json();
+    const body = await req.json();
+    const { projectId } = body;
+    console.log('[PROCESS-QUEUE] Project ID:', projectId);
     if (!projectId) return new NextResponse('Missing projectId', { status: 400 });
 
     // CLEANUP: Reset stuck generations (older than 2 minutes in intermediate states)
@@ -158,13 +163,20 @@ export async function POST(req: Request) {
         'pending_generation', 'generating'
       ]);
 
-    if (genError) throw genError;
+    if (genError) {
+      console.error('[PROCESS-QUEUE] Error fetching generations:', genError);
+      throw genError;
+    }
+    
+    console.log(`[PROCESS-QUEUE] Found ${generations?.length || 0} generations to process`);
+    
     if (!generations || generations.length === 0) {
-      // Return current progress even if nothing to process
+      console.log('[PROCESS-QUEUE] Nothing to process, returning current progress');
       return await returnProgress(projectId);
     }
 
     const { generationModel } = await getKieModelConfig();
+    console.log('[PROCESS-QUEUE] Using generation model:', generationModel);
 
     // Group by status for parallel processing (only pick up pending states, not locked ones)
     const pendingAnalysis = generations.filter((g: any) => g.status === 'pending_analysis').slice(0, PARALLEL_GEMINI);

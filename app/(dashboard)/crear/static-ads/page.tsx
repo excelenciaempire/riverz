@@ -217,13 +217,22 @@ export default function StaticAdsPage() {
     // Also poll to advance the pipeline (triggers processing)
     const poll = async () => {
       try {
-        await fetch('/api/static-ads/process-queue', {
+        console.log(`[POLL] Calling process-queue for project ${projectId}...`);
+        const response = await fetch('/api/static-ads/process-queue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ projectId }),
         });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[POLL] API Error ${response.status}:`, errorText);
+        } else {
+          const data = await response.json();
+          console.log(`[POLL] Progress:`, data.progress);
+        }
       } catch (error) {
-        console.error('Polling error:', error);
+        console.error('[POLL] Network error:', error);
       }
     };
 
