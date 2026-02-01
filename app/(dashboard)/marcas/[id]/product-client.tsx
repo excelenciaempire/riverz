@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ArrowLeft, Sparkles, Plus } from 'lucide-react';
 import { ResearchProgress } from '@/components/products/research-progress';
-import { ResearchPanel } from '@/components/products/research-panel';
 import type { Product } from '@/types';
 
 // Extended product type with research fields
@@ -16,9 +15,33 @@ interface ProductWithResearch extends Product {
   research_status?: 'pending' | 'processing' | 'completed' | 'failed' | null;
 }
 
+// Helper to count research items from various formats
+function countResearchItems(data: any) {
+  if (!data) return { emociones: 0, miedos: 0, keywords: 0 };
+  
+  // Count emotions
+  let emociones = 0;
+  if (data.top_5_emociones?.length) emociones = data.top_5_emociones.length;
+  else if (data.problema_central?.emociones?.length) emociones = data.problema_central.emociones.length;
+  
+  // Count fears
+  let miedos = 0;
+  if (data.miedos_oscuros) {
+    const m = data.miedos_oscuros;
+    if (m.miedos?.length) miedos = m.miedos.length;
+    else miedos = [m.miedo_1, m.miedo_2, m.miedo_3, m.miedo_4, m.miedo_5].filter(x => x?.miedo).length;
+  }
+  
+  // Count keywords
+  let keywords = 0;
+  if (data.lenguaje_del_mercado?.frases_que_usan?.length) keywords = data.lenguaje_del_mercado.frases_que_usan.length;
+  else if (data.lenguaje?.palabras_clave?.length) keywords = data.lenguaje.palabras_clave.length;
+  
+  return { emociones, miedos, keywords };
+}
+
 export default function ProductClient({ product }: { product: ProductWithResearch }) {
   const router = useRouter();
-  const [isResearchPanelOpen, setIsResearchPanelOpen] = useState(false);
   const [localResearchData, setLocalResearchData] = useState(product.research_data);
   const [localResearchStatus, setLocalResearchStatus] = useState(product.research_status);
 
@@ -55,7 +78,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
   };
 
   const handleViewResearch = () => {
-    setIsResearchPanelOpen(true);
+    router.push(`/marcas/${product.id}/research`);
   };
 
   if (!product) return <div className="p-8 text-center text-red-500">Producto no encontrado</div>;
@@ -133,40 +156,29 @@ export default function ProductClient({ product }: { product: ProductWithResearc
             />
 
             {/* Quick stats if research exists */}
-            {hasResearch && (localResearchData || product.research_data) && (
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-lg bg-black/30 p-2">
-                  <p className="text-lg font-bold text-brand-accent">
-                    {(localResearchData || product.research_data)?.problema_central?.emociones?.length || 0}
-                  </p>
-                  <p className="text-xs text-gray-500">Emociones</p>
+            {hasResearch && (localResearchData || product.research_data) && (() => {
+              const stats = countResearchItems(localResearchData || product.research_data);
+              return (
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-black/30 p-2">
+                    <p className="text-lg font-bold text-brand-accent">{stats.emociones}</p>
+                    <p className="text-xs text-gray-500">Emociones</p>
+                  </div>
+                  <div className="rounded-lg bg-black/30 p-2">
+                    <p className="text-lg font-bold text-brand-accent">{stats.miedos}</p>
+                    <p className="text-xs text-gray-500">Miedos</p>
+                  </div>
+                  <div className="rounded-lg bg-black/30 p-2">
+                    <p className="text-lg font-bold text-brand-accent">{stats.keywords}</p>
+                    <p className="text-xs text-gray-500">Keywords</p>
+                  </div>
                 </div>
-                <div className="rounded-lg bg-black/30 p-2">
-                  <p className="text-lg font-bold text-brand-accent">
-                    {(localResearchData || product.research_data)?.miedos_oscuros?.miedos?.length || 0}
-                  </p>
-                  <p className="text-xs text-gray-500">Miedos</p>
-                </div>
-                <div className="rounded-lg bg-black/30 p-2">
-                  <p className="text-lg font-bold text-brand-accent">
-                    {(localResearchData || product.research_data)?.lenguaje?.palabras_clave?.length || 0}
-                  </p>
-                  <p className="text-xs text-gray-500">Keywords</p>
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
         </div>
       </div>
-
-      {/* Research Panel Modal */}
-      <ResearchPanel
-        isOpen={isResearchPanelOpen}
-        onClose={() => setIsResearchPanelOpen(false)}
-        researchData={localResearchData || product.research_data}
-        productName={product.name}
-      />
     </div>
   );
 }
