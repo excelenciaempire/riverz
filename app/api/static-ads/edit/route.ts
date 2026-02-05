@@ -150,6 +150,10 @@ export async function POST(req: Request) {
     const taskId = await createKieTask(generationModel, nanoBananaInput);
     console.log(`[EDIT] Task created: ${taskId}`);
 
+    // Determine next version number
+    const currentVersion = generation.version || 1;
+    const nextVersion = currentVersion + 1;
+
     // Create a new generation record for the edit
     const { data: newGeneration, error: insertError } = await supabaseAdmin
       .from('generations')
@@ -159,6 +163,8 @@ export async function POST(req: Request) {
         status: 'generating',
         project_id: project_id,
         cost: editCost,
+        version: nextVersion,
+        parent_id: generationId,
         input_data: {
           ...input_data,
           generatedPrompt: newPrompt,
@@ -234,8 +240,9 @@ export async function POST(req: Request) {
             console.log(`[EDIT] SUCCESS! Result: ${resultUrl}`);
             return NextResponse.json({
               success: true,
-              generationId: newGeneration.id,
+              newGenerationId: newGeneration.id,
               resultUrl,
+              version: nextVersion,
               prompt: newPrompt
             });
           }

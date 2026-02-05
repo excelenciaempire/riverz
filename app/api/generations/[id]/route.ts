@@ -19,7 +19,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     // Verify the generation belongs to the user
     const { data: generation, error: genError } = await supabaseAdmin
       .from('generations')
-      .select('id, user_id, result_url, project_id')
+      .select('id, clerk_user_id, result_url, project_id')
       .eq('id', id)
       .single();
 
@@ -27,8 +27,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       return new NextResponse('Generation not found', { status: 404 });
     }
 
-    // Verify ownership through the user_id field
-    if (generation.user_id !== userId) {
+    // Verify ownership through the clerk_user_id field
+    if (generation.clerk_user_id !== userId) {
       return new NextResponse('Unauthorized', { status: 403 });
     }
 
