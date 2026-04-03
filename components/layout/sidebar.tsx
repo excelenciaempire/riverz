@@ -12,6 +12,7 @@ import {
   Video,
   FileVideo,
   Image as ImageIcon,
+  FlaskConical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCredits } from '@/hooks/useCredits';
@@ -37,6 +38,12 @@ const navigationGroups = [
     title: 'Marca',
     items: [
       { name: 'Mis Productos', href: '/marcas', icon: Package },
+    ],
+  },
+  {
+    title: 'Landings',
+    items: [
+      { name: 'Landing Lab', href: '/landing-lab', icon: FlaskConical },
     ],
   },
 ];

@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Landing Lab — Vitalu</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--ink:#0E0A06;--ink2:#1C1409;--cream:#F5EDD8;--cream2:#EFE4C8;--terra:#C4573A;--terra2:#A84028;--gold:#C9951A;--sage:#5C6E52;--body-txt:#2A1F12;--muted:#7A6245}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--cream);font-family:'Instrument Sans',sans-serif;overflow-x:hidden;line-height:1.7;}
+#prog{position:sticky;top:0;left:0;height:2px;background:var(--terra);z-index:88;width:0;transition:width .15s;pointer-events:none}
+.sticky-cta{position:fixed;bottom:0;left:0;right:0;background:var(--terra2);z-index:80;transform:translateY(100%);transition:transform .4s ease;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sticky-cta.show{transform:translateY(0)}.sticky-cta p{font-size:13px;color:rgba(255,255,255,.85);flex:1;min-width:180px;line-height:1.4}.sticky-cta p strong{color:#fff;display:block}
+.sticky-btn{background:#fff;color:var(--terra2);font-family:'Instrument Sans',sans-serif;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:11px 24px;border:none;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block}
+.sticky-close{background:none;border:none;color:rgba(255,255,255,.4);font-size:22px;cursor:pointer;padding:2px 6px;line-height:1}
+.img-ph{width:100%;display:block;position:relative;overflow:hidden;background:#1A1008}
+.img-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.img-ph::after{content:attr(data-label);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Instrument Sans',sans-serif;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(245,237,216,.18);border:1px dashed rgba(245,237,216,.1);padding:12px;text-align:center;pointer-events:none;z-index:1}
+.img-ph.loaded::after{display:none}
+.ar-land{aspect-ratio:16/9}.ar-wide{aspect-ratio:21/9}
+@media(max-width:768px){.ar-wide{aspect-ratio:4/3}}
+section{padding:80px 24px;position:relative}
+.wrap{max-width:760px;margin:0 auto;width:100%}
+@media(max-width:600px){section{padding:60px 20px}}
+.tag{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;display:block}.tag.t{color:var(--terra)}
+.disp{font-family:'Cormorant Garamond',serif;font-size:clamp(38px,7vw,88px);font-weight:300;line-height:1.05;letter-spacing:-.5px}.disp em{font-style:italic;color:var(--terra)}
+.hl{font-family:'Cormorant Garamond',serif;font-size:clamp(30px,5vw,56px);font-weight:400;line-height:1.15;letter-spacing:-.3px}.hl em{font-style:italic}
+.bl{font-size:clamp(15px,2vw,18px);line-height:1.9;color:rgba(245,237,216,.72)}.bl strong{color:var(--cream);font-weight:600}
+.bl.dk{color:rgba(42,31,18,.78)}.bl.dk strong{color:var(--body-txt)}
+p+p{margin-top:18px}
+.bg-ink{background:var(--ink)}.bg-ink2{background:var(--ink2)}.bg-mid{background:#17100A}.bg-cr{background:var(--cream);color:var(--body-txt)}.bg-cr2{background:var(--cream2);color:var(--body-txt)}
+.hero{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;align-items:stretch;padding:0;overflow:hidden}
+@media(max-width:768px){.hero{grid-template-columns:1fr}}
+.hero-txt{padding:80px 48px;display:flex;flex-direction:column;justify-content:center}
+@media(max-width:900px){.hero-txt{padding:60px 32px}}
+@media(max-width:768px){.hero-txt{padding:60px 24px 52px;order:2}}
+.hero-img-col .img-ph{height:100%;min-height:100vh}
+@media(max-width:768px){.hero-img-col{order:1}.hero-img-col .img-ph{min-height:60vw;aspect-ratio:auto}}
+.hero-gtag{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);border:1px solid rgba(201,149,26,.25);padding:7px 16px;display:inline-block;margin-bottom:36px;align-self:flex-start}
+.hero h1{font-family:'Cormorant Garamond',serif;font-size:clamp(40px,5.5vw,80px);font-weight:300;line-height:1.05;letter-spacing:-.5px;color:#fff}
+.hero h1 em{font-style:italic;color:var(--terra);display:block}
+.hero-sub{font-size:clamp(14px,1.8vw,17px);color:rgba(245,237,216,.52);margin-top:24px;line-height:1.8}
+.hero-dn{margin-top:48px;display:flex;align-items:center;gap:14px;cursor:pointer;align-self:flex-start}
+.hero-dn-l{width:40px;height:1px;background:rgba(196,87,58,.5)}
+.hero-dn span{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(245,237,216,.28)}
+.pq{border-left:2px solid var(--terra);padding:20px 0 20px 28px;margin:44px 0}
+.pq p{font-family:'Cormorant Garamond',serif;font-size:clamp(20px,3vw,32px);font-style:italic;font-weight:300;line-height:1.45;color:#fff}
+.pq.lt p{color:var(--body-txt)}.pq cite{display:block;font-family:'Instrument Sans',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:14px}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(42,31,18,.14);margin:52px 0;border:1px solid rgba(42,31,18,.1)}
+@media(max-width:520px){.stat-row{grid-template-columns:1fr}}
+.stat-c{padding:30px 22px;background:var(--cream2)}.stat-n{font-family:'Cormorant Garamond',serif;font-size:clamp(40px,6vw,68px);font-weight:300;color:var(--terra2);line-height:1;margin-bottom:8px}.stat-l{font-size:12px;color:var(--muted);line-height:1.5}
+.v-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(42,31,18,.12);margin-top:36px}
+@media(max-width:500px){.v-grid{grid-template-columns:1fr}}
+.v-c{padding:24px 20px;background:var(--cream)}.v-h{font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:600}.v-h.bad{color:#8B3A1C}.v-h.good{color:var(--sage)}
+.v-list{list-style:none}.v-list li{font-size:13px;color:rgba(42,31,18,.7);padding:8px 0;border-bottom:1px solid rgba(42,31,18,.07);display:flex;align-items:flex-start;gap:9px;line-height:1.5}.v-list li:last-child{border-bottom:none}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:stretch;overflow:hidden}
+@media(max-width:768px){.split{grid-template-columns:1fr}}
+.split-img .img-ph{height:100%;min-height:420px}
+@media(max-width:768px){.split-img .img-ph{min-height:240px;aspect-ratio:4/3}}
+.split-cnt{padding:72px 48px;display:flex;flex-direction:column;justify-content:center}
+@media(max-width:900px){.split-cnt{padding:52px 32px}}
+@media(max-width:768px){.split-cnt{padding:48px 24px}}
+.sebo-word{font-family:'Cormorant Garamond',serif;font-size:clamp(56px,14vw,140px);font-weight:300;color:var(--terra);letter-spacing:-3px;line-height:.95;text-align:center;padding:60px 0 48px}
+.sebo-word span{display:block;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(245,237,216,.22);font-family:'Instrument Sans',sans-serif;margin-top:16px}
+.ing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(245,237,216,.06)}
+@media(max-width:768px){.ing-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:400px){.ing-grid{grid-template-columns:1fr}}
+.ing-c{padding:28px 22px;background:var(--ink2);position:relative;overflow:hidden}
+.ing-n{font-family:'Cormorant Garamond',serif;font-size:80px;font-weight:300;color:rgba(196,87,58,.09);position:absolute;top:-14px;right:12px;line-height:1;pointer-events:none}
+.ing-pill{display:inline-block;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);background:rgba(201,149,26,.1);padding:4px 9px;margin-bottom:12px}
+.ing-name{font-family:'Cormorant Garamond',serif;font-size:clamp(17px,2.2vw,22px);font-weight:400;color:#fff;margin-bottom:8px;line-height:1.2;position:relative}
+.ing-desc{font-size:12px;color:rgba(245,237,216,.46);line-height:1.6;position:relative}
+.ing-img{margin-bottom:14px}.ing-img .img-ph{border-radius:1px}
+.prod-feat{display:grid;grid-template-columns:1fr 1fr;align-items:stretch;overflow:hidden;margin-top:2px}
+@media(max-width:768px){.prod-feat{grid-template-columns:1fr}}
+.prod-feat .img-ph{height:100%;min-height:460px}
+@media(max-width:768px){.prod-feat .img-ph{min-height:260px;aspect-ratio:4/3}}
+.prod-info{padding:52px 44px;background:var(--ink2);display:flex;flex-direction:column;justify-content:center}
+@media(max-width:768px){.prod-info{padding:36px 24px}}
+.prod-name{font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.5vw,52px);font-weight:300;color:#fff;margin-bottom:14px;line-height:1.1}
+.prod-desc{font-size:clamp(14px,1.8vw,16px);color:rgba(245,237,216,.62);line-height:1.8}
+.prod-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+.prod-tag{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;background:rgba(196,87,58,.12);color:var(--terra);padding:5px 11px;border:1px solid rgba(196,87,58,.2)}
+.tline{margin:52px 0 0;position:relative;padding-left:26px}
+.tline::before{content:'';position:absolute;left:4px;top:8px;bottom:8px;width:1px;background:linear-gradient(to bottom,var(--terra),rgba(196,87,58,.06))}
+.t-item{margin-bottom:38px;position:relative}
+.t-dot{position:absolute;left:-22px;top:5px;width:11px;height:11px;border-radius:50%;background:var(--terra);border:3px solid var(--ink)}
+.t-day{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--terra);margin-bottom:5px}
+.t-txt{font-size:clamp(14px,1.8vw,16px);color:rgba(245,237,216,.7);line-height:1.75}.t-txt strong{color:#fff;font-weight:600}
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(42,31,18,.1)}
+@media(max-width:768px){.testi-grid{grid-template-columns:1fr}}
+.testi-c{padding:32px 26px;background:var(--cream)}.testi-stars{color:var(--terra2);font-size:13px;letter-spacing:3px;margin-bottom:12px}
+.testi-img{margin-bottom:18px}.testi-img .img-ph{border-radius:1px}
+.testi-txt{font-family:'Cormorant Garamond',serif;font-size:clamp(16px,2vw,20px);font-style:italic;font-weight:400;color:var(--body-txt);line-height:1.55;margin-bottom:16px}
+.testi-au{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.testi-au strong{color:var(--terra2);display:block;margin-bottom:2px;font-family:'Instrument Sans',sans-serif;font-size:11px}
+.gift{border:1px solid rgba(201,149,26,.16);overflow:hidden;display:grid;grid-template-columns:1fr 1fr;align-items:stretch;margin:52px 0}
+@media(max-width:768px){.gift{grid-template-columns:1fr}}
+.gift-img .img-ph{height:100%;min-height:300px}
+@media(max-width:768px){.gift-img .img-ph{min-height:220px;aspect-ratio:4/3}}
+.gift-cnt{padding:44px 36px;background:var(--ink2);display:flex;flex-direction:column;justify-content:center}
+@media(max-width:768px){.gift-cnt{padding:32px 24px}}
+.gift-tag{display:inline-flex;align-items:center;gap:8px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);background:rgba(201,149,26,.1);border:1px solid rgba(201,149,26,.2);padding:6px 14px;margin-bottom:22px}
+.gift h3{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,4vw,40px);font-weight:300;color:#fff;margin-bottom:14px;line-height:1.2}
+.gift p{font-size:clamp(14px,1.8vw,16px);color:rgba(245,237,216,.58);line-height:1.75}.gift p+p{margin-top:10px}.gift-note{color:var(--gold)!important;font-weight:600}
+.ck-list{list-style:none;margin-top:36px}
+.ck-list li{display:flex;align-items:flex-start;gap:12px;padding:12px 0;font-size:clamp(14px,1.8vw,16px);border-bottom:1px solid rgba(42,31,18,.08);color:rgba(42,31,18,.76);line-height:1.6}
+.ck-list li:last-child{border-bottom:none}
+.chk{width:20px;height:20px;background:rgba(164,64,40,.1);border:1px solid rgba(164,64,40,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:10px;color:var(--terra2)}
+.gtee{background:var(--terra2);padding:80px 24px;text-align:center;position:relative;overflow:hidden}
+.gtee::before{content:'30';font-family:'Cormorant Garamond',serif;font-size:clamp(200px,35vw,360px);font-weight:700;color:rgba(255,255,255,.04);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);line-height:1;pointer-events:none;white-space:nowrap}
+.gtee h2{font-family:'Cormorant Garamond',serif;font-size:clamp(34px,6vw,72px);font-weight:300;color:#fff;margin-bottom:18px;position:relative;z-index:1;line-height:1.1}
+.gtee p{font-size:clamp(15px,2vw,18px);color:rgba(255,255,255,.76);max-width:520px;margin:0 auto;line-height:1.8;position:relative;z-index:1}
+.main-cta{background:var(--ink2);padding:100px 24px;text-align:center;position:relative;overflow:hidden}
+@media(max-width:600px){.main-cta{padding:72px 20px}}
+.main-cta::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 50%,rgba(42,20,9,.9) 0%,var(--ink2) 70%)}
+.cta-btn{display:inline-block;background:var(--terra);color:#fff;font-family:'Instrument Sans',sans-serif;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:20px 56px;text-decoration:none;border:none;cursor:pointer;position:relative;z-index:1;margin-top:40px}
+.cta-btn:hover{background:var(--terra2)}
+.cta-meta{font-size:12px;color:rgba(245,237,216,.28);margin-top:24px;line-height:2;position:relative;z-index:1;white-space:pre-line}
+.rv{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease}.rv.on{opacity:1;transform:translateY(0)}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}
+/* EDITOR UI */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#0E0A06}
+body{color:#E2E4EF;font-family:'Instrument Sans',sans-serif;font-size:13px;display:flex;flex-direction:column;overflow:hidden;padding:0}
+#topbar{height:48px;background:#0D0E14;border-bottom:1px solid #181B27;display:flex;align-items:center;padding:0 10px;gap:8px;flex-shrink:0;z-index:100}
+.t-logo{display:flex;align-items:center;gap:7px}
+.t-mark{width:24px;height:24px;background:#C4573A;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700;font-style:italic;font-family:Georgia,serif;flex-shrink:0}
+.t-name{font-size:13px;font-weight:600;color:#B8BCCC}
+.t-sep{width:1px;height:18px;background:#1E2130;flex-shrink:0}
+.t-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+.tb{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;font-family:'Instrument Sans',sans-serif}
+.tb:disabled{opacity:.28;cursor:not-allowed}
+.tb-ghost{background:transparent;color:#545A72;border:1px solid #1E2130}.tb-ghost:hover:not(:disabled){background:#181B27;color:#C8CAD8}
+.tb-acc{background:#C4573A;color:#fff}.tb-acc:hover:not(:disabled){background:#D0614A}
+.tb-blue{background:rgba(74,144,226,.1);color:#6EA8E8;border:1px solid rgba(74,144,226,.18)}.tb-blue:hover{background:rgba(74,144,226,.2)}
+.tb-grn{background:rgba(76,175,125,.1);color:#5BBF91;border:1px solid rgba(76,175,125,.18)}.tb-grn:hover{background:rgba(76,175,125,.2)}
+.tb-ai{background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(59,130,246,.2));color:#A78BFA;border:1px solid rgba(124,58,237,.28)}.tb-ai:hover:not(:disabled){filter:brightness(1.12)}
+.tb-gal{background:rgba(196,87,58,.1);color:#E8896E;border:1px solid rgba(196,87,58,.2)}.tb-gal:hover{background:rgba(196,87,58,.18)}
+.vp-tog{display:flex;background:#0A0B0F;border-radius:6px;padding:2px;border:1px solid #181B27;gap:2px}
+.vp-b{padding:4px 10px;border-radius:4px;border:none;background:transparent;color:#3E4560;cursor:pointer;font-size:11px;font-family:'Instrument Sans',sans-serif;font-weight:500;transition:all .15s}
+.vp-b.on{background:#181B27;color:#C8CAD8}
+.sv{display:flex;align-items:center;gap:4px}.sv-dot{width:5px;height:5px;border-radius:50%;background:#4CAF7D;flex-shrink:0}
+.sv-dot.d{background:#E8A030;animation:blink .7s ease infinite alternate}
+@keyframes blink{from{opacity:.3}to{opacity:1}}
+.sv-lbl{font-size:10px;color:#3E4560}
+#sb-toggle{width:30px;height:30px;border:none;background:transparent;color:#4A5270;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:5px;transition:all .15s;flex-shrink:0;font-size:15px}
+#sb-toggle:hover{background:#181B27;color:#C8CAD8}
+#main{display:flex;flex:1;overflow:hidden;min-height:0}
+#sidebar{width:220px;min-width:220px;flex-shrink:0;background:#0D0E14;border-right:1px solid #181B27;display:flex;flex-direction:column;overflow:hidden;transition:width .25s,min-width .25s,border-width .25s}
+#sidebar.collapsed{width:0!important;min-width:0!important;overflow:hidden;border-right-width:0}
+.sb-head{padding:12px 12px 8px;border-bottom:1px solid #181B27;flex-shrink:0}
+.sb-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#3E4560;font-weight:600;margin-bottom:8px}
+.sb-new{width:100%;padding:8px 10px;background:transparent;border:1px dashed #252840;border-radius:6px;color:#5B6490;font-size:11px;font-weight:500;cursor:pointer;font-family:'Instrument Sans',sans-serif;transition:all .15s;display:flex;align-items:center;gap:5px}
+.sb-new:hover{background:#111420;border-color:#4A90E2;color:#7BB3F0}
+.sb-list{flex:1;overflow-y:auto;padding:6px}.sb-list::-webkit-scrollbar{width:2px}.sb-list::-webkit-scrollbar-thumb{background:#252840}
+.sb-item{padding:9px 10px;border-radius:7px;cursor:pointer;transition:all .15s;margin-bottom:2px;border:1px solid transparent;position:relative}
+.sb-item:hover{background:#111420}.sb-item.active{background:#111420;border-color:#252840}
+.sb-item-name{font-size:11px;font-weight:600;color:#9AA3C0;margin-bottom:2px;display:flex;align-items:center;gap:5px;padding-right:20px}
+.dot{width:5px;height:5px;border-radius:50%;background:#3E4560;flex-shrink:0}.sb-item.active .dot{background:#4CAF7D}
+.sb-item-angle{font-size:10px;color:#3E4560;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
+.sb-item-actions{position:absolute;top:7px;right:7px;display:none;gap:2px}.sb-item:hover .sb-item-actions{display:flex}
+.sb-act{width:18px;height:18px;border-radius:3px;border:none;background:rgba(255,255,255,.04);color:#3E4560;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;transition:all .15s}
+.sb-act:hover{background:rgba(255,255,255,.09);color:#C8CAD8}.sb-act.del:hover{background:rgba(232,85,85,.15);color:#E85555}
+.sb-count{padding:6px 12px;border-top:1px solid #181B27;font-size:10px;color:#252840;flex-shrink:0}
+#editor{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.ed-toolbar{height:38px;background:#0D0E14;border-bottom:1px solid #181B27;display:flex;align-items:center;padding:0 12px;gap:6px;flex-shrink:0}
+.ed-name{font-size:12px;font-weight:600;color:#9AA3C0;flex:1;min-width:0}
+.ed-name input{background:transparent;border:none;color:#9AA3C0;font-size:12px;font-weight:600;font-family:'Instrument Sans',sans-serif;width:100%;outline:none}
+.ed-name input:focus{color:#C8CAD8}.ed-angle{font-size:10px;color:#3E4560;flex:2;min-width:0}
+.ed-angle input{background:transparent;border:none;color:#3E4560;font-size:10px;font-family:'Instrument Sans',sans-serif;width:100%;outline:none}
+.ed-angle input:focus{color:#5B6490}.ed-sep{width:1px;height:16px;background:#181B27}
+#page-area{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;background:#0E0A06;scrollbar-width:thin;scrollbar-color:#1E2130 #0E0A06}
+#page-area::-webkit-scrollbar{width:4px;background:#0E0A06}
+#page-area::-webkit-scrollbar-thumb{background:#1E2130;border-radius:2px}
+#page-wrap{width:100%;min-height:100%;background:var(--ink,#0E0A06);color:var(--cream,#F5EDD8);font-family:'Instrument Sans',sans-serif;line-height:1.7;overflow-x:hidden;display:block}
+body.mob-mode #page-area{background:#0D0D12;text-align:center}
+body.mob-mode #page-wrap{width:390px;max-width:390px;margin:20px auto;text-align:left;display:inline-block;min-height:auto;box-shadow:0 0 0 8px #1A1D28,0 0 0 9px #252840}
+body.mob-mode .hero{grid-template-columns:1fr!important;min-height:auto}
+body.mob-mode .hero-txt{padding:40px 20px 32px!important;order:2}
+body.mob-mode .hero-img-col{order:1}
+body.mob-mode .split{grid-template-columns:1fr!important}
+body.mob-mode .prod-feat{grid-template-columns:1fr!important}
+body.mob-mode .gift{grid-template-columns:1fr!important}
+body.mob-mode .split-cnt,.prod-info,.gift-cnt{padding:32px 20px!important}
+body.mob-mode .ing-grid{grid-template-columns:repeat(2,1fr)!important}
+body.mob-mode .testi-grid{grid-template-columns:1fr!important}
+body.mob-mode .stat-row{grid-template-columns:1fr!important}
+body.mob-mode .v-grid{grid-template-columns:1fr!important}
+body.mob-mode section{padding:44px 20px!important}
+body.mob-mode .wrap{max-width:100%}
+body.mob-mode #sticky,body.mob-mode #prog{display:none}
+body.mob-mode .hero-dn{display:none}
+body.mob-mode .disp{font-size:clamp(26px,8vw,40px)!important;line-height:1.15!important}
+body.mob-mode .hl{font-size:clamp(20px,6.5vw,30px)!important;line-height:1.2!important}
+body.mob-mode .bl{font-size:13px!important}
+body.mob-mode .hero h1{font-size:clamp(28px,8vw,44px)!important;line-height:1.1!important}
+body.mob-mode .hero-em{font-size:clamp(22px,7vw,36px)!important}
+body.mob-mode .hero-sub,.pq p{font-size:12px!important}
+body.mob-mode .stat-n{font-size:clamp(32px,9vw,48px)!important}
+body.mob-mode .stat-l{font-size:11px!important}
+body.mob-mode .sebo-word{font-size:clamp(40px,13vw,60px)!important}
+body.mob-mode .ing-name{font-size:15px!important}
+body.mob-mode .ing-desc{font-size:11px!important}
+body.mob-mode .prod-name{font-size:clamp(22px,6vw,32px)!important}
+body.mob-mode .testi-txt{font-size:14px!important}
+body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
+/* CRITICAL: image overlays */
+.img-ph{position:relative;overflow:hidden}
+.iov{position:absolute;inset:0;z-index:10;background:rgba(6,4,2,.6);opacity:0;transition:opacity .22s;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;pointer-events:auto}
+.img-ph:hover .iov{opacity:1}
+.iov-icon{font-size:30px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.9))}
+.iov-label{font-size:10px;color:rgba(255,255,255,.85);font-family:'Instrument Sans',sans-serif;font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
+.idel{position:absolute;top:8px;right:8px;z-index:20;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:11px;cursor:pointer;display:none;align-items:center;justify-content:center;transition:background .15s;padding:0;line-height:1}
+.img-ph:hover .idel{display:flex}
+.idel:hover{background:rgba(220,60,60,.9)}
+.img-ph.collapsed{display:none!important}
+.img-ph:not(.loaded) img{display:none}
+.hero-img-col:has(.img-ph.collapsed){display:none}
+.hero:has(.hero-img-col .img-ph.collapsed){grid-template-columns:1fr}
+.split-img:has(.img-ph.collapsed){display:none}
+.split:has(.split-img .img-ph.collapsed){grid-template-columns:1fr}
+.gift-img:has(.img-ph.collapsed){display:none}
+.gift:has(.gift-img .img-ph.collapsed){grid-template-columns:1fr}
+.edit-mode [data-v-text]:hover{outline:2px solid rgba(74,144,226,.35);outline-offset:2px;border-radius:2px;cursor:text}
+.edit-mode [data-v-text]:focus{outline:2px solid #4A90E2;outline-offset:2px;border-radius:2px}
+#font-ctrl{position:fixed;z-index:9999;background:#0D0E14;border:1px solid #252840;border-radius:7px;padding:4px 6px;display:none;align-items:center;gap:4px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+#font-ctrl button{width:24px;height:24px;border:1px solid #252840;background:#111420;color:#9AA3C0;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:'Instrument Sans',sans-serif;transition:all .15s}
+#font-ctrl button:hover{background:#1E2436;color:#C8CAD8}
+#font-size-val{font-size:10px;color:#5B6490;min-width:28px;text-align:center;font-family:'Instrument Sans',sans-serif}
+#sticky-panel{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#0D0E14;border:1px solid #252840;border-radius:8px;padding:10px 14px;z-index:201;display:none;align-items:center;gap:10px;font-family:'Instrument Sans',sans-serif;box-shadow:0 -4px 20px rgba(0,0,0,.5)}
+#sticky-panel.show{display:flex}
+#sticky-thresh{accent-color:#C4573A;width:100px;cursor:pointer}
+#sticky-thresh-val2{font-size:11px;color:#9AA3C0;min-width:28px}
+.sticky-cfg-btn{background:none;border:none;color:rgba(255,255,255,.3);cursor:pointer;font-size:12px;padding:0 6px;line-height:1;transition:color .15s}
+.sticky-cfg-btn:hover{color:rgba(255,255,255,.7)}
+#empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.es-icon{font-size:44px;opacity:.3}.es-title{font-size:15px;font-weight:600;color:#4A5270}.es-sub{font-size:12px;color:#252840;text-align:center;max-width:240px;line-height:1.6}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.modal-bg.on{display:flex}
+.modal-box{background:#0D0E14;border:1px solid #1E2130;border-radius:12px;padding:26px;width:490px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)}
+.modal-title{font-size:14px;font-weight:600;color:#C8CAD8;margin-bottom:4px}
+.modal-sub{font-size:11px;color:#4A5270;margin-bottom:18px;line-height:1.5}
+.modal-field{margin-bottom:14px}
+.modal-label{font-size:11px;color:#7A8099;margin-bottom:5px;font-weight:500;display:block}
+.modal-input{width:100%;background:#080910;border:1px solid #1E2130;border-radius:7px;padding:9px 11px;color:#C8CAD8;font-size:12px;font-family:'Instrument Sans',sans-serif;transition:border-color .15s}
+.modal-input:focus{outline:none;border-color:#4A90E2}.modal-input::placeholder{color:#1E2130}
+.modal-input.ta{resize:none;line-height:1.6;height:68px}
+.angle-presets{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.angle-tag{padding:4px 9px;border-radius:5px;font-size:11px;background:#111420;border:1px solid #1E2130;color:#545A72;cursor:pointer;transition:all .15s;font-family:'Instrument Sans',sans-serif;user-select:none}
+.angle-tag:hover{border-color:#4A90E2;color:#7BB3F0}
+.modal-btns{display:flex;gap:8px;margin-top:18px;align-items:center}
+.modal-btns-left{flex:1}
+#gen-overlay{position:fixed;inset:0;background:rgba(5,5,8,.95);z-index:99999;display:none;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(10px)}
+#gen-overlay.on{display:flex}
+.go-box{width:400px;max-width:88vw}
+.go-title{font-size:14px;font-weight:600;color:#C8CAD8;margin-bottom:5px;font-family:'Instrument Sans',sans-serif}
+.go-angle{font-size:11px;color:#5B6490;margin-bottom:20px;font-family:'Instrument Sans',sans-serif;line-height:1.5;font-style:italic}
+.go-bar-bg{height:2px;background:#1E2130;border-radius:1px;overflow:hidden;margin-bottom:20px}
+.go-bar-fill{height:100%;background:linear-gradient(90deg,#7C3AED,#4A90E2,#4CAF7D);border-radius:1px;width:0%;transition:width .5s ease}
+.go-steps{display:flex;flex-direction:column;gap:8px}
+.go-step{display:flex;align-items:center;gap:10px;font-size:11px;font-family:'Instrument Sans',sans-serif;color:#252840;transition:color .3s}
+.go-step.active{color:#A78BFA}.go-step.done{color:#4CAF7D}
+.go-step-dot{width:5px;height:5px;border-radius:50%;background:#1E2130;flex-shrink:0;transition:all .3s}
+.go-step.active .go-step-dot{background:#A78BFA;box-shadow:0 0 8px rgba(167,139,250,.5)}
+.go-step.done .go-step-dot{background:#4CAF7D}
+#toast{position:fixed;bottom:18px;right:18px;background:#4CAF7D;color:#fff;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:500;transform:translateY(8px);opacity:0;transition:all .2s;z-index:99999;pointer-events:none;font-family:'Instrument Sans',sans-serif}
+#toast.on{transform:translateY(0);opacity:1}#toast.err{background:#E85555}#toast.info{background:#4A90E2}
+/* ══ IMAGE GENERATION MODAL ══ */
+#igp-modal{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99997;display:none;align-items:center;justify-content:center;backdrop-filter:blur(12px)}
+#igp-modal.on{display:flex}
+.igp-panel{width:560px;max-width:94vw;background:#0A0B0F;border:1px solid #1E2130;border-radius:14px;overflow:hidden;box-shadow:0 32px 100px rgba(0,0,0,.8)}
+.igp-header{padding:16px 20px 0;display:flex;align-items:center;gap:12px}
+.igp-title-wrap{flex:1;min-width:0}
+.igp-slot-label{font-size:10px;color:#4A5270;font-family:'Instrument Sans',sans-serif;letter-spacing:.5px;text-transform:uppercase}
+.igp-slot-name{font-size:14px;font-weight:600;color:#C8CAD8;font-family:'Instrument Sans',sans-serif}
+.igp-tabs{display:flex;background:#0D0E14;border-radius:7px;padding:2px;gap:2px;border:1px solid #181B27}
+.igp-tab{padding:5px 14px;border-radius:5px;border:none;background:transparent;color:#3E4560;cursor:pointer;font-size:11px;font-family:'Instrument Sans',sans-serif;font-weight:500;transition:all .15s}
+.igp-tab.on{background:#181B27;color:#C8CAD8}
+.igp-close{width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.05);color:#545A72;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:all .15s}
+.igp-close:hover{background:rgba(255,255,255,.1);color:#E2E4EF}
+.igp-ai-section,.igp-url-section{display:flex;flex-direction:column}
+.igp-step{display:flex;flex-direction:column;gap:14px;padding:18px 20px 20px}
+.igp-prompt-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.igp-prompt-label{font-size:10px;color:#3E4560;letter-spacing:1px;text-transform:uppercase;font-family:'Instrument Sans',sans-serif}
+.igp-regen-btn{background:none;border:none;color:#5B6490;font-size:11px;cursor:pointer;font-family:'Instrument Sans',sans-serif;display:flex;align-items:center;gap:4px;transition:color .15s;padding:0}
+.igp-regen-btn:hover{color:#9AA3C0}
+.igp-prompt-ta{width:100%;background:#080910;border:1px solid #1E2130;border-radius:8px;padding:12px;color:#C8CAD8;font-size:12px;font-family:'Instrument Sans',sans-serif;line-height:1.6;resize:none;height:96px;transition:border-color .15s,opacity .2s;outline:none}
+.igp-prompt-ta:focus{border-color:#4A90E2}
+.igp-controls{display:flex;gap:8px;align-items:center}
+.igp-select{background:#080910;border:1px solid #1E2130;border-radius:6px;padding:7px 10px;color:#9AA3C0;font-size:11px;font-family:'Instrument Sans',sans-serif;cursor:pointer;outline:none;transition:border-color .15s}
+.igp-select:focus{border-color:#4A90E2}
+.igp-gen-btn{flex:1;padding:9px 16px;background:linear-gradient(135deg,#7C3AED,#4A90E2);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Instrument Sans',sans-serif;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.igp-gen-btn:hover:not(:disabled){filter:brightness(1.1)}
+.igp-gen-btn:disabled{opacity:.4;cursor:not-allowed}
+.igp-step-loading{align-items:center;text-align:center;gap:16px}
+.igp-load-icon{width:48px;height:48px;border-radius:50%;background:rgba(124,58,237,.12);border:1.5px solid rgba(124,58,237,.3);display:flex;align-items:center;justify-content:center;font-size:22px;animation:igp-pulse 2s ease infinite}
+@keyframes igp-pulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
+.igp-load-msg{font-size:12px;color:#7A8099;font-family:'Instrument Sans',sans-serif}
+.igp-load-prompt{font-size:11px;color:#3E4560;font-style:italic;font-family:'Cormorant Garamond',Georgia,serif;line-height:1.5;max-width:340px}
+.igp-load-bar-wrap{width:100%;max-width:300px}
+.igp-load-bar-bg{height:1px;background:#1E2130;border-radius:1px;overflow:hidden;margin-bottom:4px}
+.igp-load-bar-fill{height:100%;background:linear-gradient(90deg,#7C3AED,#4A90E2);border-radius:1px;width:0%;transition:width .5s ease}
+.igp-load-bottom{display:flex;align-items:center;justify-content:space-between}
+.igp-load-pct{font-size:10px;color:#3E4560;font-family:'Instrument Sans',sans-serif}
+.igp-cancel-btn{background:none;border:none;color:#3E4560;font-size:10px;cursor:pointer;font-family:'Instrument Sans',sans-serif;transition:color .15s}
+.igp-cancel-btn:hover{color:#9AA3C0}
+.igp-step-result{gap:14px}
+.igp-result-img-wrap{border-radius:8px;overflow:hidden;background:#080910;max-height:280px;display:flex;align-items:center;justify-content:center}
+#igp-result-img{width:100%;height:100%;object-fit:contain;max-height:280px;display:block}
+.igp-result-url{font-size:9px;color:#3E4560;word-break:break-all;padding:8px;display:none;font-family:'Courier New',monospace}
+.igp-result-actions{display:flex;gap:8px}
+.igp-action-btn{flex:1;padding:8px 12px;border-radius:7px;border:none;font-size:11px;font-weight:500;cursor:pointer;font-family:'Instrument Sans',sans-serif;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+.igp-use-btn{background:#4CAF7D;color:#fff}.igp-use-btn:hover{background:#5BC48A}
+.igp-another-btn{background:#181B27;color:#9AA3C0;border:1px solid #252840}.igp-another-btn:hover{background:#1E2436;color:#C8CAD8}
+.igp-dl-btn{background:#181B27;color:#9AA3C0;border:1px solid #252840;flex:none;width:36px;padding:8px}.igp-dl-btn:hover{background:#1E2436;color:#C8CAD8}
+.igp-url-section{padding:18px 20px 20px;gap:10px}
+.igp-url-input{width:100%;background:#080910;border:1px solid #1E2130;border-radius:7px;padding:9px 11px;color:#C8CAD8;font-size:12px;font-family:'Courier New',monospace;outline:none;transition:border-color .15s}
+.igp-url-input:focus{border-color:#4A90E2}
+.igp-url-hint{font-size:10px;color:#3E4560;line-height:1.5;font-family:'Instrument Sans',sans-serif}
+.igp-url-btns{display:flex;gap:8px}
+/* GALLERY */
+#igp-gallery{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99996;display:none;flex-direction:column;backdrop-filter:blur(12px)}
+#igp-gallery.on{display:flex}
+.gal-header{height:56px;background:#0A0B0F;border-bottom:1px solid #181B27;display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+.gal-title-wrap{flex:1}
+.gal-title{font-size:14px;font-weight:600;color:#C8CAD8;font-family:'Instrument Sans',sans-serif}
+.gal-sub{font-size:10px;color:#3E4560;font-family:'Instrument Sans',sans-serif;letter-spacing:.5px;text-transform:uppercase}
+.gal-hdr-actions{display:flex;gap:8px}
+.gal-body{flex:1;overflow-y:auto;padding:24px;scrollbar-width:thin;scrollbar-color:#1E2130 transparent}
+.gal-body::-webkit-scrollbar{width:4px}.gal-body::-webkit-scrollbar-thumb{background:#1E2130}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
+.gal-item{display:flex;flex-direction:column;gap:6px}
+.gal-thumb{border-radius:8px;overflow:hidden;background:#0D0E14;border:1px solid #1E2130;cursor:pointer;position:relative;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;transition:border-color .2s}
+.gal-thumb:hover{border-color:#4A90E2}
+.gal-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s}
+.gal-thumb:hover img{transform:scale(1.04)}
+.gal-hover{position:absolute;inset:0;background:rgba(0,0,0,.6);opacity:0;transition:opacity .2s;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-family:'Instrument Sans',sans-serif;font-weight:500}
+.gal-thumb:hover .gal-hover{opacity:1}
+.gal-meta{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.gal-label{font-size:10px;color:#5B6490;font-family:'Instrument Sans',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.gal-actions{display:flex;gap:3px;flex-shrink:0}
+.gal-btn{width:22px;height:22px;border-radius:4px;border:none;background:rgba(255,255,255,.05);color:#545A72;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.gal-btn:hover{background:rgba(255,255,255,.1);color:#C8CAD8}
+.gal-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:60px 20px;color:#2E3347;font-family:'Instrument Sans',sans-serif}
+.gal-empty span{font-size:40px;opacity:.3}
+.gal-empty p{font-size:13px;text-align:center;line-height:1.6}
+.gal-shopify{background:#0D0E14;border-top:1px solid #181B27;padding:14px 20px;flex-shrink:0}
+.gal-shopify-title{font-size:10px;color:#3E4560;letter-spacing:1px;text-transform:uppercase;font-family:'Instrument Sans',sans-serif;margin-bottom:8px}
+.gal-shopify-steps{display:flex;gap:14px;flex-wrap:wrap}
+.gal-s-step{display:flex;align-items:flex-start;gap:8px;font-size:11px;color:#545A72;font-family:'Instrument Sans',sans-serif;flex:1;min-width:130px}
+.gal-s-num{width:18px;height:18px;border-radius:50%;background:#1E2130;color:#4CAF7D;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+</style>
+<script type="application/json" id="data-default">{"hero-l1": "Llevas años", "hero-l2": "probando de todo.", "hero-em": "Tu piel merece algo diferente.", "hero-sub": "Lo que las grandes marcas nunca te van a contar — y el ingrediente que nuestras bisabuelas usaban sin saberlo.", "pq-text": "\"Probé la rutina coreana, el dermatólogo, los sérums importados. Gasté más de dos millones de pesos. Mi piel seguía igual.\"", "pq-cite": "— Magdalena R., Bogotá", "dolor-p1": "Si esto te suena familiar, no es casualidad. El mercado de skincare está diseñado para que siempre necesites <strong>el siguiente producto", "dolor-p2": "Diez pasos. Quince productos. Dos millones de pesos al año. Y la piel… más o menos igual.", "stat-1": "Gasta en promedio una colombiana en cosméticos al año", "stat-2": "Solo compra en oferta por desconfianza al precio real", "stat-3": "De hogares colombianos usan crema — pocas están satisfechas", "vill-p1": "Tu piel tiene una barrera hecha de lípidos que <strong>bloquea la mayoría de las cremas", "vill-p2": "Las grandes marcas lo resuelven con químicos agresivos. Tu piel se irrita. La barrera se debilita. El ciclo se repite.", "vill-p3": "El costo real de los ingredientes puede ser <strong>hasta 1.000 veces menor", "rev-p1": "Antes de que existiera una sola crema importada, las mujeres colombianas cuidaban su piel con lo que tenían. Sin rutinas de diez pasos. Y muchas tenían una piel que hoy llamaríamos \"glass skin.\"", "rev-p2": "El ingrediente central de ese cuidado tiene un nombre que te va a sorprender:", "rev-p3": "Sí. Antes de que hagas esa cara — escucha la ciencia.", "rev-pq": "\"El perfil de ácidos grasos del sebo bovino es casi idéntico al de los lípidos naturales de la piel humana. Es el ingrediente más biocompatible que existe.\"", "rev-p4": "Biocompatible significa que tu piel lo reconoce como propio. No lo bloquea. Lo absorbe y lo usa para repararse desde adentro.", "rev-p5": "La industria lo enterró porque <strong>no se puede patentar", "prod-desc": "Fabricada en Medellín. Formulada para la piel colombiana y su clima. El sebo de res purificado como protagonista, potenciado por los activos modernos que la ciencia confirma.", "prod-p1": "El sebo de res purificado como protagonista, combinado con ácido hialurónico, vitamina E y omega 3. Se absorbe en minutos. Sin residuo graso. Sin olor fuerte.", "ing-1-name": "Sebo de Res Purificado", "ing-1-desc": "Grass-fed. Tu piel lo reconoce como propio — absorción inmediata. Repara la barrera cutánea.", "ing-2-name": "Ácido Hialurónico", "ing-2-desc": "Retiene hasta 1.000 veces su peso en agua. Hidratación activa 24 horas.", "ing-3-name": "Aceite de Coco", "ing-3-desc": "Antibacterial natural. Ayuda al sebo a penetrar más profundo sin tapar los poros.", "ing-4-name": "Manteca de Cacao", "ing-4-desc": "Textura sedosa, absorción en minutos. Sin residuo. Antioxidantes para el sol.", "ing-5-name": "Vitamina E", "ing-5-desc": "Potencia los efectos del sebo. Protege del daño celular. Multiplica la eficacia.", "ing-6-name": "Omega 3", "ing-6-desc": "Reduce inflamación y rojeces. Estimula la renovación celular desde adentro.", "t1-body": "\"Llevaba AÑOS probando de todo. Dos semanas después mi compañera me dijo que me veía radiante. Ahora salgo sin base y me siento segura.\"", "t1-name": "Magdalena R.", "t1-city": "Bogotá · Cliente verificada", "t2-body": "\"Tengo rosácea desde los 25. Gasté más de $2.000.000 en cremas. Por primera vez en 8 años mi cara no está roja. Mis amigas preguntan si me hice láser.\"", "t2-name": "Patricia V.", "t2-city": "Cali · Cliente verificada", "t3-body": "\"Trabajo en turismo en Cartagena. Con este sol tenía la nariz grasosa pero mejillas resecas. Ha sido lo mejor que he probado.\"", "t3-name": "Luciana M.", "t3-city": "Cartagena · Cliente verificada", "gift-title": "Con tu Crema Vitalú<br>te regalamos el Jabón Exótico.", "gift-p1": "La crema funciona sola. Pero los resultados se multiplican cuando la piel llega limpia y lista para absorber.", "gift-p2": "El Jabón Exótico Vitalú — maracuyá, sandía, karité y chía — prepara tu piel para que la crema entre donde debe entrar.", "gift-note": "No lo cobramos aparte. Es un regalo. Sin condiciones.", "ck-1": "Ya probaste cremas importadas, rutinas coreanas o el dermatólogo — y tu piel sigue sin ser lo que quieres.", "ck-2": "Te gustaría salir sin base algún día y sentirte bien de todas formas.", "ck-3": "Tienes manchas del sol colombiano que no desaparecen con nada.", "ck-4": "Estás cansada de rutinas de diez pasos y quieres algo simple que funcione de verdad.", "ck-5": "Tienes piel seca, grasa, mixta, sensible o madura. Vitalú trabaja con tu biología, no contra ella.", "ck-6": "Quieres apoyar una empresa colombiana con ingredientes reales y garantía real.", "gtee-title": "30 días. O te devolvemos cada peso.", "gtee-body": "Creemos tanto en la fórmula que asumimos el riesgo nosotros. Prueba la Crema Vitalú durante 30 días. Si no ves una diferencia real en tu piel, te hacemos la devolución completa. Sin preguntas. Sin burocracia.", "cta-title": "Tu piel tan bonita que el maquillaje se vuelve opcional.", "cta-sub": "Para las que ya probaron de todo. Con el Jabón Exótico de regalo.", "cta-btn": "Quiero mi Crema Vitalú →", "cta-meta": "🛡️ Garantía 30 días — devolución completa si no ves resultados\n🚚 Envío desde Medellín · 2 a 5 días hábiles · Transportadora Envía\n🎁 Jabón Exótico de regalo con cada pedido · Sin costo adicional"}</script>
+<script type="application/json" id="data-landing-b">{"hero-l1": "Ya gastaste suficiente", "hero-l2": "en cremas que no funcionan.", "hero-em": "Esta vez es diferente.", "hero-sub": "Descubrimos por qué tu piel no responde a nada. No es tu disciplina. Es la biología.", "hero-gtag": "Vitalú Colombia · Para las que ya probaron todo", "pq-text": "Probé la rutina coreana, el dermatólogo, los sérums importados. Gasté más de dos millones de pesos. Mi piel seguía igual.", "pq-cite": "— Valentina C., Bogotá", "dolor-p1": "Conoces exactamente esa sensación. Compras algo nuevo con esperanza. Los primeros días parece que algo cambia. Y luego... nada. De vuelta al punto de partida con el cajón lleno de cremas a medio usar.", "dolor-p2": "No es falta de constancia. No es tu tipo de piel. Es que la mayoría de las cremas del mercado están diseñadas para fallar — para que siempre necesites comprar la siguiente.", "stat-n1": "$1.2M", "stat-1": "Gasta al año una colombiana en cosméticos que no funcionan", "stat-n2": "61%", "stat-2": "Compra solo en oferta por desconfianza en los precios reales", "stat-n3": "74%", "stat-3": "De hogares usan crema a diario — pocas están satisfechas", "vill-p1": "Tu piel tiene una barrera lipídica que bloquea lo que no reconoce como propio. La mayoría de ingredientes de las cremas masivas son tan ajenos a tu biología que tu piel simplemente los rechaza.", "vill-p2": "Para burlar esa barrera, las marcas usan penetradores químicos que irritan, adelgazan y debilitan tu piel con el tiempo. Resultado: piel más sensible, más dependiente, siempre necesitando más producto.", "vill-p3": "El ingrediente activo real puede costar menos del 1% de lo que pagas. El resto es marca, empaque y publicidad. Tú pagas el marketing, no la solución.", "rev-p1": "Antes de que existiera el skincare moderno, las mujeres colombianas mantenían su piel con lo que había. Sin doce pasos. Sin importados. Y muchas llegaban a los 70 con una piel que hoy pagaríamos miles por tener.", "rev-p2": "El secreto era simple. Un ingrediente que tu piel reconoce como propio, absorbe sin resistencia y usa exactamente como sabe hacerlo. Uno que la industria enterró porque no se puede patentar.", "rev-p3": "Se llama sebo de res. Y la ciencia está confirmando lo que nuestras bisabuelas sabían por instinto.", "rev-pq": "El sebo bovino purificado tiene el perfil de ácidos grasos más cercano al de los lípidos naturales de la piel humana.", "rev-p4": "Tu barrera no lo bloquea. Lo absorbe. Lo usa para repararse e hidratarse desde adentro.", "rev-p5": "No tiene nombre en francés. No puede venderse a $300.000 la cajita. Por eso desapareció. Por eso nadie te lo había contado.", "prod-desc": "Fabricada en Medellín para el clima colombiano. Seis ingredientes con rol específico, ninguno de relleno.", "prod-name": "Crema Vitalú", "prod-p1": "Sin agua, sin silicones, sin relleno. Solo lo que tu piel necesita para hacer lo que sabe hacer: repararse sola.", "prod-tag1": "Hecha en Medellín", "prod-tag2": "6 ingredientes", "prod-tag3": "Sin relleno", "ing-1-name": "Sebo de Res Grass-Fed", "ing-1-desc": "El ingrediente que tu piel reconoce como propio. Absorción inmediata, cero rechazo, reparación real.", "ing-2-name": "Ácido Hialurónico", "ing-2-desc": "Retiene hasta 1000 veces su peso en agua. Hidratación que dura todo el día.", "ing-3-name": "Aceite de Coco Virgin", "ing-3-desc": "Antibacterial natural. Potencia la penetración del sebo sin tapar poros.", "ing-4-name": "Manteca de Cacao", "ing-4-desc": "Se derrite con el calor de tu piel. Antioxidantes para el sol colombiano.", "ing-5-name": "Vitamina E", "ing-5-desc": "Amplifica la acción reparadora del sebo. Escudo contra el daño oxidativo.", "ing-6-name": "Omega 3", "ing-6-desc": "Apaga la inflamación silenciosa. Activa la renovación celular.", "tl-1": "Primera noche: tu piel respira diferente. Más suave. Sin la sensación de tirante.", "tl-2": "Días 3 a 5: el brillo real aparece. No grasoso — el brillo húmedo, saludable.", "tl-3": "Semana 2: la textura cambia. Manchas que se atenúan. Poros más finos.", "tl-4": "Semana 3: alguien te pregunta si hiciste algo. Tú dices que no.", "tl-5": "Mes 2 en adelante: sin base. No porque debas — porque puedes.", "t1-body": "Probé absolutamente todo. La rutina coreana completa. Tres dermatólogos distintos. Con Vitalú en dos semanas mi piel se veía mejor que en cinco años. Ahora salgo sin base.", "t1-name": "Valentina C.", "t1-city": "Bogotá · Usuaria verificada", "t2-body": "Tengo rosácea desde los 22. Todo me irritaba. Con Vitalú por primera vez en años mi piel no está roja al despertar. Mi esposo pensó que me había hecho un tratamiento.", "t2-name": "Sofía M.", "t2-city": "Medellín · Usuaria verificada", "t3-body": "Piel mixta, clima costero, sol todo el año. Vitalú es lo primero que regula todo sin secar las mejillas ni engrasar la nariz.", "t3-name": "Adriana P.", "t3-city": "Barranquilla · Usuaria verificada", "gift-tag": "Regalo con cada pedido", "gift-title": "El Jabón Exótico va incluido.", "gift-p1": "La crema funciona sola. Pero cuando la piel llega limpia y lista para absorber, los resultados se ven antes.", "gift-p2": "Con maracuyá, sandía, karité y chía — prepara tu piel para aprovechar cada aplicación.", "gift-note": "Incluido con cada pedido. Sin condiciones. Sin costo extra.", "gtee-title": "30 días de prueba real. Sin riesgo.", "gtee-body": "No pedimos fotos. No exigimos justificación. Si en 30 días no ves la diferencia, te hacemos la devolución completa. Punto.", "cta-title": "Por fin algo que funciona.", "cta-sub": "Para las que ya probaron todo. Garantía 30 días real — si no funciona, te devolvemos cada peso.", "cta-btn": "Probar sin riesgo →", "cta-meta": "Garantia 30 dias sin preguntas\nEnvio desde Medellin 2-5 dias\nJabon Exotico incluido con cada pedido", "ck-head": "Vitalú es para ti", "ck-1": "Ya probaste cremas importadas, rutinas coreanas y dermatólogos sin resultados.", "ck-2": "Has gastado más de lo que quieres admitir en productos que prometían todo.", "ck-3": "Tienes manchas, piel seca en algunos lados y grasa en otros.", "ck-4": "Quieres una rutina simple que funcione de verdad.", "ck-5": "Te gustaría salir sin base y sentirte bien mirándote al espejo.", "ck-6": "Estás dispuesta a darle una oportunidad más — con garantía real de por medio.", "tl-day1": "Primera noche", "tl-day2": "Días 3 – 5", "tl-day3": "Semana 1 – 2", "tl-day4": "Semana 3", "tl-day5": "Mes 2 en adelante", "sticky-h": "Vitalú — Garantía 30 días", "sticky-sub": " Si no funciona, te devolvemos cada peso.", "sticky-btn": "Probar sin riesgo →"}</script>
+</head>
+<body>
+<div id="topbar">
+  <button id="sb-toggle" onclick="toggleSidebar()" title="Sidebar">&#x2630;</button>
+  <div class="t-logo"><div class="t-mark">L</div><span class="t-name">Landing Lab</span></div>
+  <div class="t-sep"></div>
+  <div class="sv"><span class="sv-dot" id="sv-dot"></span><span class="sv-lbl" id="sv-lbl">Guardado</span></div>
+  <div class="t-sep"></div>
+  <div class="vp-tog">
+    <button class="vp-b on" id="vp-desk" onclick="setVP('desktop')">&#x1F5A5; Desktop</button>
+    <button class="vp-b" id="vp-mob" onclick="setVP('mobile')">&#x1F4F1; Movil</button>
+  </div>
+  <div class="t-right">
+    <button class="tb tb-ghost" id="btn-undo" onclick="doUndo()" title="Ctrl+Z">&#x21B6;</button>
+    <button class="tb tb-ghost" id="btn-redo" onclick="doRedo()" title="Ctrl+Y">&#x21B7;</button>
+    <div class="t-sep"></div>
+    <button class="tb tb-gal" onclick="openGallery()">&#x1F4F7; Imagenes</button>
+    <button class="tb tb-blue" onclick="exportCurrent()">&#x2B07; Exportar HTML</button>
+    <input type="file" id="file-in" accept="image/*" style="display:none" onchange="onFilePick(event)">
+  </div>
+</div>
+<div id="main">
+  <div id="sidebar">
+    <div class="sb-head">
+      <div class="sb-title">Mis Landings</div>
+      <button class="sb-new" onclick="openNewModal()">&#xFF0B; Nueva Landing</button>
+    </div>
+    <div class="sb-list" id="sb-list"></div>
+    <div class="sb-count" id="sb-count">0 landings</div>
+  </div>
+  <div id="editor">
+    <div class="ed-toolbar" id="ed-toolbar" style="display:none">
+      <div class="ed-name"><input id="proj-name-in" placeholder="Nombre..." oninput="updateProjMeta()"></div>
+      <div class="ed-sep"></div>
+      <div class="ed-angle"><input id="proj-angle-in" placeholder="Angulo de venta..." oninput="updateProjMeta()"></div>
+      <div class="ed-sep"></div>
+      <button class="tb tb-ghost" style="padding:3px 8px;font-size:10px" onclick="cloneProject()">&#x2398;</button>
+      <button class="tb tb-ghost" style="padding:3px 8px;font-size:10px;color:#E85555" onclick="deleteProject()">&#x1F5D1;</button>
+    </div>
+    <div id="empty-state" style="display:none">
+      <div class="es-icon">&#x1F9EA;</div>
+      <div class="es-title">No hay landings</div>
+      <div class="es-sub">Crea tu primera landing para testear angulos de venta.</div>
+      <button class="tb tb-acc" onclick="openNewModal()" style="margin-top:8px">&#xFF0B; Crear landing</button>
+    </div>
+    <div id="page-area" style="display:none">
+      <div id="page-wrap" class="edit-mode">
+<div id="page-wrap">
+<!-- HERO -->
+<section class="hero bg-ink" id="sec-hero">
+  <div class="hero-txt">
+    <div class="hero-gtag" data-v-text="hero-gtag">Vitalú Colombia · Crema Ancestral</div>
+    <h1>
+      <span data-v-text="hero-l1">Llevas años</span><br>
+      <span data-v-text="hero-l2">probando de todo.</span><br>
+      <em data-v-text="hero-em">Tu piel merece algo diferente.</em>
+    </h1>
+    <p class="hero-sub" data-v-text="hero-sub">Lo que las grandes marcas nunca te van a contar — y el ingrediente que nuestras bisabuelas usaban sin saberlo.</p>
+    <div class="hero-dn" onclick="document.querySelector('#s2').scrollIntoView({behavior:'smooth'})">
+      <div class="hero-dn-l"></div><span>Descubrir</span>
+    </div>
+  </div>
+  <div class="hero-img-col">
+    <div class="img-ph" data-v-img="img-1" style="height:100%;min-height:100vh" data-label="📸 Imagen 1 · Mujer piel radiante · 900×1200px">
+      <img id="img-el-1" src="" alt="Mujer piel radiante Vitalú">
+      <div class="iov" onclick="openImgGen('img-1')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-1')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-1')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-1')">&#x2715;</button>
+    </div>
+  </div>
+</section>
+
+<!-- DOLOR -->
+<section class="bg-cr" id="s2">
+  <div class="wrap">
+    <span class="tag t">Lo que todas hemos vivido</span>
+    <h2 class="hl">El problema no es tu piel.<br><em>Es lo que te han vendido para cuidarla.</em></h2>
+    <div class="pq lt">
+      <p data-v-text="pq-text">"Probé la rutina coreana, el dermatólogo, los sérums importados. Gasté más de dos millones de pesos. Mi piel seguía igual."</p>
+      <cite data-v-text="pq-cite">— Magdalena R., Bogotá</cite>
+    </div>
+    <p class="bl dk" data-v-text="dolor-p1">Si esto te suena familiar, no es casualidad. El mercado de skincare está diseñado para que siempre necesites <strong>el siguiente producto</strong>. Un tónico que prepara para el sérum que potencia la crema que necesita el contorno de ojos...</p>
+    <p class="bl dk" data-v-text="dolor-p2">Diez pasos. Quince productos. Dos millones de pesos al año. Y la piel… más o menos igual.</p>
+    <div class="stat-row">
+      <div class="stat-c"><div class="stat-n" data-v-text="stat-n1">$1.2M</div><div class="stat-l" data-v-text="stat-1">Gasta en promedio una colombiana en cosméticos al año</div><button class="img-delete-btn" onclick="delImg(event,'img-1')" title="Eliminar imagen">✕</button></div>
+      <div class="stat-c"><div class="stat-n" data-v-text="stat-n2">61%</div><div class="stat-l" data-v-text="stat-2">Solo compra en oferta por desconfianza al precio real</div></div>
+      <div class="stat-c"><div class="stat-n" data-v-text="stat-n3">74%</div><div class="stat-l" data-v-text="stat-3">De hogares colombianos usan crema — pocas están satisfechas</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- VILLANO SPLIT -->
+<section class="bg-cr2" style="padding:0">
+  <div class="split">
+    <div class="split-img">
+      <div class="img-ph" data-v-img="img-2" style="height:100%;min-height:420px" data-label="📸 Imagen 2 · Cajón cremas · 800×900px">
+        <img id="img-el-2" src="" alt="Cajón cremas acumuladas">
+      <div class="iov" onclick="openImgGen('img-2')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-2')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-2')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-2')">&#x2715;</button>
+      </div>
+    </div>
+    <div class="split-cnt">
+      <span class="tag t">La verdad que la industria oculta</span>
+      <h2 class="hl" style="color:var(--body-txt)">La mayoría de las cremas<br><em style="color:var(--terra2)">no penetran tu piel. Y lo saben.</em></h2>
+      <p class="bl dk" data-v-text="vill-p1" style="margin-top:20px">Tu piel tiene una barrera hecha de lípidos que <strong>bloquea la mayoría de las cremas</strong> porque no las reconoce como propias.</p>
+      <p class="bl dk" data-v-text="vill-p2">Las grandes marcas lo resuelven con químicos agresivos. Tu piel se irrita. La barrera se debilita. El ciclo se repite.</p>
+      <p class="bl dk" data-v-text="vill-p3">El costo real de los ingredientes puede ser <strong>hasta 1.000 veces menor</strong> que el precio que pagas. Lo demás es empaque y publicidad.</p>
+      <div class="v-grid">
+        <div class="v-c"><div class="v-h bad">Lo que te venden</div><ul class="v-list"><li><span style="color:#8B3A1C;flex-shrink:0">✕</span>30–50 ingredientes impronunciables</li><li><span style="color:#8B3A1C;flex-shrink:0">✕</span>Barrera cutánea debilitada</li><li><span style="color:#8B3A1C;flex-shrink:0">✕</span>Resultados que no llegan</li><li><span style="color:#8B3A1C;flex-shrink:0">✕</span>Sin garantía</li></ul></div>
+        <div class="v-c"><div class="v-h good">Lo que tu piel necesita</div><ul class="v-list"><li><span style="color:var(--sage);flex-shrink:0">✓</span>Ingredientes que reconoce</li><li><span style="color:var(--sage);flex-shrink:0">✓</span>Penetración real y natural</li><li><span style="color:var(--sage);flex-shrink:0">✓</span>Resultados en días</li><li><span style="color:var(--sage);flex-shrink:0">✓</span>Garantía de 30 días</li></ul></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REVELACIÓN -->
+<section class="bg-ink2">
+  <div class="wrap">
+    <span class="tag">El ingrediente que enterraron</span>
+    <h2 class="disp">Nuestras bisabuelas<br><em>no necesitaban dermatólogo.</em></h2>
+    <p class="bl" data-v-text="rev-p1" style="margin-top:28px">Antes de que existiera una sola crema importada, las mujeres colombianas cuidaban su piel con lo que tenían. Sin rutinas de diez pasos. Y muchas tenían una piel que hoy llamaríamos "glass skin."</p>
+    <p class="bl" data-v-text="rev-p2">El ingrediente central de ese cuidado tiene un nombre que te va a sorprender:</p>
+  </div>
+  <div class="img-ph ar-land" data-v-img="img-3" style="margin-top:52px" data-label="📸 Imagen 3 · Sebo de res en bowl · 1400×700px">
+    <img id="img-el-3" src="" alt="Sebo de res purificado">
+      <div class="iov" onclick="openImgGen('img-3')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-3')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-3')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-3')">&#x2715;</button>
+  </div>
+  <div class="wrap">
+    <div class="sebo-word">Sebo<br>de Res<span>Beef Tallow · Grasa bovina purificada</span></div>
+    <p class="bl" data-v-text="rev-p3">Sí. Antes de que hagas esa cara — escucha la ciencia.</p>
+    <div class="pq"><p data-v-text="rev-pq">"El perfil de ácidos grasos del sebo bovino es casi idéntico al de los lípidos naturales de la piel humana. Es el ingrediente más biocompatible que existe."</p></div>
+    <p class="bl" data-v-text="rev-p4">Biocompatible significa que tu piel lo reconoce como propio. No lo bloquea. Lo absorbe y lo usa para repararse desde adentro.</p>
+    <p class="bl" data-v-text="rev-p5">La industria lo enterró porque <strong>no se puede patentar</strong>. No se puede vender en frasco con nombre en francés. Pero una empresa colombiana lo recuperó.</p>
+  </div>
+</section>
+
+<!-- PRODUCTO -->
+<section class="bg-mid" style="padding:80px 0 0">
+  <div class="wrap" style="padding:0 24px 52px">
+    <span class="tag">La solución</span>
+    <h2 class="disp">Crema Vitalú.<br><em>Seis ingredientes.<br>Cero relleno.</em></h2>
+    <p class="bl" data-v-text="prod-desc" style="margin-top:24px">Fabricada en Medellín. Formulada para la piel colombiana y su clima. El sebo de res purificado como protagonista, potenciado por los activos modernos que la ciencia confirma.</p>
+  </div>
+  <div class="prod-feat">
+    <div>
+      <div class="img-ph" data-v-img="img-4" style="height:100%;min-height:460px" data-label="📸 Imagen 4 · Crema Vitalú pote · 800×960px">
+        <img id="img-el-4" src="" alt="Crema Vitalú pote abierto">
+      <div class="iov" onclick="openImgGen('img-4')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-4')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-4')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-4')">&#x2715;</button>
+      </div>
+    </div>
+    <div class="prod-info">
+      <div class="prod-tags"><span class="prod-tag">Hecha en Medellín</span><span class="prod-tag">Solo 6 ingredientes</span><span class="prod-tag">Sin relleno químico</span></div>
+      <div class="prod-name">Crema Vitalú</div>
+      <p class="prod-desc" data-v-text="prod-p1" style="margin-top:0">El sebo de res purificado como protagonista, combinado con ácido hialurónico, vitamina E y omega 3. Se absorbe en minutos. Sin residuo graso. Sin olor fuerte.</p>
+    </div>
+  </div>
+
+  <!-- INGREDIENTES -->
+  <div class="ing-grid" style="margin-top:1px">
+    <div class="ing-c">
+      <div class="ing-n">1</div>
+      <div class="ing-img"><div class="img-ph" data-v-img="img-5a" style="height:90px" data-label="📸 5a · Sebo de res"><img id="img-el-5a" src="" alt="Sebo de res">
+      <div class="iov" onclick="openImgGen('img-5a')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-5a')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-5a')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-5a')">&#x2715;</button><button class="img-delete-btn" onclick="delImg(event,'img-2')" title="Eliminar imagen">✕</button></div></div>
+      <div class="ing-pill">Ingrediente estrella</div>
+      <div class="ing-name" data-v-text="ing-1-name">Sebo de Res Purificado</div>
+      <div class="ing-desc" data-v-text="ing-1-desc">Grass-fed. Tu piel lo reconoce como propio — absorción inmediata. Repara la barrera cutánea.</div>
+    </div>
+    <div class="ing-c">
+      <div class="ing-n">2</div>
+      <div class="ing-img"><div class="img-ph" data-v-img="img-5b" style="height:90px" data-label="📸 5b · Ácido hialurónico"><img id="img-el-5b" src="" alt="Ácido hialurónico">
+      <div class="iov" onclick="openImgGen('img-5b')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-5b')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-5b')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-5b')">&#x2715;</button><button class="img-delete-btn" onclick="delImg(event,'img-5b')" title="Eliminar imagen">✕</button></div></div>
+      <div class="ing-pill">Hidratación profunda</div>
+      <div class="ing-name" data-v-text="ing-2-name">Ácido Hialurónico</div>
+      <div class="ing-desc" data-v-text="ing-2-desc">Retiene hasta 1.000 veces su peso en agua. Hidratación activa 24 horas.</div>
+    </div>
+    <div class="ing-c">
+      <div class="ing-n">3</div>
+      <div class="ing-img"><div class="img-ph" data-v-img="img-5c" style="height:90px" data-label="📸 5c · Aceite de coco"><img id="img-el-5c" src="" alt="Aceite de coco">
+      <div class="iov" onclick="openImgGen('img-5c')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-5c')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-5c')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-5c')">&#x2715;</button><button class="img-delete-btn" onclick="delImg(event,'img-5c')" title="Eliminar imagen">✕</button></div></div>
+      <div class="ing-pill">Penetración</div>
+      <div class="ing-name" data-v-text="ing-3-name">Aceite de Coco</div>
+      <div class="ing-desc" data-v-text="ing-3-desc">Antibacterial natural. Ayuda al sebo a penetrar más profundo sin tapar los poros.</div>
+    </div>
+    <div class="ing-c">
+      <div class="ing-n">4</div>
+      <div class="ing-img"><div class="img-ph" data-v-img="img-5d" style="height:90px" data-label="📸 5d · Manteca de cacao"><img id="img-el-5d" src="" alt="Manteca de cacao">
+      <div class="iov" onclick="openImgGen('img-5d')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-5d')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-5d')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-5d')">&#x2715;</button><button class="img-delete-btn" onclick="delImg(event,'img-5d')" title="Eliminar imagen">✕</button></div></div>
+      <div class="ing-pill">Textura perfecta</div>
+      <div class="ing-name" data-v-text="ing-4-name">Manteca de Cacao</div>
+      <div class="ing-desc" data-v-text="ing-4-desc">Textura sedosa, absorción en minutos. Sin residuo. Antioxidantes para el sol.</div>
+    </div>
+    <div class="ing-c">
+      <div class="ing-n">5</div>
+      <div class="ing-img"><div class="img-ph" data-v-img="img-5e" style="height:90px" data-label="📸 5e · Vitamina E"><img id="img-el-5e" src="" alt="Vitamina E">
+      <div class="iov" onclick="openImgGen('img-5e')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-5e')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-5e')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-5e')">&#x2715;</button><button class="img-delete-btn" onclick="delImg(event,'img-5e')" title="Eliminar imagen">✕</button></div></div>
+      <div class="ing-pill">Reparación</div>
+      <div class="ing-name" data-v-text="ing-5-name">Vitamina E</div>
+      <div class="ing-desc" data-v-text="ing-5-desc">Potencia los efectos del sebo. Protege del daño celular. Multiplica la eficacia.</div>
+    </div>
+    <div class="ing-c">
+      <div class="ing-n">6</div>
+      <div class="ing-img"><div class="img-ph" data-v-img="img-5f" style="height:90px" data-label="📸 5f · Omega 3"><img id="img-el-5f" src="" alt="Omega 3">
+      <div class="iov" onclick="openImgGen('img-5f')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-5f')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-5f')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-5f')">&#x2715;</button><button class="img-delete-btn" onclick="delImg(event,'img-5f')" title="Eliminar imagen">✕</button></div></div>
+      <div class="ing-pill">Calma y rejuvenece</div>
+      <div class="ing-name" data-v-text="ing-6-name">Omega 3</div>
+      <div class="ing-desc" data-v-text="ing-6-desc">Reduce inflamación y rojeces. Estimula la renovación celular desde adentro.</div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTADOS -->
+<section class="bg-ink">
+  <div class="wrap">
+    <span class="tag">Lo que pasa en tu piel</span>
+    <h2 class="hl">Semana por semana.<br><em>Sin promesas vacías.</em></h2>
+    <div class="tline">
+      <div class="t-item"><div class="t-dot"></div><div class="t-day" data-v-text="tl-day1">Día 1</div><p class="t-txt" data-v-text="tl-1"><strong>Tu piel se siente diferente desde la primera noche.</strong> Más suave. Sin la sensación de tirante. Se absorbe en minutos — sin residuo, sin brillo grasoso.</p></div>
+      <div class="t-item"><div class="t-dot"></div><div class="t-day" data-v-text="tl-day2">Días 3 – 5</div><p class="t-txt" data-v-text="tl-2"><strong>Aparece el brillo natural que buscabas.</strong> No el brillo grasoso — el brillo jugoso de piel bien hidratada. La gente lo nota antes que tú.</p></div>
+      <div class="t-item"><div class="t-dot"></div><div class="t-day" data-v-text="tl-day3">Semana 1 – 2</div><p class="t-txt" data-v-text="tl-3"><strong>Las manchas superficiales empiezan a atenuarse.</strong> La textura se uniforma. La barrera cutánea empieza a reconstruirse sola.</p></div>
+      <div class="t-item"><div class="t-dot"></div><div class="t-day" data-v-text="tl-day4">Semana 3</div><p class="t-txt" data-v-text="tl-4"><strong>El "glass skin effect."</strong> Tu piel refleja la luz de forma diferente. La gente pregunta si te hiciste algo. La respuesta es no.</p></div>
+      <div class="t-item"><div class="t-dot"></div><div class="t-day" data-v-text="tl-day5">Mes 2 en adelante</div><p class="t-txt" data-v-text="tl-5"><strong>Sale sin maquillaje.</strong> Sin base. Sin corrector. No porque tenga que hacerlo — porque puede.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ANTES/DESPUÉS -->
+<div class="img-ph ar-land" data-v-img="img-6" data-label="📸 Imagen 6 · Antes/Después · sin filtros · 1400×700px">
+  <img id="img-el-6" src="" alt="Antes y después Vitalú">
+      <div class="iov" onclick="openImgGen('img-6')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-6')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-6')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-6')">&#x2715;</button>
+</div>
+
+<!-- TESTIMONIOS -->
+<section class="bg-cr" style="padding-bottom:0">
+  <div class="wrap">
+    <span class="tag t">Colombianas reales</span>
+    <h2 class="hl">No son filtros.<br><em>Son resultados.</em></h2>
+  </div>
+  <div class="testi-grid" style="margin-top:52px">
+    <div class="testi-c">
+      <div class="testi-stars">★★★★★</div>
+      <div class="testi-img"><div class="img-ph" data-v-img="img-7a" style="height:180px" data-label="📸 7a · Magdalena"><img id="img-el-7a" src="" alt="Magdalena cliente">
+      <div class="iov" onclick="openImgGen('img-7a')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-7a')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-7a')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-7a')">&#x2715;</button><button class="img-delete-btn" onclick="delImg(event,'img-7a')" title="Eliminar imagen">✕</button></div></div>
+      <p class="testi-txt" data-v-text="t1-body">"Llevaba AÑOS probando de todo. Dos semanas después mi compañera me dijo que me veía radiante. Ahora salgo sin base y me siento segura."</p>
+      <div class="testi-au"><strong data-v-text="t1-name">Magdalena R.</strong><span data-v-text="t1-city">Bogotá · Cliente verificada</span></div>
+    </div>
+    <div class="testi-c">
+      <div class="testi-stars">★★★★★</div>
+      <div class="testi-img"><div class="img-ph" data-v-img="img-7b" style="height:180px" data-label="📸 7b · Patricia"><img id="img-el-7b" src="" alt="Patricia cliente">
+      <div class="iov" onclick="openImgGen('img-7b')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-7b')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-7b')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-7b')">&#x2715;</button><button class="img-delete-btn" onclick="delImg(event,'img-7b')" title="Eliminar imagen">✕</button></div></div>
+      <p class="testi-txt" data-v-text="t2-body">"Tengo rosácea desde los 25. Gasté más de $2.000.000 en cremas. Por primera vez en 8 años mi cara no está roja. Mis amigas preguntan si me hice láser."</p>
+      <div class="testi-au"><strong data-v-text="t2-name">Patricia V.</strong><span data-v-text="t2-city">Cali · Cliente verificada</span></div>
+    </div>
+    <div class="testi-c">
+      <div class="testi-stars">★★★★★</div>
+      <div class="testi-img"><div class="img-ph" data-v-img="img-7c" style="height:180px" data-label="📸 7c · Luciana"><img id="img-el-7c" src="" alt="Luciana cliente">
+      <div class="iov" onclick="openImgGen('img-7c')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-7c')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-7c')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-7c')">&#x2715;</button><button class="img-delete-btn" onclick="delImg(event,'img-7c')" title="Eliminar imagen">✕</button></div></div>
+      <p class="testi-txt" data-v-text="t3-body">"Trabajo en turismo en Cartagena. Con este sol tenía la nariz grasosa pero mejillas resecas. Ha sido lo mejor que he probado."</p>
+      <div class="testi-au"><strong data-v-text="t3-name">Luciana M.</strong><span data-v-text="t3-city">Cartagena · Cliente verificada</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- REGALO -->
+<section class="bg-ink2">
+  <div class="wrap">
+    <span class="tag">Bonus incluido</span>
+    <div class="gift">
+      <div class="gift-img">
+        <div class="img-ph" data-v-img="img-8" style="height:100%;min-height:300px" data-label="📸 Imagen 8 · Crema + Jabón · 800×700px">
+          <img id="img-el-8" src="" alt="Vitalú crema y jabón">
+      <div class="iov" onclick="openImgGen('img-8')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-8')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-8')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-8')">&#x2715;</button>
+        </div>
+      </div>
+      <div class="gift-cnt">
+        <div class="gift-tag" data-v-text="gift-tag">🎁 Regalo con cada pedido</div>
+        <h3 data-v-text="gift-title">Con tu Crema Vitalú<br>te regalamos el Jabón Exótico.</h3>
+        <p data-v-text="gift-p1">La crema funciona sola. Pero los resultados se multiplican cuando la piel llega limpia y lista para absorber.</p>
+        <p data-v-text="gift-p2">El Jabón Exótico Vitalú — maracuyá, sandía, karité y chía — prepara tu piel para que la crema entre donde debe entrar.</p>
+        <p class="gift-note" data-v-text="gift-note">No lo cobramos aparte. Es un regalo. Sin condiciones.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ¿ES PARA MÍ? -->
+<section class="bg-cr2">
+  <div class="wrap">
+    <span class="tag t">¿Es para mí?</span>
+    <h2 class="hl"><em>Vitalú es para ti</em> si...</h2>
+    <ul class="ck-list">
+      <li><span class="chk">✓</span><span data-v-text="ck-1">Ya probaste cremas importadas, rutinas coreanas o el dermatólogo — y tu piel sigue sin ser lo que quieres.</span></li>
+      <li><span class="chk">✓</span><span data-v-text="ck-2">Te gustaría salir sin base algún día y sentirte bien de todas formas.</span></li>
+      <li><span class="chk">✓</span><span data-v-text="ck-3">Tienes manchas del sol colombiano que no desaparecen con nada.</span></li>
+      <li><span class="chk">✓</span><span data-v-text="ck-4">Estás cansada de rutinas de diez pasos y quieres algo simple que funcione de verdad.</span></li>
+      <li><span class="chk">✓</span><span data-v-text="ck-5">Tienes piel seca, grasa, mixta, sensible o madura. Vitalú trabaja con tu biología, no contra ella.</span></li>
+      <li><span class="chk">✓</span><span data-v-text="ck-6">Quieres apoyar una empresa colombiana con ingredientes reales y garantía real.</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- GARANTÍA -->
+<div class="gtee">
+  <h2><span data-v-text="gtee-title">30 días. O te devolvemos cada peso.</span></h2>
+  <p data-v-text="gtee-body" style="margin-top:16px">Creemos tanto en la fórmula que asumimos el riesgo nosotros. Prueba la Crema Vitalú durante 30 días. Si no ves una diferencia real en tu piel, te hacemos la devolución completa. Sin preguntas. Sin burocracia.</p>
+</div>
+
+<!-- CTA FINAL -->
+<section class="main-cta">
+  <div style="position:relative;z-index:1">
+    <div class="img-ph ar-wide" data-v-img="img-9" style="max-width:860px;margin:0 auto 56px" data-label="📸 Imagen 9 · Lifestyle final · opcional · 1200×500px">
+      <img id="img-el-9" src="" alt="Mujer confiada Vitalú">
+      <div class="iov" onclick="openImgGen('img-9')"><span class="iov-icon">&#x2728;</span><span class="iov-label">Generar imagen</span></div>
+      <button class="idel" onclick="delImg(event,'img-9')">&#x2715;</button>
+      <div class="iov" onclick="pickImg('img-9')" title="Cambiar">&#x1F4F7;</div>
+      <button class="idel" onclick="delImg(event,'img-9')">&#x2715;</button>
+    </div>
+    <span class="tag" style="display:block;text-align:center">Hecha en Medellín · Para la piel colombiana</span>
+    <h2 class="disp" style="text-align:center;max-width:680px;margin:0 auto"><em data-v-text="cta-title">Tu piel tan bonita que el maquillaje se vuelve opcional.</em></h2>
+    <p class="bl" data-v-text="cta-sub" style="text-align:center;max-width:440px;margin:22px auto 0">Para las que ya probaron de todo. Con el Jabón Exótico de regalo.</p>
+    <div style="text-align:center">
+      <a href="#" id="cta-link" class="cta-btn"><span data-v-text="cta-btn">Quiero mi Crema Vitalú →</span></a>
+    </div>
+    <p class="cta-meta" data-v-text="cta-meta" style="text-align:center">🛡️ Garantía 30 días — devolución completa si no ves resultados
+🚚 Envío desde Medellín · 2 a 5 días hábiles · Transportadora Envía
+🎁 Jabón Exótico de regalo con cada pedido · Sin costo adicional</p>
+  </div>
+</section>
+
+<!-- STICKY -->
+<div class="sticky-cta" id="sticky">
+  <p><strong data-v-text="sticky-h">Crema Vitalú</strong><span data-v-text="sticky-sub"> Con Jabón Exótico de regalo · Garantía 30 días</span></p>
+  <a href="#" id="sticky-link" class="sticky-btn"><span data-v-text="sticky-btn">Quiero la mía →</span></a>
+  <button class="sticky-close" id="sticky-close">✕</button>
+</div>
+
+</div><!-- /page-wrap -->
+</div><!-- /page-outer -->
+
+<!-- URL MODAL -->
+
+</div>
+
+  </div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="font-ctrl">
+  <button onclick="changeFontSize(-1)">A&#x207B;</button>
+  <span id="font-size-val">16px</span>
+  <button onclick="changeFontSize(1)">A&#x207A;</button>
+</div>
+<div id="sticky-panel">
+  <label style="font-size:10px;color:#5B6490;white-space:nowrap">Sticky aparece al:</label>
+  <input type="range" id="sticky-thresh" min="5" max="80" value="20" oninput="updateStickyThresh(this.value)">
+  <span id="sticky-thresh-val2">20%</span>
+</div>
+<div class="modal-bg" id="new-modal">
+  <div class="modal-box">
+    <div class="modal-title">Nueva Landing Page</div>
+    <div class="modal-sub">La IA genera todo el copy adaptado a tu angulo. O clona la landing activa para editar manualmente.</div>
+    <div class="modal-field"><label class="modal-label">Nombre</label><input class="modal-input" id="nm-name" placeholder="Landing A — Bisabuelas" maxlength="60"></div>
+    <div class="modal-field">
+      <label class="modal-label">Angulo / Hook de venta</label>
+      <textarea class="modal-input ta" id="nm-angle" placeholder="Ej: El ingrediente ancestral que las marcas enterraron..."></textarea>
+      <div class="angle-presets">
+        <span class="angle-tag" onclick="setAngle(this)">&#x1F4A5; Frustracion</span>
+        <span class="angle-tag" onclick="setAngle(this)">&#x1FAD4; Ingrediente ancestral</span>
+        <span class="angle-tag" onclick="setAngle(this)">&#x1F9EC; Ciencia vs quimica</span>
+        <span class="angle-tag" onclick="setAngle(this)">&#x1F1E8;&#x1F1F4; Orgullo colombiano</span>
+        <span class="angle-tag" onclick="setAngle(this)">&#x1F4F8; Glass skin</span>
+        <span class="angle-tag" onclick="setAngle(this)">&#x1F4B0; Precio vs marcas</span>
+        <span class="angle-tag" onclick="setAngle(this)">&#x2764; Autoestima</span>
+        <span class="angle-tag" onclick="setAngle(this)">&#x1F9EA; Testimonios</span>
+      </div>
+    </div>
+    <div class="modal-field"><label class="modal-label">URL CTA</label><input class="modal-input" id="nm-url" value="https://vitaluoficial.store/products/kit-vitalu"></div>
+    <div class="modal-btns">
+      <div class="modal-btns-left"></div>
+      <button class="tb tb-ghost" onclick="closeNewModal()">Cancelar</button>
+      <button class="tb tb-ghost" onclick="createManual()">Clonar y editar</button>
+      <button class="tb tb-ai" onclick="generateWithAI()">&#x2728; Generar con IA</button>
+    </div>
+  </div>
+</div>
+<div id="gen-overlay">
+  <div class="go-box">
+    <div class="go-title">&#x2728; Generando landing con IA...</div>
+    <div class="go-angle" id="go-angle-txt"></div>
+    <div class="go-bar-bg"><div class="go-bar-fill" id="go-bar"></div></div>
+    <div class="go-steps">
+      <div class="go-step" id="gstep-0"><div class="go-step-dot"></div>Analizando angulo de venta</div>
+      <div class="go-step" id="gstep-1"><div class="go-step-dot"></div>Generando headlines y hero</div>
+      <div class="go-step" id="gstep-2"><div class="go-step-dot"></div>Escribiendo copy de conversion</div>
+      <div class="go-step" id="gstep-3"><div class="go-step-dot"></div>Creando testimonios</div>
+      <div class="go-step" id="gstep-4"><div class="go-step-dot"></div>Finalizando CTAs</div>
+    </div>
+  </div>
+</div>
+
+<div id="igp-modal">
+  <div class="igp-panel">
+    <div class="igp-header">
+      <div class="igp-title-wrap">
+        <div class="igp-slot-label">Generar imagen con FLUX AI</div>
+        <div class="igp-slot-name" id="igp-title">Imagen</div>
+      </div>
+      <div class="igp-tabs">
+        <button class="igp-tab on" id="igp-ai-tab" onclick="igpSetMode('ai')">&#x2728; IA</button>
+        <button class="igp-tab" id="igp-url-tab" onclick="igpSetMode('url')">&#x1F517; URL</button>
+      </div>
+      <button class="igp-close" onclick="closeImgGen()">&#x2715;</button>
+    </div>
+    <div class="igp-ai-section" id="igp-ai-section">
+      <div class="igp-step" id="igp-step-prompt">
+        <div>
+          <div class="igp-prompt-hdr">
+            <span class="igp-prompt-label">Prompt visual</span>
+            <button class="igp-regen-btn" onclick="igpAutoPrompt()">&#x21BA; Regenerar</button>
+          </div>
+          <textarea class="igp-prompt-ta" id="igp-prompt" placeholder="Generando prompt del contexto de la pagina..."></textarea>
+        </div>
+        <div id="igp-proxy-hint" style="display:none;background:#0D0A00;border:1px solid #3A2800;border-radius:8px;padding:12px 14px;font-size:11px;line-height:1.9;font-family:'Instrument Sans',sans-serif">
+          <div style="color:#E8A030;font-weight:600;margin-bottom:4px">&#x1F4E1; Proxy requerido para generar imagenes</div>
+          <div style="color:#7A6030">1. Descarga <strong style="color:#C8A060">proxy.py</strong> (viene junto con este archivo)</div>
+          <div style="color:#7A6030">2. Abre una terminal en la misma carpeta</div>
+          <div style="color:#7A6030">3. Ejecuta: <code style="background:#1A1000;padding:1px 6px;border-radius:3px;color:#4CAF7D">python proxy.py</code></div>
+          <div style="color:#7A6030">4. Deja la terminal abierta y vuelve a generar</div>
+        </div>
+        <div class="igp-controls">
+          <select class="igp-select" id="igp-ratio">
+            <option value="1:1">1:1</option><option value="2:3">2:3</option>
+            <option value="3:2">3:2</option><option value="3:4">3:4</option>
+            <option value="4:3">4:3</option><option value="9:16">9:16</option>
+            <option value="16:9">16:9</option>
+          </select>
+          <select class="igp-select" id="igp-res"><option value="1K">1K</option><option value="2K">2K</option><option value="4K">4K</option></select>
+          <button class="igp-gen-btn" id="igp-gen-btn" onclick="igpGenerate()">&#x26A1; Generar imagen</button>
+        </div>
+      </div>
+      <div class="igp-step igp-step-loading" id="igp-step-loading" style="display:none">
+        <div class="igp-load-icon">&#x1F9EA;</div>
+        <div class="igp-load-msg" id="igp-load-msg">Generando con FLUX AI...</div>
+        <div class="igp-load-prompt" id="igp-load-prompt"></div>
+        <div class="igp-load-bar-wrap">
+          <div class="igp-load-bar-bg"><div class="igp-load-bar-fill" id="igp-load-bar"></div></div>
+          <div class="igp-load-bottom">
+            <span class="igp-load-pct" id="igp-load-pct">0%</span>
+            <button class="igp-cancel-btn" onclick="igpPolling=false;igpShowStep('prompt')">Cancelar</button>
+          </div>
+        </div>
+      </div>
+      <div class="igp-step igp-step-result" id="igp-step-result" style="display:none">
+        <div class="igp-result-img-wrap"><img id="igp-result-img" src="" alt=""><div class="igp-result-url" id="igp-result-url"></div></div>
+        <div class="igp-result-actions">
+          <button class="igp-action-btn igp-use-btn" onclick="igpUse()">&#x2713; Usar esta</button>
+          <button class="igp-action-btn igp-another-btn" onclick="igpAnother()">&#x21BA; Otra</button>
+          <button class="igp-action-btn igp-dl-btn" onclick="igpDownloadCurrent()" title="Descargar">&#x2B07;</button>
+        </div>
+      </div>
+    </div>
+    <div class="igp-url-section" id="igp-url-section" style="display:none">
+      <div class="igp-url-hint">Shopify Admin &rarr; Contenido &rarr; Archivos &rarr; Subir &rarr; copiar URL CDN</div>
+      <input class="igp-url-input" id="igp-url-input" placeholder="https://cdn.shopify.com/s/files/...">
+      <div class="igp-url-btns">
+        <label class="tb tb-ghost" style="cursor:pointer">&#x1F4C1; Archivo<input type="file" accept="image/*" style="display:none" onchange="igpFileChange(event)"></label>
+        <button class="tb tb-acc" style="flex:1" onclick="igpApplyUrl()">Aplicar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="igp-gallery">
+  <div class="gal-header">
+    <div class="gal-title-wrap">
+      <div class="gal-title" id="igp-gallery-title">Imagenes generadas</div>
+      <div class="gal-sub">Clic en imagen para aplicarla al slot</div>
+    </div>
+    <div class="gal-hdr-actions">
+      <button class="tb tb-grn" onclick="igpDownloadAll()">&#x2B07; Descargar todas</button>
+      <button class="tb tb-ghost" onclick="closeGallery()">&#x2715; Cerrar</button>
+    </div>
+  </div>
+  <div class="gal-body"><div class="gal-grid" id="igp-gallery-grid"></div></div>
+  <div class="gal-shopify">
+    <div class="gal-shopify-title">Como subir a Shopify</div>
+    <div class="gal-shopify-steps">
+      <div class="gal-s-step"><span class="gal-s-num">1</span><span>Descarga todas las imagenes</span></div>
+      <div class="gal-s-step"><span class="gal-s-num">2</span><span>Shopify Admin &rarr; Contenido &rarr; Archivos &rarr; Subir</span></div>
+      <div class="gal-s-step"><span class="gal-s-num">3</span><span>Copia la URL CDN y pegala en el editor</span></div>
+      <div class="gal-s-step"><span class="gal-s-num">4</span><span>Exporta el HTML con imagenes aplicadas</span></div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+(function(){
+'use strict';
+
+var SK = 'lab_v5';
+var IMG_KEYS = ['img-1','img-2','img-3','img-4','img-5a','img-5b','img-5c','img-5d','img-5e','img-5f','img-6','img-7a','img-7b','img-7c','img-8','img-9'];
+var projects=[], activeId=null, isRestoring=false, isDirty=false;
+var curImgKey=null, saveT=null, vp='desktop', sidebarOpen=true;
+var histMap={}, histIdx={}, genTimers=[], stickyGone=false, stickyThresh=0.20;
+var curEditEl=null;
+
+// Load JSON data from script tags (avoids JS string escaping issues)
+var DEFAULT_TEXTS = JSON.parse(document.getElementById('data-default').textContent);
+var TEXTS_B       = JSON.parse(document.getElementById('data-landing-b').textContent);
+
+var SYS = 'Eres un copywriter experto en ecommerce colombiano de skincare.\n'
+  + 'Producto: Kit Vitalu = Crema de sebo de res purificado Grass-Fed + Jabon Exotico de regalo.\n'
+  + 'Ingredientes: sebo de res, acido hialuronico, aceite de coco, manteca de cacao, vitamina E, omega 3.\n'
+  + 'Garantia 30 dias. Fabricado en Medellin. Target: mujeres 25-45 que probaron todo sin resultados.\n'
+  + 'Dado un ANGULO de venta, genera todo el copy adaptado. Tono: emocional, colombiano, directo.\n'
+  + 'Responde SOLO con JSON valido sin markdown. Claves exactas:\n'
+  + 'hero-l1,hero-l2,hero-em,hero-sub,pq-text,pq-cite,dolor-p1,dolor-p2,'
+  + 'stat-1,stat-2,stat-3,vill-p1,vill-p2,vill-p3,rev-p1,rev-p2,rev-p3,rev-pq,rev-p4,rev-p5,'
+  + 'prod-desc,prod-p1,ing-1-name,ing-1-desc,ing-2-name,ing-2-desc,ing-3-name,ing-3-desc,'
+  + 'ing-4-name,ing-4-desc,ing-5-name,ing-5-desc,ing-6-name,ing-6-desc,'
+  + 'tl-1,tl-2,tl-3,tl-4,tl-5,t1-body,t1-name,t1-city,t2-body,t2-name,t2-city,t3-body,t3-name,t3-city,'
+  + 'gift-title,gift-p1,gift-p2,gift-note,gtee-title,gtee-body,cta-title,cta-sub,cta-btn,cta-meta,'
+  + 'ck-1,ck-2,ck-3,ck-4,ck-5,ck-6';
+
+function g(id){return document.getElementById(id);}
+
+// ── STORAGE ──────────────────────────────────────────────────
+function loadAll(){
+  try{ var s=localStorage.getItem(SK); if(s){var d=JSON.parse(s);projects=d.projects||[];activeId=d.activeId||null;} }catch(e){}
+  if(projects.length===0){
+    var pa=mkProj('Landing A — Ancestral','Ingrediente ancestral: sebo de res que nuestras bisabuelas usaban');
+    pa.id='vitalu_a'; pa.texts=JSON.parse(JSON.stringify(DEFAULT_TEXTS)); projects.push(pa);
+    var pb=mkProj('Landing B — Frustracion','Ya gastaste suficiente en cremas que no funcionan');
+    pb.id='vitalu_b'; pb.texts=JSON.parse(JSON.stringify(TEXTS_B)); projects.push(pb);
+    activeId='vitalu_a';
+  }
+  renderSidebar();
+  var found=activeId&&projects.find(function(p){return p.id===activeId;});
+  if(found) activateProject(activeId);
+  else if(projects.length) activateProject(projects[0].id);
+  else showEmpty();
+}
+function saveAll(){collectTexts();try{localStorage.setItem(SK,JSON.stringify({projects:projects,activeId:activeId}));isDirty=false;dot('ok');}catch(e){toast('Almacenamiento lleno',1);}}
+function qSave(){if(isRestoring)return;isDirty=true;dot('dirty');clearTimeout(saveT);saveT=setTimeout(function(){collectTexts();snapshot();saveAll();},700);}
+
+// ── PROJECTS ─────────────────────────────────────────────────
+function uid(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function mkProj(name,angle,url){return{id:uid(),name:name||'Nueva Landing',angle:angle||'',ctaUrl:url||'https://vitaluoficial.store/products/kit-vitalu',texts:{},images:{}};}
+function getActive(){return projects.find(function(p){return p.id===activeId;});}
+
+function openNewModal(){
+  var l=String.fromCharCode(65+projects.length%26);
+  g('nm-name').value='Landing '+l; g('nm-angle').value='';
+  g('nm-url').value='https://vitaluoficial.store/products/kit-vitalu';
+  g('new-modal').classList.add('on'); setTimeout(function(){g('nm-name').focus();},60);
+}
+function closeNewModal(){g('new-modal').classList.remove('on');}
+function setAngle(el){
+  var t=el.textContent,i=0;
+  while(i<t.length){var c=t.charCodeAt(i);if((c>=65&&c<=90)||(c>=97&&c<=122))break;i++;}
+  g('nm-angle').value=t.slice(i).replace(/^[:\s]+/,''); g('nm-angle').focus();
+}
+
+function createManual(){
+  var name=g('nm-name').value.trim()||'Nueva Landing';
+  var angle=g('nm-angle').value.trim();
+  var url=g('nm-url').value.trim()||'https://vitaluoficial.store/products/kit-vitalu';
+  var proj,active=getActive();
+  if(active){collectTexts();proj=JSON.parse(JSON.stringify(active));proj.id=uid();proj.name=name;proj.angle=angle;proj.ctaUrl=url;proj.images={};}
+  else{proj=mkProj(name,angle,url);proj.texts=JSON.parse(JSON.stringify(DEFAULT_TEXTS));}
+  projects.push(proj);closeNewModal();renderSidebar();activateProject(proj.id);saveAll();toast('"'+name+'" creada');
+}
+
+async function generateWithAI(){
+  var name=g('nm-name').value.trim()||'Nueva Landing';
+  var angle=g('nm-angle').value.trim();
+  var url=g('nm-url').value.trim()||'https://vitaluoficial.store/products/kit-vitalu';
+  if(!angle){toast('Escribe un angulo primero',1);g('nm-angle').focus();return;}
+  closeNewModal(); startProgress(angle);
+  try{
+    var res=await fetch('/api/landing-lab/generate-copy',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({angle:angle,name:name})});
+    var data=await res.json();
+    if(!data.text)throw new Error(data.error||'sin respuesta');
+    var raw=data.text.trim().replace(/^```\w*\n?/,'').replace(/\n?```$/,'').trim();
+    var texts=JSON.parse(raw);
+    var merged=JSON.parse(JSON.stringify(DEFAULT_TEXTS));
+    Object.keys(texts).forEach(function(k){merged[k]=texts[k];});
+    var proj=mkProj(name,angle,url); proj.texts=merged; projects.push(proj);
+    finishProgress(function(){renderSidebar();activateProject(proj.id);saveAll();toast('\u2728 "'+name+'" generada');});
+  }catch(e){console.error(e);stopProgress();toast('Error al generar',1);}
+}
+
+function cloneProject(){var a=getActive();if(!a)return;collectTexts();var c=JSON.parse(JSON.stringify(a));c.id=uid();c.name=a.name+' (copia)';projects.push(c);renderSidebar();activateProject(c.id);saveAll();toast('Clonada');}
+function deleteProject(){if(projects.length<=1){toast('No puedes eliminar la unica',1);return;}doDelete(activeId);}
+function updateProjMeta(){var a=getActive();if(!a)return;a.name=g('proj-name-in').value||'Sin nombre';a.angle=g('proj-angle-in').value||'';var item=document.querySelector('.sb-item[data-id="'+activeId+'"]');if(item){var n=item.querySelector('.sb-item-name');if(n)n.lastChild.textContent=a.name;var ag=item.querySelector('.sb-item-angle');if(ag)ag.textContent=a.angle||'Sin angulo';}qSave();}
+
+// ── SIDEBAR ──────────────────────────────────────────────────
+function renderSidebar(){
+  var list=g('sb-list');list.innerHTML='';
+  projects.forEach(function(proj){
+    var el=document.createElement('div');el.className='sb-item'+(proj.id===activeId?' active':'');el.setAttribute('data-id',proj.id);
+    var dot=document.createElement('span');dot.className='dot';
+    var nm=document.createElement('div');nm.className='sb-item-name';nm.appendChild(dot);nm.appendChild(document.createTextNode(proj.name));
+    var ag=document.createElement('div');ag.className='sb-item-angle';ag.textContent=proj.angle||'Sin angulo';
+    var acts=document.createElement('div');acts.className='sb-item-actions';
+    var cb=document.createElement('button');cb.className='sb-act';cb.innerHTML='&#x2398;';cb.onclick=function(e){e.stopPropagation();doClone(proj.id);};
+    var db=document.createElement('button');db.className='sb-act del';db.innerHTML='&#x1F5D1;';db.onclick=function(e){e.stopPropagation();doDelete(proj.id);};
+    acts.appendChild(cb);acts.appendChild(db);
+    el.appendChild(nm);el.appendChild(ag);el.appendChild(acts);
+    el.onclick=function(e){if(!e.target.closest('.sb-item-actions'))activateProject(proj.id);};
+    list.appendChild(el);
+  });
+  var cnt=g('sb-count');if(cnt)cnt.textContent=projects.length+' landing'+(projects.length!==1?'s':'');
+}
+function doClone(id){var src=projects.find(function(p){return p.id===id;});if(!src)return;if(id===activeId)collectTexts();var c=JSON.parse(JSON.stringify(src));c.id=uid();c.name=src.name+' (copia)';projects.push(c);renderSidebar();activateProject(c.id);saveAll();toast('Clonada');}
+function doDelete(id){if(projects.length<=1){toast('No puedes eliminar la unica',1);return;}projects=projects.filter(function(p){return p.id!==id;});delete histMap[id];delete histIdx[id];if(activeId===id){activeId=null;if(projects.length)activateProject(projects[0].id);else showEmpty();}renderSidebar();saveAll();toast('Eliminada');}
+
+// ── ACTIVATE ─────────────────────────────────────────────────
+function activateProject(id){
+  if(activeId&&activeId!==id){collectTexts();saveAll();}
+  activeId=id; var proj=getActive(); if(!proj){showEmpty();return;}
+  if(!histMap[id]){histMap[id]=[];histIdx[id]=-1;}
+  isRestoring=true;
+  IMG_KEYS.forEach(function(k){resetSlot(k);});
+  var texts=Object.keys(proj.texts).length>0?proj.texts:DEFAULT_TEXTS;
+  applyTexts(texts);
+  IMG_KEYS.forEach(function(k){var v=proj.images[k];if(v===null)collapseSlot(k);else if(typeof v==='string'&&v)setSlot(k,v);});
+  applyCTA(proj.ctaUrl);
+  isRestoring=false;
+  setTimeout(function(){document.querySelectorAll('#page-wrap [data-v-text]').forEach(function(el){el.contentEditable='true';});},30);
+  g('proj-name-in').value=proj.name; g('proj-angle-in').value=proj.angle||'';
+  g('ed-toolbar').style.display='flex'; g('empty-state').style.display='none'; g('page-area').style.display='block';
+  document.querySelectorAll('.sb-item').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-id')===id);});
+  if(histMap[id].length===0)snapshot(); updateUR(); dot('ok');
+  stickyGone=false; var st=g('sticky'); if(st)st.classList.remove('show');
+}
+function showEmpty(){activeId=null;g('ed-toolbar').style.display='none';g('empty-state').style.display='flex';g('page-area').style.display='none';document.querySelectorAll('.sb-item').forEach(function(el){el.classList.remove('active');});}
+
+// ── TEXT / IMAGES ─────────────────────────────────────────────
+function collectTexts(){var proj=getActive();if(!proj)return;document.querySelectorAll('#page-wrap [data-v-text]').forEach(function(el){proj.texts[el.getAttribute('data-v-text')]=el.innerHTML;});}
+function applyTexts(texts){document.querySelectorAll('#page-wrap [data-v-text]').forEach(function(el){var k=el.getAttribute('data-v-text');if(texts&&texts[k]!==undefined)el.innerHTML=texts[k];});}
+function applyCTA(url){if(!url)return;document.querySelectorAll('#page-wrap a.cta-btn,#page-wrap a.sticky-btn').forEach(function(a){a.href=url;});}
+
+function imgEl(k){return document.getElementById('img-el-'+k.replace('img-',''));}
+function resetSlot(k){var el=imgEl(k);if(!el)return;el.src='';var ph=el.closest('.img-ph');if(ph)ph.classList.remove('loaded','collapsed');}
+function setSlot(k,src){var el=imgEl(k);if(!el)return;el.src=src;var ph=el.closest('.img-ph');if(ph){ph.classList.add('loaded');ph.classList.remove('collapsed');}}
+function collapseSlot(k){var el=imgEl(k);if(!el)return;el.src='';var ph=el.closest('.img-ph');if(ph){ph.classList.remove('loaded');ph.classList.add('collapsed');}}
+function pickImg(key){ if(typeof openImgGen==='function'){openImgGen(key);return;} curImgKey=key; var m=g('img-modal');if(m)m.classList.add('on'); }
+function closeImgModal(){var m=g('img-modal');if(m)m.classList.remove('on');curImgKey=null;}
+function applyUrl(){var inp=g('im-url-in');if(!inp)return;var v=inp.value.trim();if(!v){toast('Pega una URL primero',1);return;}setSlot(curImgKey,v);var proj=getActive();if(proj)proj.images[curImgKey]=v;snapshot();saveAll();closeImgModal();toast('Imagen aplicada');}
+function onFilePick(e){var file=e.target.files[0];if(!file||!curImgKey)return;if(!file.type.startsWith('image/'))return toast('Solo imagenes',1);if(file.size>12*1024*1024)return toast('Imagen grande - usa URL Shopify CDN',1);var r=new FileReader();r.onload=function(ev){setSlot(curImgKey,ev.target.result);var proj=getActive();if(proj)proj.images[curImgKey]=ev.target.result;snapshot();saveAll();closeImgModal();toast('Imagen cargada');e.target.value='';};r.readAsDataURL(file);}
+function delImg(e,key){e.stopPropagation();e.preventDefault();var proj=getActive();if(proj)proj.images[key]=null;collapseSlot(key);snapshot();saveAll();toast('Imagen eliminada');}
+
+// ── UNDO/REDO ─────────────────────────────────────────────────
+function snapshot(){if(isRestoring||!activeId)return;collectTexts();var proj=getActive();if(!proj)return;var snap={texts:JSON.parse(JSON.stringify(proj.texts)),images:JSON.parse(JSON.stringify(proj.images))};if(!histMap[activeId]){histMap[activeId]=[];histIdx[activeId]=-1;}histMap[activeId].splice(histIdx[activeId]+1);histMap[activeId].push(snap);if(histMap[activeId].length>60)histMap[activeId].shift();histIdx[activeId]=histMap[activeId].length-1;updateUR();}
+function doUndo(){if(!activeId||(histIdx[activeId]||0)<=0)return;histIdx[activeId]--;applySnap(histMap[activeId][histIdx[activeId]]);updateUR();toast('Deshecho');}
+function doRedo(){var h=histMap[activeId]||[];if(!activeId||(histIdx[activeId]||0)>=h.length-1)return;histIdx[activeId]++;applySnap(h[histIdx[activeId]]);updateUR();toast('Rehecho');}
+function applySnap(snap){isRestoring=true;var proj=getActive();if(!proj){isRestoring=false;return;}proj.texts=JSON.parse(JSON.stringify(snap.texts));proj.images=JSON.parse(JSON.stringify(snap.images));IMG_KEYS.forEach(function(k){resetSlot(k);});applyTexts(proj.texts);IMG_KEYS.forEach(function(k){var v=proj.images[k];if(v===null)collapseSlot(k);else if(typeof v==='string'&&v)setSlot(k,v);});saveAll();isRestoring=false;}
+function updateUR(){var id=activeId;var u=g('btn-undo'),r=g('btn-redo');if(u)u.disabled=!id||(histIdx[id]||0)<=0;if(r)r.disabled=!id||(histIdx[id]||0)>=((histMap[id]||[]).length-1);}
+
+// ── FONT SIZE CONTROLS ────────────────────────────────────────
+function showFontCtrl(el){
+  curEditEl=el;
+  var fc=g('font-ctrl'); if(!fc)return;
+  var cs=window.getComputedStyle(el).fontSize;
+  var sz=Math.round(parseFloat(cs));
+  g('font-size-val').textContent=sz+'px';
+  // Position near element
+  var r=el.getBoundingClientRect();
+  fc.style.top=(r.top-44+window.scrollY)+'px';
+  fc.style.left=Math.max(4,r.left+window.scrollX)+'px';
+  fc.style.display='flex';
+}
+function hideFontCtrl(){var fc=g('font-ctrl');if(fc)fc.style.display='none';curEditEl=null;}
+function changeFontSize(delta){
+  if(!curEditEl)return;
+  var cs=window.getComputedStyle(curEditEl).fontSize;
+  var sz=Math.round(parseFloat(cs))+delta*2;
+  sz=Math.max(8,Math.min(120,sz));
+  curEditEl.style.fontSize=sz+'px';
+  g('font-size-val').textContent=sz+'px';
+  qSave();
+}
+
+// ── STICKY SCROLL ─────────────────────────────────────────────
+var STEPS_DEF=[[0,5,0],[1400,30,1],[3500,55,2],[6000,76,3],[8500,90,4]];
+function startProgress(angle){var ov=g('gen-overlay'),at=g('go-angle-txt'),bar=g('go-bar');if(at)at.textContent=angle;if(bar)bar.style.width='0%';for(var i=0;i<5;i++){var s=g('gstep-'+i);if(s)s.className='go-step';}if(ov)ov.classList.add('on');genTimers=[];STEPS_DEF.forEach(function(step){var t=setTimeout(function(){var b=g('go-bar');if(b)b.style.width=step[1]+'%';var el=g('gstep-'+step[2]);if(el)el.className='go-step active';if(step[2]>0){var prev=g('gstep-'+(step[2]-1));if(prev)prev.className='go-step done';}},step[0]);genTimers.push(t);});}
+function finishProgress(cb){genTimers.forEach(function(t){clearTimeout(t);});genTimers=[];var bar=g('go-bar');if(bar)bar.style.width='100%';for(var i=0;i<5;i++){var s=g('gstep-'+i);if(s)s.className='go-step done';}setTimeout(function(){stopProgress();if(cb)cb();},600);}
+function stopProgress(){genTimers.forEach(function(t){clearTimeout(t);});genTimers=[];var ov=g('gen-overlay');if(ov)ov.classList.remove('on');}
+
+function initStickyScroll(){
+  var pa=g('page-area'); if(!pa){console.log('No page-area');return;}
+  pa.addEventListener('scroll',function(){
+    if(stickyGone)return;
+    var ratio=pa.scrollTop/(pa.scrollHeight-pa.clientHeight)||0;
+    var sticky=g('sticky'); if(sticky)sticky.classList.toggle('show',ratio>=stickyThresh);
+    var prog=g('prog'); if(prog)prog.style.width=(ratio*100)+'%';
+  },{passive:true});
+  var sc=g('sticky-close'); if(sc)sc.addEventListener('click',function(){stickyGone=true;var st2=g('sticky');if(st2)st2.classList.remove('show');if(typeof closeStickyPanel==='function')closeStickyPanel();});
+}
+function updateStickyThresh(val){stickyThresh=parseInt(val)/100;var el=g('sticky-thresh-val2');if(el)el.textContent=val+'%';stickyGone=false;}
+function toggleStickyPanel(){var p=g('sticky-panel');if(p)p.classList.toggle('show');}
+function closeStickyPanel(){var p=g('sticky-panel');if(p)p.classList.remove('show');}
+
+// ── VIEWPORT ─────────────────────────────────────────────────
+function setVP(mode){vp=mode;g('vp-desk').classList.toggle('on',mode==='desktop');g('vp-mob').classList.toggle('on',mode==='mobile');document.body.classList.toggle('mob-mode',mode==='mobile');if(mode==='mobile'){var pa=g('page-area');if(pa)pa.scrollTop=0;}}
+function toggleSidebar(){sidebarOpen=!sidebarOpen;var sb=g('sidebar'),btn=g('sb-toggle');if(sb)sb.classList.toggle('collapsed',!sidebarOpen);if(btn)btn.textContent=sidebarOpen?'\u2630':'\u276F';}
+
+// ── EXPORT ────────────────────────────────────────────────────
+function buildHTML(proj){
+  collectTexts();var pw=g('page-wrap'),clone=pw.cloneNode(true);
+  clone.querySelectorAll('.iov,.idel,#font-ctrl').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
+  clone.querySelectorAll('[data-v-text],[data-v-img]').forEach(function(el){el.removeAttribute('data-v-text');el.removeAttribute('data-v-img');});
+  clone.classList.remove('edit-mode');clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
+  var ctaUrl=proj.ctaUrl||'#';clone.querySelectorAll('a.cta-btn,a.sticky-btn').forEach(function(a){a.href=ctaUrl;});
+  var allCSS='';document.querySelectorAll('style').forEach(function(s){allCSS+=s.textContent;});
+  var cut=allCSS.indexOf('/* EDITOR UI */');if(cut>-1)allCSS=allCSS.substring(0,cut);
+  var SO='<'+'scri'+'pt>',SC='<'+'/scri'+'pt>';
+  var code='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh=0.22;function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
+  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<title>'+proj.name+' \u2014 Vital\u00fa</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">\n<style>'+allCSS+'</style>\n</head>\n<body>\n'+clone.outerHTML+'\n'+SO+code+SC+'\n</body>\n</html>';
+}
+function exportCurrent(){var proj=getActive();if(!proj){toast('Selecciona una landing',1);return;}cpTxt(buildHTML(proj),'"'+proj.name+'" copiado');}
+function exportAll(){toast(projects.length+' landings — exporta cada una con Exportar HTML',0);}
+function cpTxt(t,msg){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast(msg);}).catch(function(){fb(t,msg);});}else fb(t,msg);}
+function fb(t,msg){var ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:-9999px;opacity:0';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);toast(msg);}
+
+// ── EDITING ──────────────────────────────────────────────────
+function initEdit(){
+  var pw=g('page-wrap');
+  // Pass 1: explicit data-v-text
+  pw.querySelectorAll('[data-v-text]').forEach(function(el){el.contentEditable='true';});
+  // Pass 2: auto-tag text elements
+  var idx=0;
+  function autoTag(selector){pw.querySelectorAll(selector).forEach(function(el){if(el.getAttribute('contenteditable'))return;if(el.closest('#topbar,#sidebar,.modal-bg,#gen-overlay,#toast,#font-ctrl'))return;if(!el.textContent.trim())return;if(!el.hasAttribute('data-v-text'))el.setAttribute('data-v-text','auto-'+(idx++));el.contentEditable='true';});}
+  autoTag('h1,h2,h3,h4');
+  autoTag('.tag,.hero-gtag,.ing-pill,.prod-tag,.gift-tag,.testi-stars');
+  autoTag('.stat-n,.ing-n,.prod-name');
+  autoTag('.stat-l,.v-h,.v-list li,.ing-name,.ing-desc');
+  autoTag('.t-day,.t-txt,.prod-desc,.testi-txt,.testi-au strong,.testi-au span');
+
+  // Focus/blur: show font size control
+  pw.addEventListener('focus',function(e){if(e.target.hasAttribute('data-v-text'))showFontCtrl(e.target);},true);
+  pw.addEventListener('blur',function(e){if(e.target.hasAttribute('data-v-text'))setTimeout(function(){if(!g('font-ctrl').matches(':hover'))hideFontCtrl();},200);},true);
+
+  pw.addEventListener('input',function(e){if(isRestoring||!e.target.hasAttribute('data-v-text'))return;qSave();});
+  pw.addEventListener('blur',function(e){if(isRestoring||!e.target.hasAttribute('data-v-text'))return;collectTexts();snapshot();saveAll();},true);
+  pw.addEventListener('paste',function(e){if(!e.target.hasAttribute('data-v-text'))return;e.preventDefault();var t=(e.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,t);});
+  var iui=g('im-url-in');if(iui)iui.addEventListener('input',function(){var v=this.value.trim(),p=g('im-prev');if(v){p.src=v;p.style.display='block';}else{p.src='';p.style.display='none';}});
+}
+
+// ── UTILS ────────────────────────────────────────────────────
+function dot(s){var d=g('sv-dot'),l=g('sv-lbl');if(!d||!l)return;d.className='sv-dot'+(s==='dirty'?' d':'');l.textContent=s==='dirty'?'Guardando...':'Guardado';}
+var toastT;
+function toast(msg,err){var t=g('toast');if(!t)return;t.textContent=msg;t.className='on'+(err===1?' err':err===0?' info':'');clearTimeout(toastT);toastT=setTimeout(function(){t.className='';},3200);}
+function initKeys(){
+  document.addEventListener('keydown',function(e){if(!(e.ctrlKey||e.metaKey))return;if(e.key==='z'&&!e.shiftKey){e.preventDefault();doUndo();}if(e.key==='y'||(e.key==='z'&&e.shiftKey)){e.preventDefault();doRedo();}});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){g('new-modal').classList.remove('on');g('img-modal').classList.remove('on');stopProgress();closeStickyPanel();}});
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  initEdit(); initKeys(); loadAll(); initStickyScroll();
+  window.addEventListener('dragover',function(e){e.preventDefault();});
+  window.addEventListener('drop',function(e){e.preventDefault();});
+});
+
+window.setVP=setVP; window.doUndo=doUndo; window.doRedo=doRedo;
+window.toggleSidebar=toggleSidebar;
+window.openNewModal=openNewModal; window.closeNewModal=closeNewModal;
+window.generateWithAI=generateWithAI; window.createManual=createManual;
+window.cloneProject=cloneProject; window.deleteProject=deleteProject;
+window.updateProjMeta=updateProjMeta; window.setAngle=setAngle;
+window.exportCurrent=exportCurrent;
+window.setSlot=setSlot;
+window.resetSlot=resetSlot;
+window.getActive=getActive;
+window.snapshot=snapshot;
+window.saveAll=saveAll; window.exportAll=exportAll;
+window.pickImg=pickImg; window.delImg=delImg;
+window.closeImgModal=closeImgModal; window.applyUrl=applyUrl;
+window.onFilePick=onFilePick; window.changeFontSize=changeFontSize;
+window.toggleStickyPanel=toggleStickyPanel; window.updateStickyThresh=updateStickyThresh;
+
+})();
+
+// ── IMAGE MODAL — missing vars & functions ───────────────────
+var igpSlot = null, igpUrl = null, igpPolling = false;
+
+var SLOT_CFG = {
+  'img-1':  { label: 'Hero · Mujer piel radiante',    brief: 'Colombian woman glowing radiant skin, face closeup, warm natural light, dark editorial background', ratio: '2:3' },
+  'img-2':  { label: 'Cajón cremas acumuladas',        brief: 'Cluttered drawer full of unused skincare creams and serums, frustrated consumer, dark moody editorial', ratio: '4:3' },
+  'img-3':  { label: 'Sebo de res en bowl',            brief: 'Beef tallow in a ceramic bowl, rustic artisan setup, warm candlelight, natural skincare ingredient macro', ratio: '16:9' },
+  'img-4':  { label: 'Crema Vitalú pote',              brief: 'Premium skincare cream jar open, warm tallow cream texture, dark luxury editorial background', ratio: '3:4' },
+  'img-5a': { label: 'Ingrediente · Sebo de res',      brief: 'Beef tallow grass-fed ingredient close up, warm amber tones, natural skincare', ratio: '1:1' },
+  'img-5b': { label: 'Ingrediente · Ácido hialurónico',brief: 'Hyaluronic acid serum drops macro, clear water droplets, clinical skincare ingredient', ratio: '1:1' },
+  'img-5c': { label: 'Ingrediente · Aceite de coco',   brief: 'Coconut oil in jar, tropical natural ingredient, white and warm tones, skincare macro', ratio: '1:1' },
+  'img-5d': { label: 'Ingrediente · Manteca de cacao', brief: 'Cacao butter chunks, chocolate natural ingredient, warm brown artisan tones, macro', ratio: '1:1' },
+  'img-5e': { label: 'Ingrediente · Vitamina E',       brief: 'Vitamin E oil golden amber color, supplement skincare ingredient macro photography', ratio: '1:1' },
+  'img-5f': { label: 'Ingrediente · Omega 3',          brief: 'Omega 3 fish oil supplement golden color, natural skincare health ingredient macro', ratio: '1:1' },
+  'img-6':  { label: 'Antes y después',                brief: 'Before and after skincare transformation split image, glowing skin, realistic editorial photography', ratio: '16:9' },
+  'img-7a': { label: 'Testimonio · Mujer 1',           brief: 'Happy Colombian woman glowing skin testimonial portrait, warm smile, natural editorial light', ratio: '3:4' },
+  'img-7b': { label: 'Testimonio · Mujer 2',           brief: 'Satisfied Colombian woman clear skin portrait, warm editorial light, natural beauty close up', ratio: '3:4' },
+  'img-7c': { label: 'Testimonio · Mujer 3',           brief: 'Confident Colombian woman radiant skin portrait, warm Colombian sun, natural beauty', ratio: '3:4' },
+  'img-8':  { label: 'Crema + Jabón regalo',           brief: 'Vitalú cream jar and exotic soap together, gift packaging, dark luxury editorial background', ratio: '4:3' },
+  'img-9':  { label: 'Lifestyle CTA final',             brief: 'Beautiful Colombian woman confident outdoors, natural skin no makeup, warm Colombian golden light', ratio: '16:9' }
+};
+
+function openImgGen(slot) {
+  igpSlot = slot; igpUrl = null;
+  var modal = document.getElementById('igp-modal');
+  if (!modal) return;
+  var cfg = SLOT_CFG[slot] || { label: slot, brief: '', ratio: '1:1' };
+  var titleEl = document.getElementById('igp-title');
+  if (titleEl) titleEl.textContent = cfg.label;
+  var ratioEl = document.getElementById('igp-ratio');
+  if (ratioEl && cfg.ratio) ratioEl.value = cfg.ratio;
+  igpShowStep('prompt');
+  igpSetMode('ai');
+  modal.classList.add('on');
+  setTimeout(function(){ igpAutoPrompt(); }, 80);
+}
+
+function closeImgGen() {
+  var modal = document.getElementById('igp-modal');
+  if (modal) modal.classList.remove('on');
+  igpSlot = null; igpUrl = null; igpPolling = false;
+}
+
+function igpShowStep(step) {
+  var map = { prompt: 'igp-step-prompt', loading: 'igp-step-loading', result: 'igp-step-result' };
+  Object.keys(map).forEach(function(k) {
+    var el = document.getElementById(map[k]);
+    if (el) el.style.display = k === step ? 'flex' : 'none';
+  });
+}
+
+function igpSetMode(mode) {
+  var ai = document.getElementById('igp-ai-section');
+  var url = document.getElementById('igp-url-section');
+  var aiTab = document.getElementById('igp-ai-tab');
+  var urlTab = document.getElementById('igp-url-tab');
+  if (ai) ai.style.display = mode === 'ai' ? 'flex' : 'none';
+  if (url) url.style.display = mode === 'url' ? 'flex' : 'none';
+  if (aiTab) aiTab.classList.toggle('on', mode === 'ai');
+  if (urlTab) urlTab.classList.toggle('on', mode === 'url');
+}
+
+window.openImgGen  = openImgGen;
+window.closeImgGen = closeImgGen;
+window.igpSetMode  = igpSetMode;
+window.igpShowStep = igpShowStep;
+
+</script>
+<script>
+// ══════════════════════════════════════════════════════════════
+// IMAGE GENERATION — kie.ai Nano Banana Pro via Next.js proxy
+// ══════════════════════════════════════════════════════════════
+
+
+async function igpAutoPrompt() {
+  var proj = window.getActive ? window.getActive() : null;
+  var cfg  = SLOT_CFG[igpSlot] || {};
+  var angle = proj ? proj.angle : '';
+  var hero  = proj && proj.texts ? ((proj.texts['hero-l1']||'') + ' ' + (proj.texts['hero-l2']||'')) : '';
+  var ta    = document.getElementById('igp-prompt');
+  if (!ta) return;
+  ta.style.opacity = '0.4';
+  ta.value = 'Generando prompt inteligente...';
+  try {
+    var res = await fetch('/api/landing-lab/image-prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slot: igpSlot, label: cfg.label || igpSlot, brief: cfg.brief || '', angle: angle || 'natural skincare', hero: hero || '' })
+    });
+    var data = await res.json();
+    ta.value = data.prompt || ((cfg.brief || igpSlot) + ', photorealistic, editorial quality, warm Colombian light');
+  } catch(e) {
+    ta.value = (cfg.brief || igpSlot) + ', photorealistic, editorial magazine quality, warm Colombian light, luxury skincare aesthetic';
+  }
+  ta.style.opacity = '1';
+}
+
+// ── GENERATE IMAGE via kie.ai Nano Banana Pro ─────────────────
+async function igpGenerate() {
+  var prompt = (document.getElementById('igp-prompt').value || '').trim();
+  if (!prompt || prompt.startsWith('Generando')) { igpToast('Espera a que se genere el prompt', 1); return; }
+  var ratio  = document.getElementById('igp-ratio').value;
+  var resVal = document.getElementById('igp-res').value;
+
+  igpShowStep('loading');
+  igpPolling = true;
+  igpStartLoadAnim(prompt);
+  document.getElementById('igp-gen-btn').disabled = true;
+
+  try {
+    // Create kie.ai task via proxy
+    var createRes = await fetch('/api/landing-lab/create-task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt, aspect_ratio: ratio, resolution: resVal })
+    });
+    var createData = await createRes.json();
+    if (!createData.taskId) throw new Error(createData.error || 'No se pudo crear la tarea');
+
+    var taskId = createData.taskId;
+    igpSetLoadMsg('Generando con Nano Banana Pro...');
+    igpSetLoadPct(15);
+
+    // Poll for result
+    var maxAttempts = 60;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise(function(r){ setTimeout(r, 4000); });
+      if (!igpPolling) break;
+
+      igpSetLoadPct(Math.min(90, 15 + attempt * 1.3));
+
+      var statusRes = await fetch('/api/landing-lab/task-status?taskId=' + taskId);
+      var sd = await statusRes.json();
+
+      if (sd.status === 'SUCCESS' && sd.imageUrl) {
+        igpUrl = sd.imageUrl;
+        igpPolling = false;
+        igpSetLoadPct(100);
+        igpShowStep('result');
+        var ri = document.getElementById('igp-result-img');
+        ri.style.opacity = '0'; ri.src = sd.imageUrl;
+        ri.onload = function(){ ri.style.transition='opacity .5s'; ri.style.opacity='1'; };
+        return;
+      }
+      if (sd.status === 'FAILED') throw new Error('Generación fallida — intenta de nuevo');
+    }
+    if (igpPolling) throw new Error('Timeout — intenta de nuevo');
+
+  } catch(e) {
+    igpPolling = false;
+    igpShowStep('prompt');
+    igpToast(e.message || 'Error al generar', 1);
+  } finally {
+    document.getElementById('igp-gen-btn').disabled = false;
+    igpStopLoadAnim();
+  }
+}
+
+// ── APPLY / DOWNLOAD ──────────────────────────────────────────
+function igpUse() {
+  if (!igpUrl || !igpSlot) return;
+  window.setSlot(igpSlot, igpUrl);
+  var proj = window.getActive();
+  if (proj) proj.images[igpSlot] = igpUrl;
+  igpSaveToGallery(igpSlot, igpUrl, document.getElementById('igp-prompt').value);
+  window.snapshot(); window.saveAll();
+  closeImgGen(); igpToast('✓ Imagen aplicada');
+}
+
+function igpAnother() { igpShowStep('prompt'); igpUrl = null; }
+
+function igpDownloadCurrent() { if (!igpUrl) return; igpDownloadUrl(igpUrl, igpSlot); }
+
+function igpDownloadUrl(url, slot, projName) {
+  var proj = window.getActive();
+  var pname = (projName || (proj && proj.name) || 'vitalu').toLowerCase().replace(/[^\w]+/g,'-').replace(/^-|-$/g,'');
+  var cfg   = SLOT_CFG[slot] || { label: slot };
+  var sname = cfg.label.split('·').pop().trim().toLowerCase().replace(/[^\w]+/g,'-');
+  var fname = pname + '--' + sname + '.jpg';
+  fetch(url).then(function(r){ return r.blob(); }).then(function(blob){
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fname;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 2000);
+  }).catch(function(){ window.open(url, '_blank'); });
+}
+
+// ── URL / FILE MODE ───────────────────────────────────────────
+function igpApplyUrl() {
+  var v = (document.getElementById('igp-url-input').value || '').trim();
+  if (!v || !igpSlot) { igpToast('Pega una URL', 1); return; }
+  window.setSlot(igpSlot, v);
+  var proj = window.getActive();
+  if (proj) proj.images[igpSlot] = v;
+  window.snapshot(); window.saveAll(); closeImgGen(); igpToast('✓ Imagen aplicada');
+}
+
+function igpFileChange(e) {
+  var file = e.target.files[0]; if (!file) return;
+  if (file.size > 12*1024*1024) { igpToast('Imagen grande — usa URL Shopify', 1); return; }
+  var r = new FileReader();
+  r.onload = function(ev) {
+    window.setSlot(igpSlot, ev.target.result);
+    var proj = window.getActive();
+    if (proj) proj.images[igpSlot] = ev.target.result;
+    window.snapshot(); window.saveAll(); closeImgGen(); igpToast('✓ Imagen cargada');
+  };
+  r.readAsDataURL(file);
+}
+
+// ── GALLERY ───────────────────────────────────────────────────
+var GALLERY_SK = 'igp_gallery_v1';
+
+function igpSaveToGallery(slot, url, prompt) {
+  try {
+    var gd = JSON.parse(localStorage.getItem(GALLERY_SK) || '{}');
+    var proj = window.getActive(); var pid = proj ? proj.id : 'default';
+    if (!gd[pid]) gd[pid] = [];
+    gd[pid] = gd[pid].filter(function(x){ return x.slot !== slot; });
+    gd[pid].unshift({ slot: slot, url: url, prompt: prompt, ts: Date.now(), label: (SLOT_CFG[slot]||{}).label || slot });
+    localStorage.setItem(GALLERY_SK, JSON.stringify(gd));
+  } catch(e) {}
+}
+
+function openGallery() {
+  var gallery = document.getElementById('igp-gallery'); if (!gallery) return;
+  var proj = window.getActive(); var pid = proj ? proj.id : 'default';
+  try { var gd = JSON.parse(localStorage.getItem(GALLERY_SK) || '{}'); renderGallery(gd[pid] || [], proj ? proj.name : 'Landing'); }
+  catch(e) { renderGallery([], 'Landing'); }
+  gallery.classList.add('on');
+}
+
+function closeGallery() { document.getElementById('igp-gallery').classList.remove('on'); }
+
+function renderGallery(items, projName) {
+  var grid = document.getElementById('igp-gallery-grid');
+  var cnt  = document.getElementById('igp-gallery-title');
+  if (cnt) cnt.textContent = projName + ' — ' + items.length + ' imagen' + (items.length !== 1 ? 'es' : '');
+  if (!grid) return;
+  if (!items.length) { grid.innerHTML = '<div class="gal-empty"><span>📷</span><p>Genera imagenes con IA<br>para que aparezcan aqui</p></div>'; return; }
+  grid.innerHTML = items.map(function(item, i) {
+    return '<div class="gal-item">'
+      + '<div class="gal-thumb" onclick="igpApplyFromGallery(\'' + item.slot + '\',\'' + encodeURIComponent(item.url) + '\')">'
+      + '<img src="' + item.url + '" alt="' + (item.label||'') + '" loading="lazy">'
+      + '<div class="gal-hover"><span>Aplicar a slot</span></div></div>'
+      + '<div class="gal-meta"><span class="gal-label">' + (item.label||item.slot) + '</span>'
+      + '<div class="gal-actions">'
+      + '<button class="gal-btn" onclick="igpDownloadUrl(\'' + item.url + '\',\'' + item.slot + '\')" title="Descargar">⬇</button>'
+      + '<button class="gal-btn" onclick="igpOpenInNew(\'' + item.url + '\')" title="Ver">↗</button>'
+      + '</div></div></div>';
+  }).join('');
+}
+
+function igpApplyFromGallery(slot, url) {
+  var decoded = decodeURIComponent(url);
+  window.setSlot(slot, decoded);
+  var proj = window.getActive(); if (proj) proj.images[slot] = decoded;
+  window.snapshot(); window.saveAll(); closeGallery(); igpToast('✓ Imagen aplicada al slot ' + slot);
+}
+
+function igpOpenInNew(url) { window.open(url, '_blank'); }
+
+function igpDownloadAll() {
+  var proj = window.getActive(); var pid = proj ? proj.id : 'default';
+  try {
+    var gd = JSON.parse(localStorage.getItem(GALLERY_SK) || '{}');
+    var items = gd[pid] || [];
+    if (!items.length) { igpToast('No hay imagenes generadas aun', 1); return; }
+    items.forEach(function(item, i) { setTimeout(function(){ igpDownloadUrl(item.url, item.slot, proj ? proj.name : 'vitalu'); }, i * 800); });
+    igpToast('Descargando ' + items.length + ' imagenes...');
+  } catch(e) { igpToast('Error al descargar', 1); }
+}
+
+// ── LOADING ANIMATION ─────────────────────────────────────────
+var loadAnimT = null;
+
+function igpStartLoadAnim(prompt) {
+  var msgs = ['Enviando a Nano Banana Pro','Analizando composición','Generando colores y luz','Renderizando detalles','Aplicando ajustes finales'];
+  var mi = 0; igpSetLoadMsg(msgs[0]); igpSetLoadPct(0);
+  var pp = document.getElementById('igp-load-prompt');
+  if (pp) pp.textContent = '"' + prompt.slice(0, 90) + (prompt.length > 90 ? '...' : '') + '"';
+  loadAnimT = setInterval(function(){ mi = (mi + 1) % msgs.length; igpSetLoadMsg(msgs[mi]); }, 5000);
+}
+
+function igpStopLoadAnim() { clearInterval(loadAnimT); }
+function igpSetLoadMsg(msg) { var el = document.getElementById('igp-load-msg'); if (el) el.textContent = msg; }
+function igpSetLoadPct(pct) {
+  var bar = document.getElementById('igp-load-bar'); if (bar) bar.style.width = pct + '%';
+  var val = document.getElementById('igp-load-pct'); if (val) val.textContent = Math.round(pct) + '%';
+}
+function igpToast(msg, err) {
+  var t = document.getElementById('toast'); if (!t) return;
+  t.textContent = msg; t.className = 'on' + (err ? ' err' : '');
+  clearTimeout(window._igpTT); window._igpTT = setTimeout(function(){ t.className = ''; }, 3000);
+}
+
+// ── EXPOSE ────────────────────────────────────────────────────
+window.igpAutoPrompt = igpAutoPrompt;
+window.igpGenerate   = igpGenerate;
+window.igpUse        = igpUse;
+window.igpAnother    = igpAnother;
+window.igpDownloadCurrent = igpDownloadCurrent;
+window.igpApplyUrl   = igpApplyUrl;
+window.igpFileChange = igpFileChange;
+window.openGallery   = openGallery;
+window.closeGallery  = closeGallery;
+window.igpDownloadAll = igpDownloadAll;
+window.igpApplyFromGallery = igpApplyFromGallery;
+window.igpOpenInNew  = igpOpenInNew;
+</script>
+</body>
+</html>
