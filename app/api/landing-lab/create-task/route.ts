@@ -28,9 +28,8 @@ export async function POST(req: Request) {
         input: {
           prompt,
           aspect_ratio: aspect_ratio || '1:1',
-          resolution: resolution || '2K',
-          output_format: 'jpg',
-          negative_prompt: 'low quality, blurry, distorted, watermark, text overlay, logo',
+          resolution: resolution || '1K',
+          output_format: 'png',
         },
       }),
     });

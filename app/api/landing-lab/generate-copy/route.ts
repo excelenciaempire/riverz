@@ -35,9 +35,9 @@ export async function POST(req: Request) {
         model: 'claude-sonnet-4-5-20250929',
         max_tokens: 4000,
         stream: false,
-        system: SYS,
         messages: [
-          { role: 'user', content: `ANGULO: ${angle}\nNOMBRE: ${name}` }
+          { role: 'system', content: SYS },
+          { role: 'user', content: `ANGULO: ${angle}\nNOMBRE: ${name}` },
         ],
       }),
     });
