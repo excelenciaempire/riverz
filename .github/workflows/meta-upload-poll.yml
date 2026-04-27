@@ -1,0 +1,21 @@
+name: Meta upload poll
+
+on:
+  schedule:
+    - cron: '* * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: meta-upload-poll
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Hit cron-poll endpoint
+        run: |
+          curl -fsS -X GET \
+            -H "Authorization: Bearer ${{ secrets.META_CRON_SECRET }}" \
+            "https://riverzai.com/api/meta/upload/cron-poll"
