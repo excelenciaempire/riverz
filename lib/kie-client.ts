@@ -736,7 +736,10 @@ export async function createKieTask(model: string, input: NanoBananaInput | any)
 
 export async function getKieTaskResult(taskId: string): Promise<KieTaskResult> {
   try {
-    const response = await fetch(`${KIE_BASE_URL}/api/v1/jobs/getTaskDetail?taskId=${taskId}`, {
+    // kie.ai renamed the endpoint from /jobs/getTaskDetail to /jobs/recordInfo
+    // and changed the response shape (numeric `status` → string `state`,
+    // result moved into `resultJson` as a JSON-encoded string).
+    const response = await fetch(`${KIE_BASE_URL}/api/v1/jobs/recordInfo?taskId=${taskId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${KIE_API_KEY}`,
@@ -744,28 +747,42 @@ export async function getKieTaskResult(taskId: string): Promise<KieTaskResult> {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to get task detail');
+      throw new Error(`Failed to get task detail: HTTP ${response.status}`);
     }
 
     const data = await response.json();
-    
-    // Status mapping based on KIE
-    // 0: Queue, 1: Processing, 2: Success, 3: Failed
-    const statusMap: Record<number, KieTaskResult['status']> = {
-      0: 'PENDING',
-      1: 'PROCESSING',
-      2: 'SUCCESS',
-      3: 'FAILED',
-      4: 'FAILED'
-    };
-    
-    const status = statusMap[data.data?.status] || 'PROCESSING';
-    
+    const rec = data?.data;
+    if (!rec) {
+      return { taskId, status: 'FAILED', error: data?.msg || 'Empty response from kie.ai' };
+    }
+
+    const stateRaw = String(rec.state ?? rec.status ?? '').toLowerCase();
+    let status: KieTaskResult['status'] = 'PROCESSING';
+    if (stateRaw === 'success' || stateRaw === 'completed') status = 'SUCCESS';
+    else if (stateRaw === 'fail' || stateRaw === 'failed' || stateRaw === 'error') status = 'FAILED';
+    else if (stateRaw === 'waiting' || stateRaw === 'queue' || stateRaw === 'queued' || stateRaw === 'pending') status = 'PENDING';
+
+    let result: any = undefined;
+    if (status === 'SUCCESS') {
+      // resultJson is a JSON-encoded string, e.g. {"resultUrls":["https://..."]}
+      const raw = rec.resultJson || rec.result;
+      if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw);
+          result = parsed.resultUrls || parsed.result_urls || parsed.urls || parsed.output || parsed.result || parsed;
+        } catch {
+          result = raw;
+        }
+      } else if (raw) {
+        result = raw;
+      }
+    }
+
     return {
       taskId,
       status,
-      result: data.data?.result,
-      error: data.msg !== 'success' ? data.msg : undefined
+      result,
+      error: status === 'FAILED' ? (rec.failMsg || rec.failCode || data?.msg || 'kie.ai task failed') : undefined,
     };
 
   } catch (error) {
