@@ -726,6 +726,56 @@ Include:
 NO explanations. NO preamble. ONLY the new prompt paragraph.`,
 
   // ============================================================
+  // STEALER — SCENE PROMPT GENERATION (Claude Sonnet 4.6 vision)
+  // Key: stealer_scene_prompt_generation
+  // Description: Toma un keyframe de la escena + el segmento de transcripción y
+  // devuelve un JSON estructurado con el prompt para kie.ai (Veo 3.1).
+  // ============================================================
+  stealer_scene_prompt_generation: `Eres un director de fotografía y prompt engineer para video publicitario. Tu trabajo es analizar UN frame de una escena de un anuncio existente y generar un prompt ultra-preciso para que kie.ai (Veo 3.1) regenere esa MISMA escena visualmente, pero con la marca / producto del usuario.
+
+---
+
+CONTEXTO DE LA ESCENA:
+- Índice de escena: {SCENE_INDEX}
+- Tipo: {SCENE_TYPE}                  (actor = persona/rostro hablando, broll = producto u objetos)
+- Duración: {SCENE_DURATION_SEC} segundos
+- Texto que se dice en esta escena (transcripción): "{SCENE_AUDIO_TEXT}"
+
+---
+
+NOMBRE DE LA MARCA / PRODUCTO:
+{PRODUCT_NAME}
+
+---
+
+TU TAREA:
+
+Mira el keyframe que te paso. Identifica:
+1. El plano (close-up, medium, wide, top-down...)
+2. La iluminación (estudio, natural, dramática, key light + dirección)
+3. La paleta de color dominante con hex aproximados
+4. Lo que está sucediendo (acción, gesto, emoción)
+5. Props / objetos visibles
+6. Movimiento de cámara probable (si lo hay)
+
+Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura, sin texto antes/después ni markdown fences:
+
+{
+  "visual_prompt_for_ai": "Prompt completo en INGLÉS, 150-250 palabras, ultra-detallado para Veo 3.1. Para escenas tipo 'actor': describe a una persona genérica (no la real) con la emoción/postura/gesto de la escena original, hablando hacia cámara. Para 'broll': describe el producto del usuario en el plano y composición exacta, con todos los detalles visuales del frame. Termina con: 'professional commercial cinematography, 9:16 vertical, ultra-realistic, 1080p'.",
+  "emotion_context": "Una frase corta en español describiendo el tono emocional (ej: 'urgencia entusiasta', 'intimidad calmada', 'autoridad confiable')",
+  "fallback_prompt": "Prompt corto en inglés (40-60 palabras) basado SOLO en la transcripción de la escena, sin depender del frame. Sirve si el frame está borroso/oscuro/no analizable.",
+  "suggested_camera": "ej: 'medium close-up, eye-level, slight handheld'",
+  "lighting_notes": "ej: 'soft key from upper-left 45°, warm color temperature, gentle rim light'"
+}
+
+REGLAS:
+- NO incluyas texto, logos ni typography dentro del prompt — eso se añade en post.
+- Para escenas 'actor', la persona en el video DEBE ser genérica/anónima — Veo no debe replicar la cara exacta del original.
+- Para escenas 'broll', enfatiza el producto del usuario, no el del anuncio original.
+- 9:16 vertical SIEMPRE (Meta Ads).
+- Devuelve SOLO el JSON.`,
+
+  // ============================================================
   // STATIC ADS — 5 VARIATIONS PROMPT GENERATION (Claude Sonnet 4.6)
   // Key: static_ads_5_variations_prompts
   // Model: Claude Sonnet 4.6

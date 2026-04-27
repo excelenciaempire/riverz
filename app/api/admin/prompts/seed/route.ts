@@ -67,6 +67,15 @@ const DEFAULT_PROMPTS = [
     is_active: true
   },
   {
+    key: 'stealer_scene_prompt_generation',
+    name: 'STEALER · Prompt por Escena',
+    category: 'stealer',
+    description: 'Pipeline STEALER. Por cada escena del video original, genera el prompt JSON para Veo 3.1 a partir del keyframe + transcripción. Modelo: Claude Sonnet 4.6 con visión.',
+    variables: ['SCENE_INDEX', 'SCENE_TYPE', 'SCENE_DURATION_SEC', 'SCENE_AUDIO_TEXT', 'PRODUCT_NAME'],
+    prompt_text: FALLBACK_PROMPTS.stealer_scene_prompt_generation,
+    is_active: true
+  },
+  {
     key: 'template_analysis',
     name: 'Análisis de Plantilla (Legacy texto libre)',
     category: 'other',

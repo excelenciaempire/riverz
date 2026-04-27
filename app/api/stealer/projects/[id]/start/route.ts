@@ -66,7 +66,10 @@ export async function POST(_req: Request, { params }: Params) {
       .eq('id', projectId);
     if (updErr) return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });
 
-    // Enqueue prompt generation per scene + master TTS at the project level.
+    // Enqueue prompt generation per scene + audio splitting at project level.
+    // Phase 2 reuses the SOURCE audio (the original ad's voice) so the pipeline
+    // works end-to-end without ElevenLabs being wired up yet. Phase 4 will
+    // enqueue tts_master FIRST, and split_audio will then slice the master TTS.
     const promptJobs = scenes.map((s) => ({
       project_id: projectId,
       scene_id: s.id,
@@ -76,7 +79,7 @@ export async function POST(_req: Request, { params }: Params) {
 
     await supabaseAdmin.from('stealer_jobs').insert({
       project_id: projectId,
-      kind: 'tts_master',
+      kind: 'split_audio',
     });
 
     return NextResponse.json({

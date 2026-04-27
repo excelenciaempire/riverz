@@ -104,6 +104,33 @@ export async function markJobFailedOrRetry(job: StealerJob, error: Error) {
     .eq('id', job.id);
 }
 
+/**
+ * Pick `waiting_callback` jobs that haven't been touched in `staleAfterMs` ms,
+ * so the polling subroutine can ask kie.ai whether they're done.
+ * Touches updated_at so the next tick won't repick them too soon.
+ */
+export async function claimWaitingCallbacks(limit: number, staleAfterMs = 30_000): Promise<StealerJob[]> {
+  const sb = supabase();
+  const cutoff = new Date(Date.now() - staleAfterMs).toISOString();
+
+  const { data: candidates, error } = await sb
+    .from('stealer_jobs')
+    .select('*')
+    .eq('status', 'waiting_callback')
+    .lt('updated_at', cutoff)
+    .order('updated_at', { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+  if (!candidates || candidates.length === 0) return [];
+
+  // Touch updated_at so we won't repick during the same minute even if polling
+  // is slow. The actual status flip happens in the handler.
+  const ids = candidates.map((c) => c.id);
+  await sb.from('stealer_jobs').update({ updated_at: new Date().toISOString() }).in('id', ids);
+
+  return candidates as StealerJob[];
+}
+
 export async function enqueueJob(opts: {
   projectId?: string | null;
   sceneId?: string | null;
