@@ -286,8 +286,13 @@ export async function POST(req: Request) {
   try {
     console.log('[PROCESS-QUEUE] Tick start');
 
-    const { userId } = await auth();
-    if (!userId) return new NextResponse('Unauthorized', { status: 401 });
+    const cronSecret = process.env.CRON_SECRET;
+    const isCron = !!cronSecret && req.headers.get('authorization') === `Bearer ${cronSecret}`;
+
+    if (!isCron) {
+      const { userId } = await auth();
+      if (!userId) return new NextResponse('Unauthorized', { status: 401 });
+    }
 
     const { projectId } = await req.json();
     if (!projectId) return new NextResponse('Missing projectId', { status: 400 });
