@@ -8,5 +8,8 @@
     "deploymentEnabled": {
       "main": true
     }
-  }
+  },
+  "crons": [
+    { "path": "/api/meta/upload/cron-poll", "schedule": "* * * * *" }
+  ]
 }

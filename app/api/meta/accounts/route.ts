@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { listAdAccounts, MetaAuthError } from '@/lib/meta-client';
-import { decrypt } from '@/lib/crypto';
+import { resolveConnection } from '@/lib/meta-connection';
 import type { AccountsResponse } from '@/types/meta';
 
 export const runtime = 'nodejs';
@@ -28,36 +28,26 @@ export async function GET() {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  if (!connection) {
-    return NextResponse.json({ requiresReconnect: true, error: 'No hay conexión con Meta' }, { status: 401 });
-  }
-  if (connection.status !== 'active') {
-    return NextResponse.json(
-      { requiresReconnect: true, error: connection.last_error || 'La conexión con Meta está inactiva' },
-      { status: 401 },
-    );
-  }
 
-  let token: string;
-  try {
-    token = decrypt({
-      ciphertext: connection.access_token_ciphertext,
-      iv: connection.access_token_iv,
-      tag: connection.access_token_tag,
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: `No se pudo descifrar el token de Meta: ${err?.message || 'error'}` },
-      { status: 500 },
-    );
+  const resolved = resolveConnection(connection);
+  if (!resolved.ok) {
+    if (resolved.markExpired) {
+      await supabaseAdmin
+        .from('meta_connections')
+        .update({ status: 'expired', last_error: 'token_expired' })
+        .eq('clerk_user_id', userId);
+    }
+    const body: Record<string, unknown> = { error: resolved.error };
+    if (resolved.requiresReconnect) body.requiresReconnect = true;
+    return NextResponse.json(body, { status: resolved.status });
   }
 
   try {
-    const accounts = await listAdAccounts(token);
+    const accounts = await listAdAccounts(resolved.token);
     const response: AccountsResponse = {
       accounts,
-      default_ad_account_id: connection.default_ad_account_id,
-      fb_user_name: connection.fb_user_name,
+      default_ad_account_id: connection!.default_ad_account_id,
+      fb_user_name: connection!.fb_user_name,
     };
     return NextResponse.json(response);
   } catch (err: any) {

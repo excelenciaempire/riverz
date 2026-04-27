@@ -7,7 +7,7 @@ import {
   MetaAuthError,
   MetaApiError,
 } from '@/lib/meta-client';
-import { decrypt } from '@/lib/crypto';
+import { resolveConnection } from '@/lib/meta-connection';
 import type {
   BulkUploadRequest,
   BulkUploadResponse,
@@ -78,26 +78,20 @@ export async function POST(req: Request) {
   if (connError) {
     return NextResponse.json({ error: connError.message }, { status: 500 });
   }
-  if (!connection || connection.status !== 'active') {
-    return NextResponse.json(
-      { requiresReconnect: true, error: 'No hay conexión activa con Meta' },
-      { status: 401 },
-    );
-  }
 
-  let token: string;
-  try {
-    token = decrypt({
-      ciphertext: connection.access_token_ciphertext,
-      iv: connection.access_token_iv,
-      tag: connection.access_token_tag,
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: `No se pudo descifrar el token: ${err?.message || 'error'}` },
-      { status: 500 },
-    );
+  const resolved = resolveConnection(connection);
+  if (!resolved.ok) {
+    if (resolved.markExpired) {
+      await supabaseAdmin
+        .from('meta_connections')
+        .update({ status: 'expired', last_error: 'token_expired' })
+        .eq('clerk_user_id', userId);
+    }
+    const errorBody: Record<string, unknown> = { error: resolved.error };
+    if (resolved.requiresReconnect) errorBody.requiresReconnect = true;
+    return NextResponse.json(errorBody, { status: resolved.status });
   }
+  const token = resolved.token;
 
   const { data: generations, error: genError } = await supabaseAdmin
     .from('generations')
