@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
   FlaskConical,
   Megaphone,
+  Wand2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCredits } from '@/hooks/useCredits';
@@ -33,6 +34,7 @@ const navigationGroups = [
       { name: 'Crear', href: '/crear', icon: Video },
       { name: 'UGC', href: '/crear/ugc', icon: FileVideo },
       { name: 'Clips', href: '/crear/clips', icon: FileVideo },
+      { name: 'Stealer', href: '/crear/stealer', icon: Wand2 },
     ],
   },
   {
