@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/admin-auth';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify admin access (you can add more robust auth here)
-    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(e => e.trim()) || [];
-    
+    const guard = await requireAdmin();
+    if (!guard.ok) {
+      const status = guard.reason === 'unauthenticated' ? 401 : 403;
+      return NextResponse.json({ error: guard.reason || 'Forbidden' }, { status });
+    }
+
     // Create Supabase client with service role key
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

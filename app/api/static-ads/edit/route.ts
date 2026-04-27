@@ -12,6 +12,7 @@ import {
   NanoBananaInput,
 } from '@/lib/kie-client';
 import { getPromptWithVariables } from '@/lib/get-ai-prompt';
+import { rateLimit, RATE_LIMITS } from '@/lib/security';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -35,6 +36,11 @@ export async function POST(req: Request) {
   try {
     const { userId } = await auth();
     if (!userId) return new NextResponse('Unauthorized', { status: 401 });
+
+    const rl = await rateLimit(`static-ads-edit:${userId}`, RATE_LIMITS.generation.limit, RATE_LIMITS.generation.windowMs);
+    if (!rl.success) {
+      return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un momento.' }, { status: 429 });
+    }
 
     const body = await req.json();
     const { generationId, editInstructions } = body;

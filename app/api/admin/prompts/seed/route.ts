@@ -1,7 +1,7 @@
-import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { FALLBACK_PROMPTS } from '@/lib/get-ai-prompt';
+import { requireAdmin } from '@/lib/admin-auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -88,11 +88,12 @@ const DEFAULT_PROMPTS = [
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) return new NextResponse('Unauthorized', { status: 401 });
-
-    // Skip admin check for now - user is authenticated
-    console.log('[SEED-PROMPTS] User:', userId);
+    const guard = await requireAdmin();
+    if (!guard.ok) {
+      const status = guard.reason === 'unauthenticated' ? 401 : 403;
+      return new NextResponse(guard.reason || 'Forbidden', { status });
+    }
+    console.log('[SEED-PROMPTS] admin:', guard.email);
 
     const results = {
       created: [] as string[],

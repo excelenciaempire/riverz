@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimit, RATE_LIMITS } from '@/lib/security';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -13,6 +14,12 @@ const supabaseAdmin = createClient(
 
 const STEALER_BUCKET = 'stealer';
 const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500 MB
+const ALLOWED_VIDEO_MIMES = new Set([
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+  'video/x-m4v',
+]);
 
 /**
  * POST /api/stealer/ingest
@@ -35,6 +42,11 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
+    const rl = await rateLimit(`stealer-ingest:${userId}`, RATE_LIMITS.generation.limit, RATE_LIMITS.generation.windowMs);
+    if (!rl.success) {
+      return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un momento.' }, { status: 429 });
+    }
+
     const contentType = req.headers.get('content-type') || '';
 
     let projectName: string | null = null;
@@ -56,8 +68,15 @@ export async function POST(req: Request) {
       if (file.size > MAX_VIDEO_BYTES) {
         return NextResponse.json({ error: 'File too large (max 500 MB)' }, { status: 413 });
       }
+      const declaredMime = (file.type || '').toLowerCase();
+      if (!ALLOWED_VIDEO_MIMES.has(declaredMime)) {
+        return NextResponse.json(
+          { error: `Unsupported file type "${declaredMime || 'unknown'}". Allowed: ${[...ALLOWED_VIDEO_MIMES].join(', ')}` },
+          { status: 415 }
+        );
+      }
       fileBuffer = await file.arrayBuffer();
-      fileMime = file.type || 'video/mp4';
+      fileMime = declaredMime;
     } else {
       const body = await req.json().catch(() => ({}));
       projectName = body?.name || null;

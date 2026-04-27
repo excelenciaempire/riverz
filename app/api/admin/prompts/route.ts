@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/admin-auth';
 
 // GET - Fetch all prompts
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
+    const guard = await requireAdmin();
+    if (!guard.ok) {
+      const status = guard.reason === 'unauthenticated' ? 401 : 403;
+      return new NextResponse(guard.reason || 'Forbidden', { status });
     }
 
     const supabase = await createClient();
@@ -30,9 +31,10 @@ export async function GET() {
 // POST - Create new prompt
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
+    const guard = await requireAdmin();
+    if (!guard.ok) {
+      const status = guard.reason === 'unauthenticated' ? 401 : 403;
+      return new NextResponse(guard.reason || 'Forbidden', { status });
     }
 
     const body = await req.json();
@@ -70,9 +72,10 @@ export async function POST(req: Request) {
 // PATCH - Update prompt
 export async function PATCH(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
+    const guard = await requireAdmin();
+    if (!guard.ok) {
+      const status = guard.reason === 'unauthenticated' ? 401 : 403;
+      return new NextResponse(guard.reason || 'Forbidden', { status });
     }
 
     const body = await req.json();
@@ -103,9 +106,10 @@ export async function PATCH(req: Request) {
 // DELETE - Delete prompt
 export async function DELETE(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
+    const guard = await requireAdmin();
+    if (!guard.ok) {
+      const status = guard.reason === 'unauthenticated' ? 401 : 403;
+      return new NextResponse(guard.reason || 'Forbidden', { status });
     }
 
     const { searchParams } = new URL(req.url);

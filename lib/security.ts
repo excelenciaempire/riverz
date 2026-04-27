@@ -109,26 +109,33 @@ export function checkResourceOwnership(
 }
 
 /**
- * Generate secure random token
+ * Generate a cryptographically random token.
+ *
+ * Uses the Web Crypto API (available in both Node.js >= 18 and browsers).
+ * No `Math.random()` fallback — that would silently produce predictable tokens
+ * in any environment where Web Crypto is missing, which is exactly the kind of
+ * "looks fine until it gets exploited" failure we want to forbid. If Web Crypto
+ * is missing the function throws and the caller's surrounding code fails fast.
  */
 export function generateSecureToken(length: number = 32): string {
+  if (typeof crypto === 'undefined' || !crypto.getRandomValues) {
+    throw new Error('Web Crypto unavailable; cannot generate secure token');
+  }
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  const randomValues = new Uint8Array(length);
-  
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(randomValues);
-    for (let i = 0; i < length; i++) {
-      token += chars[randomValues[i] % chars.length];
-    }
-  } else {
-    // Fallback for environments without crypto
-    for (let i = 0; i < length; i++) {
-      token += chars[Math.floor(Math.random() * chars.length)];
+  const out: string[] = [];
+  // Reject the upper biased tail when sampling — keeps the distribution flat
+  // even though chars.length doesn't divide 256 evenly.
+  const max = Math.floor(256 / chars.length) * chars.length;
+  const buf = new Uint8Array(length * 2); // oversample so we still finish on rejections
+  let written = 0;
+  while (written < length) {
+    crypto.getRandomValues(buf);
+    for (let i = 0; i < buf.length && written < length; i++) {
+      const r = buf[i];
+      if (r < max) out.push(chars[r % chars.length]), written++;
     }
   }
-  
-  return token;
+  return out.join('');
 }
 
 /**

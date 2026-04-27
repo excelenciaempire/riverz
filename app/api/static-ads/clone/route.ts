@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimit, RATE_LIMITS } from '@/lib/security';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -16,6 +17,13 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    // Rate limit per user. clone is the most expensive single call (writes
+    // up to 100 × 5 = 500 generation rows + holds locks on user_credits).
+    const rl = await rateLimit(`static-ads-clone:${userId}`, RATE_LIMITS.generation.limit, RATE_LIMITS.generation.windowMs);
+    if (!rl.success) {
+      return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un momento.' }, { status: 429 });
     }
 
     const { templateIds, productId, projectName } = await req.json();
@@ -68,39 +76,51 @@ export async function POST(req: Request) {
     const COST_PER_TEMPLATE = COST_PER_IMAGE * VARIATIONS_PER_TEMPLATE;
     const totalCost = templateIds.length * COST_PER_TEMPLATE;
     
-    // Check user's internal credits
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('user_credits')
-      .select('credits')
-      .eq('clerk_user_id', userId)
-      .single();
+    // Atomic deduction: read → update with current-balance guard, retry on contention.
+    // Without this two concurrent /clone calls could both pass the balance check and
+    // overdraw the user's credits.
+    let newBalance: number | null = null;
+    let lastSeenBalance = 0;
+    for (let attempt = 0; attempt < 3 && newBalance === null; attempt++) {
+      const { data: userData, error: userError } = await supabaseAdmin
+        .from('user_credits')
+        .select('credits')
+        .eq('clerk_user_id', userId)
+        .single();
+      if (userError || !userData) {
+        return new NextResponse('User not found', { status: 404 });
+      }
+      lastSeenBalance = userData.credits;
+      if (userData.credits < totalCost) {
+        return NextResponse.json({
+          error: 'Créditos insuficientes',
+          required: totalCost,
+          available: userData.credits,
+          perImage: COST_PER_IMAGE,
+          perTemplate: COST_PER_TEMPLATE,
+          variationsPerTemplate: VARIATIONS_PER_TEMPLATE,
+        }, { status: 402 });
+      }
 
-    if (userError || !userData) {
-      return new NextResponse('User not found', { status: 404 });
+      const proposed = userData.credits - totalCost;
+      const { data: updRow, error: deductError } = await supabaseAdmin
+        .from('user_credits')
+        .update({ credits: proposed, updated_at: new Date().toISOString() })
+        .eq('clerk_user_id', userId)
+        .eq('credits', userData.credits)
+        .select('credits')
+        .maybeSingle();
+      if (deductError) {
+        return new NextResponse('Failed to deduct credits', { status: 500 });
+      }
+      if (updRow) newBalance = updRow.credits;
+      // else: row changed mid-flight, retry
     }
-
-    if (userData.credits < totalCost) {
-      return NextResponse.json({
-        error: 'Créditos insuficientes',
-        required: totalCost,
-        available: userData.credits,
-        perImage: COST_PER_IMAGE,
-        perTemplate: COST_PER_TEMPLATE,
-        variationsPerTemplate: VARIATIONS_PER_TEMPLATE,
-      }, { status: 402 });
-    }
-
-    // Deduct credits upfront
-    const { error: deductError } = await supabaseAdmin
-      .from('user_credits')
-      .update({ 
-        credits: userData.credits - totalCost,
-        updated_at: new Date().toISOString()
-      })
-      .eq('clerk_user_id', userId);
-
-    if (deductError) {
-      return new NextResponse('Failed to deduct credits', { status: 500 });
+    if (newBalance === null) {
+      return NextResponse.json(
+        { error: 'Concurrent update conflict, please retry', current_credits: lastSeenBalance },
+        { status: 409 }
+      );
     }
 
     // Create Project

@@ -90,13 +90,73 @@ export function getMediaTypeFromDataUri(dataUri: string): 'image/jpeg' | 'image/
 }
 
 /**
- * Downloads an image from URL and converts it to base64 data URI
+ * Hosts whose images we are willing to download server-side. This is the
+ * allowlist that prevents SSRF — the function is called with URLs that come
+ * from the database (templates, products, kie.ai task results), and an
+ * attacker who can write to those tables could otherwise force us to fetch
+ * `http://localhost/admin` or AWS metadata. Any host not in this list is
+ * rejected before fetch happens.
+ *
+ * Add subdomains explicitly — the check is suffix-based on the bare hostname.
+ */
+const SSRF_ALLOWED_SUFFIXES = [
+  '.supabase.co',
+  '.supabase.in',
+  '.kie.ai',
+  '.googleusercontent.com',
+  '.googleapis.com',
+  '.cloudfront.net',
+  '.r2.cloudflarestorage.com',
+  '.amazonaws.com',
+  '.openai.com',
+  '.elevenlabs.io',
+  // Riverz-owned CDN domains
+  'riverzai.com',
+  'cdn.riverzai.com',
+];
+
+function assertHostAllowed(rawUrl: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error('Invalid URL');
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error(`Disallowed protocol: ${parsed.protocol}`);
+  }
+  // Reject anything that resolves to localhost / link-local / metadata IPs
+  // syntactically (best-effort; full DNS rebinding protection requires more).
+  const host = parsed.hostname.toLowerCase();
+  const blocked = [
+    'localhost', '127.', '0.0.0.0', '::1',
+    '169.254.', '10.', '192.168.',
+    '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.',
+    '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.',
+    '172.28.', '172.29.', '172.30.', '172.31.',
+  ];
+  if (blocked.some((p) => host === p.replace(/\.$/, '') || host.startsWith(p))) {
+    throw new Error(`Blocked private/loopback host: ${host}`);
+  }
+  const ok = SSRF_ALLOWED_SUFFIXES.some(
+    (s) => host === s.replace(/^\./, '') || host.endsWith(s)
+  );
+  if (!ok) {
+    throw new Error(`Host not in SSRF allowlist: ${host}`);
+  }
+  return parsed;
+}
+
+/**
+ * Downloads an image from URL and converts it to base64 data URI.
+ * Validates the host against an allowlist before fetching.
  */
 export async function imageUrlToBase64(url: string): Promise<string> {
   try {
-    console.log(`[IMAGE] Converting to base64: ${url.substring(0, 60)}...`);
-    
-    const response = await fetch(url, {
+    const safeUrl = assertHostAllowed(url);
+    console.log(`[IMAGE] Converting to base64: ${safeUrl.host}${safeUrl.pathname.substring(0, 30)}...`);
+
+    const response = await fetch(safeUrl.toString(), {
       headers: {
         'Accept': 'image/*'
       }
@@ -766,13 +826,15 @@ export async function pollKieTaskUntilComplete(
 }
 
 /**
- * Downloads an image from a URL and returns it as a Buffer
+ * Downloads an image from a URL and returns it as a Buffer.
+ * Same SSRF allowlist as imageUrlToBase64 — never fetch arbitrary hosts.
  */
 export async function downloadImage(url: string): Promise<Buffer> {
-  console.log(`[DOWNLOAD] Fetching image: ${url.substring(0, 60)}...`);
-  
-  const response = await fetch(url, {
-    headers: { 'Accept': 'image/*' }
+  const safeUrl = assertHostAllowed(url);
+  console.log(`[DOWNLOAD] Fetching: ${safeUrl.host}${safeUrl.pathname.substring(0, 30)}...`);
+
+  const response = await fetch(safeUrl.toString(), {
+    headers: { 'Accept': 'image/*,video/*' }
   });
   
   if (!response.ok) {

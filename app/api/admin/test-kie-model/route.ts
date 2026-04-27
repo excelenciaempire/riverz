@@ -1,6 +1,6 @@
-import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { createKieTask, analyzeWithModel, GeminiMessage } from '@/lib/kie-client';
+import { requireAdmin } from '@/lib/admin-auth';
 
 /**
  * Verifies a kie.ai model from the admin panel.
@@ -12,8 +12,11 @@ import { createKieTask, analyzeWithModel, GeminiMessage } from '@/lib/kie-client
  */
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) return new NextResponse('Unauthorized', { status: 401 });
+    const guard = await requireAdmin();
+    if (!guard.ok) {
+      const status = guard.reason === 'unauthenticated' ? 401 : 403;
+      return new NextResponse(guard.reason || 'Forbidden', { status });
+    }
 
     const { model, type } = await req.json();
     if (!model) return new NextResponse('Missing model', { status: 400 });

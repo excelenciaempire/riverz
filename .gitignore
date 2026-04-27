@@ -44,3 +44,15 @@ next-env.d.ts
 /worker/node_modules
 /worker/dist
 /worker/.env
+
+# setup scripts and exports that historically held secrets — never commit
+install.ps1
+add-stripe-env*.ps1
+STRIPE_*.txt
+UGC_*.json
+*.n8n.json
+.vercel-redeploy
+.vercel-force-redeploy
+
+# vercel cli linkage (contains project + org IDs but is regenerated on `vercel link`)
+.vercel/
