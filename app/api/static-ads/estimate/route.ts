@@ -22,12 +22,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid template count' }, { status: 400 });
     }
 
-    const estimate = estimateBulkTime(templateCount);
-    // Matches Kie.ai pricing (Nano Banana Pro ~$0.134/image)
-    const COST_PER_AD = 14;
-    const totalCredits = templateCount * COST_PER_AD;
-    
-    // Get user's current balance
+    // Pricing: 14 credits per Nano Banana image × 5 variations per template.
+    const COST_PER_IMAGE = 14;
+    const VARIATIONS_PER_TEMPLATE = 5;
+    const totalImages = templateCount * VARIATIONS_PER_TEMPLATE;
+    const totalCredits = totalImages * COST_PER_IMAGE;
+
+    // Use the existing rate-limiter estimate as a baseline but scale up for 5x images.
+    const baseline = estimateBulkTime(totalImages);
+    const estimatedMinutes = baseline.estimatedMinutes;
+    const batches = baseline.batches;
+
     const { data: userData } = await supabaseAdmin
       .from('user_credits')
       .select('credits')
@@ -39,18 +44,22 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       templateCount,
+      variationsPerTemplate: VARIATIONS_PER_TEMPLATE,
+      totalImages,
       totalCredits,
+      costPerImage: COST_PER_IMAGE,
+      costPerTemplate: COST_PER_IMAGE * VARIATIONS_PER_TEMPLATE,
       currentBalance,
       hasEnough,
-      estimatedMinutes: estimate.estimatedMinutes,
-      batches: estimate.batches,
-      message: !hasEnough 
-        ? `Créditos insuficientes (tienes ${currentBalance}, necesitas ${totalCredits})`
-        : templateCount <= 10 
-          ? 'Generación rápida (~1-2 min)'
-          : templateCount <= 50
-            ? `Generación en lotes (~${estimate.estimatedMinutes} min)`
-            : `Generación masiva (~${estimate.estimatedMinutes} min). Puedes cerrar y volver después.`
+      estimatedMinutes,
+      batches,
+      message: !hasEnough
+        ? `Créditos insuficientes (tienes ${currentBalance}, necesitas ${totalCredits} para ${totalImages} imágenes)`
+        : totalImages <= 25
+          ? `Generación rápida — ${totalImages} imágenes (~${estimatedMinutes} min)`
+          : totalImages <= 100
+            ? `Generación en lotes — ${totalImages} imágenes (~${estimatedMinutes} min)`
+            : `Generación masiva — ${totalImages} imágenes (~${estimatedMinutes} min). Puedes cerrar y volver después.`,
     });
 
   } catch (error) {

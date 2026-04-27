@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
-import { 
-  createKieTask, 
-  getKieTaskResult, 
-  getKieModelConfig, 
-  analyzeWithGemini3Pro,
+import {
+  createKieTask,
+  getKieTaskResult,
+  getKieModelConfig,
+  analyzeWithFallback,
   imageUrlToBase64,
   downloadImage,
-  GeminiMessage, 
-  NanoBananaInput 
+  GeminiMessage,
+  NanoBananaInput,
 } from '@/lib/kie-client';
-import { getPromptWithVariables, getPromptText } from '@/lib/get-ai-prompt';
+import { getPromptText, getPromptWithVariables } from '@/lib/get-ai-prompt';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -23,40 +23,51 @@ const supabaseAdmin = createClient(
 );
 
 /**
- * Static Ads Pipeline - Each template processes through ALL steps sequentially
- * Multiple templates process in PARALLEL
- * 
- * Flow per template: pending_analysis → analyzing → adapting → generating_prompt → pending_generation → generating → completed
+ * Static Ads Pipeline (5 variations per template).
+ *
+ * For each selected template the system creates 5 sibling generation rows
+ * (variation_index 1..5 inside input_data). The row with variation_index=1
+ * is the LEADER and runs the shared analysis steps once; the other four wait.
+ *
+ * Steps (per template, in order):
+ *   1. Template Analysis  (Claude 4.6 vision)  → templateAnalysisJson
+ *   2. Adapt to Product   (Claude 4.6 vision)  → adaptedJson
+ *   3. Generate 5 Prompts (Claude 4.6)         → variationPrompts[5]
+ *      The leader copies templateAnalysisJson + adaptedJson + each variation's
+ *      assigned prompt into all sibling rows (#2..#5), flipping their status
+ *      from 'pending_variation' to 'pending_generation'.
+ *   4. Create Nano Banana task (per variation, in parallel)  → generationTaskId
+ *   5. Poll for result (per variation, on each process-queue tick)
  */
 
-// Parse JSON from Gemini response
+const VARIATIONS_PER_TEMPLATE = 5;
+
+// --- Helpers ------------------------------------------------------------
+
 function parseJsonFromResponse(response: string): any {
-  let jsonStr = response.trim();
-  if (jsonStr.startsWith('```json')) jsonStr = jsonStr.slice(7);
-  else if (jsonStr.startsWith('```')) jsonStr = jsonStr.slice(3);
-  if (jsonStr.endsWith('```')) jsonStr = jsonStr.slice(0, -3);
-  return JSON.parse(jsonStr.trim());
+  let s = response.trim();
+  if (s.startsWith('```json')) s = s.slice(7);
+  else if (s.startsWith('```')) s = s.slice(3);
+  if (s.endsWith('```')) s = s.slice(0, -3);
+  return JSON.parse(s.trim());
 }
 
-// Update status
 async function updateGeneration(id: string, updates: any) {
-  await supabaseAdmin.from('generations').update({
-    ...updates,
-    updated_at: new Date().toISOString()
-  }).eq('id', id);
+  await supabaseAdmin
+    .from('generations')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id);
 }
 
-// Fail generation
 async function failGeneration(id: string, error: string) {
   await updateGeneration(id, { status: 'failed', error_message: error });
 }
 
-// Save result to storage
 async function saveResult(id: string, kieUrl: string, projectId: string) {
   try {
     const imageBuffer = await downloadImage(kieUrl);
     const fileName = `${projectId}/${id}_${Date.now()}.png`;
-    
+
     const { error } = await supabaseAdmin.storage
       .from('generations')
       .upload(fileName, imageBuffer, { contentType: 'image/png', upsert: true });
@@ -68,125 +79,183 @@ async function saveResult(id: string, kieUrl: string, projectId: string) {
 
     const { data } = supabaseAdmin.storage.from('generations').getPublicUrl(fileName);
     await updateGeneration(id, { status: 'completed', result_url: data.publicUrl });
-  } catch (e) {
+  } catch {
     await updateGeneration(id, { status: 'completed', result_url: kieUrl });
   }
 }
 
-// Process a SINGLE generation through its ENTIRE remaining pipeline
-async function processGeneration(gen: any, generationModel: string, projectId: string): Promise<void> {
+// --- Shared analysis steps (run once per template) ---------------------
+
+/**
+ * Steps 1-3 for a template. Runs on the leader generation (variation_index=1)
+ * and writes the resulting JSONs + assigned prompt into ALL siblings.
+ */
+async function runSharedAnalysisForTemplate(
+  leader: any,
+  siblings: any[],
+  analysisModel: string
+): Promise<void> {
+  const id = leader.id;
+  let inputData = { ...leader.input_data };
+  const templateId = inputData.templateId;
+  const allRows = [leader, ...siblings];
+
+  const log = (msg: string) => console.log(`[TEMPLATE ${templateId?.slice(0, 8)}] ${msg}`);
+
+  // STEP 1 — Template analysis with vision -------------------------------
+  if (!inputData.templateAnalysisJson) {
+    log('Step 1: Analyzing template (Claude 4.6 vision)...');
+    await Promise.all(allRows.map((r) => updateGeneration(r.id, { status: 'analyzing' })));
+
+    if (!inputData.templateThumbnail) throw new Error('Missing templateThumbnail');
+
+    const templateBase64 = await imageUrlToBase64(inputData.templateThumbnail);
+    const analysisPrompt = await getPromptText('template_analysis_json');
+
+    const messages: GeminiMessage[] = [
+      { role: 'developer', content: analysisPrompt },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: `Analyze this template thoroughly: ${inputData.templateName || 'Unnamed'}` },
+          { type: 'image_url', image_url: { url: templateBase64 } },
+        ],
+      },
+    ];
+
+    const { text, modelUsed, fellBack } = await analyzeWithFallback(analysisModel, messages, {
+      temperature: 0.3,
+      maxTokens: 4000,
+    });
+    if (fellBack) log(`Step 1 fell back to ${modelUsed}`);
+
+    inputData.templateAnalysisJson = parseJsonFromResponse(text);
+    inputData.modelUsedAnalysis = modelUsed;
+  }
+
+  // STEP 2 — Adapt to product (vision: product photos) ------------------
+  if (!inputData.adaptedJson) {
+    log('Step 2: Adapting to product (Claude 4.6 vision)...');
+    await Promise.all(allRows.map((r) => updateGeneration(r.id, { status: 'adapting' })));
+
+    const adaptationSystemPrompt = await getPromptWithVariables('template_adaptation', {
+      TEMPLATE_JSON: JSON.stringify(inputData.templateAnalysisJson, null, 2),
+      PRODUCT_NAME: inputData.productName || 'Product',
+      PRODUCT_DESCRIPTION: inputData.productDescription || '',
+      PRODUCT_BENEFITS: inputData.productBenefits || '',
+      PRODUCT_CATEGORY: inputData.productCategory || 'General',
+      RESEARCH_JSON: inputData.researchData ? JSON.stringify(inputData.researchData, null, 2) : 'Not available',
+    });
+
+    const productImages: string[] = (inputData.productImages || []).slice(0, 4);
+    const userContent: any[] = [
+      { type: 'text', text: 'Aquí están las fotos reales del producto. Genera el JSON adaptado.' },
+      ...productImages
+        .filter((u: string) => typeof u === 'string' && u.startsWith('http'))
+        .map((u: string) => ({ type: 'image_url', image_url: { url: u } })),
+    ];
+
+    const messages: GeminiMessage[] = [
+      { role: 'developer', content: adaptationSystemPrompt },
+      { role: 'user', content: userContent },
+    ];
+
+    const { text, modelUsed, fellBack } = await analyzeWithFallback(analysisModel, messages, {
+      temperature: 0.4,
+      maxTokens: 4000,
+    });
+    if (fellBack) log(`Step 2 fell back to ${modelUsed}`);
+
+    inputData.adaptedJson = parseJsonFromResponse(text);
+  }
+
+  // STEP 3 — Generate 5 distinct prompts --------------------------------
+  if (!inputData.variationPrompts || inputData.variationPrompts.length < VARIATIONS_PER_TEMPLATE) {
+    log('Step 3: Generating 5 creative prompts (Claude 4.6)...');
+    await Promise.all(allRows.map((r) => updateGeneration(r.id, { status: 'generating_prompt' })));
+
+    const promptTemplate = await getPromptWithVariables('static_ads_5_variations_prompts', {
+      ADAPTED_JSON: JSON.stringify(inputData.adaptedJson, null, 2),
+      PRODUCT_NAME: inputData.productName || 'Product',
+      RESEARCH_JSON: inputData.researchData ? JSON.stringify(inputData.researchData, null, 2) : 'Not available',
+    });
+
+    const messages: GeminiMessage[] = [
+      { role: 'developer', content: promptTemplate },
+      { role: 'user', content: 'Genera el JSON array con las 5 variaciones.' },
+    ];
+
+    const { text, modelUsed, fellBack } = await analyzeWithFallback(analysisModel, messages, {
+      temperature: 0.7,
+      maxTokens: 6000,
+    });
+    if (fellBack) log(`Step 3 fell back to ${modelUsed}`);
+
+    const parsed = parseJsonFromResponse(text);
+    if (!Array.isArray(parsed) || parsed.length < VARIATIONS_PER_TEMPLATE) {
+      throw new Error(`Expected ${VARIATIONS_PER_TEMPLATE} prompts, got ${Array.isArray(parsed) ? parsed.length : 'non-array'}`);
+    }
+    inputData.variationPrompts = parsed.slice(0, VARIATIONS_PER_TEMPLATE);
+  }
+
+  // Persist shared results into all sibling rows (including leader).
+  // Each row gets only ITS variation prompt under generatedPrompt for downstream code.
+  log(`Step 3 complete. Distributing prompts to ${allRows.length} variation rows...`);
+  await Promise.all(
+    allRows.map((row) => {
+      const idx = (row.input_data?.variationIndex || 1) - 1;
+      const variation = inputData.variationPrompts[idx] || inputData.variationPrompts[0];
+      return updateGeneration(row.id, {
+        status: 'pending_generation',
+        input_data: {
+          ...row.input_data,
+          templateAnalysisJson: inputData.templateAnalysisJson,
+          adaptedJson: inputData.adaptedJson,
+          variationPrompts: inputData.variationPrompts,
+          variationAngle: variation?.angle || `VARIATION_${idx + 1}`,
+          variationTitle: variation?.title || '',
+          generatedPrompt: variation?.prompt || '',
+          modelUsedAnalysis: inputData.modelUsedAnalysis || analysisModel,
+        },
+      });
+    })
+  );
+}
+
+// --- Per-variation generation (steps 4 & 5) ---------------------------
+
+async function processVariationGeneration(gen: any, generationModel: string, projectId: string): Promise<void> {
   const id = gen.id;
   let inputData = { ...gen.input_data };
-  let currentStatus = gen.status;
-  
-  console.log(`[GEN ${id.slice(0,8)}] Starting from status: ${currentStatus}`);
+  const log = (m: string) => console.log(`[GEN ${id.slice(0, 8)} v${inputData.variationIndex}] ${m}`);
 
   try {
-    // STEP 1: Template Analysis (if pending)
-    if (currentStatus === 'pending_analysis') {
-      console.log(`[GEN ${id.slice(0,8)}] Step 1: Analyzing template...`);
-      await updateGeneration(id, { status: 'analyzing' });
-      
-      const { templateName, templateThumbnail } = inputData;
-      if (!templateThumbnail) throw new Error('Missing templateThumbnail');
-
-      const templateBase64 = await imageUrlToBase64(templateThumbnail);
-      const analysisPrompt = await getPromptText('template_analysis_json');
-
-      const messages: GeminiMessage[] = [
-        { role: 'developer', content: analysisPrompt },
-        { role: 'user', content: [
-          { type: 'text', text: `Analyze this template: ${templateName}` },
-          { type: 'image_url', image_url: { url: templateBase64 } }
-        ]}
-      ];
-
-      const response = await analyzeWithGemini3Pro(messages, { temperature: 0.3, maxTokens: 3000 });
-      inputData.templateAnalysisJson = parseJsonFromResponse(response);
-      
-      await updateGeneration(id, { input_data: inputData });
-      currentStatus = 'analyzing';
-      console.log(`[GEN ${id.slice(0,8)}] Step 1 complete`);
-    }
-
-    // STEP 2: Adaptation (if analyzing with JSON)
-    if (currentStatus === 'analyzing' && inputData.templateAnalysisJson) {
-      console.log(`[GEN ${id.slice(0,8)}] Step 2: Adapting to product...`);
-      await updateGeneration(id, { status: 'adapting' });
-
-      const adaptationPrompt = await getPromptWithVariables('template_adaptation', {
-        TEMPLATE_JSON: JSON.stringify(inputData.templateAnalysisJson, null, 2),
-        PRODUCT_NAME: inputData.productName || 'Product',
-        PRODUCT_DESCRIPTION: inputData.productDescription || '',
-        PRODUCT_BENEFITS: inputData.productBenefits || '',
-        PRODUCT_CATEGORY: inputData.productCategory || 'General',
-        RESEARCH_JSON: inputData.researchData ? JSON.stringify(inputData.researchData, null, 2) : 'Not available'
-      });
-
-      const messages: GeminiMessage[] = [
-        { role: 'developer', content: adaptationPrompt },
-        { role: 'user', content: 'Generate the adapted JSON.' }
-      ];
-
-      const response = await analyzeWithGemini3Pro(messages, { temperature: 0.4, maxTokens: 3000 });
-      inputData.adaptedJson = parseJsonFromResponse(response);
-      
-      await updateGeneration(id, { input_data: inputData });
-      currentStatus = 'adapting';
-      console.log(`[GEN ${id.slice(0,8)}] Step 2 complete`);
-    }
-
-    // STEP 3: Generate Prompt (if adapting with adapted JSON)
-    if (currentStatus === 'adapting' && inputData.adaptedJson) {
-      console.log(`[GEN ${id.slice(0,8)}] Step 3: Generating prompt...`);
-      await updateGeneration(id, { status: 'generating_prompt' });
-
-      const promptTemplate = await getPromptWithVariables('static_ads_prompt_generation', {
-        ADAPTED_JSON: JSON.stringify(inputData.adaptedJson, null, 2),
-        PRODUCT_NAME: inputData.productName || 'Product'
-      });
-
-      const messages: GeminiMessage[] = [
-        { role: 'developer', content: promptTemplate },
-        { role: 'user', content: 'Generate the image prompt.' }
-      ];
-
-      const response = await analyzeWithGemini3Pro(messages, { temperature: 0.5, maxTokens: 500 });
-      inputData.generatedPrompt = response.trim();
-      
-      await updateGeneration(id, { status: 'pending_generation', input_data: inputData });
-      currentStatus = 'pending_generation';
-      console.log(`[GEN ${id.slice(0,8)}] Step 3 complete. Prompt: ${inputData.generatedPrompt.slice(0,60)}...`);
-    }
-
-    // STEP 4: Create Nano Banana Task (if pending_generation with prompt)
-    if (currentStatus === 'pending_generation' && inputData.generatedPrompt && !inputData.generationTaskId) {
-      console.log(`[GEN ${id.slice(0,8)}] Step 4: Creating Nano Banana task...`);
+    // STEP 4 — Create Nano Banana task -----------------------------------
+    if (gen.status === 'pending_generation' && inputData.generatedPrompt && !inputData.generationTaskId) {
+      log('Step 4: Creating Nano Banana task...');
       await updateGeneration(id, { status: 'generating' });
 
       const allImages: string[] = inputData.productImages || (inputData.productImage ? [inputData.productImage] : []);
-      const imageInputs = allImages.slice(0, 8).filter((url: string) => url?.startsWith('http'));
+      const imageInputs = allImages.slice(0, 8).filter((url: string) => typeof url === 'string' && url.startsWith('http'));
 
-            const nanoBananaInput: NanoBananaInput = {
-              prompt: inputData.generatedPrompt,
-              image_input: imageInputs,
-              aspect_ratio: '3:4',
-              resolution: '2K',
-              output_format: 'png'
-            };
+      const nanoBananaInput: NanoBananaInput = {
+        prompt: inputData.generatedPrompt,
+        image_input: imageInputs,
+        aspect_ratio: '3:4',
+        resolution: '2K',
+        output_format: 'png',
+      };
 
       const taskId = await createKieTask(generationModel, nanoBananaInput);
       inputData.generationTaskId = taskId;
-      
       await updateGeneration(id, { input_data: inputData });
-      currentStatus = 'generating';
-      console.log(`[GEN ${id.slice(0,8)}] Step 4 complete. TaskId: ${taskId}`);
+      log(`Step 4 done. taskId=${taskId}`);
+      return; // poll on next tick
     }
 
-    // STEP 5: Poll for result (if generating with taskId)
-    if (currentStatus === 'generating' && inputData.generationTaskId) {
-      console.log(`[GEN ${id.slice(0,8)}] Step 5: Polling Nano Banana...`);
-      
+    // STEP 5 — Poll for result -------------------------------------------
+    if (gen.status === 'generating' && inputData.generationTaskId) {
+      log('Step 5: Polling kie.ai for result...');
       const result = await getKieTaskResult(inputData.generationTaskId);
 
       if (result.status === 'SUCCESS') {
@@ -197,79 +266,119 @@ async function processGeneration(gen: any, generationModel: string, projectId: s
         else if (result.result?.output) {
           resultUrl = Array.isArray(result.result.output) ? result.result.output[0] : result.result.output;
         }
-
-        if (resultUrl) {
-          console.log(`[GEN ${id.slice(0,8)}] SUCCESS! Saving...`);
-          await saveResult(id, resultUrl, projectId);
-        } else {
-          throw new Error('No result URL');
-        }
+        if (!resultUrl) throw new Error('No result URL in kie.ai response');
+        log('SUCCESS — saving image...');
+        await saveResult(id, resultUrl, projectId);
       } else if (result.status === 'FAILED') {
-        throw new Error(result.error || 'Generation failed');
+        throw new Error(result.error || 'Generation failed in kie.ai');
       }
-      // PENDING/PROCESSING = will be checked on next poll
+      // PENDING/PROCESSING — handled on next tick
     }
-
   } catch (error: any) {
-    console.error(`[GEN ${id.slice(0,8)}] Error:`, error.message);
+    console.error(`[GEN ${id.slice(0, 8)}] Error:`, error.message);
     await failGeneration(id, error.message);
   }
 }
 
+// --- Orchestrator ------------------------------------------------------
+
 export async function POST(req: Request) {
   try {
-    console.log('[PROCESS-QUEUE] Starting...');
-    
+    console.log('[PROCESS-QUEUE] Tick start');
+
     const { userId } = await auth();
     if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
-    const body = await req.json();
-    const { projectId } = body;
+    const { projectId } = await req.json();
     if (!projectId) return new NextResponse('Missing projectId', { status: 400 });
 
-    // Reset stuck generations (older than 2 min)
+    // Reset rows that are stuck in a transient analysis state for >2 min.
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-    await supabaseAdmin.from('generations')
+    await supabaseAdmin
+      .from('generations')
       .update({ status: 'pending_analysis', updated_at: new Date().toISOString() })
       .eq('project_id', projectId)
       .in('status', ['analyzing', 'adapting', 'generating_prompt'])
       .lt('updated_at', twoMinutesAgo);
 
-    // Fetch all non-terminal generations
+    // Fetch every non-terminal row in this project.
     const { data: generations, error } = await supabaseAdmin
       .from('generations')
       .select('*')
       .eq('project_id', projectId)
-      .in('status', ['pending_analysis', 'analyzing', 'adapting', 'generating_prompt', 'pending_generation', 'generating']);
+      .in('status', [
+        'pending_analysis',
+        'pending_variation',
+        'analyzing',
+        'adapting',
+        'generating_prompt',
+        'pending_generation',
+        'generating',
+      ]);
 
     if (error) throw error;
-    
-    console.log(`[PROCESS-QUEUE] Found ${generations?.length || 0} generations to process`);
-    
     if (!generations || generations.length === 0) {
       return await returnProgress(projectId);
     }
 
-    console.log(`[PROCESS-QUEUE] Generation statuses: ${generations.map(g => g.status).join(', ')}`);
+    console.log(`[PROCESS-QUEUE] ${generations.length} active rows, statuses=${[...new Set(generations.map((g: any) => g.status))].join(',')}`);
 
-    const { generationModel } = await getKieModelConfig();
+    const { analysisModel, generationModel } = await getKieModelConfig();
+    console.log(`[PROCESS-QUEUE] models: analysis=${analysisModel}, generation=${generationModel}`);
 
-    // Process ALL generations in parallel - each one goes through its full pipeline
-    const results = await Promise.allSettled(
-      generations.map((gen) => processGeneration(gen, generationModel, projectId))
-    );
+    // Group by templateId so the leader can run the shared analysis steps.
+    const byTemplate = new Map<string, any[]>();
+    for (const gen of generations as any[]) {
+      const tid = gen.input_data?.templateId || 'unknown';
+      if (!byTemplate.has(tid)) byTemplate.set(tid, []);
+      byTemplate.get(tid)!.push(gen);
+    }
 
-    // Log any failures
-    results.forEach((result, idx) => {
-      if (result.status === 'rejected') {
-        console.error(`[PROCESS-QUEUE] Generation ${generations[idx].id.slice(0,8)} failed:`, result.reason);
+    // Phase A — for each template that hasn't finished shared analysis yet,
+    // run the leader's shared steps. Templates run in parallel.
+    const sharedTasks: Promise<any>[] = [];
+    for (const [, rows] of byTemplate) {
+      const leader = rows.find((r) => (r.input_data?.variationIndex || 1) === 1) || rows[0];
+      const siblings = rows.filter((r) => r.id !== leader.id);
+      const sharedDone =
+        leader.input_data?.variationPrompts &&
+        Array.isArray(leader.input_data.variationPrompts) &&
+        leader.input_data.variationPrompts.length >= VARIATIONS_PER_TEMPLATE;
+
+      if (!sharedDone && ['pending_analysis', 'analyzing', 'adapting', 'generating_prompt'].includes(leader.status)) {
+        sharedTasks.push(
+          runSharedAnalysisForTemplate(leader, siblings, analysisModel).catch((err) => {
+            console.error(`[PROCESS-QUEUE] Shared analysis failed for template ${leader.input_data?.templateId}:`, err.message);
+            // Mark every row of this template as failed so the user sees the error.
+            return Promise.all([leader, ...siblings].map((r) => failGeneration(r.id, `Shared analysis failed: ${err.message}`)));
+          })
+        );
       }
-    });
+    }
+    if (sharedTasks.length > 0) {
+      await Promise.allSettled(sharedTasks);
+    }
+
+    // Phase B — every row that is pending_generation or generating proceeds independently.
+    // Refetch after Phase A so we pick up newly-distributed prompts.
+    const { data: refreshed } = await supabaseAdmin
+      .from('generations')
+      .select('*')
+      .eq('project_id', projectId)
+      .in('status', ['pending_generation', 'generating']);
+
+    if (refreshed && refreshed.length > 0) {
+      // Concurrency-limited fan-out: max 10 parallel tasks against kie.ai per tick.
+      const MAX_PARALLEL = 10;
+      for (let i = 0; i < refreshed.length; i += MAX_PARALLEL) {
+        const batch = refreshed.slice(i, i + MAX_PARALLEL);
+        await Promise.allSettled(batch.map((g: any) => processVariationGeneration(g, generationModel, projectId)));
+      }
+    }
 
     return await returnProgress(projectId);
-
   } catch (error: any) {
-    console.error('[PROCESS-QUEUE] Error:', error);
+    console.error('[PROCESS-QUEUE] Fatal:', error);
     return new NextResponse('Internal Error', { status: 500 });
   }
 }
@@ -280,12 +389,20 @@ async function returnProgress(projectId: string) {
     .select('status')
     .eq('project_id', projectId);
 
-  const counts: Record<string, number> = { 
-    pending_analysis: 0, analyzing: 0, adapting: 0, generating_prompt: 0,
-    pending_generation: 0, generating: 0, completed: 0, failed: 0 
+  const counts: Record<string, number> = {
+    pending_analysis: 0,
+    pending_variation: 0,
+    analyzing: 0,
+    adapting: 0,
+    generating_prompt: 0,
+    pending_generation: 0,
+    generating: 0,
+    completed: 0,
+    failed: 0,
   };
-  
-  allGens?.forEach((g: any) => { if (g.status in counts) counts[g.status]++; });
+  allGens?.forEach((g: any) => {
+    if (g.status in counts) counts[g.status]++;
+  });
 
   const total = allGens?.length || 0;
   const completed = counts.completed;
@@ -295,6 +412,14 @@ async function returnProgress(projectId: string) {
 
   return NextResponse.json({
     success: true,
-    progress: { total, completed, failed, inProgress, percentage, isComplete: inProgress === 0 && total > 0, details: counts }
+    progress: {
+      total,
+      completed,
+      failed,
+      inProgress,
+      percentage,
+      isComplete: inProgress === 0 && total > 0,
+      details: counts,
+    },
   });
 }

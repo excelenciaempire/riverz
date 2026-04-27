@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Download, Check, Edit2, Loader2, Save, Undo2, X, Sparkles, Trash2, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Download, Check, Edit2, Loader2, Save, Undo2, X, Sparkles, Trash2, Clock, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ interface Generation {
   result_url: string;
   status: string;
   input_data: any;
+  error_message?: string;
   version?: number;
   parent_id?: string;
   created_at?: string;
@@ -29,6 +30,7 @@ interface ProjectDetail {
 // Status display config
 const statusConfig: Record<string, { label: string; color: string; icon: 'loader' | 'clock' | 'alert' | 'check' }> = {
   pending_analysis: { label: 'En cola', color: 'text-gray-400', icon: 'clock' },
+  pending_variation: { label: 'Esperando variación', color: 'text-gray-400', icon: 'clock' },
   analyzing: { label: 'Analizando', color: 'text-blue-400', icon: 'loader' },
   adapting: { label: 'Adaptando', color: 'text-purple-400', icon: 'loader' },
   generating_prompt: { label: 'Generando prompt', color: 'text-indigo-400', icon: 'loader' },
@@ -37,6 +39,213 @@ const statusConfig: Record<string, { label: string; color: string; icon: 'loader
   completed: { label: 'Completado', color: 'text-green-400', icon: 'check' },
   failed: { label: 'Error', color: 'text-red-400', icon: 'alert' },
 };
+
+interface TemplateGroup {
+  templateId: string;
+  templateName: string;
+  templateThumbnail: string;
+  variations: Generation[];
+}
+
+function VariationSlide({
+  gen,
+  isSelected,
+  onToggleSelect,
+  onEdit,
+}: {
+  gen: Generation;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onEdit: () => void;
+}) {
+  const isCompleted = gen.status === 'completed';
+  const isFailed = gen.status === 'failed';
+  const isPending = !isCompleted && !isFailed;
+  const status = statusConfig[gen.status] || statusConfig.pending_analysis;
+  const angle = gen.input_data?.variationAngle || `V${gen.input_data?.variationIndex || ''}`;
+  const title = gen.input_data?.variationTitle || '';
+
+  return (
+    <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0a0a0a]">
+      {isCompleted && gen.result_url ? (
+        <>
+          <img
+            src={gen.result_url}
+            alt={title || `Variation ${gen.input_data?.variationIndex || ''}`}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            onClick={onToggleSelect}
+          />
+          <div
+            className={cn(
+              'absolute inset-0 flex items-center justify-center bg-[#07A498]/20 backdrop-blur-sm transition-opacity cursor-pointer',
+              isSelected ? 'opacity-100' : 'opacity-0'
+            )}
+            onClick={onToggleSelect}
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#07A498] shadow-xl">
+              <Check className="h-7 w-7 text-white" />
+            </div>
+          </div>
+          <div className="absolute top-3 left-3 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide bg-black/60 text-white rounded-full pointer-events-none">
+            {angle}
+          </div>
+          {gen.version && gen.version > 1 && (
+            <div className="absolute top-3 right-3 px-2 py-0.5 text-[10px] font-medium bg-purple-500/90 text-white rounded-full pointer-events-none">
+              v{gen.version}
+            </div>
+          )}
+        </>
+      ) : isPending ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+          {gen.input_data?.templateThumbnail && (
+            <img src={gen.input_data.templateThumbnail} alt="" className="absolute inset-0 h-full w-full object-cover opacity-10 blur-md" />
+          )}
+          <div className="relative z-10 flex flex-col items-center text-center">
+            {status.icon === 'loader' && (
+              <div className="relative mb-4">
+                <div className="absolute inset-0 rounded-full bg-[#07A498]/20 animate-ping" />
+                <Sparkles className={cn('h-12 w-12 relative z-10 animate-spin', status.color)} />
+              </div>
+            )}
+            {status.icon === 'clock' && <Clock className={cn('h-12 w-12 mb-4', status.color)} />}
+            <p className={cn('text-sm font-bold mb-1', status.color)}>{status.label}</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-500">{angle}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-red-950/20 to-red-900/10">
+          <AlertCircle className="h-12 w-12 mb-2 text-red-400" />
+          <p className="text-sm font-bold text-red-400 mb-1">Error</p>
+          <p className="text-[10px] text-red-400/70 line-clamp-3 text-center">{gen.error_message || 'Error en generación'}</p>
+        </div>
+      )}
+
+      {/* Bottom action bar overlay (only on completed) */}
+      {isCompleted && (
+        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={onToggleSelect}
+              className="h-4 w-4 cursor-pointer rounded accent-[#07A498]"
+              onClick={(e) => e.stopPropagation()}
+            />
+            {title && <span className="text-[11px] text-white/80 line-clamp-1 max-w-[170px]">{title}</span>}
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium transition"
+          >
+            <Edit2 className="h-3 w-3" />
+            Editar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TemplateCard({
+  group,
+  selectedImages,
+  onToggleSelect,
+  onEdit,
+}: {
+  group: TemplateGroup;
+  selectedImages: string[];
+  onToggleSelect: (id: string) => void;
+  onEdit: (gen: Generation) => void;
+}) {
+  const [slideIndex, setSlideIndex] = useState(0);
+  const variations = group.variations;
+  const total = variations.length;
+  const completed = variations.filter((v) => v.status === 'completed').length;
+  const failed = variations.filter((v) => v.status === 'failed').length;
+  const inProgress = total - completed - failed;
+  const current = variations[Math.min(slideIndex, total - 1)];
+
+  const next = () => setSlideIndex((i) => (i + 1) % total);
+  const prev = () => setSlideIndex((i) => (i - 1 + total) % total);
+
+  return (
+    <div className="rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/60">
+        {group.templateThumbnail && (
+          <img src={group.templateThumbnail} alt="" className="h-10 w-10 rounded-md object-cover border border-gray-800" />
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-white line-clamp-1">{group.templateName}</p>
+          <p className="text-[11px] text-gray-500">
+            {completed}/{total} listas
+            {inProgress > 0 && <span className="text-[#07A498]"> · {inProgress} en proceso</span>}
+            {failed > 0 && <span className="text-red-400"> · {failed} fallidas</span>}
+          </p>
+        </div>
+      </div>
+
+      {/* Carousel */}
+      <div className="relative group">
+        <VariationSlide
+          gen={current}
+          isSelected={selectedImages.includes(current.id)}
+          onToggleSelect={() => onToggleSelect(current.id)}
+          onEdit={() => onEdit(current)}
+        />
+
+        {total > 1 && (
+          <>
+            <button
+              onClick={prev}
+              className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition opacity-0 group-hover:opacity-100"
+              aria-label="Variación anterior"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition opacity-0 group-hover:opacity-100"
+              aria-label="Variación siguiente"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Dots */}
+      {total > 1 && (
+        <div className="flex items-center justify-center gap-1.5 py-3">
+          {variations.map((v, i) => {
+            const dotState =
+              v.status === 'completed'
+                ? 'bg-[#07A498]'
+                : v.status === 'failed'
+                  ? 'bg-red-500'
+                  : 'bg-gray-600';
+            const active = i === slideIndex;
+            return (
+              <button
+                key={v.id}
+                onClick={() => setSlideIndex(i)}
+                className={cn(
+                  'h-2 rounded-full transition-all',
+                  active ? 'w-6 ring-1 ring-white/30' : 'w-2',
+                  dotState
+                )}
+                aria-label={`Ir a variación ${i + 1}`}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -224,6 +433,31 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     deleteProjectMutation.mutate();
   };
 
+  // Group generations by template for the carousel UI.
+  // Pre-migration projects (1 generation per template, no variationIndex) still work:
+  // they end up as a "group" of 1, so the card shows a single non-carousel image.
+  const templateGroups = useMemo<TemplateGroup[]>(() => {
+    if (!project?.generations) return [];
+    const map = new Map<string, Generation[]>();
+    for (const gen of project.generations) {
+      const tid = gen.input_data?.templateId || `__solo_${gen.id}`;
+      if (!map.has(tid)) map.set(tid, []);
+      map.get(tid)!.push(gen);
+    }
+    const groups: TemplateGroup[] = [];
+    map.forEach((variations, templateId) => {
+      variations.sort((a, b) => (a.input_data?.variationIndex || 0) - (b.input_data?.variationIndex || 0));
+      const first = variations[0];
+      groups.push({
+        templateId,
+        templateName: first.input_data?.templateName || 'Plantilla',
+        templateThumbnail: first.input_data?.templateThumbnail || '',
+        variations,
+      });
+    });
+    return groups;
+  }, [project?.generations]);
+
   // Calculate progress stats
   const progressStats = useMemo(() => {
     if (!project?.generations) return { completed: 0, failed: 0, inProgress: 0, total: 0, percentage: 0 };
@@ -332,149 +566,21 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </div>
         )}
 
-        {/* Grid - Modern 3:4 Design */}
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {project?.generations.map((gen, idx) => {
-            const isCompleted = gen.status === 'completed';
-            const isFailed = gen.status === 'failed';
-            const isPending = !isCompleted && !isFailed;
-            const status = statusConfig[gen.status] || statusConfig.pending_analysis;
-            
-            return (
-              <div
-                key={gen.id}
-                className={cn(
-                  "group relative rounded-2xl border transition-all duration-300 overflow-hidden",
-                  "bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f]",
-                  isCompleted && selectedImages.includes(gen.id) 
-                    ? "border-[#07A498] shadow-lg shadow-[#07A498]/20" 
-                    : "border-gray-800/50 hover:border-gray-700"
-                )}
-                style={{ animationDelay: `${idx * 50}ms` }}
-              >
-                {/* Image Container with 3:4 aspect ratio */}
-                <div className="relative aspect-[3/4] overflow-hidden bg-[#0a0a0a]">
-                  {isCompleted && gen.result_url ? (
-                    <>
-                      <img
-                        src={gen.result_url}
-                        alt="Generated"
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        onClick={() => toggleSelection(gen.id)}
-                      />
-                      
-                      {/* Checkmark Overlay */}
-                      <div
-                        className={cn(
-                          "absolute inset-0 flex items-center justify-center bg-[#07A498]/20 backdrop-blur-sm transition-opacity cursor-pointer",
-                          selectedImages.includes(gen.id) ? "opacity-100" : "opacity-0"
-                        )}
-                        onClick={() => toggleSelection(gen.id)}
-                      >
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#07A498] shadow-xl">
-                          <Check className="h-8 w-8 text-white" />
-                        </div>
-                      </div>
-
-                      {/* Version Badge */}
-                      {gen.version && gen.version > 1 && (
-                        <div className="absolute top-3 left-3 px-2 py-0.5 text-xs font-medium bg-purple-500/90 text-white rounded-full pointer-events-none">
-                          v{gen.version}
-                        </div>
-                      )}
-                    </>
-                  ) : isPending ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-                      {/* Template thumbnail blurred background */}
-                      {gen.input_data?.templateThumbnail && (
-                        <img 
-                          src={gen.input_data.templateThumbnail} 
-                          alt="" 
-                          className="absolute inset-0 h-full w-full object-cover opacity-10 blur-md"
-                        />
-                      )}
-                      
-                      {/* Loading Content */}
-                      <div className="relative z-10 flex flex-col items-center text-center">
-                        {/* Animated Icon */}
-                        {status.icon === 'loader' && (
-                          <div className="relative mb-4">
-                            <div className="absolute inset-0 rounded-full bg-[#07A498]/20 animate-ping" />
-                            <Sparkles className={cn("h-14 w-14 relative z-10 animate-spin", status.color)} />
-                          </div>
-                        )}
-                        {status.icon === 'clock' && (
-                          <Clock className={cn("h-14 w-14 mb-4", status.color)} />
-                        )}
-                        
-                        {/* Status Label */}
-                        <p className={cn("text-base font-bold text-center mb-3", status.color)}>
-                          {status.label}
-                        </p>
-                        
-                        {/* Progress Bar */}
-                        <div className="w-full max-w-[75%] mb-3">
-                          <div className="h-1.5 bg-gray-800/50 rounded-full overflow-hidden">
-                            <div className={cn("h-full rounded-full animate-progress", 
-                              status.color.replace('text-', 'bg-')
-                            )} />
-                          </div>
-                        </div>
-                        
-                        {/* Template Name */}
-                        <p className="text-xs text-gray-500 px-2 line-clamp-2 max-w-full">
-                          {gen.input_data?.templateName || `Imagen ${idx + 1}`}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-red-950/20 to-red-900/10">
-                      <AlertCircle className="h-14 w-14 mb-3 text-red-400" />
-                      <p className="text-base font-bold text-center text-red-400 mb-2">Error</p>
-                      <p className="text-xs text-center text-red-400/70 px-2 line-clamp-3">
-                        {gen.input_data?.templateName || 'Error en generación'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Bottom Info Bar */}
-                <div className="p-3 flex items-center justify-between border-t border-gray-800/50">
-                  {isCompleted ? (
-                    <>
-                      <input
-                        type="checkbox"
-                        checked={selectedImages.includes(gen.id)}
-                        onChange={() => toggleSelection(gen.id)}
-                        className="h-4 w-4 cursor-pointer rounded accent-[#07A498]"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingImage(gen);
-                          setEditPrompt('');
-                          setGeneratedEditUrl(null);
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#07A498]/10 text-[#07A498] text-xs font-medium transition hover:bg-[#07A498]/20"
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                        Editar
-                      </button>
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-2 text-xs text-gray-500 w-full">
-                      <div className={cn("h-2 w-2 rounded-full animate-pulse", 
-                        status.color.replace('text-', 'bg-')
-                      )} />
-                      <span className="flex-1 truncate">{status.label}...</span>
-                      <span className="text-[10px] text-[#07A498] font-mono">100%</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        {/* Grid — one card per template, with carousel of 5 variations */}
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {templateGroups.map((group) => (
+            <TemplateCard
+              key={group.templateId}
+              group={group}
+              selectedImages={selectedImages}
+              onToggleSelect={toggleSelection}
+              onEdit={(gen) => {
+                setEditingImage(gen);
+                setEditPrompt('');
+                setGeneratedEditUrl(null);
+              }}
+            />
+          ))}
         </div>
       </div>
 

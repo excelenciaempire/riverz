@@ -1,8 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 
-// Use environment variable for API key (fallback for backwards compatibility)
-const KIE_API_KEY = process.env.KIE_API_KEY || '174d2ff19987520a25ecd1ed9c3ccc2b';
-const KIE_BASE_URL = 'https://api.kie.ai';
+const KIE_API_KEY = process.env.KIE_API_KEY;
+if (!KIE_API_KEY) {
+  console.warn('[KIE] KIE_API_KEY env var is not set. All kie.ai calls will fail until configured.');
+}
+const KIE_BASE_URL = process.env.KIE_BASE_URL || 'https://api.kie.ai';
+
+const DEFAULT_ANALYSIS_MODEL = 'claude-sonnet-4-6';
+const DEFAULT_GENERATION_MODEL = 'nano-banana-pro';
 
 // --- Types ---
 export interface KieTaskResult {
@@ -372,6 +377,175 @@ export async function analyzeWithGemini3Pro(messages: GeminiMessage[], options: 
   }
 }
 
+// --- Claude Sonnet 4.6 (Anthropic Messages API on kie.ai - Multimodal Analysis) ---
+//
+// Endpoint: https://api.kie.ai/claude/v1/messages (Anthropic native format)
+// Model:    claude-sonnet-4-6
+// Vision:   Yes (image content blocks: {type:'image', source:{type:'base64', media_type, data}})
+//
+// This is the PRIMARY analysis model for the static-ads pipeline.
+// Translates from the internal GeminiMessage shape (OpenAI-compatible content blocks)
+// into Anthropic's native Messages format so the rest of the codebase doesn't need to know.
+
+interface AnthropicTextBlock { type: 'text'; text: string }
+interface AnthropicImageBlock {
+  type: 'image';
+  source: {
+    type: 'base64';
+    media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+    data: string;
+  };
+}
+type AnthropicContentBlock = AnthropicTextBlock | AnthropicImageBlock;
+interface AnthropicMessage { role: 'user' | 'assistant'; content: string | AnthropicContentBlock[] }
+
+/**
+ * Translates the internal GeminiMessage shape into Anthropic Messages API format.
+ *  - role='developer'|'system' messages collapse into a single top-level `system` string.
+ *  - 'image_url' content blocks (data URI) become Anthropic 'image' blocks with parsed base64.
+ *  - 'image_url' with HTTP URL is downloaded and converted to base64 inline.
+ */
+async function toAnthropicMessages(messages: GeminiMessage[]): Promise<{ system: string; messages: AnthropicMessage[] }> {
+  const systemParts: string[] = [];
+  const out: AnthropicMessage[] = [];
+
+  for (const msg of messages) {
+    if (msg.role === 'developer' || msg.role === 'system') {
+      const text = typeof msg.content === 'string'
+        ? msg.content
+        : msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n');
+      if (text) systemParts.push(text);
+      continue;
+    }
+
+    const role = msg.role === 'assistant' ? 'assistant' : 'user';
+
+    if (typeof msg.content === 'string') {
+      out.push({ role, content: msg.content });
+      continue;
+    }
+
+    const blocks: AnthropicContentBlock[] = [];
+    for (const block of msg.content as any[]) {
+      if (block.type === 'text') {
+        blocks.push({ type: 'text', text: block.text });
+      } else if (block.type === 'image_url') {
+        const url: string = block.image_url?.url || '';
+        if (url.startsWith('data:image/')) {
+          const mediaType = getMediaTypeFromDataUri(url);
+          const data = stripBase64Prefix(url);
+          blocks.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data } });
+        } else if (url.startsWith('http')) {
+          const { base64, mediaType } = await imageUrlToCleanBase64(url);
+          blocks.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } });
+        }
+      }
+    }
+    out.push({ role, content: blocks });
+  }
+
+  return { system: systemParts.join('\n\n'), messages: out };
+}
+
+export interface ClaudeKieOptions {
+  temperature?: number;
+  maxTokens?: number;
+  model?: string;
+}
+
+/**
+ * Analyzes with Claude Sonnet 4.6 (or any Claude exposed via /claude/v1/messages on kie.ai).
+ * Use for: template analysis with vision, adaptation reasoning, prompt generation.
+ */
+export async function analyzeWithClaude46(messages: GeminiMessage[], options: ClaudeKieOptions = {}): Promise<string> {
+  const { temperature = 0.5, maxTokens = 8000, model = 'claude-sonnet-4-6' } = options;
+  const { system, messages: anthropicMessages } = await toAnthropicMessages(messages);
+
+  const requestBody: Record<string, any> = {
+    model,
+    messages: anthropicMessages,
+    stream: false,
+    max_tokens: maxTokens,
+    temperature,
+  };
+  if (system) requestBody.system = system;
+
+  const endpoint = `${KIE_BASE_URL}/claude/v1/messages`;
+  console.log(`[CLAUDE-4.6] POST ${endpoint} (model=${model}, temp=${temperature}, maxTokens=${maxTokens})`);
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${KIE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Claude 4.6 API Error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  // Anthropic-style response: { content: [{type:'text', text:'...'}, ...] }
+  if (Array.isArray(data.content)) {
+    const text = data.content
+      .filter((b: any) => b.type === 'text')
+      .map((b: any) => b.text)
+      .join('\n')
+      .trim();
+    if (text) {
+      console.log('[CLAUDE-4.6] Response received successfully');
+      return text;
+    }
+  }
+
+  // Some kie.ai gateways still proxy OpenAI-compat shape. Handle that too.
+  if (data.choices?.[0]?.message?.content) {
+    return String(data.choices[0].message.content);
+  }
+
+  if (data.code || data.msg) {
+    throw new Error(`Claude 4.6 API Error: ${data.msg || data.code}`);
+  }
+
+  throw new Error(`Unexpected Claude 4.6 response shape: ${JSON.stringify(data).slice(0, 300)}`);
+}
+
+/**
+ * Unified analysis dispatcher. Routes to the right wrapper based on the model name.
+ * The admin can change the active model via the `kie_analysis_model` row in `admin_config`
+ * and this function will respect it without any code change.
+ *
+ * Default: claude-sonnet-4-6 (best quality with native vision).
+ * Fallback chain on error is the caller's responsibility — see lib/analysis-runner.
+ */
+export async function analyzeWithModel(
+  modelName: string,
+  messages: GeminiMessage[],
+  options: { temperature?: number; maxTokens?: number } = {}
+): Promise<string> {
+  const m = (modelName || DEFAULT_ANALYSIS_MODEL).toLowerCase();
+
+  if (m.startsWith('claude-sonnet-4-6') || m === 'claude-4-6' || m === 'claude46') {
+    return analyzeWithClaude46(messages, { ...options, model: 'claude-sonnet-4-6' });
+  }
+  if (m.startsWith('claude-sonnet-4-5') || m === 'claude-4-5') {
+    return analyzeWithClaudeSonnet(messages, options);
+  }
+  if (m.startsWith('gemini-3-pro') || m === 'gemini-pro' || m === 'gemini') {
+    return analyzeWithGemini3Pro(messages, options);
+  }
+  if (m.startsWith('gemini-flash')) {
+    return analyzeWithGeminiFlash2(messages, { temperature: options.temperature });
+  }
+
+  console.warn(`[ANALYZE] Unknown model "${modelName}" — falling back to ${DEFAULT_ANALYSIS_MODEL}`);
+  return analyzeWithClaude46(messages, { ...options, model: 'claude-sonnet-4-6' });
+}
+
 // --- Gemini Flash 2.0 (Fast Multimodal Analysis - Sync) ---
 
 /**
@@ -629,8 +803,35 @@ export async function getKieModelConfig() {
     .single();
 
   return {
-    // Claude Sonnet 4.5 is recommended for multimodal analysis (images + text)
-    analysisModel: analysisConfig?.value || 'claude-sonnet-4-5',
-    generationModel: genConfig?.value || 'nano-banana-pro'
+    // Claude Sonnet 4.6 is the recommended model for multimodal analysis (images + text)
+    // on kie.ai as of 2025. Falls back to whatever the admin configured if set.
+    analysisModel: analysisConfig?.value || DEFAULT_ANALYSIS_MODEL,
+    generationModel: genConfig?.value || DEFAULT_GENERATION_MODEL,
   };
+}
+
+/**
+ * Runs an analysis call with automatic fallback.
+ * Tries the primary model (default: Claude Sonnet 4.6). If it fails — most likely cause is
+ * Claude vision not being available on kie.ai — falls back to Gemini 3 Pro, which we know
+ * handles multimodal reliably. Logs which model actually produced the result.
+ *
+ * The fallback model is also configurable via admin_config.kie_analysis_fallback_model.
+ */
+export async function analyzeWithFallback(
+  primaryModel: string,
+  messages: GeminiMessage[],
+  options: { temperature?: number; maxTokens?: number; fallbackModel?: string } = {}
+): Promise<{ text: string; modelUsed: string; fellBack: boolean }> {
+  const fallback = options.fallbackModel || 'gemini-3-pro';
+  try {
+    const text = await analyzeWithModel(primaryModel, messages, options);
+    return { text, modelUsed: primaryModel, fellBack: false };
+  } catch (primaryError: any) {
+    console.error(`[ANALYZE] Primary model "${primaryModel}" failed: ${primaryError.message}`);
+    if (primaryModel === fallback) throw primaryError;
+    console.warn(`[ANALYZE] Falling back to "${fallback}"...`);
+    const text = await analyzeWithModel(fallback, messages, options);
+    return { text, modelUsed: fallback, fellBack: true };
+  }
 }

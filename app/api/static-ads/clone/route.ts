@@ -60,10 +60,13 @@ export async function POST(req: Request) {
        return new NextResponse('Error fetching templates', { status: 500 });
     }
 
-    // Calculate cost - matches Kie.ai pricing (Nano Banana Pro ~$0.134/image)
-    // 1 credit = $0.01, so 14 credits = $0.14 ≈ Kie.ai cost
-    const COST_PER_AD = 14;
-    const totalCost = templateIds.length * COST_PER_AD;
+    // Pricing model: each Nano Banana Pro image ≈ $0.134 ≈ 14 credits.
+    // Per selected template we now generate 5 distinct creative variations,
+    // so the user is billed 14 × 5 = 70 credits per template.
+    const COST_PER_IMAGE = 14;
+    const VARIATIONS_PER_TEMPLATE = 5;
+    const COST_PER_TEMPLATE = COST_PER_IMAGE * VARIATIONS_PER_TEMPLATE;
+    const totalCost = templateIds.length * COST_PER_TEMPLATE;
     
     // Check user's internal credits
     const { data: userData, error: userError } = await supabaseAdmin
@@ -81,7 +84,9 @@ export async function POST(req: Request) {
         error: 'Créditos insuficientes',
         required: totalCost,
         available: userData.credits,
-        perAd: COST_PER_AD
+        perImage: COST_PER_IMAGE,
+        perTemplate: COST_PER_TEMPLATE,
+        variationsPerTemplate: VARIATIONS_PER_TEMPLATE,
       }, { status: 402 });
     }
 
@@ -114,54 +119,68 @@ export async function POST(req: Request) {
       throw new Error(`Failed to create project: ${projectError.message}`);
     }
 
-    // 3. Create Generation Records
-    // Include ALL product images (Nano Banana Pro supports up to 8 images per request)
-    const productImages = (product.images || []).slice(0, 7); // Max 7 product images (leave 1 slot for template)
-    
-    const generations = await Promise.all(
-      templates.map(async (template: any) => {
-        const { data: generation, error: genError } = await supabaseAdmin
-          .from('generations')
-          .insert({
-            clerk_user_id: userId,
-            type: 'static_ad_generation',
-            status: 'pending_analysis',
-            cost: COST_PER_AD,
-            project_id: project.id,
-            input_data: {
-              templateId: template.id,
-              productId,
-              templateName: template.name,
-              templateThumbnail: template.thumbnail_url,
-              productName: product.name,
-              productBenefits: product.benefits,
-              productImages: productImages, // ALL product images (max 7)
-              productImage: productImages[0] || null, // Primary image for backwards compat
-              researchData: product.research_data || null,
-              hasResearch: !!product.research_data
-            },
-          })
-          .select()
-          .single();
+    // 3. Create Generation Records — 5 variations per template.
+    // The variation with index=1 is the LEADER: it runs the shared analysis steps
+    // (template analysis + adaptation + 5-prompt generation) and writes the JSONs
+    // into the sibling rows. Variations 2..5 wait in pending_variation until
+    // the leader hands them their assigned prompt.
+    const productImages = (product.images || []).slice(0, 7);
 
-        if (genError) throw genError;
-        return generation;
-      })
-    );
+    const allGenerations: any[] = [];
+    for (const template of templates as any[]) {
+      const variationRows = await Promise.all(
+        Array.from({ length: VARIATIONS_PER_TEMPLATE }, (_, i) => i + 1).map(async (variationIndex) => {
+          const isLeader = variationIndex === 1;
+          const { data: generation, error: genError } = await supabaseAdmin
+            .from('generations')
+            .insert({
+              clerk_user_id: userId,
+              type: 'static_ad_generation',
+              status: isLeader ? 'pending_analysis' : 'pending_variation',
+              cost: COST_PER_IMAGE,
+              project_id: project.id,
+              input_data: {
+                templateId: template.id,
+                productId,
+                templateName: template.name,
+                templateThumbnail: template.thumbnail_url,
+                productName: product.name,
+                productBenefits: product.benefits,
+                productImages,
+                productImage: productImages[0] || null,
+                researchData: product.research_data || null,
+                hasResearch: !!product.research_data,
+                variationIndex,
+                isLeader,
+                totalVariations: VARIATIONS_PER_TEMPLATE,
+              },
+            })
+            .select()
+            .single();
 
-    // Simple estimation
-    const estimatedMinutes = Math.ceil(templateIds.length * 0.5);
-    const batches = Math.ceil(templateIds.length / 5);
+          if (genError) throw genError;
+          return generation;
+        })
+      );
+      allGenerations.push(...variationRows);
+    }
 
-    return NextResponse.json({ 
-      project, 
-      generations,
+    // Estimation: ~30s per Nano Banana image, processed in parallel batches.
+    const totalImages = templateIds.length * VARIATIONS_PER_TEMPLATE;
+    const estimatedMinutes = Math.max(1, Math.ceil(totalImages * 0.3));
+    const batches = Math.ceil(totalImages / 10);
+
+    return NextResponse.json({
+      project,
+      generations: allGenerations,
       bulk: {
-        total: templateIds.length,
+        templateCount: templateIds.length,
+        variationsPerTemplate: VARIATIONS_PER_TEMPLATE,
+        totalImages,
         totalCreditsDeducted: totalCost,
         estimatedMinutes,
-        batches
-      }
+        batches,
+      },
     });
   } catch (error: any) {
     console.error('[STATIC_AD_CLONE]', error);

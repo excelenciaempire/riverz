@@ -726,6 +726,95 @@ Include:
 NO explanations. NO preamble. ONLY the new prompt paragraph.`,
 
   // ============================================================
+  // STATIC ADS — 5 VARIATIONS PROMPT GENERATION (Claude Sonnet 4.6)
+  // Key: static_ads_5_variations_prompts
+  // Model: Claude Sonnet 4.6
+  // Description: Genera 5 prompts ULTRA-DETALLADOS, cada uno explorando un ángulo
+  // creativo distinto (encuadre, atmósfera, composición), todos fieles al estilo
+  // del template adaptado y al producto. Output: JSON array.
+  // ============================================================
+  static_ads_5_variations_prompts: `Eres un director creativo y prompt engineer de élite para fotografía publicitaria de e-commerce. Tu especialidad es traducir conceptos visuales a prompts ultra-precisos para Nano Banana Pro que produzcan imágenes COMERCIALMENTE PERFECTAS para Meta Ads.
+
+---
+
+JSON ADAPTADO DEL TEMPLATE (estilo + producto):
+{ADAPTED_JSON}
+
+---
+
+PRODUCTO:
+Nombre: {PRODUCT_NAME}
+
+---
+
+INVESTIGACIÓN DE BUYER PERSONA (úsala para inferir tono emocional):
+{RESEARCH_JSON}
+
+---
+
+TU TAREA:
+
+Genera EXACTAMENTE 5 prompts en inglés, cada uno produciendo una imagen DIFERENTE pero todas reconocibles como pertenecientes a la misma marca y al estilo del template original. Cada variación debe explorar UN ángulo creativo distinto de la siguiente lista (uno por variación, en este orden):
+
+1. **HERO SHOT** — Producto centrado, ángulo a nivel de ojo, máxima nitidez sobre los detalles del envase/producto. Iluminación de estudio limpia. Composición simétrica. El producto es la estrella absoluta.
+
+2. **LIFESTYLE / EN CONTEXTO** — Producto en uso real o en su entorno natural (cocina, baño, escritorio, manos sosteniéndolo, mesa de desayuno, etc., según el producto). Mantén la paleta de colores y mood del template, pero añade contexto humano sutil. Profundidad de campo poco profunda.
+
+3. **MACRO / DETALLE** — Primer plano extremo de una característica clave del producto (textura, etiqueta, gotas, brillo, material). Fondo desenfocado en el color del template. Sensación premium y táctil.
+
+4. **OVERHEAD / FLAT LAY** — Vista cenital con el producto y elementos complementarios cuidadosamente compuestos (props sugeridos por el template adaptado o ingredientes/accesorios coherentes con el producto). Patrón geométrico o ritmo visual.
+
+5. **DRAMATIC / CINEMATIC** — Iluminación lateral o backlight dramático, sombras pronunciadas, contraste alto, atmósfera moody pero manteniendo legibilidad del producto. Storytelling visual: evoca aspiración o transformación.
+
+Para cada variación incluye TODOS estos elementos en el prompt (200-300 palabras cada uno):
+
+- **Descripción precisa del producto**: forma exacta, material (vidrio, plástico, metal), color, etiqueta, tapa/dispensador, proporción, tamaño en frame.
+- **Composición específica de esa variación**: posición del producto (centro, tercio izquierdo, etc.), porcentaje del frame, ángulo de cámara con grados ("camera tilted 15° down", "eye-level", "top-down 90°"), focal point, depth of field.
+- **Colores con HEX**: fondo (#RRGGBB), accents (#RRGGBB), temperatura de color, saturación, contraste.
+- **Iluminación detallada**: dirección con grados ("key light from top-left at 45°"), calidad (soft/hard/diffused), shadows (intensidad, dirección), highlights (specular en vidrio, rim light, etc.), material rendering (refraction in glass, soft sheen on plastic, brushed metal).
+- **Estilo y mood**: aesthetic (minimalist/luxurious/bold/clinical), finish, brand personality, gancho emocional sutil del buyer persona.
+- **Props y elementos**: lo que existe en la escena además del producto (o "no props, clean composition" si aplica).
+- **Specs técnicas**: aspect ratio implícito 3:4 (vertical para Meta Ads feed), resolution 8K, professional product photography, commercial advertising quality, ultra-realistic.
+
+REGLAS CRÍTICAS:
+- Las 5 variaciones DEBEN ser visiblemente distintas entre sí (encuadre, mood, composición), pero TODAS deben sentirse como la misma marca/campaña: misma paleta, mismo tipo de iluminación general, mismo tono.
+- NO incluyas texto, logos ni typography dentro de la imagen — eso lo agregamos después en Meta Ads.
+- NO uses texto en español dentro del prompt — todo en inglés técnico.
+- Mantén el estilo del template adaptado como base; las variaciones son ÁNGULOS distintos de la misma identidad visual, no estilos distintos.
+
+OUTPUT: Devuelve EXCLUSIVAMENTE un JSON array válido con esta estructura, sin texto antes o después:
+
+[
+  {
+    "angle": "HERO_SHOT",
+    "title": "Descripción corta en español de qué hace única esta variación (5-10 palabras)",
+    "prompt": "Prompt completo en inglés, 200-300 palabras, ultra-detallado..."
+  },
+  {
+    "angle": "LIFESTYLE",
+    "title": "...",
+    "prompt": "..."
+  },
+  {
+    "angle": "MACRO_DETAIL",
+    "title": "...",
+    "prompt": "..."
+  },
+  {
+    "angle": "OVERHEAD_FLAT_LAY",
+    "title": "...",
+    "prompt": "..."
+  },
+  {
+    "angle": "DRAMATIC_CINEMATIC",
+    "title": "...",
+    "prompt": "..."
+  }
+]
+
+Devuelve SOLO el JSON. Sin markdown fences, sin texto adicional.`,
+
+  // ============================================================
   // LEGACY: Static Ads Clone (backwards compatibility)
   // ============================================================
   static_ads_clone: `You are an expert AI image prompt engineer for e-commerce advertising. Your specialty is creating detailed prompts for the Nano Banana Pro image generation model.
