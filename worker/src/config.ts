@@ -31,4 +31,12 @@ export const config = {
     tmpDir: process.env.STEALER_TMP_DIR || '/tmp/stealer',
     maxAttempts: 5,
   },
+  webhooks: {
+    // Public URL of the Next.js app (e.g. https://riverz.app). When set, the
+    // worker passes <publicUrl>/api/webhooks/kie?secret=... as callBackUrl on
+    // every Veo task so kie.ai can push completion events. Polling still runs
+    // as a safety net.
+    publicUrl: process.env.NEXT_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || '',
+    secret: process.env.STEALER_WEBHOOK_SECRET || '',
+  },
 };

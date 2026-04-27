@@ -41,11 +41,15 @@ export async function POST(req: Request) {
     let sourceUrl: string | null = null;
     let fileBuffer: ArrayBuffer | null = null;
     let fileMime = 'video/mp4';
+    let selectedAvatarId: string | null = null;
+    let selectedVoiceId: string | null = null;
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData();
       const file = form.get('file');
       projectName = (form.get('name') as string) || null;
+      selectedAvatarId = (form.get('avatar_id') as string) || null;
+      selectedVoiceId = (form.get('voice_id') as string) || null;
       if (!(file instanceof File)) {
         return NextResponse.json({ error: 'Missing file' }, { status: 400 });
       }
@@ -58,6 +62,8 @@ export async function POST(req: Request) {
       const body = await req.json().catch(() => ({}));
       projectName = body?.name || null;
       sourceUrl = body?.source_url || null;
+      selectedAvatarId = body?.avatar_id || null;
+      selectedVoiceId = body?.voice_id || null;
       if (!sourceUrl) {
         return NextResponse.json(
           { error: 'Missing file or source_url' },
@@ -73,6 +79,8 @@ export async function POST(req: Request) {
         clerk_user_id: userId,
         name: projectName,
         source_url: sourceUrl,
+        selected_avatar_id: selectedAvatarId || null,
+        selected_voice_id: selectedVoiceId || null,
         status: 'ingesting',
       })
       .select('id')

@@ -17,6 +17,7 @@ import { handleSplitAudio } from './dispatchers/audio-split.js';
 import { handleGenerateActor, handleGenerateBroll } from './dispatchers/video.js';
 import { handleTrimToDuration } from './dispatchers/trim.js';
 import { pollVeoJob } from './dispatchers/poll-veo.js';
+import { handleTtsMaster } from './dispatchers/tts.js';
 
 const dispatchers: Record<string, (job: StealerJob) => Promise<any>> = {
   // Phase 0
@@ -30,7 +31,9 @@ const dispatchers: Record<string, (job: StealerJob) => Promise<any>> = {
   generate_actor: handleGenerateActor,
   generate_broll: handleGenerateBroll,
   trim_to_duration: handleTrimToDuration,
-  // Phase 4 (TBD): tts_master, lipsync.
+  // Phase 4
+  tts_master: handleTtsMaster,
+  // Phase 6 (future): lipsync as a separate stage if Veo's native sync is insufficient.
 };
 
 async function processJob(job: StealerJob) {

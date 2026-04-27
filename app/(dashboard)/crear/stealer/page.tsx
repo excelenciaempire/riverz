@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { Upload, Loader2, Film, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Upload, Loader2, Film, Clock, User2, Mic2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,14 +35,19 @@ const TONE_CLASS: Record<string, string> = {
   red: 'text-red-300 bg-red-500/10 border-red-500/30',
 };
 
+interface AvatarOpt { id: string; name: string; image_url: string }
+interface VoiceOpt { id: string; name: string; language: string | null; gender: string | null; accent: string | null }
+
 export default function StealerLandingPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [avatarId, setAvatarId] = useState<string | null>(null);
+  const [voiceId, setVoiceId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['stealer-projects'],
     queryFn: async () => {
       const res = await fetch('/api/stealer/projects');
@@ -50,6 +55,26 @@ export default function StealerLandingPage() {
       return res.json() as Promise<{ projects: StealerProjectListItem[] }>;
     },
     refetchInterval: 10000,
+  });
+
+  const { data: avatars } = useQuery({
+    queryKey: ['avatars'],
+    queryFn: async () => {
+      const res = await fetch('/api/avatars');
+      if (!res.ok) return { avatars: [] };
+      return res.json() as Promise<{ avatars: AvatarOpt[] }>;
+    },
+    staleTime: 60000,
+  });
+
+  const { data: voices } = useQuery({
+    queryKey: ['voices'],
+    queryFn: async () => {
+      const res = await fetch('/api/voices');
+      if (!res.ok) return { voices: [] };
+      return res.json() as Promise<{ voices: VoiceOpt[] }>;
+    },
+    staleTime: 60000,
   });
 
   const handleSubmit = async () => {
@@ -67,6 +92,8 @@ export default function StealerLandingPage() {
       const fd = new FormData();
       fd.append('file', file);
       if (name.trim()) fd.append('name', name.trim());
+      if (avatarId) fd.append('avatar_id', avatarId);
+      if (voiceId) fd.append('voice_id', voiceId);
 
       const res = await fetch('/api/stealer/ingest', { method: 'POST', body: fd });
       const json = await res.json();
@@ -138,6 +165,73 @@ export default function StealerLandingPage() {
                   </>
                 )}
               </div>
+            </div>
+
+            {/* Avatar selector — only relevant for actor scenes; optional. */}
+            <div>
+              <Label className="text-sm text-gray-300 flex items-center gap-2">
+                <User2 className="h-3.5 w-3.5" />
+                Avatar para escenas de actor (opcional)
+              </Label>
+              <p className="mt-1 text-xs text-gray-500">
+                Si no eliges, las escenas de actor usan el frame original como referencia visual.
+              </p>
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                <button
+                  type="button"
+                  onClick={() => setAvatarId(null)}
+                  className={cn(
+                    'shrink-0 flex items-center justify-center w-16 h-16 rounded-lg border text-[10px] uppercase tracking-wide',
+                    avatarId === null ? 'border-[#07A498] bg-[#07A498]/10 text-[#07A498]' : 'border-gray-800 bg-[#0a0a0a] text-gray-500'
+                  )}
+                >
+                  Ninguno
+                </button>
+                {avatars?.avatars?.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => setAvatarId(a.id)}
+                    className={cn(
+                      'shrink-0 w-16 h-16 rounded-lg border overflow-hidden relative',
+                      avatarId === a.id ? 'border-[#07A498] ring-2 ring-[#07A498]/40' : 'border-gray-800'
+                    )}
+                    title={a.name}
+                  >
+                    {a.image_url ? (
+                      <img src={a.image_url} alt={a.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-[10px] text-gray-500">{a.name}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Voice selector — feeds ElevenLabs TTS. Optional: if none, audio fuente. */}
+            <div>
+              <Label className="text-sm text-gray-300 flex items-center gap-2">
+                <Mic2 className="h-3.5 w-3.5" />
+                Voz para el audio nuevo (opcional)
+              </Label>
+              <p className="mt-1 text-xs text-gray-500">
+                Sin voz = mantenemos la voz del anuncio original. Con voz = re-narramos el guion con ElevenLabs.
+              </p>
+              <select
+                value={voiceId || ''}
+                onChange={(e) => setVoiceId(e.target.value || null)}
+                className="mt-2 w-full bg-[#0a0a0a] border border-gray-800 rounded-md px-3 py-2 text-sm text-white"
+              >
+                <option value="">Sin voz (usar audio original)</option>
+                {voices?.voices?.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                    {v.language ? ` · ${v.language}` : ''}
+                    {v.gender ? ` · ${v.gender}` : ''}
+                    {v.accent ? ` · ${v.accent}` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <Button
