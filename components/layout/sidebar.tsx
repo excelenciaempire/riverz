@@ -13,6 +13,7 @@ import {
   FileVideo,
   Image as ImageIcon,
   FlaskConical,
+  Megaphone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCredits } from '@/hooks/useCredits';
@@ -44,6 +45,12 @@ const navigationGroups = [
     title: 'Landings',
     items: [
       { name: 'Landing Lab', href: '/landing-lab', icon: FlaskConical },
+    ],
+  },
+  {
+    title: 'Campañas',
+    items: [
+      { name: 'Meta Ads', href: '/campañas/meta', icon: Megaphone },
     ],
   },
 ];
