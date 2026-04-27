@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-const KIE_API_KEY = process.env.KIE_API_KEY || '174d2ff19987520a25ecd1ed9c3ccc2b';
+const KIE_API_KEY = process.env.KIE_API_KEY!;
 const KIE_API_URL = 'https://api.kie.ai/api/v1/jobs/getTaskDetail';
 
 export async function GET(
