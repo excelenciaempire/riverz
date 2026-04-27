@@ -25,6 +25,7 @@ const SECURITY_HEADERS = [
       "media-src 'self' blob: https://*.supabase.co https://*.supabase.in https://*.kie.ai https://*.cloudfront.net https://*.amazonaws.com",
       "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.riverzai.com https://api.stripe.com https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.kie.ai https://api.elevenlabs.io https://api.openai.com",
       "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
+      "worker-src 'self' blob:",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

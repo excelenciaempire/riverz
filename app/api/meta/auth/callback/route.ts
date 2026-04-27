@@ -14,7 +14,7 @@ const supabaseAdmin = createClient(
 
 function buildRedirect(req: Request, params: Record<string, string>): NextResponse {
   const base = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin;
-  const url = new URL('/campañas/meta', base);
+  const url = new URL('/campanas/meta', base);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const res = NextResponse.redirect(url);
   res.cookies.delete('meta_oauth_state');

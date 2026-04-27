@@ -52,7 +52,7 @@ const navigationGroups = [
   {
     title: 'Campañas',
     items: [
-      { name: 'Meta Ads', href: '/campañas/meta', icon: Megaphone },
+      { name: 'Meta Ads', href: '/campanas/meta', icon: Megaphone },
     ],
   },
 ];
