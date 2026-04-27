@@ -39,3 +39,8 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# stealer worker
+/worker/node_modules
+/worker/dist
+/worker/.env
