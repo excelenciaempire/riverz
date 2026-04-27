@@ -9,6 +9,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhooks(.*)',
+  '/api/meta/upload/cron-poll',
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
