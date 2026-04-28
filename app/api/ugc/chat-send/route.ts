@@ -107,6 +107,7 @@ export async function POST(req: Request) {
         clerk_user_id: userId,
         name,
         type: 'ugc_chat',
+        status: 'processing',
       })
       .select()
       .single();
