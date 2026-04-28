@@ -55,7 +55,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ drained: 0, projects: [] });
   }
 
-  const origin = new URL(req.url).origin;
+  const origin = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin;
   const results: Array<{ projectId: string; ok: boolean; error?: string }> = [];
 
   for (const projectId of projects) {
