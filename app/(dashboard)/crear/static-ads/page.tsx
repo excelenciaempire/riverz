@@ -334,10 +334,6 @@ export default function StaticAdsPage() {
       toast.error('Selecciona un producto primero');
       return;
     }
-    if (!hasCompletedResearch) {
-      toast.error('Debes completar el research del producto antes de clonar templates');
-      return;
-    }
     setIsProjectModalOpen(true);
   };
 
