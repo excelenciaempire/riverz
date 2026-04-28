@@ -253,13 +253,13 @@ function UGCChatInner() {
   const [count, setCount] = useState(1);
   const [model, setModel] = useState<'veo3' | 'veo3_fast' | 'veo3_lite'>('veo3_fast');
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | 'Auto'>('9:16');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem('rvz_ugc_sidebar_open');
-      if (saved === '0') setSidebarOpen(false);
+      if (saved === '1') setSidebarOpen(true);
     } catch {
       /* ignore */
     }
