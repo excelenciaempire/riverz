@@ -1,4 +1,4 @@
-name: Meta upload poll
+name: Riverz cron tick
 
 on:
   schedule:
@@ -6,16 +6,21 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: meta-upload-poll
+  group: riverz-cron-tick
   cancel-in-progress: false
 
 jobs:
-  poll:
+  tick:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 3
     steps:
-      - name: Hit cron-poll endpoint
+      - name: Drain Meta video uploads
         run: |
           curl -fsS -X GET \
             -H "Authorization: Bearer ${{ secrets.META_CRON_SECRET }}" \
             "https://riverzai.com/api/meta/upload/cron-poll"
+      - name: Drain stuck static-ads queues
+        run: |
+          curl -fsS -X GET \
+            -H "Authorization: Bearer ${{ secrets.META_CRON_SECRET }}" \
+            "https://riverzai.com/api/static-ads/cron-drain"
