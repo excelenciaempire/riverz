@@ -2,7 +2,7 @@ name: Riverz cron tick
 
 on:
   schedule:
-    - cron: '* * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 concurrency:
@@ -24,3 +24,8 @@ jobs:
           curl -fsS -X GET \
             -H "Authorization: Bearer ${{ secrets.META_CRON_SECRET }}" \
             "https://riverzai.com/api/static-ads/cron-drain"
+      - name: Drain stuck UGC video queues
+        run: |
+          curl -fsS -X GET \
+            -H "Authorization: Bearer ${{ secrets.META_CRON_SECRET }}" \
+            "https://riverzai.com/api/ugc/cron-drain"
