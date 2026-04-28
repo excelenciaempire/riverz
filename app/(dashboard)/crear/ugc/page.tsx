@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
@@ -231,6 +231,14 @@ function groupByMessage(generations: Generation[]): MessageGroup[] {
 }
 
 export default function UGCChatPage() {
+  return (
+    <Suspense fallback={<div className="flex h-[calc(100vh-32px)] items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-gray-500" /></div>}>
+      <UGCChatInner />
+    </Suspense>
+  );
+}
+
+function UGCChatInner() {
   const { user } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
