@@ -2,9 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import { ArrowUp, Image as ImageIcon, Loader2, Plus, Download } from 'lucide-react';
+import { ArrowUp, Image as ImageIcon, Loader2, Plus, Download, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
@@ -240,7 +240,6 @@ export default function UGCChatPage() {
 
 function UGCChatInner() {
   const { user } = useUser();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const supabase = createClient();
@@ -254,7 +253,25 @@ function UGCChatInner() {
   const [count, setCount] = useState(1);
   const [model, setModel] = useState<'veo3' | 'veo3_fast' | 'veo3_lite'>('veo3_fast');
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | 'Auto'>('9:16');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('rvz_ugc_sidebar_open');
+      if (saved === '0') setSidebarOpen(false);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('rvz_ugc_sidebar_open', sidebarOpen ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [sidebarOpen]);
 
   const sessionQuery = useQuery({
     queryKey: ['ugc-session', activeSessionId],
@@ -344,28 +361,27 @@ function UGCChatInner() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [groups.length, sessionQuery.data?.generations.length]);
 
-  const newSession = () => {
-    setActiveSessionId(null);
-    const url = new URL(window.location.href);
-    url.searchParams.delete('session');
-    window.history.replaceState({}, '', url.toString());
-  };
-
   const canSend = prompt.trim().length > 0 && !sendMutation.isPending;
 
   return (
-    <div className="flex h-[calc(100vh-32px)] gap-4 p-4">
-      <aside className="hidden w-64 shrink-0 flex-col gap-3 lg:flex">
-        <button
-          onClick={newSession}
-          className="flex items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-900/40 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-[#07A498] hover:text-white"
-        >
-          <Plus className="h-4 w-4" /> Nueva conversación
-        </button>
-        <div className="flex-1 overflow-y-auto pr-1">
-          <p className="mb-2 px-1 text-[11px] font-medium uppercase tracking-wide text-gray-500">
-            Historial
-          </p>
+    <div className="-m-8 flex h-screen bg-[#0a0a0a]">
+      <aside
+        className={cn(
+          'hidden shrink-0 flex-col border-r border-white/5 bg-black/40 transition-[width,transform] duration-200 ease-out lg:flex',
+          sidebarOpen ? 'w-72' : 'w-0 overflow-hidden border-r-0',
+        )}
+      >
+        <div className="flex h-14 items-center justify-between px-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-gray-500">Sesiones</p>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="rounded-full p-1.5 text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-200"
+            aria-label="Ocultar historial"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 pb-3">
           <div className="space-y-1">
             {(sessionsQuery.data || []).map((s) => (
               <button
@@ -377,10 +393,10 @@ function UGCChatInner() {
                   window.history.replaceState({}, '', url.toString());
                 }}
                 className={cn(
-                  'block w-full truncate rounded-md px-2.5 py-2 text-left text-sm transition-colors',
+                  'block w-full truncate rounded-2xl px-3 py-2.5 text-left text-sm transition-colors',
                   activeSessionId === s.id
-                    ? 'bg-[#07A498]/10 text-white'
-                    : 'text-gray-400 hover:bg-gray-900/50 hover:text-white',
+                    ? 'bg-white/10 text-white'
+                    : 'text-gray-400 hover:bg-white/5 hover:text-white',
                 )}
                 title={s.name}
               >
@@ -388,31 +404,27 @@ function UGCChatInner() {
               </button>
             ))}
             {sessionsQuery.data?.length === 0 && (
-              <p className="px-2 text-xs text-gray-600">Sin conversaciones aún.</p>
+              <p className="px-3 py-2 text-xs text-gray-600">Sin conversaciones aún.</p>
             )}
           </div>
         </div>
       </aside>
 
-      <main className="flex flex-1 flex-col">
-        <header className="mb-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-white">Videos UGC</h1>
-            <p className="text-xs text-gray-500">
-              Veo 3.1 · prompt + frame inicial / final opcional · hasta 4 a la vez
-            </p>
-          </div>
-          {activeSessionId && (
-            <button onClick={newSession} className="text-xs text-gray-400 hover:text-white">
-              Nueva conversación
-            </button>
-          )}
-        </header>
+      <main className="relative flex flex-1 flex-col">
+        {!sidebarOpen && (
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="absolute left-4 top-4 z-20 hidden h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/60 text-gray-300 backdrop-blur-md transition-colors hover:border-[#07A498] hover:text-white lg:flex"
+            aria-label="Mostrar historial"
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </button>
+        )}
 
-        <div className="flex-1 overflow-y-auto rounded-xl border border-gray-800 bg-black/30 p-4">
+        <div className="flex-1 overflow-y-auto px-6 pb-40 pt-12 lg:px-12">
           {!activeSessionId ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
-              <p className="max-w-md text-sm text-gray-400">
+              <p className="max-w-md text-sm text-gray-500">
                 Describe el video que quieres crear. Sube una imagen como frame inicial y/o
                 final si quieres más control sobre el resultado.
               </p>
@@ -424,20 +436,20 @@ function UGCChatInner() {
           ) : groups.length === 0 ? (
             <p className="text-sm text-gray-500">Esta conversación está vacía.</p>
           ) : (
-            <div className="space-y-6">
+            <div className="mx-auto max-w-5xl space-y-8">
               {groups.map((g, i) => (
-                <div key={i} className="space-y-3">
-                  <div className="rounded-xl bg-gray-900/40 px-4 py-3">
+                <div key={i} className="space-y-4">
+                  <div className="rounded-3xl bg-white/[0.04] px-5 py-4">
                     <div className="flex flex-wrap items-start gap-3">
                       {g.firstFrameUrl && (
-                        <img src={g.firstFrameUrl} alt="inicial" className="h-16 w-16 rounded-md object-cover" />
+                        <img src={g.firstFrameUrl} alt="inicial" className="h-16 w-16 rounded-2xl object-cover" />
                       )}
                       {g.lastFrameUrl && (
-                        <img src={g.lastFrameUrl} alt="final" className="h-16 w-16 rounded-md object-cover" />
+                        <img src={g.lastFrameUrl} alt="final" className="h-16 w-16 rounded-2xl object-cover" />
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="whitespace-pre-wrap text-sm text-gray-200">{g.prompt}</p>
-                        <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-500">
+                        <p className="whitespace-pre-wrap text-sm text-gray-100">{g.prompt}</p>
+                        <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-gray-500">
                           {g.model || 'veo3_fast'} · {g.aspectRatio || '9:16'} · {g.generations.length} video(s)
                         </p>
                       </div>
@@ -455,7 +467,8 @@ function UGCChatInner() {
           )}
         </div>
 
-        <div className="mt-3 rounded-2xl border border-gray-800 bg-gray-900/40 p-3">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-6 pt-12 lg:px-12">
+          <div className="pointer-events-auto mx-auto max-w-3xl rounded-3xl border border-white/10 bg-[#141414]/90 p-4 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.8)] backdrop-blur-md">
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -480,7 +493,7 @@ function UGCChatInner() {
                 value={model}
                 onChange={(e) => setModel(e.target.value as typeof model)}
                 disabled={sendMutation.isPending}
-                className="rounded-md border border-gray-700 bg-gray-900 px-2 py-1.5 text-xs text-gray-200 focus:border-[#07A498] focus:outline-none"
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-200 transition-colors hover:bg-white/10 focus:border-[#07A498] focus:outline-none"
               >
                 {MODEL_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -490,7 +503,7 @@ function UGCChatInner() {
                 value={aspectRatio}
                 onChange={(e) => setAspectRatio(e.target.value as typeof aspectRatio)}
                 disabled={sendMutation.isPending}
-                className="rounded-md border border-gray-700 bg-gray-900 px-2 py-1.5 text-xs text-gray-200 focus:border-[#07A498] focus:outline-none"
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-200 transition-colors hover:bg-white/10 focus:border-[#07A498] focus:outline-none"
               >
                 {ASPECT_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -500,7 +513,7 @@ function UGCChatInner() {
                 value={count}
                 onChange={(e) => setCount(Number(e.target.value))}
                 disabled={sendMutation.isPending}
-                className="rounded-md border border-gray-700 bg-gray-900 px-2 py-1.5 text-xs text-gray-200 focus:border-[#07A498] focus:outline-none"
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-200 transition-colors hover:bg-white/10 focus:border-[#07A498] focus:outline-none"
                 title="Cantidad"
               >
                 {[1, 2, 3, 4].map((n) => (
@@ -512,10 +525,10 @@ function UGCChatInner() {
                 onClick={() => sendMutation.mutate()}
                 disabled={!canSend}
                 className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-full transition-colors',
+                  'flex h-10 w-10 items-center justify-center rounded-full transition-colors',
                   canSend
                     ? 'bg-[#07A498] text-white hover:bg-[#068f84]'
-                    : 'cursor-not-allowed bg-gray-800 text-gray-600',
+                    : 'cursor-not-allowed bg-white/10 text-gray-600',
                 )}
               >
                 {sendMutation.isPending ? (
@@ -525,6 +538,7 @@ function UGCChatInner() {
                 )}
               </button>
             </div>
+          </div>
           </div>
         </div>
       </main>
