@@ -185,6 +185,22 @@ export async function POST(req: Request) {
       allGenerations.push(...variationRows);
     }
 
+    // Fire-and-forget: kick off the queue immediately so the first analysis
+    // doesn't have to wait for the frontend useEffect or the GitHub cron.
+    // Uses CRON_SECRET so it bypasses Clerk; we don't await the response.
+    const cronSecret = process.env.CRON_SECRET;
+    const appOrigin = process.env.NEXT_PUBLIC_APP_URL;
+    if (cronSecret && appOrigin) {
+      fetch(`${appOrigin}/api/static-ads/process-queue`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${cronSecret}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ projectId: project.id }),
+      }).catch((err) => console.error('[STATIC_AD_CLONE] kickoff failed:', err?.message || err));
+    }
+
     // Estimation: ~30s per Nano Banana image, processed in parallel batches.
     const totalImages = templateIds.length * VARIATIONS_PER_TEMPLATE;
     const estimatedMinutes = Math.max(1, Math.ceil(totalImages * 0.3));
