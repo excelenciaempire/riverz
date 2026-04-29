@@ -85,3 +85,270 @@ input[type="file"],
 .cursor-pointer {
   cursor: pointer;
 }
+
+/* ============================================================
+   Riverz Landing — sistema visual
+   ============================================================ */
+
+/* Color helpers expuestos a Tailwind v4 */
+@theme inline {
+  --color-accent: #07A498;
+  --color-accent-2: #14E0CC;
+  --color-violet: #8B5CF6;
+  --color-rose: #F472B6;
+  --color-amber: #F59E0B;
+}
+
+/* Tipografía display */
+.font-display {
+  font-family: var(--font-poppins), -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.text-gradient-primary {
+  background: linear-gradient(110deg, #FFFFFF 0%, #14E0CC 38%, #8B5CF6 78%, #F472B6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 200% 100%;
+  animation: gradient-shift 9s ease-in-out infinite;
+}
+
+.text-gradient-accent {
+  background: linear-gradient(120deg, #14E0CC 0%, #07A498 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Grid background */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.bg-grid-fade {
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 80%);
+}
+
+.bg-noise {
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* Aurora / glow ambient */
+.aurora {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  filter: blur(80px);
+  opacity: 0.55;
+  background:
+    radial-gradient(40% 30% at 20% 30%, rgba(20, 224, 204, 0.45), transparent 60%),
+    radial-gradient(35% 30% at 80% 20%, rgba(139, 92, 246, 0.4), transparent 60%),
+    radial-gradient(40% 30% at 60% 80%, rgba(244, 114, 182, 0.3), transparent 60%);
+  animation: aurora-drift 18s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift {
+  0% { transform: translate3d(-2%, -1%, 0) scale(1); }
+  50% { transform: translate3d(3%, 2%, 0) scale(1.05); }
+  100% { transform: translate3d(-1%, 3%, 0) scale(1.02); }
+}
+
+/* Glass card */
+.glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.015) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-strong {
+  background: linear-gradient(180deg, rgba(20, 22, 28, 0.85) 0%, rgba(10, 10, 10, 0.6) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.ring-accent {
+  box-shadow: 0 0 0 1px rgba(20, 224, 204, 0.18), 0 20px 60px -20px rgba(20, 224, 204, 0.25);
+}
+
+/* ===== 3D Orbital Sphere ===== */
+.orb-stage {
+  perspective: 1400px;
+  perspective-origin: 50% 50%;
+}
+
+.orb-rotor {
+  transform-style: preserve-3d;
+  animation: orb-rotate-y 38s linear infinite;
+}
+
+.orb-rotor-rev {
+  transform-style: preserve-3d;
+  animation: orb-rotate-y 50s linear infinite reverse;
+}
+
+@keyframes orb-rotate-y {
+  from { transform: rotateY(0deg) rotateX(8deg); }
+  to   { transform: rotateY(360deg) rotateX(8deg); }
+}
+
+.orb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transform-style: preserve-3d;
+}
+
+.orb-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px dashed rgba(20, 224, 204, 0.18);
+  animation: orb-spin 28s linear infinite;
+}
+
+@keyframes orb-spin {
+  to { transform: rotate(360deg); }
+}
+
+.orb-node {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 40px -10px rgba(20, 224, 204, 0.35);
+  transform-style: preserve-3d;
+}
+
+.orb-node > * {
+  /* Mantener iconos planos frente al usuario aunque el rotor gire */
+  transform: rotateY(0deg);
+}
+
+.orb-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 140px;
+  height: 140px;
+  margin: -70px 0 0 -70px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #FFFFFF 0%, #14E0CC 30%, #07A498 60%, #0a0a0a 100%);
+  box-shadow:
+    0 0 60px rgba(20, 224, 204, 0.55),
+    0 0 120px rgba(139, 92, 246, 0.35),
+    inset -20px -20px 60px rgba(0, 0, 0, 0.5);
+  animation: pulse-core 4s ease-in-out infinite;
+}
+
+@keyframes pulse-core {
+  0%, 100% { box-shadow: 0 0 60px rgba(20, 224, 204, 0.55), 0 0 120px rgba(139, 92, 246, 0.35), inset -20px -20px 60px rgba(0, 0, 0, 0.5); }
+  50%      { box-shadow: 0 0 90px rgba(20, 224, 204, 0.75), 0 0 160px rgba(139, 92, 246, 0.5),  inset -20px -20px 60px rgba(0, 0, 0, 0.5); }
+}
+
+/* Floating */
+.float-y {
+  animation: float-y 7s ease-in-out infinite;
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+
+/* Tilt card */
+.tilt {
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+  will-change: transform;
+}
+
+/* SVG dataflow */
+.flow-path {
+  stroke-dasharray: 6 10;
+  animation: flow-march 1.6s linear infinite;
+}
+@keyframes flow-march {
+  to { stroke-dashoffset: -160; }
+}
+
+.flow-dot {
+  filter: drop-shadow(0 0 8px rgba(20, 224, 204, 0.9));
+}
+
+/* Marquee logos */
+.marquee {
+  animation: marquee 28s linear infinite;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Reveal on scroll (uses IntersectionObserver via [data-reveal]) */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+[data-reveal].in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Counter ticker */
+.shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+  background-size: 200% 100%;
+  animation: shimmer 2.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Conic spinner halo */
+.halo {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from 180deg, rgba(20,224,204,0.0), rgba(20,224,204,0.7), rgba(139,92,246,0.7), rgba(244,114,182,0.5), rgba(20,224,204,0.0));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  animation: halo-spin 6s linear infinite;
+}
+@keyframes halo-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .orb-rotor, .orb-rotor-rev, .orb-ring::before, .float-y, .aurora, .marquee, .halo, .shimmer, .flow-path, .text-gradient-primary {
+    animation: none !important;
+  }
+}
