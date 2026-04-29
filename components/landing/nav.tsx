@@ -9,6 +9,7 @@ const links = [
   { href: '#equipo', label: 'Tu equipo IA' },
   { href: '#flujo', label: 'Cómo funciona' },
   { href: '#contenido', label: 'Contenido' },
+  { href: '#planes', label: 'Planes' },
 ];
 
 export function LandingNav() {

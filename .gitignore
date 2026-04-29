@@ -56,6 +56,3 @@ UGC_*.json
 
 # vercel cli linkage (contains project + org IDs but is regenerated on `vercel link`)
 .vercel/
-
-# local preview screenshots
-.tmp-screens/

@@ -16,7 +16,7 @@ const groups = [
       { label: 'Casos de éxito', href: '#' },
       { label: 'Cómo funciona', href: '#flujo' },
       { label: 'Tu equipo IA', href: '#equipo' },
-      { label: 'Por qué Riverz', href: '#estudio' },
+      { label: 'Planes', href: '#planes' },
     ],
   },
   {
