@@ -56,6 +56,10 @@ const nextConfig: NextConfig = {
     },
   },
   async headers() {
+    // Skip strict CSP in dev so HMR + Clerk + remote assets don't get blocked.
+    if (process.env.NODE_ENV !== 'production') {
+      return [];
+    }
     return [
       {
         source: '/:path*',
