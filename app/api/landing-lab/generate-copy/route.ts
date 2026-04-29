@@ -6,7 +6,7 @@ export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 const KIE_API_KEY = process.env.KIE_API_KEY!;
-const KIE_ENDPOINT = 'https://api.kie.ai/claude-sonnet-4-5/v1/chat/completions';
+const KIE_ENDPOINT = 'https://api.kie.ai/gemini-3-pro/v1/chat/completions';
 
 const SYS = `Eres un copywriter experto en ecommerce colombiano de skincare.
 Producto: Kit Vitalu = Crema de sebo de res purificado Grass-Fed + Jabon Exotico de regalo.
@@ -32,12 +32,11 @@ export async function POST(req: Request) {
         'Authorization': `Bearer ${KIE_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 4000,
         stream: false,
         messages: [
-          { role: 'system', content: SYS },
-          { role: 'user', content: `ANGULO: ${angle}\nNOMBRE: ${name}` },
+          { role: 'system', content: [{ type: 'text', text: SYS }] },
+          { role: 'user', content: [{ type: 'text', text: `ANGULO: ${angle}\nNOMBRE: ${name}` }] },
         ],
       }),
     });

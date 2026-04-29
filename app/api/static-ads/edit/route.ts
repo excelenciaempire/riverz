@@ -123,7 +123,7 @@ export async function POST(req: Request) {
     ];
 
     // Generate new prompt using whatever analysis model the admin has configured.
-    // Default is Claude Sonnet 4.6; falls back to Gemini 3 Pro if Claude rejects.
+    // Default is Gemini 3 Pro; falls back to Gemini Flash 2.0 on transient errors.
     const { analysisModel } = await getKieModelConfig();
     const { text: newPrompt, modelUsed } = await analyzeWithFallback(analysisModel, messages, {
       temperature: 0.5,

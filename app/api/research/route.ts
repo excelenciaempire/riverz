@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     });
     console.log('[RESEARCH] Got prompt template with variables injected');
 
-    // Build messages for Claude with images (Render has longer timeout)
+    // Build messages for Gemini with images (Render has longer timeout)
     const userContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
       {
         type: 'text',

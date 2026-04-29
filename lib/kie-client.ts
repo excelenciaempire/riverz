@@ -6,7 +6,7 @@ if (!KIE_API_KEY) {
 }
 const KIE_BASE_URL = process.env.KIE_BASE_URL || 'https://api.kie.ai';
 
-const DEFAULT_ANALYSIS_MODEL = 'claude-sonnet-4-6';
+const DEFAULT_ANALYSIS_MODEL = 'gemini-3-pro';
 const DEFAULT_GENERATION_MODEL = 'nano-banana-pro';
 
 // --- Types ---
@@ -579,7 +579,7 @@ export async function analyzeWithClaude46(messages: GeminiMessage[], options: Cl
  * The admin can change the active model via the `kie_analysis_model` row in `admin_config`
  * and this function will respect it without any code change.
  *
- * Default: claude-sonnet-4-6 (best quality with native vision).
+ * Default: gemini-3-pro (reliable multimodal on kie.ai's gateway).
  * Fallback chain on error is the caller's responsibility — see lib/analysis-runner.
  */
 export async function analyzeWithModel(
@@ -603,7 +603,7 @@ export async function analyzeWithModel(
   }
 
   console.warn(`[ANALYZE] Unknown model "${modelName}" — falling back to ${DEFAULT_ANALYSIS_MODEL}`);
-  return analyzeWithClaude46(messages, { ...options, model: 'claude-sonnet-4-6' });
+  return analyzeWithGemini3Pro(messages, options);
 }
 
 // --- Gemini Flash 2.0 (Fast Multimodal Analysis - Sync) ---
@@ -881,19 +881,23 @@ export async function getKieModelConfig() {
     .eq('key', 'kie_generation_model')
     .single();
 
+  // Auto-migrate: claude-sonnet-4-6 has been unreliable on kie.ai's gateway,
+  // so any saved value pointing at it is rewritten to gemini-3-pro at read
+  // time. Admins can still force a specific model via the admin UI.
+  const rawAnalysis = analysisConfig?.value || DEFAULT_ANALYSIS_MODEL;
+  const analysisModel = rawAnalysis === 'claude-sonnet-4-6' ? DEFAULT_ANALYSIS_MODEL : rawAnalysis;
+
   return {
-    // Claude Sonnet 4.6 is the recommended model for multimodal analysis (images + text)
-    // on kie.ai as of 2025. Falls back to whatever the admin configured if set.
-    analysisModel: analysisConfig?.value || DEFAULT_ANALYSIS_MODEL,
+    analysisModel,
     generationModel: genConfig?.value || DEFAULT_GENERATION_MODEL,
   };
 }
 
 /**
  * Runs an analysis call with automatic fallback.
- * Tries the primary model (default: Claude Sonnet 4.6). If it fails — most likely cause is
- * Claude vision not being available on kie.ai — falls back to Gemini 3 Pro, which we know
- * handles multimodal reliably. Logs which model actually produced the result.
+ * Tries the primary model (default: Gemini 3 Pro). If it fails, falls back to
+ * Gemini Flash 2.0 (same provider, different size — much more reliable than
+ * cross-provider fallbacks). Logs which model actually produced the result.
  *
  * The fallback model is also configurable via admin_config.kie_analysis_fallback_model.
  */
@@ -902,7 +906,7 @@ export async function analyzeWithFallback(
   messages: GeminiMessage[],
   options: { temperature?: number; maxTokens?: number; fallbackModel?: string } = {}
 ): Promise<{ text: string; modelUsed: string; fellBack: boolean }> {
-  const fallback = options.fallbackModel || 'gemini-3-pro';
+  const fallback = options.fallbackModel || 'gemini-flash-2-0';
   try {
     const text = await analyzeWithModel(primaryModel, messages, options);
     return { text, modelUsed: primaryModel, fellBack: false };

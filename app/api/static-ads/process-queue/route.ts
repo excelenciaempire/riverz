@@ -30,9 +30,9 @@ const supabaseAdmin = createClient(
  * is the LEADER and runs the shared analysis steps once; the other four wait.
  *
  * Steps (per template, in order):
- *   1. Template Analysis  (Claude 4.6 vision)  → templateAnalysisJson
- *   2. Adapt to Product   (Claude 4.6 vision)  → adaptedJson
- *   3. Generate 5 Prompts (Claude 4.6)         → variationPrompts[5]
+ *   1. Template Analysis  (Gemini 3 Pro vision) → templateAnalysisJson
+ *   2. Adapt to Product   (Gemini 3 Pro vision) → adaptedJson
+ *   3. Generate 5 Prompts (Gemini 3 Pro)        → variationPrompts[5]
  *      The leader copies templateAnalysisJson + adaptedJson + each variation's
  *      assigned prompt into all sibling rows (#2..#5), flipping their status
  *      from 'pending_variation' to 'pending_generation'.
@@ -104,7 +104,7 @@ async function runSharedAnalysisForTemplate(
 
   // STEP 1 — Template analysis with vision -------------------------------
   if (!inputData.templateAnalysisJson) {
-    log('Step 1: Analyzing template (Claude 4.6 vision)...');
+    log('Step 1: Analyzing template (Gemini 3 Pro vision)...');
     await Promise.all(allRows.map((r) => updateGeneration(r.id, { status: 'analyzing' })));
 
     if (!inputData.templateThumbnail) throw new Error('Missing templateThumbnail');
@@ -135,7 +135,7 @@ async function runSharedAnalysisForTemplate(
 
   // STEP 2 — Adapt to product (vision: product photos) ------------------
   if (!inputData.adaptedJson) {
-    log('Step 2: Adapting to product (Claude 4.6 vision)...');
+    log('Step 2: Adapting to product (Gemini 3 Pro vision)...');
     await Promise.all(allRows.map((r) => updateGeneration(r.id, { status: 'adapting' })));
 
     const adaptationSystemPrompt = await getPromptWithVariables('template_adaptation', {
@@ -171,7 +171,7 @@ async function runSharedAnalysisForTemplate(
 
   // STEP 3 — Generate 5 distinct prompts --------------------------------
   if (!inputData.variationPrompts || inputData.variationPrompts.length < VARIATIONS_PER_TEMPLATE) {
-    log('Step 3: Generating 5 creative prompts (Claude 4.6)...');
+    log('Step 3: Generating 5 creative prompts (Gemini 3 Pro)...');
     await Promise.all(allRows.map((r) => updateGeneration(r.id, { status: 'generating_prompt' })));
 
     const promptTemplate = await getPromptWithVariables('static_ads_5_variations_prompts', {

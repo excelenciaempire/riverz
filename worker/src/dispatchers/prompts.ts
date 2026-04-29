@@ -1,13 +1,13 @@
 import { supabase } from '../lib/supabase.js';
 import { getPromptWithVariables } from '../lib/prompts.js';
-import { callClaude, imageBlockFromStorage, parseJsonFromClaude } from '../lib/claude.js';
+import { callGemini, imageBlockFromStorage, parseJsonFromGemini } from '../lib/gemini.js';
 import { StealerJob } from '../lib/types.js';
 import { enqueueJob } from '../lib/jobs.js';
 
 /**
  * generate_prompts — for ONE scene.
  *
- * Reads the keyframe + the scene's audio_text and asks Claude 4.6 (vision) for
+ * Reads the keyframe + the scene's audio_text and asks Gemini 3 Pro (vision) for
  * a structured JSON: { visual_prompt_for_ai, emotion_context, fallback_prompt, ... }.
  * Persists the result onto the scene row.
  *
@@ -51,11 +51,11 @@ export async function handleGeneratePrompts(job: StealerJob) {
 
   let parsed: any;
   try {
-    const text = await callClaude(
+    const text = await callGemini(
       [{ role: 'user', content: [{ type: 'text', text: 'Analyze this keyframe and return the JSON.' }, imageBlock] }],
       { system: systemPrompt, temperature: 0.5, maxTokens: 2500 }
     );
-    parsed = parseJsonFromClaude(text);
+    parsed = parseJsonFromGemini(text);
   } catch (err: any) {
     // Fall back: build a minimal prompt from the audio text only.
     parsed = {
@@ -63,7 +63,7 @@ export async function handleGeneratePrompts(job: StealerJob) {
       emotion_context: 'unknown',
       fallback_prompt: `${scene.type === 'actor' ? 'Person speaking on camera' : 'Brand product shot'}, 9:16 vertical, professional commercial cinematography. Context: ${audioText.slice(0, 200)}`,
     };
-    console.warn(`[prompts] Claude failed for scene ${scene.id}: ${err.message}. Using fallback.`);
+    console.warn(`[prompts] Gemini failed for scene ${scene.id}: ${err.message}. Using fallback.`);
   }
 
   const visualPrompt =

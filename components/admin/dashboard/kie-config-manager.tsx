@@ -10,10 +10,10 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
 const ANALYSIS_OPTIONS = [
-  { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (recomendado)', note: 'Calidad máxima, visión nativa, endpoint /claude/v1/messages' },
+  { value: 'gemini-3-pro', label: 'Gemini 3 Pro (recomendado)', note: 'Multimodal robusto, endpoint /gemini-3-pro/v1/chat/completions' },
+  { value: 'gemini-flash-2-0', label: 'Gemini Flash 2.0', note: 'Rápido y barato, fallback automático' },
+  { value: 'gemini-3-pro', label: 'Claude Sonnet 4.6', note: 'Calidad alta, pero gateway inestable en kie.ai' },
   { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5', note: 'Compatibilidad legado, OpenAI-compat' },
-  { value: 'gemini-3-pro', label: 'Gemini 3 Pro (fallback)', note: 'Multimodal robusto si Claude no responde' },
-  { value: 'gemini-flash-2-0', label: 'Gemini Flash 2.0', note: 'Rápido y barato, calidad menor' },
 ];
 
 const GENERATION_OPTIONS = [
@@ -40,7 +40,7 @@ export function KieConfigManager() {
       data?.forEach((item) => { map[item.key] = item.value; });
 
       return {
-        analysisModel: map['kie_analysis_model'] || 'claude-sonnet-4-6',
+        analysisModel: map['kie_analysis_model'] || 'gemini-3-pro',
         generationModel: map['kie_generation_model'] || 'nano-banana-pro',
       };
     },
@@ -95,7 +95,7 @@ export function KieConfigManager() {
 
   if (isLoading) return <div className="text-gray-400">Cargando configuración...</div>;
 
-  const currentAnalysis = analysisDraft ?? config?.analysisModel ?? 'claude-sonnet-4-6';
+  const currentAnalysis = analysisDraft ?? config?.analysisModel ?? 'gemini-3-pro';
   const currentGeneration = generationDraft ?? config?.generationModel ?? 'nano-banana-pro';
   const dirty =
     (analysisDraft !== null && analysisDraft !== config?.analysisModel) ||
@@ -129,7 +129,7 @@ export function KieConfigManager() {
       <div className="rounded-xl border border-gray-800 bg-[#141414] p-5">
         <Label className="text-white text-base">Modelo de Análisis (visión + razonamiento)</Label>
         <p className="mt-1 text-xs text-gray-500">
-          Se usa en los pasos 1, 2 y 3. Si Claude falla, el sistema cae automáticamente al fallback configurado más abajo.
+          Se usa en los pasos 1, 2 y 3. Si el modelo principal falla, el sistema cae automáticamente a Gemini Flash 2.0.
         </p>
 
         <div className="mt-3 grid gap-2">

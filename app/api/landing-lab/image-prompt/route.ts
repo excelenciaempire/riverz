@@ -6,7 +6,7 @@ export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
 const KIE_API_KEY = process.env.KIE_API_KEY!;
-const KIE_ENDPOINT = 'https://api.kie.ai/claude-sonnet-4-5/v1/chat/completions';
+const KIE_ENDPOINT = 'https://api.kie.ai/gemini-3-pro/v1/chat/completions';
 
 export async function POST(req: Request) {
   let brief = '';
@@ -35,10 +35,9 @@ export async function POST(req: Request) {
         'Authorization': `Bearer ${KIE_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 300,
         stream: false,
-        messages: [{ role: 'user', content: userMsg }],
+        messages: [{ role: 'user', content: [{ type: 'text', text: userMsg }] }],
       }),
     });
 
