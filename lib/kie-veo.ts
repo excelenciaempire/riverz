@@ -11,6 +11,7 @@ export interface VeoGenerateInput {
   model?: VeoModel;
   aspect_ratio?: VeoAspect;
   resolution?: VeoResolution;
+  callBackUrl?: string;
 }
 
 export interface VeoTaskInfo {
@@ -30,13 +31,14 @@ function authHeaders() {
 }
 
 export async function createVeoTask(input: VeoGenerateInput): Promise<string> {
-  const body = {
+  const body: Record<string, unknown> = {
     prompt: input.prompt,
-    imageUrls: input.imageUrls,
     model: input.model || 'veo3_fast',
     aspect_ratio: input.aspect_ratio || '9:16',
     resolution: input.resolution || '1080p',
   };
+  if (input.imageUrls && input.imageUrls.length > 0) body.imageUrls = input.imageUrls;
+  if (input.callBackUrl) body.callBackUrl = input.callBackUrl;
 
   const res = await fetch(`${KIE_BASE_URL}/api/v1/veo/generate`, {
     method: 'POST',
@@ -65,10 +67,17 @@ export async function getVeoTask(taskId: string): Promise<VeoTaskInfo> {
   }
   const data = await res.json();
 
+  // record-info shape per https://docs.kie.ai/veo3-api/get-veo-3-video-details:
+  //   data.successFlag: 0=generating, 1=success, 2=failed, 3=generation_failed
+  //   data.resultUrls: stringified JSON array of mp4 URLs
+  // Older gateway variants have used data.status / data.taskStatus / data.info.status,
+  // so we fall back to those if successFlag is missing.
   const d = data.data || {};
   const info = d.info || {};
   const rawCode: number =
-    typeof d.status === 'number'
+    typeof d.successFlag === 'number'
+      ? d.successFlag
+      : typeof d.status === 'number'
       ? d.status
       : typeof d.taskStatus === 'number'
       ? d.taskStatus

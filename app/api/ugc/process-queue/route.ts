@@ -58,6 +58,23 @@ export async function POST(req: Request) {
   return NextResponse.json({ ...(await summarize(projectId)) });
 }
 
+function buildCallbackUrl(req?: Request): string | undefined {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL || process.env.RENDER_EXTERNAL_URL;
+  let base = (explicit || '').replace(/\/+$/, '');
+  if (!base && req) {
+    try {
+      base = new URL(req.url).origin;
+    } catch {
+      return undefined;
+    }
+  }
+  if (!base || !/^https:\/\//i.test(base)) return undefined;
+  const url = new URL('/api/webhooks/kie', base);
+  const secret = process.env.STEALER_WEBHOOK_SECRET || process.env.KIE_WEBHOOK_SECRET;
+  if (secret) url.searchParams.set('secret', secret);
+  return url.toString();
+}
+
 async function processOne(row: any, projectId: string) {
   try {
     if (row.status === 'pending_generation') {
@@ -66,6 +83,7 @@ async function processOne(row: any, projectId: string) {
         imageUrls: [row.input_data.firstFrameUrl, row.input_data.lastFrameUrl].filter(Boolean) as string[],
         model: (row.input_data.model as VeoModel) || 'veo3_fast',
         aspect_ratio: (row.input_data.aspectRatio as VeoAspect) || '9:16',
+        callBackUrl: buildCallbackUrl(),
       });
       await supabaseAdmin
         .from('generations')

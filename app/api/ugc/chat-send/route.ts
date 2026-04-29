@@ -1,10 +1,33 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { createVeoTask, type VeoModel, type VeoAspect } from '@/lib/kie-veo';
 
 export const runtime = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
+
+function buildKieCallbackUrl(req: Request): string | undefined {
+  // Prefer the explicit public URL (Render sets RENDER_EXTERNAL_URL automatically too).
+  const explicit = process.env.NEXT_PUBLIC_APP_URL || process.env.RENDER_EXTERNAL_URL;
+  let base = (explicit || '').replace(/\/+$/, '');
+  if (!base) {
+    // Fall back to deriving from the request — works as long as we're behind HTTPS.
+    try {
+      base = new URL(req.url).origin;
+    } catch {
+      return undefined;
+    }
+  }
+  if (!/^https:\/\//i.test(base)) {
+    // kie.ai will not call HTTP URLs reliably — skip the callback in that case.
+    return undefined;
+  }
+  const url = new URL('/api/webhooks/kie', base);
+  const secret = process.env.STEALER_WEBHOOK_SECRET || process.env.KIE_WEBHOOK_SECRET;
+  if (secret) url.searchParams.set('secret', secret);
+  return url.toString();
+}
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -147,23 +170,73 @@ export async function POST(req: Request) {
     .update({ credits: credits.credits - totalCost })
     .eq('clerk_user_id', userId);
 
-  // Fire-and-forget: kick off the queue immediately.
-  const cronSecret = process.env.CRON_SECRET;
-  const appOrigin = process.env.NEXT_PUBLIC_APP_URL;
-  if (cronSecret && appOrigin && projectId) {
-    fetch(`${appOrigin}/api/ugc/process-queue`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${cronSecret}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ projectId }),
-    }).catch((err) => console.error('[UGC_CHAT_SEND] kickoff failed:', err?.message || err));
+  // Submit each row to kie.ai inline so the user immediately sees `generating`
+  // (or `failed` with a real error) instead of a forever-`pending` placeholder.
+  // kie.ai's /veo/generate returns within a few seconds — well under the 60s
+  // function budget. The actual rendering is async via the callBackUrl webhook.
+  const callBackUrl = buildKieCallbackUrl(req);
+  const imageUrls = [body.firstFrameUrl, body.lastFrameUrl].filter(Boolean) as string[];
+  const submitResults = await Promise.allSettled(
+    (inserted || []).map(async (row: any) => {
+      const taskId = await createVeoTask({
+        prompt,
+        imageUrls,
+        model: model as VeoModel,
+        aspect_ratio: aspectRatio as VeoAspect,
+        callBackUrl,
+      });
+      await supabaseAdmin
+        .from('generations')
+        .update({
+          status: 'generating',
+          input_data: { ...row.input_data, veoTaskId: taskId },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', row.id);
+      return { id: row.id, taskId };
+    }),
+  );
+
+  let submittedOk = 0;
+  for (let i = 0; i < submitResults.length; i++) {
+    const r = submitResults[i];
+    const row = inserted![i];
+    if (r.status === 'fulfilled') {
+      submittedOk++;
+    } else {
+      const reason = r.reason?.message || String(r.reason || 'kie.ai rejected the task');
+      console.error('[UGC_CHAT_SEND] createVeoTask failed:', reason);
+      await supabaseAdmin
+        .from('generations')
+        .update({
+          status: 'failed',
+          error_message: reason.slice(0, 500),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', row.id);
+    }
+  }
+
+  // If every submission failed, refund the user — they shouldn't pay for a
+  // batch where kie.ai accepted zero tasks.
+  if (submittedOk === 0) {
+    await supabaseAdmin
+      .from('user_credits')
+      .update({ credits: credits.credits })
+      .eq('clerk_user_id', userId);
+  } else if (submittedOk < count) {
+    // Partial failure — refund the cost of the failed tasks.
+    const refund = costPerVideo * (count - submittedOk);
+    await supabaseAdmin
+      .from('user_credits')
+      .update({ credits: credits.credits - totalCost + refund })
+      .eq('clerk_user_id', userId);
   }
 
   return NextResponse.json({
     projectId,
     generations: inserted,
-    costDeducted: totalCost,
+    submitted: submittedOk,
+    costDeducted: costPerVideo * submittedOk,
   });
 }
