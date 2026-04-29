@@ -6,6 +6,8 @@ import { NextResponse } from 'next/server';
 const PREVIEW_MODE = false;
 
 const isPublicRoute = createRouteMatcher([
+  '/',
+  '/landing-lab',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhooks(.*)',
