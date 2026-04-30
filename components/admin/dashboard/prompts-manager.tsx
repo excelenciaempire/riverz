@@ -89,7 +89,10 @@ export function PromptsManager() {
           variables: data.variables ? data.variables.split(',').map(v => v.trim()).filter(Boolean) : []
         })
       });
-      if (!response.ok) throw new Error('Failed to create prompt');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status} al crear prompt`);
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -114,7 +117,10 @@ export function PromptsManager() {
           variables: data.variables ? data.variables.split(',').map(v => v.trim()).filter(Boolean) : []
         })
       });
-      if (!response.ok) throw new Error('Failed to update prompt');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status} al actualizar prompt`);
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -133,7 +139,10 @@ export function PromptsManager() {
       const response = await fetch(`/api/admin/prompts?id=${id}`, {
         method: 'DELETE'
       });
-      if (!response.ok) throw new Error('Failed to delete prompt');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status} al eliminar prompt`);
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -152,7 +161,10 @@ export function PromptsManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, is_active })
       });
-      if (!response.ok) throw new Error('Failed to toggle prompt');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status} al cambiar estado`);
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -166,7 +178,10 @@ export function PromptsManager() {
       const response = await fetch('/api/admin/prompts/seed', {
         method: 'POST'
       });
-      if (!response.ok) throw new Error('Failed to seed prompts');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status} al cargar prompts`);
+      }
       return response.json();
     },
     onSuccess: (data) => {

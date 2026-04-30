@@ -1,6 +1,27 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/admin-auth';
+
+// Service-role client. requireAdmin() already gates access by Clerk + admin
+// allowlist, so we bypass RLS here — the prior anon-key client was failing
+// every UPDATE/INSERT/DELETE against ai_prompts because RLS blocks writes
+// from non-service-role sessions, even for the page owner.
+const supabaseAdmin = createSupabaseAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
+
+// Surface the DB error message in the response so the admin UI can show
+// something useful instead of a generic 500. Only safe because every handler
+// is gated by requireAdmin() — a leaked stack trace here is not a public risk.
+function dbError(stage: string, error: any) {
+  console.error(`[PROMPTS_${stage}]`, error);
+  return NextResponse.json(
+    { error: error?.message || `Internal error in ${stage}`, code: error?.code, details: error?.details },
+    { status: 500 },
+  );
+}
 
 // GET - Fetch all prompts
 export async function GET() {
@@ -11,20 +32,16 @@ export async function GET() {
       return new NextResponse(guard.reason || 'Forbidden', { status });
     }
 
-    const supabase = await createClient();
-    
-    const { data: prompts, error } = await supabase
+    const { data: prompts, error } = await supabaseAdmin
       .from('ai_prompts')
       .select('*')
       .order('category', { ascending: true })
       .order('name', { ascending: true });
 
-    if (error) throw error;
-
+    if (error) return dbError('GET', error);
     return NextResponse.json(prompts);
   } catch (error: any) {
-    console.error('[PROMPTS_GET]', error);
-    return new NextResponse('Internal Error', { status: 500 });
+    return dbError('GET', error);
   }
 }
 
@@ -41,12 +58,10 @@ export async function POST(req: Request) {
     const { key, name, category, prompt_text, description, variables, is_active } = body;
 
     if (!key || !name || !category || !prompt_text) {
-      return new NextResponse('Missing required fields', { status: 400 });
+      return NextResponse.json({ error: 'Missing required fields (key, name, category, prompt_text)' }, { status: 400 });
     }
 
-    const supabase = await createClient();
-    
-    const { data: prompt, error } = await supabase
+    const { data: prompt, error } = await supabaseAdmin
       .from('ai_prompts')
       .insert({
         key,
@@ -55,17 +70,15 @@ export async function POST(req: Request) {
         prompt_text,
         description,
         variables: variables || [],
-        is_active: is_active ?? true
+        is_active: is_active ?? true,
       })
       .select()
       .single();
 
-    if (error) throw error;
-
+    if (error) return dbError('POST', error);
     return NextResponse.json(prompt);
   } catch (error: any) {
-    console.error('[PROMPTS_POST]', error);
-    return new NextResponse('Internal Error', { status: 500 });
+    return dbError('POST', error);
   }
 }
 
@@ -82,24 +95,24 @@ export async function PATCH(req: Request) {
     const { id, ...updates } = body;
 
     if (!id) {
-      return new NextResponse('Missing prompt ID', { status: 400 });
+      return NextResponse.json({ error: 'Missing prompt ID' }, { status: 400 });
     }
 
-    const supabase = await createClient();
-    
-    const { data: prompt, error } = await supabase
+    // updated_at column may or may not have a trigger; bump it explicitly so
+    // the UI's "última edición" reflects the change.
+    const patch = { ...updates, updated_at: new Date().toISOString() };
+
+    const { data: prompt, error } = await supabaseAdmin
       .from('ai_prompts')
-      .update(updates)
+      .update(patch)
       .eq('id', id)
       .select()
       .single();
 
-    if (error) throw error;
-
+    if (error) return dbError('PATCH', error);
     return NextResponse.json(prompt);
   } catch (error: any) {
-    console.error('[PROMPTS_PATCH]', error);
-    return new NextResponse('Internal Error', { status: 500 });
+    return dbError('PATCH', error);
   }
 }
 
@@ -116,21 +129,17 @@ export async function DELETE(req: Request) {
     const id = searchParams.get('id');
 
     if (!id) {
-      return new NextResponse('Missing prompt ID', { status: 400 });
+      return NextResponse.json({ error: 'Missing prompt ID' }, { status: 400 });
     }
 
-    const supabase = await createClient();
-    
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('ai_prompts')
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
-
+    if (error) return dbError('DELETE', error);
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('[PROMPTS_DELETE]', error);
-    return new NextResponse('Internal Error', { status: 500 });
+    return dbError('DELETE', error);
   }
 }
