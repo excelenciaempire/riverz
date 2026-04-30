@@ -239,32 +239,18 @@ async function runSharedAnalysisForTemplate(
     inputData.adaptedJson = parseJsonFromResponse(text);
   }
 
-  // STEP 3 — Build the Nano Banana prompt directly from the adapted JSON.
-  // We used to make a third Gemini call here to convert the adapted JSON into
-  // a flowery natural-language prompt; per product decision, the adapted JSON
-  // itself is now sent as the Nano Banana prompt — Gemini already structured
-  // every visual decision in step 2 and an extra rewrite only adds latency
-  // and drift.
+  // STEP 3 — The Nano Banana prompt IS the adapted JSON, verbatim.
+  // No wrapping text, no instructions — Gemini already structured every
+  // visual decision in step 2 and the user wants Nano Banana to receive
+  // the JSON unmodified. Aspect ratio + image_input are passed via the
+  // request body in step 4, not as text in the prompt.
   if (!inputData.variationPrompts || inputData.variationPrompts.length < VARIATIONS_PER_TEMPLATE) {
-    log('Step 3: Wrapping adapted JSON as Nano Banana prompt...');
+    log('Step 3: Nano Banana prompt = adapted JSON (raw)');
     const adaptedJsonString = JSON.stringify(inputData.adaptedJson, null, 2);
-    // Self-contained instruction: Nano Banana sees this prompt + the user's
-    // product photos as image_input. The prompt has to spell out that role
-    // (the photos ARE the product, not random reference) because Nano Banana
-    // has no memory of the earlier Gemini steps.
-    const aspect = inputData.templateAspectRatio || '3:4';
-    const wrapped = `Generate a single photorealistic advertising image at ${aspect} aspect ratio (matching the original template's framing).
-
-The attached reference photos are the EXACT product that must appear in the rendered image — render this specific product (its real shape, packaging, label, and color), not a stylised approximation.
-
-Follow the visual style specification below VERBATIM (composition, colors, lighting, mood, props, text content and placement). Do not add, omit, or reword any text element from the spec.
-
-STYLE SPECIFICATION:
-${adaptedJsonString}`;
     inputData.variationPrompts = Array.from({ length: VARIATIONS_PER_TEMPLATE }, (_, i) => ({
       angle: `VARIATION_${i + 1}`,
       title: inputData.productName || 'Product ad',
-      prompt: wrapped,
+      prompt: adaptedJsonString,
     }));
   }
 

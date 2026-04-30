@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Loader2, Eye, EyeOff, Code2, Sparkles, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Eye, EyeOff, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AIPrompt {
@@ -173,25 +173,6 @@ export function PromptsManager() {
     }
   });
 
-  const seedPrompts = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/admin/prompts/seed', {
-        method: 'POST'
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${response.status} al cargar prompts`);
-      }
-      return response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-prompts'] });
-      toast.success(data.message || 'Prompts cargados exitosamente');
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Error al cargar prompts');
-    }
-  });
 
   const resetForm = () => {
     setFormData({
@@ -281,20 +262,8 @@ export function PromptsManager() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            onClick={() => seedPrompts.mutate()}
-            variant="outline"
-            disabled={seedPrompts.isPending}
-          >
-            {seedPrompts.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 h-4 w-4" />
-            )}
-            Cargar Por Defecto
-          </Button>
-          <Button 
-            onClick={() => setIsModalOpen(true)} 
+          <Button
+            onClick={() => setIsModalOpen(true)}
             className="bg-brand-accent hover:bg-brand-accent/90"
           >
             <Plus className="mr-2 h-4 w-4" />
