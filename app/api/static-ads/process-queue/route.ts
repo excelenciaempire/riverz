@@ -169,33 +169,21 @@ async function runSharedAnalysisForTemplate(
     inputData.adaptedJson = parseJsonFromResponse(text);
   }
 
-  // STEP 3 — Generate 5 distinct prompts --------------------------------
+  // STEP 3 — Build the Nano Banana prompt directly from the adapted JSON.
+  // We used to make a third Gemini call here to convert the adapted JSON into
+  // a flowery natural-language prompt; per product decision, the adapted JSON
+  // itself is now sent as the Nano Banana prompt — Gemini already structured
+  // every visual decision in step 2 and an extra rewrite only adds latency
+  // and drift.
   if (!inputData.variationPrompts || inputData.variationPrompts.length < VARIATIONS_PER_TEMPLATE) {
-    log('Step 3: Generating 5 creative prompts (Gemini 3 Pro)...');
-    await Promise.all(allRows.map((r) => updateGeneration(r.id, { status: 'generating_prompt' })));
-
-    const promptTemplate = await getPromptWithVariables('static_ads_5_variations_prompts', {
-      ADAPTED_JSON: JSON.stringify(inputData.adaptedJson, null, 2),
-      PRODUCT_NAME: inputData.productName || 'Product',
-      RESEARCH_JSON: inputData.researchData ? JSON.stringify(inputData.researchData, null, 2) : 'Not available',
-    });
-
-    const messages: GeminiMessage[] = [
-      { role: 'developer', content: promptTemplate },
-      { role: 'user', content: 'Genera el JSON array con las 5 variaciones.' },
-    ];
-
-    const { text, modelUsed, fellBack } = await analyzeWithFallback(analysisModel, messages, {
-      temperature: 0.7,
-      maxTokens: 6000,
-    });
-    if (fellBack) log(`Step 3 fell back to ${modelUsed}`);
-
-    const parsed = parseJsonFromResponse(text);
-    if (!Array.isArray(parsed) || parsed.length < VARIATIONS_PER_TEMPLATE) {
-      throw new Error(`Expected ${VARIATIONS_PER_TEMPLATE} prompts, got ${Array.isArray(parsed) ? parsed.length : 'non-array'}`);
-    }
-    inputData.variationPrompts = parsed.slice(0, VARIATIONS_PER_TEMPLATE);
+    log('Step 3: Wrapping adapted JSON as Nano Banana prompt...');
+    const adaptedJsonString = JSON.stringify(inputData.adaptedJson, null, 2);
+    const wrapped = `Generate a photorealistic advertising image that follows this exact specification:\n\n${adaptedJsonString}`;
+    inputData.variationPrompts = Array.from({ length: VARIATIONS_PER_TEMPLATE }, (_, i) => ({
+      angle: `VARIATION_${i + 1}`,
+      title: inputData.productName || 'Product ad',
+      prompt: wrapped,
+    }));
   }
 
   // Persist shared results into all sibling rows (including leader).
