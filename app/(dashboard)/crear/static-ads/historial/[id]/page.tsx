@@ -27,51 +27,71 @@ interface ProjectDetail {
   generations: Generation[];
 }
 
-// Status labels — used for the small caption under the ring. The actual
-// percentage shown is now driven by a smooth simulated ramp inside
-// LoadingTile, not by the backend stage.
-const statusConfig: Record<string, { label: string }> = {
-  pending_analysis:   { label: 'En cola' },
-  pending_variation:  { label: 'En cola' },
-  analyzing:          { label: 'Procesando' },
-  adapting:           { label: 'Procesando' },
-  generating_prompt:  { label: 'Procesando' },
-  pending_generation: { label: 'Procesando' },
-  generating:         { label: 'Generando' },
-  completed:          { label: 'Listo' },
-  failed:             { label: 'Error' },
+// Each backend status maps to a [floor, ceiling] window on the loader ring.
+// The floor is GROUND TRUTH — when the backend advances the row's status,
+// the ring snaps to at least the floor of the new segment. Within a segment
+// we ramp smoothly toward the ceiling (asymptotic, never quite reaches it)
+// so the user sees movement even between status changes. This keeps the
+// loader anchored to actual kie.ai progress rather than a fake timer.
+const STATUS_RANGE: Record<string, { label: string; floor: number; ceiling: number }> = {
+  pending_analysis:   { label: 'En cola',     floor: 0,  ceiling: 5  },
+  pending_variation:  { label: 'En cola',     floor: 0,  ceiling: 5  },
+  analyzing:          { label: 'Analizando',  floor: 5,  ceiling: 30 },
+  adapting:           { label: 'Adaptando',   floor: 30, ceiling: 60 },
+  generating_prompt:  { label: 'Procesando',  floor: 60, ceiling: 65 },
+  pending_generation: { label: 'Procesando',  floor: 60, ceiling: 65 },
+  generating:         { label: 'Generando',   floor: 65, ceiling: 99 },
+  completed:          { label: 'Listo',       floor: 100, ceiling: 100 },
+  failed:             { label: 'Error',       floor: 0,   ceiling: 0  },
 };
 
 /**
- * Minimalist loading tile.
+ * Minimalist loading tile, synced to backend status.
  *
- * One smooth circular progress ring driven by an internal timer that ramps
- * from 0% to 99% over ~50s using an ease-out curve. We never let the
- * simulated value reach 100% — the parent unmounts this tile when the real
- * generation completes, which is the only path to "done".
+ * The progress ring's value is determined by the row's actual status:
+ *   - On status change, the ring snaps to the new segment's `floor`.
+ *   - While status holds, the ring ramps slowly toward the `ceiling` with
+ *     an asymptotic ease-out, never quite reaching it. The next status
+ *     transition is what pushes it forward.
+ *   - 100% is unreachable by simulation — only `status='completed'` lands
+ *     it there, at which point the parent unmounts the tile and renders
+ *     the actual image.
  *
- * No backend status mapping, no 3-step jumps. Just a continuously advancing
- * circle so the user sees something moving. Same 3:4 frame as the final
- * image, so layout doesn't shift when the result lands.
+ * Result: the ring reflects what kie.ai is actually doing, not a wall-clock
+ * pretending to make progress. If a step takes 5 seconds, the ring jumps;
+ * if it takes 90 seconds, the ring crawls — exactly as it should.
  */
 function LoadingTile({ status }: { status: string; hint?: string; templateThumbnail?: string }) {
-  const [progress, setProgress] = useState(0);
+  const cfg = STATUS_RANGE[status] || STATUS_RANGE.pending_analysis;
+  const [progress, setProgress] = useState(cfg.floor);
 
   useEffect(() => {
-    if (status === 'failed') return;
-    const start = Date.now();
-    const TARGET_MS = 50_000;
+    if (status === 'failed' || status === 'completed') {
+      setProgress(cfg.floor);
+      return;
+    }
+
+    // Snap to the floor of the new segment immediately so a status change is
+    // visible. Then ramp asymptotically toward the ceiling — the curve never
+    // reaches the ceiling on its own; the next status transition does.
+    const segmentStart = Date.now();
+    const SEGMENT_MS = 30_000; // empirical: each backend stage takes 15–45s
+    const startProgress = Math.max(progress, cfg.floor);
+    setProgress(startProgress);
+
     const tick = () => {
-      const elapsed = Date.now() - start;
-      const t = Math.min(1, elapsed / TARGET_MS);
-      // Ease-out quadratic capped at 99 so the ring never sits at 100% on
-      // its own — the real completion is the parent unmounting this tile.
-      const next = (1 - Math.pow(1 - t, 2)) * 99;
-      setProgress((prev) => Math.max(prev, next));
+      const elapsed = Date.now() - segmentStart;
+      const t = Math.min(1, elapsed / SEGMENT_MS);
+      const eased = 1 - Math.pow(1 - t, 2);
+      // 0.92 keeps us short of the ceiling — leaves room for the next status
+      // bump to feel like real progress instead of a no-op.
+      const target = startProgress + (cfg.ceiling - startProgress) * eased * 0.92;
+      setProgress((prev) => Math.max(prev, target));
     };
     tick();
-    const id = setInterval(tick, 200);
+    const id = setInterval(tick, 250);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   const r = 44;
@@ -98,7 +118,7 @@ function LoadingTile({ status }: { status: string; hint?: string; templateThumbn
               strokeLinecap="round"
               strokeDasharray={`${dash} ${C}`}
               className={cn(
-                'transition-[stroke-dasharray] duration-300 ease-out',
+                'transition-[stroke-dasharray] duration-500 ease-out',
                 isFailed ? 'text-red-400' : 'text-[#07A498]',
               )}
             />
@@ -109,7 +129,7 @@ function LoadingTile({ status }: { status: string; hint?: string; templateThumbn
             </span>
           </div>
         </div>
-        <p className="text-[11px] text-gray-500">{statusConfig[status]?.label || 'Procesando'}</p>
+        <p className="text-[11px] text-gray-500">{cfg.label}</p>
       </div>
     </div>
   );
