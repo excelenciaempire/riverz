@@ -138,9 +138,58 @@ async function saveResult(id: string, kieUrl: string, projectId: string) {
 
 // --- Shared analysis steps (run once per template) ---------------------
 
+// Max retries before a step is considered terminally failed. Each step
+// keeps its own counter on input_data (step1Retries / step2Retries /
+// step4Retries) so a transient LLM hiccup on Step 2 only consumes the
+// Step 2 budget — Step 1's success is preserved.
+const MAX_STEP_RETRIES = 4;
+
+/**
+ * Soft-fail helper for the shared analysis steps. If a step fails AFTER
+ * earlier steps already succeeded, we don't blanket-fail the row — we
+ * revert it to a retryable status with an incremented retry counter so the
+ * next process-queue tick can re-attempt JUST that step (potentially with
+ * a different LLM via the fallback chain) WITHOUT re-running the steps
+ * that already succeeded. The work is preserved in input_data.
+ *
+ * Only after MAX_STEP_RETRIES does the row get marked as terminally failed.
+ */
+async function softRetryOrFail(opts: {
+  rowId: string;
+  currentInputData: any;
+  retryKey: 'step1Retries' | 'step2Retries' | 'step4Retries';
+  retryStatus: 'pending_analysis' | 'pending_generation';
+  errorMessage: string;
+  log: (msg: string) => void;
+}): Promise<void> {
+  const { rowId, currentInputData, retryKey, retryStatus, errorMessage, log } = opts;
+  const retries = (currentInputData[retryKey] || 0) + 1;
+  if (retries > MAX_STEP_RETRIES) {
+    log(`${retryKey}: ${retries - 1} retries exhausted, marking failed: ${errorMessage}`);
+    await failGeneration(rowId, `${retryKey} exhausted: ${errorMessage}`);
+    return;
+  }
+  log(`${retryKey}: attempt ${retries}/${MAX_STEP_RETRIES} failed (${errorMessage}), will retry on next tick`);
+  await supabaseAdmin
+    .from('generations')
+    .update({
+      status: retryStatus,
+      error_message: `Retry ${retries}/${MAX_STEP_RETRIES}: ${errorMessage}`.slice(0, 500),
+      input_data: { ...currentInputData, [retryKey]: retries },
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', rowId);
+}
+
 /**
  * Steps 1-3 for a template. Runs on the leader generation (variation_index=1)
  * and writes the resulting JSONs + assigned prompt into ALL siblings.
+ *
+ * Failure semantics (per the owner's spec): each step is independent. If
+ * Step 2 fails after Step 1 succeeded, the row stays in a retryable state
+ * with Step 1's analysis JSON preserved — the next tick re-attempts ONLY
+ * Step 2 (with the LLM fallback chain) using Step 1's existing output.
+ * Same for Step 4.
  */
 async function runSharedAnalysisForTemplate(
   leader: any,
@@ -175,6 +224,7 @@ async function runSharedAnalysisForTemplate(
     // Mirror the analyzing status onto siblings so the UI shows progress.
     await Promise.all(siblings.map((r) => updateGeneration(r.id, { status: 'analyzing' })));
 
+    try {
     if (!inputData.templateThumbnail) throw new Error('Missing templateThumbnail');
 
     // Always inline the template image as a base64 data URI. The Gemini
@@ -249,15 +299,29 @@ async function runSharedAnalysisForTemplate(
     // the analysis JSON and skips re-running step 1. Without this, inputData
     // changes only land at the end of the function — meaning if step 2
     // crashes, we'd retry step 1 from scratch on the next tick.
-    await updateGeneration(leader.id, {
-      input_data: {
-        ...leader.input_data,
-        templateAnalysisJson: inputData.templateAnalysisJson,
-        modelUsedAnalysis: inputData.modelUsedAnalysis,
-        templateAspectRatio: inputData.templateAspectRatio,
-        templateDims: inputData.templateDims,
-      },
-    });
+    leader.input_data = {
+      ...leader.input_data,
+      templateAnalysisJson: inputData.templateAnalysisJson,
+      modelUsedAnalysis: inputData.modelUsedAnalysis,
+      templateAspectRatio: inputData.templateAspectRatio,
+      templateDims: inputData.templateDims,
+    };
+    await updateGeneration(leader.id, { input_data: leader.input_data });
+    } catch (err: any) {
+      // Step 1 specifically failed. Soft-retry: revert to pending_analysis
+      // with the Step 1 retry counter bumped. Step 1 hasn't produced
+      // templateAnalysisJson yet, so on the next tick this branch re-enters
+      // and re-runs the analysis from scratch with the LLM fallback chain.
+      await softRetryOrFail({
+        rowId: leader.id,
+        currentInputData: leader.input_data,
+        retryKey: 'step1Retries',
+        retryStatus: 'pending_analysis',
+        errorMessage: err?.message || 'Step 1 failed',
+        log,
+      });
+      return;
+    }
   }
 
   // STEP 2 — Adapt to product (vision: product photos) ------------------
@@ -281,6 +345,7 @@ async function runSharedAnalysisForTemplate(
     log('Step 2: claimed → Adapting to product (Gemini 3 Pro vision)...');
     await Promise.all(siblings.map((r) => updateGeneration(r.id, { status: 'adapting' })));
 
+    try {
     const adaptationSystemPrompt = await getPromptWithVariables('template_adaptation', {
       TEMPLATE_JSON: JSON.stringify(inputData.templateAnalysisJson, null, 2),
       PRODUCT_NAME: inputData.productName || 'Product',
@@ -334,16 +399,31 @@ async function runSharedAnalysisForTemplate(
 
     // Persist step-2 progress so concurrent ticks skip and so the
     // distribution loop at the end is no longer the only persistence point.
-    await updateGeneration(leader.id, {
-      input_data: {
-        ...leader.input_data,
-        templateAnalysisJson: inputData.templateAnalysisJson,
-        adaptedJson: inputData.adaptedJson,
-        modelUsedAnalysis: inputData.modelUsedAnalysis,
-        templateAspectRatio: inputData.templateAspectRatio,
-        templateDims: inputData.templateDims,
-      },
-    });
+    leader.input_data = {
+      ...leader.input_data,
+      templateAnalysisJson: inputData.templateAnalysisJson,
+      adaptedJson: inputData.adaptedJson,
+      modelUsedAnalysis: inputData.modelUsedAnalysis,
+      templateAspectRatio: inputData.templateAspectRatio,
+      templateDims: inputData.templateDims,
+    };
+    await updateGeneration(leader.id, { input_data: leader.input_data });
+    } catch (err: any) {
+      // Step 2 failed but Step 1's templateAnalysisJson is preserved on the
+      // row. Soft-retry: revert to pending_analysis (Step 1 will short-circuit
+      // because templateAnalysisJson is set) so the next tick re-attempts
+      // ONLY Step 2 with the existing analysis JSON, going through the LLM
+      // fallback chain again.
+      await softRetryOrFail({
+        rowId: leader.id,
+        currentInputData: leader.input_data,
+        retryKey: 'step2Retries',
+        retryStatus: 'pending_analysis',
+        errorMessage: err?.message || 'Step 2 failed',
+        log,
+      });
+      return;
+    }
   }
 
   // STEP 3 — The Nano Banana prompt IS the adapted JSON, verbatim.
@@ -437,11 +517,28 @@ async function processVariationGeneration(gen: any, generationModel: string, pro
         output_format: 'png',
       };
 
-      const taskId = await createKieTask(generationModel, nanoBananaInput);
-      inputData.generationTaskId = taskId;
-      await updateGeneration(id, { input_data: inputData });
-      log(`Step 4 done. taskId=${taskId}`);
-      return; // poll on next tick
+      try {
+        const taskId = await createKieTask(generationModel, nanoBananaInput);
+        inputData.generationTaskId = taskId;
+        await updateGeneration(id, { input_data: inputData });
+        log(`Step 4 done. taskId=${taskId}`);
+        return; // poll on next tick
+      } catch (err: any) {
+        // Step 4 failed (kie.ai task-creation hiccup, rate limit, etc.).
+        // Soft-retry: the row keeps its `generatedPrompt` (which is the
+        // adapted JSON from Step 2), so the next tick re-attempts ONLY
+        // Step 4 by claiming pending_generation again. Steps 1-3 are
+        // preserved.
+        await softRetryOrFail({
+          rowId: id,
+          currentInputData: inputData,
+          retryKey: 'step4Retries',
+          retryStatus: 'pending_generation',
+          errorMessage: err?.message || 'Step 4 (Nano Banana) failed',
+          log,
+        });
+        return;
+      }
     }
 
     // STEP 5 — Poll for result -------------------------------------------
@@ -461,13 +558,26 @@ async function processVariationGeneration(gen: any, generationModel: string, pro
         log('SUCCESS — saving image...');
         await saveResult(id, resultUrl, projectId);
       } else if (result.status === 'FAILED') {
-        throw new Error(result.error || 'Generation failed in kie.ai');
+        // kie.ai task itself failed terminally — no LLM swap helps. We
+        // could re-create the task (Step 4 retry), so soft-retry instead
+        // of marking failed. Drop the dead task ID so Step 4 re-claim
+        // creates a fresh one.
+        await softRetryOrFail({
+          rowId: id,
+          currentInputData: { ...inputData, generationTaskId: undefined },
+          retryKey: 'step4Retries',
+          retryStatus: 'pending_generation',
+          errorMessage: result.error || 'kie.ai task FAILED',
+          log,
+        });
       }
       // PENDING/PROCESSING — handled on next tick
     }
   } catch (error: any) {
-    console.error(`[GEN ${id.slice(0, 8)}] Error:`, error.message);
-    await failGeneration(id, error.message);
+    // Outer safety net. Inner steps already self-retry via softRetryOrFail;
+    // anything that bubbles up here is unexpected (DB outage, etc).
+    console.error(`[GEN ${id.slice(0, 8)}] Unexpected error:`, error.message);
+    await failGeneration(id, `Unexpected: ${error.message}`);
   }
 }
 
@@ -544,9 +654,10 @@ export async function POST(req: Request) {
       if (!sharedDone && ['pending_analysis', 'analyzing', 'adapting', 'generating_prompt'].includes(leader.status)) {
         sharedTasks.push(
           runSharedAnalysisForTemplate(leader, siblings, analysisModel).catch((err) => {
-            console.error(`[PROCESS-QUEUE] Shared analysis failed for template ${leader.input_data?.templateId}:`, err.message);
-            // Mark every row of this template as failed so the user sees the error.
-            return Promise.all([leader, ...siblings].map((r) => failGeneration(r.id, `Shared analysis failed: ${err.message}`)));
+            // Inner steps already self-retry via softRetryOrFail. Anything
+            // landing here is unexpected (DB outage / coding bug). Don't
+            // blanket-fail rows — log and let the next tick try again.
+            console.error(`[PROCESS-QUEUE] Unexpected error in shared analysis for template ${leader.input_data?.templateId}:`, err.message);
           })
         );
       }
