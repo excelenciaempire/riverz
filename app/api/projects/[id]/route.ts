@@ -1,7 +1,10 @@
 import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+
+// Polling clients hit this endpoint every 2s — never cache.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,22 +20,22 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
     const { id } = await params;
 
-    const supabase = await createClient();
-
-    // Get Project
-    const { data: project, error: projectError } = await supabase
+    // Project ownership is verified via Clerk + clerk_user_id filter. After
+    // that, use the service-role client for the generations read so the
+    // response is never partially blocked by RLS quirks (this used to be
+    // why some projects rendered with project metadata but zero rows).
+    const { data: project, error: projectError } = await supabaseAdmin
       .from('projects')
       .select('*')
       .eq('id', id)
       .eq('clerk_user_id', userId)
       .single();
 
-    if (projectError) {
+    if (projectError || !project) {
       return new NextResponse('Project not found', { status: 404 });
     }
 
-    // Get Generations (Images)
-    const { data: generations, error: genError } = await supabase
+    const { data: generations, error: genError } = await supabaseAdmin
       .from('generations')
       .select('*')
       .eq('project_id', id)
@@ -40,7 +43,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
     if (genError) throw genError;
 
-    return NextResponse.json({ ...project, generations });
+    return NextResponse.json({ ...project, generations: generations || [] });
   } catch (error) {
     console.error('Error fetching project:', error);
     return new NextResponse('Internal Error', { status: 500 });

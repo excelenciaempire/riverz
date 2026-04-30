@@ -27,18 +27,91 @@ interface ProjectDetail {
   generations: Generation[];
 }
 
-// Status display config
-const statusConfig: Record<string, { label: string; color: string; icon: 'loader' | 'clock' | 'alert' | 'check' }> = {
-  pending_analysis: { label: 'En cola', color: 'text-gray-400', icon: 'clock' },
-  pending_variation: { label: 'Esperando variación', color: 'text-gray-400', icon: 'clock' },
-  analyzing: { label: 'Analizando', color: 'text-blue-400', icon: 'loader' },
-  adapting: { label: 'Adaptando', color: 'text-purple-400', icon: 'loader' },
-  generating_prompt: { label: 'Generando prompt', color: 'text-indigo-400', icon: 'loader' },
-  pending_generation: { label: 'Preparando imagen', color: 'text-cyan-400', icon: 'loader' },
-  generating: { label: 'Generando imagen', color: 'text-[#07A498]', icon: 'loader' },
-  completed: { label: 'Completado', color: 'text-green-400', icon: 'check' },
-  failed: { label: 'Error', color: 'text-red-400', icon: 'alert' },
+// Status display config — `progress` (0..1) drives the circular progress ring
+// inside LoadingTile so the user sees the pipeline advance, not just a generic
+// spinner.
+const statusConfig: Record<string, { label: string; color: string; progress: number }> = {
+  pending_analysis:   { label: 'En cola',           color: 'text-gray-300',     progress: 0.05 },
+  pending_variation:  { label: 'Esperando turno',   color: 'text-gray-300',     progress: 0.10 },
+  analyzing:          { label: 'Analizando plantilla', color: 'text-cyan-300',  progress: 0.30 },
+  adapting:           { label: 'Adaptando al producto', color: 'text-purple-300', progress: 0.55 },
+  generating_prompt:  { label: 'Preparando prompt', color: 'text-indigo-300',   progress: 0.70 },
+  pending_generation: { label: 'Encolando imagen',  color: 'text-cyan-300',     progress: 0.75 },
+  generating:         { label: 'Generando imagen',  color: 'text-[#07A498]',    progress: 0.92 },
+  completed:          { label: 'Listo',             color: 'text-green-400',    progress: 1.00 },
+  failed:             { label: 'Error',             color: 'text-red-400',      progress: 0 },
 };
+
+// Liquid-glass + circular-progress placeholder for any image that's still
+// being produced. Renders inside the same 3:4 container as the final image,
+// so the layout doesn't jump when the result lands.
+function LoadingTile({ status, hint, templateThumbnail }: { status: string; hint?: string; templateThumbnail?: string }) {
+  const cfg = statusConfig[status] || statusConfig.pending_analysis;
+  // SVG circle math: r=42, circumference = 2πr ≈ 263.89
+  const r = 42;
+  const C = 2 * Math.PI * r;
+  const dash = C * cfg.progress;
+
+  return (
+    <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0a0a0a]">
+      {/* Faded template peek so the user remembers which one is loading */}
+      {templateThumbnail && (
+        <img
+          src={templateThumbnail}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-[0.08] blur-xl scale-110"
+        />
+      )}
+
+      {/* Animated conic gradient — the "liquid" layer. Slow rotation + blur. */}
+      <div className="absolute inset-0 opacity-60 animate-[spin_8s_linear_infinite]"
+        style={{
+          background:
+            'conic-gradient(from 0deg, rgba(7,164,152,0.0) 0%, rgba(7,164,152,0.55) 25%, rgba(168,85,247,0.45) 50%, rgba(7,164,152,0.0) 75%, rgba(7,164,152,0.55) 100%)',
+          filter: 'blur(40px)',
+        }}
+      />
+
+      {/* Frosted glass panel on top of the liquid */}
+      <div className="absolute inset-3 rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-xl" />
+
+      {/* Center: circular progress + status */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+        <div className="relative h-24 w-24">
+          <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
+            <circle
+              cx="50" cy="50" r={r}
+              stroke="rgba(255,255,255,0.08)"
+              strokeWidth="6"
+              fill="none"
+            />
+            <circle
+              cx="50" cy="50" r={r}
+              stroke="currentColor"
+              strokeWidth="6"
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray={`${dash} ${C}`}
+              className={cn('transition-[stroke-dasharray] duration-700 ease-out', cfg.color)}
+              style={{ filter: 'drop-shadow(0 0 8px currentColor)' }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={cn('text-base font-semibold', cfg.color)}>
+              {Math.round(cfg.progress * 100)}%
+            </span>
+          </div>
+        </div>
+        <p className={cn('mt-4 text-sm font-medium', cfg.color)}>{cfg.label}</p>
+        {hint && (
+          <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-gray-500 line-clamp-1 max-w-[80%]">
+            {hint}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface TemplateGroup {
   templateId: string;
@@ -96,24 +169,13 @@ function VariationSlide({
           )}
         </>
       ) : isPending ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-          {gen.input_data?.templateThumbnail && (
-            <img src={gen.input_data.templateThumbnail} alt="" className="absolute inset-0 h-full w-full object-cover opacity-10 blur-md" />
-          )}
-          <div className="relative z-10 flex flex-col items-center text-center">
-            {status.icon === 'loader' && (
-              <div className="relative mb-4">
-                <div className="absolute inset-0 rounded-full bg-[#07A498]/20 animate-ping" />
-                <Sparkles className={cn('h-12 w-12 relative z-10 animate-spin', status.color)} />
-              </div>
-            )}
-            {status.icon === 'clock' && <Clock className={cn('h-12 w-12 mb-4', status.color)} />}
-            <p className={cn('text-sm font-bold mb-1', status.color)}>{status.label}</p>
-            <p className="text-[10px] uppercase tracking-wider text-gray-500">{angle}</p>
-          </div>
-        </div>
+        <LoadingTile
+          status={gen.status}
+          hint={angle}
+          templateThumbnail={gen.input_data?.templateThumbnail}
+        />
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-red-950/20 to-red-900/10">
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-red-950/40 to-red-900/10 border border-red-500/20 rounded-xl">
           <AlertCircle className="h-12 w-12 mb-2 text-red-400" />
           <p className="text-sm font-bold text-red-400 mb-1">Error</p>
           <p className="text-[10px] text-red-400/70 line-clamp-3 text-center">{gen.error_message || 'Error en generación'}</p>
@@ -571,25 +633,25 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </div>
         )}
 
-        {/* Empty / initialising state — clone may still be inserting the
-            generation rows when this page first renders. Show a clear
-            "starting" animation instead of a blank screen. */}
-        {templateGroups.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#141414] to-[#0a0a0a] py-20 px-6 text-center">
-            <div className="relative mb-6">
-              <div className="absolute inset-0 rounded-full bg-[#07A498]/20 animate-ping" />
-              <Sparkles className="relative h-14 w-14 animate-spin text-[#07A498]" />
-            </div>
-            <p className="mb-2 text-lg font-semibold text-white">Iniciando generación…</p>
-            <p className="max-w-md text-sm text-gray-400">
-              Estamos creando las variaciones del proyecto. Esto puede tardar unos segundos en aparecer.
-              Si después de un minuto sigue vacío, recarga la página o intenta de nuevo desde &quot;Static Ads&quot;.
-            </p>
-          </div>
-        )}
-
-        {/* Grid — one card per template, with carousel of 5 variations */}
+        {/* Grid — one card per template, with carousel of variations.
+            When there are no rows yet (clone API still inserting), we render
+            a single LoadingTile placeholder so the user sees the same
+            liquid-glass loading animation as a real tile. The query keeps
+            polling, so the placeholder is replaced as soon as the row lands. */}
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {templateGroups.length === 0 && (
+            <div className="rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/60">
+                <div className="h-10 w-10 rounded-md bg-white/5 animate-pulse" />
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="h-3 w-32 rounded bg-white/5 animate-pulse" />
+                  <div className="h-2 w-20 rounded bg-white/5 animate-pulse" />
+                </div>
+              </div>
+              <LoadingTile status="pending_analysis" hint="Iniciando" />
+            </div>
+          )}
+
           {templateGroups.map((group) => (
             <TemplateCard
               key={group.templateId}
