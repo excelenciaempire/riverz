@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
@@ -15,7 +15,7 @@ import { ShopifyConnectionPanel } from '@/components/settings/shopify-connection
 
 type TabType = 'billing' | 'account' | 'notifications' | 'integrations';
 
-export default function ConfiguracionPage() {
+function ConfiguracionContent() {
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState<TabType>('billing');
   const searchParams = useSearchParams();
@@ -476,3 +476,14 @@ export default function ConfiguracionPage() {
   );
 }
 
+// Next 15 prerender requires useSearchParams to live under a Suspense
+// boundary; otherwise `next build` fails with a CSR-bailout error on the
+// /configuracion route. Wrapping the body keeps the deep-link behaviour
+// (?tab=..., ?shopify=connected) without breaking static generation.
+export default function ConfiguracionPage() {
+  return (
+    <Suspense fallback={<Loading text="Cargando configuración..." />}>
+      <ConfiguracionContent />
+    </Suspense>
+  );
+}
