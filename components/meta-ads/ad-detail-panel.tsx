@@ -247,9 +247,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
           </Section>
 
           {/* Transcript */}
-          <Section
-            title={isVideo ? 'Transcripción IA (Gemini)' : 'Análisis IA (kie.ai · Gemini 3 Pro)'}
-          >
+          <Section title={`${isVideo ? 'Transcripción' : 'Análisis'} IA · kie.ai / Gemini 3 Pro`}>
             {isTranscribing && <TranscribingAnimation isVideo={isVideo} />}
 
             {!isTranscribing && intel?.transcript_status === 'failed' && (
@@ -278,8 +276,8 @@ export function AdDetailPanel({ ad, onClose }: Props) {
             {!isTranscribing && !intel?.transcript && (
               <p className="text-xs text-gray-500">
                 {isVideo
-                  ? 'Sube el video a Gemini para transcribir el audio palabra por palabra + el texto en pantalla. Tu base de datos lo recordará.'
-                  : 'Extrae hook visual, OCR del texto en pantalla y posible ángulo con kie.ai/Gemini 3 Pro. Tu base de datos lo recordará.'}
+                  ? 'Manda el video a kie.ai · Gemini 3 Pro y trae transcripción del audio + OCR del texto en pantalla + hook visual + ángulo. Queda guardado en tu base de datos.'
+                  : 'Extrae hook visual, OCR del texto en pantalla y posible ángulo con kie.ai · Gemini 3 Pro. Queda guardado en tu base de datos.'}
               </p>
             )}
           </Section>
@@ -339,7 +337,9 @@ function TranscribingAnimation({ isVideo }: { isVideo: boolean }) {
           <span className="absolute inset-0 animate-ping rounded-full bg-brand-accent/40" />
         </div>
         <p className="text-sm font-medium text-white">
-          {isVideo ? 'Transcribiendo audio + visuales con Gemini' : 'Analizando con kie.ai · Gemini 3 Pro'}
+          {isVideo
+            ? 'Transcribiendo audio + visuales · kie.ai / Gemini 3 Pro'
+            : 'Analizando · kie.ai / Gemini 3 Pro'}
         </p>
       </div>
       <div className="space-y-1.5">
@@ -351,8 +351,8 @@ function TranscribingAnimation({ isVideo }: { isVideo: boolean }) {
       </div>
       <p className="mt-3 text-[11px] text-gray-400">
         {isVideo
-          ? 'Subiendo el video a Gemini, esperando que el modelo escuche el audio y lea los overlays. Suele tardar 30–90 s.'
-          : 'Bajando la imagen, mandándola a Gemini 3 Pro y esperando la respuesta. Suele tardar pocos segundos.'}
+          ? 'kie.ai está bajando el video, mandándolo a Gemini 3 Pro y esperando la respuesta. Suele tardar 30–90 s.'
+          : 'kie.ai está mandando la imagen a Gemini 3 Pro. Suele tardar pocos segundos.'}
       </p>
     </div>
   );
