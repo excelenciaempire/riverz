@@ -25,7 +25,13 @@ export function ConnectionCard({ data, error, isLoading }: Props) {
     },
     onSuccess: () => {
       toast.success('Conexión con Meta eliminada');
-      queryClient.invalidateQueries({ queryKey: ['meta-accounts'] });
+      // Wipe every Meta-related query so stale `data` doesn't keep the
+      // picker / actions / uploads list visible after disconnecting.
+      queryClient.removeQueries({ queryKey: ['meta-accounts'] });
+      queryClient.removeQueries({ queryKey: ['meta-pages'] });
+      queryClient.removeQueries({ queryKey: ['meta-instagram'] });
+      queryClient.removeQueries({ queryKey: ['meta-uploads-list'] });
+      queryClient.removeQueries({ queryKey: ['meta-ads'] });
     },
     onError: (err: Error) => {
       toast.error(err.message);

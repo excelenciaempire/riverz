@@ -67,7 +67,10 @@ function MetaCampaignsContent() {
     enabled: !!accountsQuery.data,
   });
 
-  const connected = !!accountsQuery.data;
+  // TanStack Query keeps the last successful `data` on screen even after a
+  // failed refetch — so checking `!!accountsQuery.data` would still be true
+  // right after a disconnect. Gate on the latest fetch outcome instead.
+  const connected = accountsQuery.isSuccess && !accountsQuery.error;
 
   return (
     <div className="space-y-6 pb-12">
