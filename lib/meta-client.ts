@@ -446,16 +446,23 @@ export async function listAdsWithInsights(
   const json = await metaFetch(`${BASE}/${acct}/ads?${params.toString()}`);
   const rows = (json?.data ?? []) as any[];
 
-  const insightsByAd = await fetchInsightsForAds(
-    token,
-    rows.map((r) => r.id),
-    opts.datePreset || 'last_30d',
-  );
+  // Insights + video sources in parallel — both make per-ad/per-video Graph
+  // calls so doing them concurrently halves the wall-clock latency.
+  const allCreatives = rows.map((r) => r.creative ?? {});
+  const videoIds = allCreatives
+    .map((c) => extractCreativeFields(c).video_id)
+    .filter((v): v is string => !!v);
+
+  const [insightsByAd, videoSourceById] = await Promise.all([
+    fetchInsightsForAds(token, rows.map((r) => r.id), opts.datePreset || 'last_30d'),
+    fetchVideoSources(token, videoIds),
+  ]);
 
   const ads: MetaAdSummary[] = rows.map((row) => {
     const creative = row.creative ?? {};
     const media_kind = classifyMedia(creative);
     const fields = extractCreativeFields(creative);
+    const video_source_url = fields.video_id ? (videoSourceById.get(fields.video_id) ?? null) : null;
     return {
       id: row.id,
       name: row.name,
@@ -469,6 +476,7 @@ export async function listAdsWithInsights(
       media_kind,
       thumbnail_url: fields.thumbnail_url,
       video_id: fields.video_id,
+      video_source_url,
       image_url: fields.image_url,
       primary_text: fields.primary_text,
       headline: fields.headline,
@@ -480,6 +488,29 @@ export async function listAdsWithInsights(
   });
 
   return ads;
+}
+
+async function fetchVideoSources(
+  token: string,
+  videoIds: string[],
+): Promise<Map<string, string | null>> {
+  const map = new Map<string, string | null>();
+  if (videoIds.length === 0) return map;
+  const unique = Array.from(new Set(videoIds));
+  const chunkSize = 6;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const slice = unique.slice(i, i + chunkSize);
+    const results = await Promise.allSettled(
+      slice.map(async (id) => {
+        const src = await getVideoSourceUrl(token, id);
+        return [id, src] as const;
+      }),
+    );
+    for (const r of results) {
+      if (r.status === 'fulfilled') map.set(r.value[0], r.value[1]);
+    }
+  }
+  return map;
 }
 
 async function fetchInsightsForAds(

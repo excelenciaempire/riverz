@@ -69,7 +69,10 @@ async function upsertAdIntelSnapshots(
     meta_creative_id: ad.creative_id ?? null,
     asset_type: ad.media_kind,
     thumbnail_url: ad.thumbnail_url,
-    asset_url: ad.image_url ?? null,
+    // Cache the playable URL for both kinds: video source for videos,
+    // direct image_url for images. The detail panel + transcribe route
+    // reuse this without re-hitting Graph.
+    asset_url: ad.media_kind === 'video' ? (ad.video_source_url ?? null) : (ad.image_url ?? null),
     ad_name: ad.name,
     campaign_id: ad.campaign_id ?? null,
     campaign_name: ad.campaign_name ?? null,

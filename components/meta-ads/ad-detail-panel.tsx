@@ -59,8 +59,10 @@ export function AdDetailPanel({ ad, onClose }: Props) {
   const setWinner = (val: boolean | null) => intelMutation.mutate({ is_winner: val });
   const saveNotes = () => intelMutation.mutate({ notes });
 
-  const playableUrl = intel?.asset_url || ad.image_url || ad.thumbnail_url || null;
   const isVideo = ad.media_kind === 'video';
+  const playableUrl = isVideo
+    ? (ad.video_source_url || intel?.asset_url || null)
+    : (ad.image_url || intel?.asset_url || ad.thumbnail_url || null);
   const insights = ad.insights || intel?.insights;
 
   return (

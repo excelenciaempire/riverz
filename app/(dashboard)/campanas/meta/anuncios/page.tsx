@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AdCard } from '@/components/meta-ads/ad-card';
+import { CampaignSection } from '@/components/meta-ads/campaign-section';
 import { AdDetailPanel } from '@/components/meta-ads/ad-detail-panel';
 import type { AccountsResponse, MetaAdSummary } from '@/types/meta';
 
@@ -81,6 +81,28 @@ function AnunciosContent() {
       return true;
     });
   }, [adsQuery.data, winnerFilter, mediaFilter]);
+
+  // Group filtered ads by campaign — preserves API order so the most recently
+  // active / paid campaigns show first.
+  const campaignGroups = useMemo(() => {
+    const groups = new Map<string, { id: string; name: string; ads: MetaAdSummary[]; spend: number }>();
+    for (const ad of filteredAds) {
+      const id = ad.campaign_id || 'unknown';
+      const name = ad.campaign_name || 'Sin campaña';
+      let g = groups.get(id);
+      if (!g) {
+        g = { id, name, ads: [], spend: 0 };
+        groups.set(id, g);
+      }
+      g.ads.push(ad);
+      if (ad.insights?.spend) g.spend += Number(ad.insights.spend) || 0;
+    }
+    // Sort campaigns: highest spend first, then by ad count.
+    return Array.from(groups.values()).sort((a, b) => {
+      if (b.spend !== a.spend) return b.spend - a.spend;
+      return b.ads.length - a.ads.length;
+    });
+  }, [filteredAds]);
 
   // Keep selectedAd in sync with the latest fetched data so detail panel
   // reflects mutations (intel updates / transcript) without manual refetch.
@@ -203,14 +225,22 @@ function AnunciosContent() {
         <>
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <Filter className="h-3 w-3" />
-            {filteredAds.length} anuncio{filteredAds.length === 1 ? '' : 's'}
+            {campaignGroups.length} campaña{campaignGroups.length === 1 ? '' : 's'} · {filteredAds.length} ad{filteredAds.length === 1 ? '' : 's'}
             {' · '}
             <Trophy className="h-3 w-3 text-amber-400" />
             {filteredAds.filter((a) => a.intel?.is_winner === true).length} winners
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-            {filteredAds.map((ad) => (
-              <AdCard key={ad.id} ad={ad} onClick={() => setSelectedAd(ad)} selected={selectedAd?.id === ad.id} />
+          <div className="space-y-3">
+            {campaignGroups.map((g, i) => (
+              <CampaignSection
+                key={g.id}
+                campaignId={g.id}
+                campaignName={g.name}
+                ads={g.ads}
+                onAdClick={(ad) => setSelectedAd(ad)}
+                selectedAdId={selectedAd?.id}
+                defaultOpen={i < 3 || g.spend > 0}
+              />
             ))}
           </div>
         </>
