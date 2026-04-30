@@ -1,163 +1,182 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
-import { Search, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { StepLogCard, type StepLogEntry } from './step-log-card';
+
+type FlatLog = {
+  entry: StepLogEntry;
+  generationId: string;
+  userEmail: string;
+  productName?: string;
+  templateName?: string;
+};
 
 export function LogsViewer() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [stepFilter, setStepFilter] = useState('all');
   const supabase = createClient();
 
-  const { data: logs, isLoading } = useQuery({
-    queryKey: ['admin-logs', searchTerm, statusFilter],
+  // Pull recent generations and flatten their stepLogs into a time-ordered
+  // stream of kie.ai calls. This is the only place that records what
+  // actually went on the wire, so it lives here instead of api_logs (which
+  // never had any writers).
+  const { data: rows, isLoading } = useQuery({
+    queryKey: ['admin-step-logs'],
     queryFn: async () => {
-      let query = supabase
-        .from('api_logs')
-        .select('*, users(email)')
+      const { data, error } = await supabase
+        .from('generations')
+        .select('id, type, input_data, created_at, users(email)')
         .order('created_at', { ascending: false })
         .limit(200);
 
-      if (searchTerm) {
-        query = query.or(`endpoint.ilike.%${searchTerm}%,users.email.ilike.%${searchTerm}%`);
-      }
-
-      if (statusFilter === 'error') {
-        query = query.gte('status_code', 400);
-      } else if (statusFilter === 'success') {
-        query = query.lt('status_code', 400);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
-      return data;
+      return data || [];
     },
-    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchInterval: 5000,
   });
 
-  const getStatusIcon = (statusCode: number) => {
-    if (statusCode >= 200 && statusCode < 300) {
-      return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-    } else if (statusCode >= 400) {
-      return <AlertCircle className="h-4 w-4 text-red-500" />;
+  const flatLogs: FlatLog[] = useMemo(() => {
+    if (!rows) return [];
+    const out: FlatLog[] = [];
+    for (const r of rows as any[]) {
+      const stepLogs: StepLogEntry[] = Array.isArray(r.input_data?.stepLogs) ? r.input_data.stepLogs : [];
+      for (const e of stepLogs) {
+        out.push({
+          entry: e,
+          generationId: r.id,
+          userEmail: r.users?.email || 'Sistema',
+          productName: r.input_data?.productName,
+          templateName: r.input_data?.templateName,
+        });
+      }
     }
-    return <Clock className="h-4 w-4 text-yellow-500" />;
-  };
+    out.sort((a, b) => new Date(b.entry.startedAt).getTime() - new Date(a.entry.startedAt).getTime());
+    return out;
+  }, [rows]);
 
-  const getStatusColor = (statusCode: number) => {
-    if (statusCode >= 200 && statusCode < 300) return 'text-green-500 bg-green-500/10';
-    if (statusCode >= 400) return 'text-red-500 bg-red-500/10';
-    return 'text-yellow-500 bg-yellow-500/10';
-  };
+  const filtered = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return flatLogs.filter((l) => {
+      if (statusFilter !== 'all' && l.entry.status !== statusFilter) return false;
+      if (stepFilter !== 'all' && String(l.entry.step) !== stepFilter) return false;
+      if (!term) return true;
+      const haystack = [
+        l.userEmail,
+        l.generationId,
+        l.productName,
+        l.templateName,
+        l.entry.model,
+        l.entry.errorMessage,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [flatLogs, searchTerm, statusFilter, stepFilter]);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white">Logs del Sistema</h2>
         <p className="mt-2 text-gray-400">
-          Monitoreo en tiempo real de todas las llamadas a APIs
+          Stream en tiempo real de las llamadas a kie.ai (prompt + imágenes
+          enviadas en cada paso). Refresco cada 5 s.
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-4">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-4">
+        <div className="relative flex-1 min-w-[260px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             type="text"
-            placeholder="Buscar por endpoint o email..."
+            placeholder="Buscar por email, producto, plantilla, modelo, ID o error..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
         <select
+          value={stepFilter}
+          onChange={(e) => setStepFilter(e.target.value)}
+          className="rounded-lg border border-gray-800 bg-[#1a1a1a] px-4 py-2 text-white"
+        >
+          <option value="all">Todos los pasos</option>
+          <option value="1">Paso 1 — Análisis plantilla</option>
+          <option value="2">Paso 2 — Adaptación producto</option>
+          <option value="4">Paso 4 — Nano Banana</option>
+        </select>
+        <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-lg border border-gray-800 bg-[#1a1a1a] px-4 py-2 text-white"
         >
           <option value="all">Todos los estados</option>
-          <option value="success">Exitosos</option>
+          <option value="ok">Exitosos</option>
           <option value="error">Errores</option>
         </select>
       </div>
 
-      {/* Logs Table */}
-      <div className="space-y-3">
-        {isLoading ? (
-          <div className="rounded-2xl border border-gray-800 bg-[#141414] p-12 text-center text-gray-400">
-            Cargando logs...
-          </div>
-        ) : logs && logs.length > 0 ? (
-          logs.map((log: any) => (
-            <div
-              key={log.id}
-              className="rounded-xl border border-gray-800 bg-[#141414] p-5 transition hover:bg-[#1a1a1a]"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="mt-1">{getStatusIcon(log.status_code)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(
-                          log.status_code
-                        )}`}
-                      >
-                        {log.status_code}
-                      </span>
-                      <span className="font-mono text-sm font-medium text-white">
-                        {log.method}
-                      </span>
-                      <span className="font-mono text-sm text-gray-400 truncate">
-                        {log.endpoint}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-center gap-4 text-sm">
-                      <span className="text-gray-400">
-                        Usuario: <span className="text-white">{log.users?.email || 'Sistema'}</span>
-                      </span>
-                      <span className="text-gray-500">
-                        {new Date(log.created_at).toLocaleString('es-ES')}
-                      </span>
-                    </div>
-                    {log.error_message && (
-                      <div className="mt-3 rounded-lg bg-red-500/10 p-3">
-                        <p className="text-sm text-red-400">{log.error_message}</p>
-                      </div>
-                    )}
-                  </div>
+      {isLoading ? (
+        <div className="rounded-2xl border border-gray-800 bg-[#141414] p-12 text-center text-gray-400">
+          Cargando logs...
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-2xl border border-gray-800 bg-[#141414] p-12 text-center text-gray-400">
+          {flatLogs.length === 0
+            ? 'Aún no hay llamadas registradas. Inicia una generación de Static Ads y los logs aparecerán aquí.'
+            : 'Ningún log coincide con los filtros actuales.'}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((l, i) => (
+            <StepLogCard
+              key={`${l.generationId}-${i}`}
+              entry={l.entry}
+              header={
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span>
+                    Usuario: <span className="text-white">{l.userEmail}</span>
+                  </span>
+                  <span>
+                    Generación: <span className="font-mono text-white">{l.generationId.slice(0, 8)}</span>
+                  </span>
+                  {l.productName && (
+                    <span>
+                      Producto: <span className="text-white">{l.productName}</span>
+                    </span>
+                  )}
+                  {l.templateName && (
+                    <span>
+                      Plantilla: <span className="text-white">{l.templateName}</span>
+                    </span>
+                  )}
                 </div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="rounded-2xl border border-gray-800 bg-[#141414] p-12 text-center text-gray-400">
-            No se encontraron logs
-          </div>
-        )}
-      </div>
+              }
+            />
+          ))}
+        </div>
+      )}
 
-      {/* Summary */}
-      {logs && logs.length > 0 && (
+      {flatLogs.length > 0 && (
         <div className="rounded-2xl border border-gray-800 bg-[#141414] p-6">
           <div className="grid gap-4 md:grid-cols-3">
             <div>
-              <p className="text-sm text-gray-400">Total Logs Mostrados</p>
-              <p className="mt-1 text-2xl font-bold text-white">{logs.length}</p>
+              <p className="text-sm text-gray-400">Llamadas registradas</p>
+              <p className="mt-1 text-2xl font-bold text-white">{flatLogs.length}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-400">Exitosos</p>
+              <p className="text-sm text-gray-400">Exitosas</p>
               <p className="mt-1 text-2xl font-bold text-green-500">
-                {logs.filter((l: any) => l.status_code < 400).length}
+                {flatLogs.filter((l) => l.entry.status === 'ok').length}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-400">Errores</p>
               <p className="mt-1 text-2xl font-bold text-red-500">
-                {logs.filter((l: any) => l.status_code >= 400).length}
+                {flatLogs.filter((l) => l.entry.status === 'error').length}
               </p>
             </div>
           </div>
@@ -166,4 +185,3 @@ export function LogsViewer() {
     </div>
   );
 }
-
