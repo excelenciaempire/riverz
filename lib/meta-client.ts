@@ -416,16 +416,48 @@ function extractCreativeFields(creative: any): {
   };
 }
 
+export interface VideoMeta {
+  source: string | null;        // direct mp4 URL — only sometimes available
+  permalink_url: string | null; // facebook.com/.../videos/<id>/ — always available
+  thumbnail: string | null;     // best-resolution still frame from the video
+}
+
 export async function getVideoSourceUrl(token: string, videoId: string): Promise<string | null> {
+  // Kept for backwards compatibility (used by the transcribe route).
+  const meta = await getVideoMeta(token, videoId);
+  return meta.source;
+}
+
+export async function getVideoMeta(token: string, videoId: string): Promise<VideoMeta> {
   try {
     const params = new URLSearchParams({
-      fields: 'source,permalink_url',
+      fields: 'source,permalink_url,thumbnails{uri,width,height,is_preferred},picture',
       access_token: token,
     });
     const json = await metaFetch(`${BASE}/${videoId}?${params.toString()}`);
-    return (json?.source ?? null) as string | null;
+    const thumbs = (json?.thumbnails?.data ?? []) as Array<{
+      uri: string;
+      width?: number;
+      height?: number;
+      is_preferred?: boolean;
+    }>;
+    // Pick the largest available frame; fall back to the preferred / picture.
+    let thumbnail: string | null = null;
+    if (thumbs.length > 0) {
+      const preferred = thumbs.find((t) => t.is_preferred);
+      const biggest = [...thumbs].sort(
+        (a, b) => (b.width ?? 0) * (b.height ?? 0) - (a.width ?? 0) * (a.height ?? 0),
+      )[0];
+      thumbnail = (biggest?.uri || preferred?.uri) ?? null;
+    }
+    if (!thumbnail && json?.picture) thumbnail = String(json.picture);
+    return {
+      source: (json?.source ?? null) as string | null,
+      permalink_url: (json?.permalink_url ?? null) as string | null,
+      thumbnail,
+    };
   } catch {
-    return null;
+    return { source: null, permalink_url: null, thumbnail: null };
   }
 }
 
@@ -453,16 +485,16 @@ export async function listAdsWithInsights(
     .map((c) => extractCreativeFields(c).video_id)
     .filter((v): v is string => !!v);
 
-  const [insightsByAd, videoSourceById] = await Promise.all([
+  const [insightsByAd, videoMetaById] = await Promise.all([
     fetchInsightsForAds(token, rows.map((r) => r.id), opts.datePreset || 'last_30d'),
-    fetchVideoSources(token, videoIds),
+    fetchVideoMetas(token, videoIds),
   ]);
 
   const ads: MetaAdSummary[] = rows.map((row) => {
     const creative = row.creative ?? {};
     const media_kind = classifyMedia(creative);
     const fields = extractCreativeFields(creative);
-    const video_source_url = fields.video_id ? (videoSourceById.get(fields.video_id) ?? null) : null;
+    const videoMeta = fields.video_id ? videoMetaById.get(fields.video_id) : null;
     return {
       id: row.id,
       name: row.name,
@@ -474,9 +506,13 @@ export async function listAdsWithInsights(
       adset_name: row.adset?.name,
       creative_id: creative.id,
       media_kind,
-      thumbnail_url: fields.thumbnail_url,
+      // Prefer the bigger video thumbnail when we have one — Meta's
+      // creative.thumbnail_url is typically a tiny preview that pixelates
+      // at card size. Falls back to the creative-level thumbnail.
+      thumbnail_url: videoMeta?.thumbnail || fields.thumbnail_url,
       video_id: fields.video_id,
-      video_source_url,
+      video_source_url: videoMeta?.source ?? null,
+      video_permalink_url: videoMeta?.permalink_url ?? null,
       image_url: fields.image_url,
       primary_text: fields.primary_text,
       headline: fields.headline,
@@ -490,11 +526,11 @@ export async function listAdsWithInsights(
   return ads;
 }
 
-async function fetchVideoSources(
+async function fetchVideoMetas(
   token: string,
   videoIds: string[],
-): Promise<Map<string, string | null>> {
-  const map = new Map<string, string | null>();
+): Promise<Map<string, VideoMeta>> {
+  const map = new Map<string, VideoMeta>();
   if (videoIds.length === 0) return map;
   const unique = Array.from(new Set(videoIds));
   const chunkSize = 6;
@@ -502,8 +538,8 @@ async function fetchVideoSources(
     const slice = unique.slice(i, i + chunkSize);
     const results = await Promise.allSettled(
       slice.map(async (id) => {
-        const src = await getVideoSourceUrl(token, id);
-        return [id, src] as const;
+        const meta = await getVideoMeta(token, id);
+        return [id, meta] as const;
       }),
     );
     for (const r of results) {

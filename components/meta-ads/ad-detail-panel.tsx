@@ -3,7 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { X, Trophy, ThumbsDown, FileText, Loader2, Copy, ExternalLink } from 'lucide-react';
+import {
+  X,
+  Trophy,
+  ThumbsDown,
+  FileText,
+  Loader2,
+  Copy,
+  ExternalLink,
+  Download,
+  Sparkles,
+  Mic,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { MetaAdSummary, MetaAdIntel } from '@/types/meta';
 import { cn } from '@/lib/utils';
@@ -61,9 +72,34 @@ export function AdDetailPanel({ ad, onClose }: Props) {
 
   const isVideo = ad.media_kind === 'video';
   const playableUrl = isVideo
-    ? (ad.video_source_url || intel?.asset_url || null)
-    : (ad.image_url || intel?.asset_url || ad.thumbnail_url || null);
+    ? ad.video_source_url || intel?.asset_url || null
+    : ad.image_url || intel?.asset_url || ad.thumbnail_url || null;
+  const previewUrl = playableUrl || ad.thumbnail_url || ad.image_url || null;
+  const downloadUrl = playableUrl || (!isVideo ? ad.image_url || ad.thumbnail_url : null);
+  const downloadFilename = `${(ad.name || ad.id).replace(/[^a-z0-9-_]+/gi, '_')}.${
+    isVideo ? 'mp4' : 'jpg'
+  }`;
   const insights = ad.insights || intel?.insights;
+  const isTranscribing = transcribeMutation.isPending || intel?.transcript_status === 'running';
+
+  const handleDownload = async () => {
+    if (!downloadUrl) return;
+    try {
+      const res = await fetch(downloadUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = downloadFilename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (err: any) {
+      toast.error(`Descarga falló: ${err?.message || err}`);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -81,7 +117,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
 
         {/* Media player */}
         <div className="border-b border-gray-800 bg-black p-4">
-          <div className="mx-auto aspect-square max-w-md overflow-hidden rounded-lg bg-black">
+          <div className="relative mx-auto aspect-square max-w-md overflow-hidden rounded-lg bg-black">
             {isVideo && playableUrl ? (
               <video
                 src={playableUrl}
@@ -90,8 +126,28 @@ export function AdDetailPanel({ ad, onClose }: Props) {
                 poster={ad.thumbnail_url || undefined}
                 className="h-full w-full object-contain"
               />
-            ) : playableUrl ? (
-              <img src={playableUrl} alt={ad.name} className="h-full w-full object-contain" />
+            ) : isVideo && !playableUrl && previewUrl ? (
+              // Video without a usable source URL — show poster + a CTA to
+              // open it on Facebook so the user can still watch it.
+              <>
+                <img src={previewUrl} alt={ad.name} className="h-full w-full object-contain opacity-90" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40">
+                  <p className="text-sm text-gray-300">Meta no devolvió el source.</p>
+                  {ad.video_permalink_url && (
+                    <a
+                      href={ad.video_permalink_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-white/90"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Ver en Facebook
+                    </a>
+                  )}
+                </div>
+              </>
+            ) : previewUrl ? (
+              <img src={previewUrl} alt={ad.name} className="h-full w-full object-contain" />
             ) : (
               <div className="flex h-full items-center justify-center text-gray-600">Sin preview</div>
             )}
@@ -131,15 +187,32 @@ export function AdDetailPanel({ ad, onClose }: Props) {
               size="sm"
               variant="outline"
               onClick={() => transcribeMutation.mutate()}
-              disabled={transcribeMutation.isPending || intel?.transcript_status === 'running'}
+              disabled={isTranscribing}
             >
-              {transcribeMutation.isPending || intel?.transcript_status === 'running' ? (
+              {isTranscribing ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : isVideo ? (
+                <Mic className="mr-1.5 h-3.5 w-3.5" />
               ) : (
                 <FileText className="mr-1.5 h-3.5 w-3.5" />
               )}
-              {intel?.transcript ? 'Re-analizar' : 'Analizar con IA'}
+              {intel?.transcript
+                ? isVideo
+                  ? 'Re-transcribir'
+                  : 'Re-analizar'
+                : isVideo
+                  ? 'Transcribir con IA'
+                  : 'Analizar con IA'}
             </Button>
+            {downloadUrl && (
+              <button
+                onClick={handleDownload}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-black/40 px-3 py-1.5 text-xs text-gray-300 hover:text-white"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Descargar
+              </button>
+            )}
             {ad.link_url && (
               <a
                 href={ad.link_url}
@@ -174,13 +247,18 @@ export function AdDetailPanel({ ad, onClose }: Props) {
           </Section>
 
           {/* Transcript */}
-          <Section title="Análisis IA (kie.ai · Gemini 3 Pro)">
-            {intel?.transcript_status === 'failed' && (
+          <Section
+            title={isVideo ? 'Transcripción IA (Gemini)' : 'Análisis IA (kie.ai · Gemini 3 Pro)'}
+          >
+            {isTranscribing && <TranscribingAnimation isVideo={isVideo} />}
+
+            {!isTranscribing && intel?.transcript_status === 'failed' && (
               <p className="rounded border border-red-900 bg-red-900/20 p-2 text-xs text-red-300">
                 {intel.transcript_error || 'Falló el análisis'}
               </p>
             )}
-            {intel?.transcript ? (
+
+            {!isTranscribing && intel?.transcript && (
               <div className="relative rounded-lg border border-gray-800 bg-black/40 p-3">
                 <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-gray-200">
                   {intel.transcript}
@@ -195,10 +273,13 @@ export function AdDetailPanel({ ad, onClose }: Props) {
                   <Copy className="h-3.5 w-3.5" />
                 </button>
               </div>
-            ) : (
+            )}
+
+            {!isTranscribing && !intel?.transcript && (
               <p className="text-xs text-gray-500">
-                Usa "Analizar con IA" para extraer hook visual, OCR del texto en pantalla y posible ángulo. Tu base de datos lo recordará.
-                {ad.media_kind === 'video' && ' En videos analiza el cover frame (kie.ai/Gemini no procesa audio).'}
+                {isVideo
+                  ? 'Sube el video a Gemini para transcribir el audio palabra por palabra + el texto en pantalla. Tu base de datos lo recordará.'
+                  : 'Extrae hook visual, OCR del texto en pantalla y posible ángulo con kie.ai/Gemini 3 Pro. Tu base de datos lo recordará.'}
               </p>
             )}
           </Section>
@@ -246,5 +327,42 @@ function Stat({ label, value }: { label: string; value: string | number }) {
       <div className="text-[9px] uppercase text-gray-500">{label}</div>
       <div className="text-sm font-semibold text-white">{value}</div>
     </div>
+  );
+}
+
+function TranscribingAnimation({ isVideo }: { isVideo: boolean }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-brand-accent/30 bg-gradient-to-br from-brand-accent/10 via-black/40 to-emerald-500/10 p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <div className="relative">
+          <Sparkles className="h-4 w-4 text-brand-accent" />
+          <span className="absolute inset-0 animate-ping rounded-full bg-brand-accent/40" />
+        </div>
+        <p className="text-sm font-medium text-white">
+          {isVideo ? 'Transcribiendo audio + visuales con Gemini' : 'Analizando con kie.ai · Gemini 3 Pro'}
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <SkeletonBar width="92%" delay="0ms" />
+        <SkeletonBar width="78%" delay="150ms" />
+        <SkeletonBar width="85%" delay="300ms" />
+        <SkeletonBar width="64%" delay="450ms" />
+        <SkeletonBar width="71%" delay="600ms" />
+      </div>
+      <p className="mt-3 text-[11px] text-gray-400">
+        {isVideo
+          ? 'Subiendo el video a Gemini, esperando que el modelo escuche el audio y lea los overlays. Suele tardar 30–90 s.'
+          : 'Bajando la imagen, mandándola a Gemini 3 Pro y esperando la respuesta. Suele tardar pocos segundos.'}
+      </p>
+    </div>
+  );
+}
+
+function SkeletonBar({ width, delay }: { width: string; delay: string }) {
+  return (
+    <div
+      className="h-2.5 animate-pulse rounded bg-white/10"
+      style={{ width, animationDelay: delay }}
+    />
   );
 }

@@ -156,6 +156,7 @@ export interface MetaAdSummary {
   thumbnail_url: string | null;
   video_id?: string | null;
   video_source_url?: string | null;
+  video_permalink_url?: string | null;
   image_url?: string | null;
   primary_text?: string | null;
   headline?: string | null;
