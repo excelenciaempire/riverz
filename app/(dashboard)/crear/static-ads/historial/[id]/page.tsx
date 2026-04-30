@@ -156,7 +156,6 @@ function VariationSlide({
   const isCompleted = gen.status === 'completed';
   const isFailed = gen.status === 'failed';
   const isPending = !isCompleted && !isFailed;
-  const status = statusConfig[gen.status] || statusConfig.pending_analysis;
   const angle = gen.input_data?.variationAngle || `V${gen.input_data?.variationIndex || ''}`;
   const title = gen.input_data?.variationTitle || '';
 
