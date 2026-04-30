@@ -116,12 +116,12 @@ export function KieConfigManager() {
         <ol className="space-y-2 text-sm text-gray-300">
           <li><span className="text-[#07A498]">1.</span> Análisis del template (visión) → <code className="text-white">{currentAnalysis}</code></li>
           <li><span className="text-[#07A498]">2.</span> Adaptación al producto (visión) → <code className="text-white">{currentAnalysis}</code></li>
-          <li><span className="text-[#07A498]">3.</span> Generar 5 prompts creativos → <code className="text-white">{currentAnalysis}</code></li>
-          <li><span className="text-[#07A498]">4.</span> Generar 5 imágenes (paralelo) → <code className="text-white">{currentGeneration}</code></li>
-          <li><span className="text-[#07A498]">5.</span> Polling de 5 resultados (1 GET por imagen) → <code className="text-white">kie.ai jobs</code></li>
+          <li><span className="text-[#07A498]">3.</span> Generar prompt creativo → <code className="text-white">{currentAnalysis}</code></li>
+          <li><span className="text-[#07A498]">4.</span> Generar imagen → <code className="text-white">{currentGeneration}</code></li>
+          <li><span className="text-[#07A498]">5.</span> Polling del resultado → <code className="text-white">kie.ai jobs</code></li>
         </ol>
         <p className="mt-3 text-xs text-gray-500">
-          Por cada plantilla seleccionada por el usuario se cobran <span className="text-white">14 × 5 = 70 créditos</span> y se generan 5 imágenes con ángulos creativos distintos.
+          Por cada plantilla seleccionada se cobran <span className="text-white">14 créditos</span> y se genera 1 imagen.
         </p>
       </div>
 

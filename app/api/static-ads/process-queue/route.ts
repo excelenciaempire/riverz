@@ -23,24 +23,24 @@ const supabaseAdmin = createClient(
 );
 
 /**
- * Static Ads Pipeline (5 variations per template).
+ * Static Ads Pipeline (1 image per selected template).
  *
- * For each selected template the system creates 5 sibling generation rows
- * (variation_index 1..5 inside input_data). The row with variation_index=1
- * is the LEADER and runs the shared analysis steps once; the other four wait.
+ * For each selected template the system creates one generation row. The row
+ * runs the shared analysis steps and then generates a single Nano Banana
+ * image. Bump VARIATIONS_PER_TEMPLATE if you ever want fan-out again — the
+ * leader/sibling distribution code below still supports it.
  *
  * Steps (per template, in order):
  *   1. Template Analysis  (Gemini 3 Pro vision) → templateAnalysisJson
  *   2. Adapt to Product   (Gemini 3 Pro vision) → adaptedJson
- *   3. Generate 5 Prompts (Gemini 3 Pro)        → variationPrompts[5]
- *      The leader copies templateAnalysisJson + adaptedJson + each variation's
- *      assigned prompt into all sibling rows (#2..#5), flipping their status
- *      from 'pending_variation' to 'pending_generation'.
- *   4. Create Nano Banana task (per variation, in parallel)  → generationTaskId
- *   5. Poll for result (per variation, on each process-queue tick)
+ *   3. Generate 1 Prompt  (Gemini 3 Pro)        → variationPrompts[1]
+ *      Leader writes templateAnalysisJson + adaptedJson + the assigned prompt
+ *      back into its own row and flips its status to 'pending_generation'.
+ *   4. Create Nano Banana task → generationTaskId
+ *   5. Poll for result on each process-queue tick
  */
 
-const VARIATIONS_PER_TEMPLATE = 5;
+const VARIATIONS_PER_TEMPLATE = 1;
 
 // --- Helpers ------------------------------------------------------------
 

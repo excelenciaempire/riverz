@@ -69,10 +69,10 @@ export async function POST(req: Request) {
     }
 
     // Pricing model: each Nano Banana Pro image ≈ $0.134 ≈ 14 credits.
-    // Per selected template we now generate 5 distinct creative variations,
-    // so the user is billed 14 × 5 = 70 credits per template.
+    // One image per selected template — the user picks the templates, we
+    // generate exactly that many ads. Set to >1 to bring back fan-out.
     const COST_PER_IMAGE = 14;
-    const VARIATIONS_PER_TEMPLATE = 5;
+    const VARIATIONS_PER_TEMPLATE = 1;
     const COST_PER_TEMPLATE = COST_PER_IMAGE * VARIATIONS_PER_TEMPLATE;
     const totalCost = templateIds.length * COST_PER_TEMPLATE;
     

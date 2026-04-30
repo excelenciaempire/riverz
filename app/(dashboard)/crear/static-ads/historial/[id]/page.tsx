@@ -264,10 +264,15 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       return response.json() as Promise<ProjectDetail>;
     },
     refetchInterval: (query) => {
-        const hasPending = query.state.data?.generations?.some(
+        const data = query.state.data as ProjectDetail | undefined;
+        // No data yet OR generations array hasn't been populated — keep
+        // polling. The clone API inserts rows just before redirecting, but a
+        // fast browser can render this page before those inserts land, leaving
+        // the user staring at an empty grid forever if we don't poll.
+        if (!data || !data.generations || data.generations.length === 0) return 2000;
+        const hasPending = data.generations.some(
             (g: any) => ['pending_analysis', 'analyzing', 'adapting', 'generating_prompt', 'pending_generation', 'generating', 'processing'].includes(g.status)
         );
-        // Poll every 2 seconds if processing for faster updates
         return hasPending ? 2000 : false;
     }
   });
@@ -562,6 +567,23 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             </div>
             <p className="mt-2 text-xs text-gray-500">
               Estimado: ~{Math.max(1, Math.ceil(progressStats.inProgress * 0.5))} minutos restantes
+            </p>
+          </div>
+        )}
+
+        {/* Empty / initialising state — clone may still be inserting the
+            generation rows when this page first renders. Show a clear
+            "starting" animation instead of a blank screen. */}
+        {templateGroups.length === 0 && (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#141414] to-[#0a0a0a] py-20 px-6 text-center">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 rounded-full bg-[#07A498]/20 animate-ping" />
+              <Sparkles className="relative h-14 w-14 animate-spin text-[#07A498]" />
+            </div>
+            <p className="mb-2 text-lg font-semibold text-white">Iniciando generación…</p>
+            <p className="max-w-md text-sm text-gray-400">
+              Estamos creando las variaciones del proyecto. Esto puede tardar unos segundos en aparecer.
+              Si después de un minuto sigue vacío, recarga la página o intenta de nuevo desde &quot;Static Ads&quot;.
             </p>
           </div>
         )}
