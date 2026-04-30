@@ -66,12 +66,21 @@ const DEFAULT_PROMPTS = [
   },
   {
     key: 'static_ads_edit_instructions',
-    name: 'Static Ads · Edición con IA',
-    category: 'static_ads',
-    description: 'Aplica instrucciones de edición del usuario sobre una variación ya generada y produce un nuevo prompt para Nano Banana. Recibe la imagen original adjunta. Modelo: Gemini 3 Pro con visión.',
+    name: 'Edición con IA · Generar prompt de re-edición',
+    category: 'image_edit',
+    description: 'Workflow INDEPENDIENTE de la clonación. Aplica instrucciones de edición del usuario sobre una variación ya generada y produce un nuevo prompt para Nano Banana. Recibe la imagen original adjunta. Modelo: Gemini 3 Pro con visión.',
     variables: ['ORIGINAL_PROMPT', 'USER_EDIT_INSTRUCTIONS', 'PRODUCT_NAME', '@ORIGINAL_IMAGE'],
     prompt_text: FALLBACK_PROMPTS.static_ads_edit_instructions,
     is_active: true
+  },
+  {
+    key: 'static_ads_clone',
+    name: 'Static Ads · Clone Prompt Builder (Legacy)',
+    category: 'static_ads',
+    description: 'Versión vieja del Paso 3: usaba a Gemini para construir un prompt natural-language a partir del template + producto. Reemplazado por el handoff directo del JSON adaptado a Nano Banana — el pipeline ya no lo invoca.',
+    variables: ['PRODUCT_NAME', 'PRODUCT_BENEFITS', 'TEMPLATE_NAME', '@TEMPLATE_IMAGE', '@PRODUCT_IMAGES'],
+    prompt_text: '',
+    is_active: false
   },
   {
     key: 'stealer_scene_prompt_generation',

@@ -27,22 +27,25 @@ interface AIPrompt {
 // Categories grouped by APP FUNCTION. Each value matches what's stored in
 // the `category` column on `ai_prompts`. Order here = display order in the UI.
 const CATEGORIES = [
-  { value: 'static_ads', label: '🎨 Static Ads', description: 'Pipeline de generación de imágenes publicitarias (Gemini + Nano Banana Pro)' },
-  { value: 'product_research', label: '🔬 Research de Producto', description: 'Análisis profundo del producto y buyer persona — alimenta a todo el pipeline' },
+  { value: 'static_ads', label: '🎨 Static Ads · Clonación', description: 'Pipeline de clonación de templates con producto. Paso 1 (análisis JSON del template) y Paso 2 (adaptación al producto). El paso 3 es enviar el JSON adaptado directamente a Nano Banana — no usa prompt, no aparece aquí.' },
+  { value: 'image_edit', label: '✏️ Edición con IA', description: 'Workflow independiente. Genera un nuevo prompt para Nano Banana cuando el usuario pide cambios sobre una imagen ya generada. No forma parte de la clonación.' },
+  { value: 'product_research', label: '🔬 Research de Producto', description: 'Análisis profundo del producto y buyer persona — alimenta a la clonación.' },
   { value: 'stealer', label: '🎬 Stealer (Video clones)', description: 'Pipeline para clonar videos UGC con Veo 3.1' },
   { value: 'ugc', label: '🎤 UGC Chat', description: 'Generación de videos talking-head con Veo 3.1' },
   { value: 'landing_lab', label: '📄 Landing Lab', description: 'Copy y prompts visuales para landings' },
   { value: 'other', label: '📁 Otros / Legacy', description: 'Prompts antiguos o de uso general' }
 ];
 
-// Within static_ads, render in pipeline execution order (analysis → adaptation → edit → legacy).
+// Pipeline ordering for the Static Ads clone flow ONLY. Edit is a separate
+// workflow with its own category — don't list it here or it gets a "PASO N"
+// badge that implies it's a step in the clone pipeline, which it isn't.
 const STATIC_ADS_ORDER: Record<string, number> = {
   template_analysis_json: 1,
   template_adaptation: 2,
-  static_ads_edit_instructions: 3,
   static_ads_5_variations_prompts: 90, // legacy
   static_ads_prompt_generation: 91,    // legacy
-  template_analysis: 92,                // legacy
+  static_ads_clone: 92,                 // legacy (one-shot Nano Banana prompt builder, replaced by direct-JSON handoff)
+  template_analysis: 93,                // legacy
 };
 
 export function PromptsManager() {
@@ -272,34 +275,34 @@ export function PromptsManager() {
         </div>
       </div>
 
-      {/* Info Panel - Pipeline Explanation (current Static Ads flow) */}
+      {/* Info Panel — Pipeline Explanation (current clone flow).
+          Three steps. Step 3 has NO prompt — the adapted JSON from step 2
+          is sent verbatim to Nano Banana, so this card has no `code` ref. */}
       <div className="rounded-xl border border-gray-800 bg-gradient-to-r from-[#141414] to-[#1a1a1a] p-5">
-        <h3 className="text-sm font-medium text-gray-300 mb-3">📋 Pipeline de Static Ads (Gemini 3 Pro + Nano Banana Pro)</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+        <h3 className="text-sm font-medium text-gray-300 mb-3">📋 Pipeline de clonación de Static Ads</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
           <div className="p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
-            <p className="font-medium text-white text-[11px]">1. Research (opcional)</p>
-            <p className="text-gray-500">Gemini 3 Pro</p>
-            <code className="text-brand-accent/80 text-[9px]">product_deep_research</code>
-          </div>
-          <div className="p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
-            <p className="font-medium text-white text-[11px]">2. Análisis JSON</p>
+            <p className="font-medium text-white text-[11px]">PASO 1 · Análisis del template</p>
             <p className="text-gray-500">Gemini 3 Pro · vision</p>
             <code className="text-brand-accent/80 text-[9px]">template_analysis_json</code>
+            <p className="mt-2 text-[10px] text-gray-500">Recibe imagen del template → devuelve JSON con composición, colores, texto, etc.</p>
           </div>
           <div className="p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
-            <p className="font-medium text-white text-[11px]">3. Adaptación al producto</p>
+            <p className="font-medium text-white text-[11px]">PASO 2 · Adaptación al producto</p>
             <p className="text-gray-500">Gemini 3 Pro · vision</p>
             <code className="text-brand-accent/80 text-[9px]">template_adaptation</code>
+            <p className="mt-2 text-[10px] text-gray-500">Recibe JSON del paso 1 + info del producto + fotos → devuelve JSON adaptado.</p>
           </div>
           <div className="p-3 rounded-lg bg-[#0a0a0a] border border-[#07A498]/30">
-            <p className="font-medium text-white text-[11px]">4. Imagen</p>
+            <p className="font-medium text-white text-[11px]">PASO 3 · Generar imagen</p>
             <p className="text-[#07A498]">Nano Banana Pro</p>
-            <code className="text-gray-500 text-[9px]">JSON adaptado + fotos producto</code>
+            <code className="text-gray-500 text-[9px]">— sin prompt propio —</code>
+            <p className="mt-2 text-[10px] text-gray-500">Recibe el JSON del paso 2 tal cual + fotos del producto. No hay prompt en <code>ai_prompts</code> para este paso.</p>
           </div>
         </div>
         <p className="mt-3 text-[11px] text-gray-500">
-          El paso de "generar prompt" se eliminó: el JSON adaptado del paso 3 se envía
-          directamente como prompt a Nano Banana, junto con las fotos del producto del usuario.
+          🔬 <code>product_deep_research</code> es opcional y se ejecuta antes del Paso 2 para enriquecer la adaptación con datos del buyer persona — no es parte del pipeline de clonación.
+          ✏️ <code>static_ads_edit_instructions</code> es un workflow aparte (categoría &quot;Edición con IA&quot;), no se ejecuta durante la clonación.
         </p>
       </div>
 
