@@ -439,15 +439,28 @@ export function PromptsManager() {
                       </div>
 
                       {prompt.variables && prompt.variables.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {prompt.variables.map((variable) => (
-                            <span
-                              key={variable}
-                              className="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-300 font-mono"
-                            >
-                              {variable}
-                            </span>
-                          ))}
+                        <div className="mb-3">
+                          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Inputs en cada llamada</p>
+                          <div className="flex flex-wrap gap-1">
+                            {prompt.variables.map((variable) => {
+                              const isImage = variable.startsWith('@');
+                              const display = isImage ? variable.slice(1) : variable;
+                              return (
+                                <span
+                                  key={variable}
+                                  className={cn(
+                                    'text-xs px-2 py-1 rounded-md font-mono inline-flex items-center gap-1',
+                                    isImage
+                                      ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                                      : 'bg-gray-800 text-gray-300',
+                                  )}
+                                  title={isImage ? 'Imagen adjunta como image_url block' : 'Variable de texto sustituida en el prompt'}
+                                >
+                                  {isImage ? '🖼️' : '{}'} {display}
+                                </span>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
 
@@ -553,10 +566,14 @@ export function PromptsManager() {
             <Input
               value={formData.variables}
               onChange={(e) => setFormData({ ...formData, variables: e.target.value })}
-              placeholder="productName, productImage, templateName"
+              placeholder="TEMPLATE_JSON, PRODUCT_NAME, @PRODUCT_IMAGES"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Variables que este prompt utiliza (para documentación)
+              Documentación de los inputs que recibe esta llamada.
+              <br />
+              <span className="text-gray-300">{'{TEXT}'}</span> = variable de texto sustituida en el prompt vía <code>{'{NAME}'}</code> placeholder.
+              <br />
+              <span className="text-purple-300">@IMAGE</span> = imagen adjunta a la request como <code>image_url</code> block (se prefija con <code>@</code>). No se sustituye en el texto.
             </p>
           </div>
 
