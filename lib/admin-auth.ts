@@ -1,4 +1,5 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { isAdminEmail } from './admin-emails';
 
 export interface AdminCheckResult {
   ok: boolean;
@@ -14,7 +15,8 @@ export interface AdminCheckResult {
  * Returns ok=true only when:
  *  - the request has a valid Clerk session
  *  - the user has a primary email
- *  - that email is in NEXT_PUBLIC_ADMIN_EMAILS
+ *  - that email is in the admin allowlist (lib/admin-emails: hardcoded
+ *    OWNER_EMAILS + NEXT_PUBLIC_ADMIN_EMAILS env)
  *
  * Never returns the admin list to callers — only the boolean.
  */
@@ -26,12 +28,7 @@ export async function requireAdmin(): Promise<AdminCheckResult> {
   const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase() || null;
   if (!email) return { ok: false, userId, email: null, reason: 'no_email' };
 
-  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (!adminEmails.includes(email)) {
+  if (!isAdminEmail(email)) {
     return { ok: false, userId, email, reason: 'not_admin' };
   }
 

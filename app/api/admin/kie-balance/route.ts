@@ -1,13 +1,9 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { isAdminEmail } from '@/lib/admin-emails';
 
 const KIE_API_KEY = process.env.KIE_API_KEY!;
 const KIE_BASE_URL = 'https://api.kie.ai';
-
-async function isAdmin(userEmail: string): Promise<boolean> {
-  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
-  return adminEmails.includes(userEmail.toLowerCase());
-}
 
 export async function GET() {
   try {
@@ -19,7 +15,7 @@ export async function GET() {
     }
 
     const userEmail = user.emailAddresses[0]?.emailAddress;
-    if (!userEmail || !(await isAdmin(userEmail))) {
+    if (!isAdminEmail(userEmail)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

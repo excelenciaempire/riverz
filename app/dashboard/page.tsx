@@ -12,8 +12,7 @@ import { LogsViewer } from '@/components/dashboard/logs-viewer';
 import { CreditsManager } from '@/components/dashboard/credits-manager';
 import { PricingConfig } from '@/components/dashboard/pricing-config';
 import { Loading } from '@/components/ui/loading';
-
-const ADMIN_EMAILS = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',') || [];
+import { isAdminEmail } from '@/lib/admin-emails';
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
@@ -24,7 +23,7 @@ export default function DashboardPage() {
     if (isLoaded) {
       if (!user) {
         router.push('/admin');
-      } else if (!ADMIN_EMAILS.includes(user.emailAddresses[0]?.emailAddress || '')) {
+      } else if (!isAdminEmail(user.emailAddresses[0]?.emailAddress)) {
         router.push('/unauthorized');
       }
     }
@@ -34,7 +33,7 @@ export default function DashboardPage() {
     return <Loading text="Verificando acceso..." />;
   }
 
-  if (!user || !ADMIN_EMAILS.includes(user.emailAddresses[0]?.emailAddress || '')) {
+  if (!user || !isAdminEmail(user.emailAddresses[0]?.emailAddress)) {
     return null;
   }
 

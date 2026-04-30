@@ -1,6 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminEmail } from '@/lib/admin-emails';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -16,10 +17,6 @@ const supabaseAdmin = createClient(
   }
 );
 
-async function isAdmin(userEmail: string): Promise<boolean> {
-  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
-  return adminEmails.includes(userEmail.toLowerCase());
-}
 
 // GET: Get signed upload URL for direct upload from client
 export async function GET(req: Request) {
@@ -32,7 +29,7 @@ export async function GET(req: Request) {
     }
 
     const userEmail = user.emailAddresses[0]?.emailAddress;
-    if (!userEmail || !(await isAdmin(userEmail))) {
+    if (!isAdminEmail(userEmail)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -80,7 +77,7 @@ export async function POST(req: Request) {
     }
 
     const userEmail = user.emailAddresses[0]?.emailAddress;
-    if (!userEmail || !(await isAdmin(userEmail))) {
+    if (!isAdminEmail(userEmail)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

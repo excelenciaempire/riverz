@@ -3,8 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SignIn, useUser } from '@clerk/nextjs';
-
-const ADMIN_EMAILS = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',') || [];
+import { isAdminEmail } from '@/lib/admin-emails';
 
 export default function AdminLoginPage() {
   const { user, isLoaded, isSignedIn } = useUser();
@@ -13,9 +12,8 @@ export default function AdminLoginPage() {
   useEffect(() => {
     if (isLoaded && isSignedIn && user) {
       const userEmail = user.emailAddresses[0]?.emailAddress || '';
-      const isAdmin = ADMIN_EMAILS.some(email => email.trim().toLowerCase() === userEmail.toLowerCase());
-      
-      if (isAdmin) {
+
+      if (isAdminEmail(userEmail)) {
         router.push('/admin/dashboard');
       } else {
         router.push('/admin/unauthorized');

@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { isAdminEmail } from '@/lib/admin-emails';
 
 /**
  * GET /api/admin/check-access
@@ -17,13 +18,7 @@ export async function GET() {
     }
 
     const userEmail = (sessionClaims?.email as string | undefined)?.toLowerCase() || null;
-    const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
-      .split(',')
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const isAdmin = !!userEmail && adminEmails.includes(userEmail);
-
-    return NextResponse.json({ isAdmin });
+    return NextResponse.json({ isAdmin: isAdminEmail(userEmail) });
   } catch (error: any) {
     console.error('[admin/check-access] error:', error);
     return NextResponse.json({ isAdmin: false }, { status: 500 });

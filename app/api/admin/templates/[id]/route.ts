@@ -1,6 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdminEmail } from '@/lib/admin-emails';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,10 +14,6 @@ const supabaseAdmin = createClient(
   }
 );
 
-async function isAdmin(userEmail: string): Promise<boolean> {
-  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
-  return adminEmails.includes(userEmail.toLowerCase());
-}
 
 export async function PATCH(
   req: Request,
@@ -31,7 +28,7 @@ export async function PATCH(
     }
 
     const userEmail = user.emailAddresses[0]?.emailAddress;
-    if (!userEmail || !(await isAdmin(userEmail))) {
+    if (!isAdminEmail(userEmail)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

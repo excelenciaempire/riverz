@@ -14,8 +14,7 @@ import { PricingConfig } from '@/components/admin/dashboard/pricing-config';
 import { ProductsManager } from '@/components/admin/dashboard/products-manager';
 import { PromptsManager } from '@/components/admin/dashboard/prompts-manager';
 import { Loading } from '@/components/admin/ui/loading';
-
-const ADMIN_EMAILS = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',') || [];
+import { isAdminEmail } from '@/lib/admin-emails';
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
@@ -28,11 +27,7 @@ export default function DashboardPage() {
         router.push('/admin');
       } else {
         const userEmail = user.emailAddresses[0]?.emailAddress || '';
-        const isAuthorized = ADMIN_EMAILS.some(email => email.trim().toLowerCase() === userEmail.toLowerCase());
-        
-        console.log('Admin check:', { userEmail, ADMIN_EMAILS, isAuthorized });
-        
-        if (!isAuthorized) {
+        if (!isAdminEmail(userEmail)) {
           router.push('/admin/unauthorized');
         }
       }
@@ -44,9 +39,7 @@ export default function DashboardPage() {
   }
 
   const userEmail = user?.emailAddresses[0]?.emailAddress || '';
-  const isAuthorized = ADMIN_EMAILS.some(email => email.trim().toLowerCase() === userEmail.toLowerCase());
-  
-  if (!user || !isAuthorized) {
+  if (!user || !isAdminEmail(userEmail)) {
     return null;
   }
 
