@@ -441,8 +441,8 @@ export default function StaticAdsPage() {
 
     setIsAgregarSubmitting(true);
     try {
-      // Upload all selected files. Bounded concurrency: 5 parallel PUTs to
-      // Storage so a 25-image batch doesn't open 25 sockets at once.
+      // 1) Upload all files. Bounded concurrency: 5 parallel PUTs to Storage
+      //    so a 25-image batch doesn't open 25 sockets at once.
       const MAX_PARALLEL = 5;
       const uploaded: Array<{ url: string; name: string; width: number | null; height: number | null }> = [];
       for (let i = 0; i < agregarItems.length; i += MAX_PARALLEL) {
@@ -455,29 +455,53 @@ export default function StaticAdsPage() {
         }
       }
 
-      // Single clone call with ALL inline templates. The clone API gives each
-      // a unique synthetic templateId; process-queue groups by templateId and
-      // runs each pipeline (analysis → adaptation → Nano Banana) in parallel
-      // with full isolation — kie.ai task IDs are tracked per generation row,
-      // so results never cross between images.
-      const cloneRes = await fetch('/api/static-ads/clone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          inlineTemplates: uploaded,
-          productId: selectedProduct,
-          projectName: agregarProjectName.trim(),
+      // 2) Fire ONE independent /api/static-ads/clone call per uploaded
+      //    image — each creating its own project, identical to clicking
+      //    "Generar" N separate times. No shared project, no shared
+      //    orchestrator tick, no shared input_data: each image flows
+      //    through a fully isolated clone pipeline.
+      const baseName = agregarProjectName.trim();
+      const cloneResults = await Promise.allSettled(
+        uploaded.map((tmpl, i) => {
+          const suffix = uploaded.length > 1 ? ` (${i + 1}/${uploaded.length})` : '';
+          return fetch('/api/static-ads/clone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              inlineTemplate: tmpl,
+              productId: selectedProduct,
+              projectName: `${baseName}${suffix}`,
+            }),
+          }).then(async (r) => {
+            if (!r.ok) {
+              const err = await r.json().catch(() => ({}));
+              if (r.status === 402) throw new Error(`Créditos insuficientes (${err.required || ''})`);
+              throw new Error(err.error || `HTTP ${r.status}`);
+            }
+            return r.json();
+          });
         }),
-      });
-      if (!cloneRes.ok) {
-        const err = await cloneRes.json().catch(() => ({}));
-        if (cloneRes.status === 402) throw new Error(`Créditos insuficientes (${err.required || ''})`);
-        throw new Error(err.error || `HTTP ${cloneRes.status}`);
+      );
+
+      const ok = cloneResults.filter((r) => r.status === 'fulfilled') as Array<PromiseFulfilledResult<any>>;
+      const failed = cloneResults.filter((r) => r.status === 'rejected') as Array<PromiseRejectedResult>;
+
+      if (ok.length === 0) {
+        throw new Error(failed[0]?.reason?.message || 'No se pudo iniciar ninguna generación');
       }
-      const data = await cloneRes.json();
-      toast.success(`Iniciando ${uploaded.length} generación(es) en paralelo…`);
+      if (failed.length > 0) {
+        toast.error(`${failed.length} no se pudo iniciar: ${failed[0].reason?.message || 'error'}`);
+      }
+      toast.success(`${ok.length} proyecto(s) iniciado(s) en paralelo`);
       resetAgregar();
-      router.push(`/crear/static-ads/historial/${data.project.id}`);
+
+      // One project → go straight to its historial. Multiple → list view so
+      // the user sees all the runs.
+      if (ok.length === 1) {
+        router.push(`/crear/static-ads/historial/${ok[0].value.project.id}`);
+      } else {
+        router.push('/crear/static-ads/historial');
+      }
     } catch (err: any) {
       toast.error(err.message || 'Error inesperado');
     } finally {
