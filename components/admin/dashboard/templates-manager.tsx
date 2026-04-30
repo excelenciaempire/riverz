@@ -561,13 +561,16 @@ export function TemplatesManager() {
             </div>
           </div>
 
-          {/* File picker (always visible so admin can keep adding) */}
+          {/* File picker (always visible so admin can keep adding).
+              maxFiles=0 = unlimited per react-dropzone — admin can drop a
+              whole campaign pack at once. maxSize stays per-file so a stray
+              50MB file doesn't sneak in unnoticed. */}
           <FileUpload
             onFilesSelected={(files) => {
               if (files.length > 0) addBulkFiles(files);
             }}
             accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}
-            maxFiles={50}
+            maxFiles={0}
             maxSize={50 * 1024 * 1024}
             multiple
             variant="minimal"
