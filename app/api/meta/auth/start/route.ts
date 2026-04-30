@@ -6,24 +6,25 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const API_VERSION = process.env.META_GRAPH_API_VERSION || 'v23.0';
-// Full read+write scopes the dashboard needs:
-//   ads_management        — create campaigns / upload assets
-//   ads_read              — list ads + insights (fixes "acceso API bloqueado")
-//   business_management   — list business-owned ad accounts
-//   pages_show_list       — let user pick a Facebook Page
-//   pages_read_engagement — read page metadata for the selector
-//   pages_manage_ads      — run ads on behalf of the page
-//   instagram_basic       — read IG business account linked to the page
-//   read_insights         — pull spend/CPM/CTR per ad
+// Only scopes that Graph v23 currently accepts. Three I tried earlier
+// (pages_manage_ads, instagram_basic, read_insights) are rejected as
+// "Invalid Scopes" in the OAuth dialog — they were either deprecated or
+// renamed and are no longer grantable. We get equivalent capabilities via:
+//   ads_management        — create campaigns + upload assets
+//   ads_read              — list ads + read insights at the ad/account level
+//                           (Marketing-API insights, replaces read_insights)
+//   business_management   — list business-owned ad accounts + IG linking
+//   pages_show_list       — pick a Facebook Page (also exposes the page's
+//                           linked instagram_business_account → no separate
+//                           instagram_basic needed)
+//   pages_read_engagement — read page metadata for the picker
+//   public_profile        — required minimum for /me
 const SCOPES = [
   'ads_management',
   'ads_read',
   'business_management',
   'pages_show_list',
   'pages_read_engagement',
-  'pages_manage_ads',
-  'instagram_basic',
-  'read_insights',
   'public_profile',
 ].join(',');
 
