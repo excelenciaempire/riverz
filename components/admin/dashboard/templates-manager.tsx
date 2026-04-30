@@ -8,10 +8,26 @@ import { Label } from '@/components/admin/ui/label';
 import { Modal } from '@/components/admin/ui/modal';
 import { FileUpload } from '@/components/admin/ui/file-upload';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Upload, X, Check, AlertCircle } from 'lucide-react';
+
+// One row in the bulk-upload modal. Tracks the file, the metadata the admin
+// can override per-row, and the lifecycle status of its upload.
+interface BulkItem {
+  id: string;
+  file: File;
+  preview: string;
+  name: string;
+  dims: { width: number; height: number } | null;
+  status: 'pending' | 'uploading' | 'done' | 'error';
+  error?: string;
+}
 
 export function TemplatesManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
+  const [bulkCommon, setBulkCommon] = useState({ category: '', awareness_level: '', niche: '' });
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -170,6 +186,100 @@ export function TemplatesManager() {
     return publicUrl;
   };
 
+  // ---------- Bulk upload helpers ----------
+  const addBulkFiles = async (files: File[]) => {
+    const newItems: BulkItem[] = [];
+    for (const file of files) {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const preview = URL.createObjectURL(file);
+      // Strip extension from filename for the default template name.
+      const defaultName = file.name.replace(/\.[^.]+$/, '');
+      let dims: { width: number; height: number } | null = null;
+      try {
+        dims = await detectImageDimensions(file);
+      } catch {
+        /* leave null — backend will skip width/height */
+      }
+      newItems.push({ id, file, preview, name: defaultName, dims, status: 'pending' });
+    }
+    setBulkItems((prev) => [...prev, ...newItems]);
+  };
+
+  const updateBulkItem = (id: string, patch: Partial<BulkItem>) => {
+    setBulkItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  };
+
+  const removeBulkItem = (id: string) => {
+    setBulkItems((prev) => {
+      const target = prev.find((it) => it.id === id);
+      if (target) URL.revokeObjectURL(target.preview);
+      return prev.filter((it) => it.id !== id);
+    });
+  };
+
+  const resetBulk = () => {
+    bulkItems.forEach((it) => URL.revokeObjectURL(it.preview));
+    setBulkItems([]);
+    setBulkCommon({ category: '', awareness_level: '', niche: '' });
+    setIsBulkOpen(false);
+  };
+
+  // Uploads a single bulk row: pushes the file to Storage, then creates the
+  // templates row. Updates the row status as it progresses so the modal
+  // shows real-time per-file progress.
+  const processBulkItem = async (item: BulkItem) => {
+    if (!item.name.trim()) {
+      updateBulkItem(item.id, { status: 'error', error: 'Falta nombre' });
+      return;
+    }
+    updateBulkItem(item.id, { status: 'uploading', error: undefined });
+    try {
+      const publicUrl = await uploadImage(item.file);
+      const res = await fetch('/api/admin/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: item.name.trim(),
+          thumbnail_url: publicUrl,
+          category: bulkCommon.category || null,
+          awareness_level: bulkCommon.awareness_level || null,
+          niche: bulkCommon.niche || null,
+          width: item.dims?.width || null,
+          height: item.dims?.height || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      updateBulkItem(item.id, { status: 'done' });
+    } catch (err: any) {
+      updateBulkItem(item.id, { status: 'error', error: err?.message || 'Error de subida' });
+    }
+  };
+
+  const handleBulkUpload = async () => {
+    const pending = bulkItems.filter((it) => it.status === 'pending' || it.status === 'error');
+    if (pending.length === 0) {
+      toast.error('No hay plantillas pendientes para subir');
+      return;
+    }
+    setIsBulkUploading(true);
+    // Concurrency of 3 — Supabase Storage handles parallel uploads fine but
+    // we keep it bounded so a 50-image batch doesn't open 50 sockets at once.
+    const MAX_PARALLEL = 3;
+    for (let i = 0; i < pending.length; i += MAX_PARALLEL) {
+      const batch = pending.slice(i, i + MAX_PARALLEL);
+      await Promise.allSettled(batch.map(processBulkItem));
+    }
+    setIsBulkUploading(false);
+    queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
+    const successes = bulkItems.filter((it) => it.status === 'done').length;
+    if (successes > 0) {
+      toast.success(`${successes} plantilla(s) subidas exitosamente`);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -245,10 +355,16 @@ export function TemplatesManager() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white">Plantillas de Static Ads</h2>
-        <Button onClick={() => setIsModalOpen(true)} className="bg-brand-accent hover:bg-brand-accent/90">
-          <Plus className="mr-2 h-4 w-4" />
-          Nueva Plantilla
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsBulkOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Subir varias
+          </Button>
+          <Button onClick={() => setIsModalOpen(true)} className="bg-brand-accent hover:bg-brand-accent/90">
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva Plantilla
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 items-start">
@@ -399,6 +515,144 @@ export function TemplatesManager() {
               editingTemplate ? 'Actualizar' : 'Crear'
             )}
           </Button>
+        </div>
+      </Modal>
+
+      {/* ---------- Bulk upload modal ---------- */}
+      <Modal
+        isOpen={isBulkOpen}
+        onClose={() => {
+          if (isBulkUploading) return; // can't close mid-upload
+          resetBulk();
+        }}
+        title={`Subir varias plantillas${bulkItems.length > 0 ? ` (${bulkItems.length})` : ''}`}
+      >
+        <div className="space-y-5 max-h-[75vh] overflow-y-auto">
+          {/* Common metadata */}
+          <div className="grid grid-cols-3 gap-3 p-4 rounded-lg bg-[#0a0a0a] border border-gray-800">
+            <div>
+              <Label className="text-xs">Categoría (todas)</Label>
+              <Input
+                value={bulkCommon.category}
+                onChange={(e) => setBulkCommon({ ...bulkCommon, category: e.target.value })}
+                placeholder="carousel, single..."
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Awareness (todas)</Label>
+              <select
+                value={bulkCommon.awareness_level}
+                onChange={(e) => setBulkCommon({ ...bulkCommon, awareness_level: e.target.value })}
+                className="w-full rounded-lg border border-gray-800 bg-[#1a1a1a] px-3 py-2 text-sm text-white"
+              >
+                <option value="">—</option>
+                <option value="unaware">Unaware</option>
+                <option value="problem-aware">Problem Aware</option>
+                <option value="solution-aware">Solution Aware</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Nicho (todas)</Label>
+              <Input
+                value={bulkCommon.niche}
+                onChange={(e) => setBulkCommon({ ...bulkCommon, niche: e.target.value })}
+                placeholder="health, beauty..."
+              />
+            </div>
+          </div>
+
+          {/* File picker (always visible so admin can keep adding) */}
+          <FileUpload
+            onFilesSelected={(files) => {
+              if (files.length > 0) addBulkFiles(files);
+            }}
+            accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}
+            maxFiles={50}
+            maxSize={50 * 1024 * 1024}
+            multiple
+            variant="minimal"
+            hideFileList
+          />
+
+          {/* Per-item rows */}
+          {bulkItems.length > 0 && (
+            <div className="space-y-2">
+              {bulkItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 rounded-lg border border-gray-800 bg-[#141414] p-3"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.preview}
+                    alt=""
+                    className="h-16 w-16 rounded object-cover border border-gray-800 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <Input
+                      value={item.name}
+                      onChange={(e) => updateBulkItem(item.id, { name: e.target.value })}
+                      placeholder="Nombre de la plantilla"
+                      disabled={item.status === 'uploading' || item.status === 'done'}
+                      className="bg-[#0a0a0a]"
+                    />
+                    <p className="text-[11px] text-gray-500 font-mono">
+                      {item.dims ? `${item.dims.width}×${item.dims.height}px` : 'sin dims'}
+                      {' · '}
+                      {(item.file.size / 1024 / 1024).toFixed(2)}MB
+                      {item.error && <span className="ml-2 text-red-400">· {item.error}</span>}
+                    </p>
+                  </div>
+                  <div className="shrink-0 w-8 flex items-center justify-center">
+                    {item.status === 'uploading' && <Loader2 className="h-5 w-5 animate-spin text-brand-accent" />}
+                    {item.status === 'done' && <Check className="h-5 w-5 text-green-400" />}
+                    {item.status === 'error' && <AlertCircle className="h-5 w-5 text-red-400" />}
+                    {item.status === 'pending' && (
+                      <button
+                        onClick={() => removeBulkItem(item.id)}
+                        className="text-gray-500 hover:text-red-400"
+                        title="Quitar de la cola"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-2 border-t border-gray-800">
+            <p className="text-xs text-gray-500">
+              {bulkItems.filter((i) => i.status === 'done').length} listas ·{' '}
+              {bulkItems.filter((i) => i.status === 'pending').length} pendientes ·{' '}
+              {bulkItems.filter((i) => i.status === 'error').length} con error
+            </p>
+            <div className="flex gap-2">
+              {bulkItems.some((i) => i.status === 'done') && !isBulkUploading && (
+                <Button variant="outline" onClick={resetBulk}>
+                  Cerrar
+                </Button>
+              )}
+              <Button
+                onClick={handleBulkUpload}
+                disabled={isBulkUploading || bulkItems.length === 0}
+                className="bg-brand-accent hover:bg-brand-accent/90"
+              >
+                {isBulkUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Subiendo…
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Subir {bulkItems.filter((i) => i.status === 'pending' || i.status === 'error').length} plantilla(s)
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </Modal>
     </div>
