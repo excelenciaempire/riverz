@@ -42,71 +42,46 @@ const statusConfig: Record<string, { label: string; color: string; progress: num
   failed:             { label: 'Error',             color: 'text-red-400',      progress: 0 },
 };
 
-// Liquid-glass + circular-progress placeholder for any image that's still
-// being produced. Renders inside the same 3:4 container as the final image,
-// so the layout doesn't jump when the result lands.
-function LoadingTile({ status, hint, templateThumbnail }: { status: string; hint?: string; templateThumbnail?: string }) {
+// Minimal loading tile: thin ring + small percent + status text. No glass
+// blur, no conic gradient, no template peek — just the bare progress info
+// in the same 3:4 frame so the layout doesn't jump when the result lands.
+function LoadingTile({ status, hint }: { status: string; hint?: string; templateThumbnail?: string }) {
   const cfg = statusConfig[status] || statusConfig.pending_analysis;
-  // SVG circle math: r=42, circumference = 2πr ≈ 263.89
-  const r = 42;
+  // SVG circle math: r=44, circumference = 2πr ≈ 276.46
+  const r = 44;
   const C = 2 * Math.PI * r;
   const dash = C * cfg.progress;
 
   return (
-    <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0a0a0a]">
-      {/* Faded template peek so the user remembers which one is loading */}
-      {templateThumbnail && (
-        <img
-          src={templateThumbnail}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-[0.08] blur-xl scale-110"
-        />
-      )}
-
-      {/* Animated conic gradient — the "liquid" layer. Slow rotation + blur. */}
-      <div className="absolute inset-0 opacity-60 animate-[spin_8s_linear_infinite]"
-        style={{
-          background:
-            'conic-gradient(from 0deg, rgba(7,164,152,0.0) 0%, rgba(7,164,152,0.55) 25%, rgba(168,85,247,0.45) 50%, rgba(7,164,152,0.0) 75%, rgba(7,164,152,0.55) 100%)',
-          filter: 'blur(40px)',
-        }}
-      />
-
-      {/* Frosted glass panel on top of the liquid */}
-      <div className="absolute inset-3 rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-xl" />
-
-      {/* Center: circular progress + status */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
-        <div className="relative h-24 w-24">
+    <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0f0f0f]">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <div className="relative h-16 w-16">
           <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
             <circle
               cx="50" cy="50" r={r}
-              stroke="rgba(255,255,255,0.08)"
-              strokeWidth="6"
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth="4"
               fill="none"
             />
             <circle
               cx="50" cy="50" r={r}
               stroke="currentColor"
-              strokeWidth="6"
+              strokeWidth="4"
               fill="none"
               strokeLinecap="round"
               strokeDasharray={`${dash} ${C}`}
-              className={cn('transition-[stroke-dasharray] duration-700 ease-out', cfg.color)}
-              style={{ filter: 'drop-shadow(0 0 8px currentColor)' }}
+              className={cn('transition-[stroke-dasharray] duration-500 ease-out', cfg.color)}
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className={cn('text-base font-semibold', cfg.color)}>
+            <span className={cn('text-xs font-medium', cfg.color)}>
               {Math.round(cfg.progress * 100)}%
             </span>
           </div>
         </div>
-        <p className={cn('mt-4 text-sm font-medium', cfg.color)}>{cfg.label}</p>
+        <p className="text-xs text-gray-400">{cfg.label}</p>
         {hint && (
-          <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-gray-500 line-clamp-1 max-w-[80%]">
-            {hint}
-          </p>
+          <p className="text-[10px] text-gray-600 line-clamp-1 max-w-[80%]">{hint}</p>
         )}
       </div>
     </div>
