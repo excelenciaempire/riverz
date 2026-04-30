@@ -27,30 +27,57 @@ interface ProjectDetail {
   generations: Generation[];
 }
 
-// Status display config — `progress` (0..1) drives the circular progress ring
-// inside LoadingTile so the user sees the pipeline advance, not just a generic
-// spinner.
-const statusConfig: Record<string, { label: string; color: string; progress: number }> = {
-  pending_analysis:   { label: 'En cola',           color: 'text-gray-300',     progress: 0.05 },
-  pending_variation:  { label: 'Esperando turno',   color: 'text-gray-300',     progress: 0.10 },
-  analyzing:          { label: 'Analizando plantilla', color: 'text-cyan-300',  progress: 0.30 },
-  adapting:           { label: 'Adaptando al producto', color: 'text-purple-300', progress: 0.55 },
-  generating_prompt:  { label: 'Preparando prompt', color: 'text-indigo-300',   progress: 0.70 },
-  pending_generation: { label: 'Encolando imagen',  color: 'text-cyan-300',     progress: 0.75 },
-  generating:         { label: 'Generando imagen',  color: 'text-[#07A498]',    progress: 0.92 },
-  completed:          { label: 'Listo',             color: 'text-green-400',    progress: 1.00 },
-  failed:             { label: 'Error',             color: 'text-red-400',      progress: 0 },
+// Status labels — used for the small caption under the ring. The actual
+// percentage shown is now driven by a smooth simulated ramp inside
+// LoadingTile, not by the backend stage.
+const statusConfig: Record<string, { label: string }> = {
+  pending_analysis:   { label: 'En cola' },
+  pending_variation:  { label: 'En cola' },
+  analyzing:          { label: 'Procesando' },
+  adapting:           { label: 'Procesando' },
+  generating_prompt:  { label: 'Procesando' },
+  pending_generation: { label: 'Procesando' },
+  generating:         { label: 'Generando' },
+  completed:          { label: 'Listo' },
+  failed:             { label: 'Error' },
 };
 
-// Minimal loading tile: thin ring + small percent + status text. No glass
-// blur, no conic gradient, no template peek — just the bare progress info
-// in the same 3:4 frame so the layout doesn't jump when the result lands.
-function LoadingTile({ status, hint }: { status: string; hint?: string; templateThumbnail?: string }) {
-  const cfg = statusConfig[status] || statusConfig.pending_analysis;
-  // SVG circle math: r=44, circumference = 2πr ≈ 276.46
+/**
+ * Minimalist loading tile.
+ *
+ * One smooth circular progress ring driven by an internal timer that ramps
+ * from 0% to 99% over ~50s using an ease-out curve. We never let the
+ * simulated value reach 100% — the parent unmounts this tile when the real
+ * generation completes, which is the only path to "done".
+ *
+ * No backend status mapping, no 3-step jumps. Just a continuously advancing
+ * circle so the user sees something moving. Same 3:4 frame as the final
+ * image, so layout doesn't shift when the result lands.
+ */
+function LoadingTile({ status }: { status: string; hint?: string; templateThumbnail?: string }) {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (status === 'failed') return;
+    const start = Date.now();
+    const TARGET_MS = 50_000;
+    const tick = () => {
+      const elapsed = Date.now() - start;
+      const t = Math.min(1, elapsed / TARGET_MS);
+      // Ease-out quadratic capped at 99 so the ring never sits at 100% on
+      // its own — the real completion is the parent unmounting this tile.
+      const next = (1 - Math.pow(1 - t, 2)) * 99;
+      setProgress((prev) => Math.max(prev, next));
+    };
+    tick();
+    const id = setInterval(tick, 200);
+    return () => clearInterval(id);
+  }, [status]);
+
   const r = 44;
   const C = 2 * Math.PI * r;
-  const dash = C * cfg.progress;
+  const dash = (C * progress) / 100;
+  const isFailed = status === 'failed';
 
   return (
     <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0f0f0f]">
@@ -60,29 +87,29 @@ function LoadingTile({ status, hint }: { status: string; hint?: string; template
             <circle
               cx="50" cy="50" r={r}
               stroke="rgba(255,255,255,0.06)"
-              strokeWidth="4"
+              strokeWidth="3"
               fill="none"
             />
             <circle
               cx="50" cy="50" r={r}
               stroke="currentColor"
-              strokeWidth="4"
+              strokeWidth="3"
               fill="none"
               strokeLinecap="round"
               strokeDasharray={`${dash} ${C}`}
-              className={cn('transition-[stroke-dasharray] duration-500 ease-out', cfg.color)}
+              className={cn(
+                'transition-[stroke-dasharray] duration-300 ease-out',
+                isFailed ? 'text-red-400' : 'text-[#07A498]',
+              )}
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className={cn('text-xs font-medium', cfg.color)}>
-              {Math.round(cfg.progress * 100)}%
+            <span className={cn('text-[11px] font-medium tabular-nums', isFailed ? 'text-red-400' : 'text-gray-200')}>
+              {isFailed ? '!' : `${Math.round(progress)}%`}
             </span>
           </div>
         </div>
-        <p className="text-xs text-gray-400">{cfg.label}</p>
-        {hint && (
-          <p className="text-[10px] text-gray-600 line-clamp-1 max-w-[80%]">{hint}</p>
-        )}
+        <p className="text-[11px] text-gray-500">{statusConfig[status]?.label || 'Procesando'}</p>
       </div>
     </div>
   );

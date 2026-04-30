@@ -564,6 +564,20 @@ async function returnProgress(projectId: string) {
   const failed = counts.failed;
   const inProgress = total - completed - failed;
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const isComplete = inProgress === 0 && total > 0;
+
+  // Sync the project's own status with the aggregate of its generations so
+  // the historial list page shows "completed" instead of staying on "processing"
+  // forever. Only flip when the run is fully done — don't overwrite a 'cancelled'
+  // status mid-run.
+  if (isComplete) {
+    const projectStatus = failed > 0 && completed === 0 ? 'failed' : 'completed';
+    await supabaseAdmin
+      .from('projects')
+      .update({ status: projectStatus })
+      .eq('id', projectId)
+      .neq('status', 'cancelled');
+  }
 
   return NextResponse.json({
     success: true,
@@ -573,7 +587,7 @@ async function returnProgress(projectId: string) {
       failed,
       inProgress,
       percentage,
-      isComplete: inProgress === 0 && total > 0,
+      isComplete,
       details: counts,
     },
   });

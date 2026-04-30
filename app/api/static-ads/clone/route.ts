@@ -26,17 +26,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un momento.' }, { status: 429 });
     }
 
-    const { templateIds, productId, projectName } = await req.json();
+    const { templateIds, inlineTemplate, productId, projectName } = await req.json();
 
-    if (!templateIds || !Array.isArray(templateIds) || templateIds.length === 0) {
-      return new NextResponse('Missing templateIds', { status: 400 });
-    }
+    // Caller must provide EITHER existing templateIds[] (curated catalogue)
+    // OR a single inlineTemplate (user-uploaded one-shot via the "Agregar"
+    // tab). The two paths are mutually exclusive — not both at once.
+    const useInline = !!inlineTemplate && !templateIds?.length;
 
-    if (templateIds.length > 100) {
-      return NextResponse.json({ 
-        error: 'Maximum 100 templates per batch',
-        maxAllowed: 100
-      }, { status: 400 });
+    if (!useInline) {
+      if (!templateIds || !Array.isArray(templateIds) || templateIds.length === 0) {
+        return new NextResponse('Missing templateIds or inlineTemplate', { status: 400 });
+      }
+      if (templateIds.length > 100) {
+        return NextResponse.json({
+          error: 'Maximum 100 templates per batch',
+          maxAllowed: 100,
+        }, { status: 400 });
+      }
+    } else {
+      if (!inlineTemplate.url || typeof inlineTemplate.url !== 'string' || !inlineTemplate.url.startsWith('http')) {
+        return NextResponse.json({ error: 'inlineTemplate.url must be a valid HTTPS URL' }, { status: 400 });
+      }
     }
 
     if (!productId) {
@@ -58,14 +68,24 @@ export async function POST(req: Request) {
       return new NextResponse('Product not found', { status: 404 });
     }
 
-    // 2. Fetch Templates Data
-    const { data: templates, error: templError } = await supabaseAdmin
-      .from('templates')
-      .select('*')
-      .in('id', templateIds);
-
-    if (templError) {
-       return new NextResponse('Error fetching templates', { status: 500 });
+    // 2. Resolve template list. Inline path skips the templates table entirely
+    // — the file lives in Supabase Storage, not as a curated template row.
+    let templates: any[];
+    if (useInline) {
+      templates = [{
+        id: `inline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: inlineTemplate.name || 'Plantilla personalizada',
+        thumbnail_url: inlineTemplate.url,
+        width: typeof inlineTemplate.width === 'number' ? inlineTemplate.width : null,
+        height: typeof inlineTemplate.height === 'number' ? inlineTemplate.height : null,
+      }];
+    } else {
+      const { data, error: templError } = await supabaseAdmin
+        .from('templates')
+        .select('*')
+        .in('id', templateIds);
+      if (templError) return new NextResponse('Error fetching templates', { status: 500 });
+      templates = data || [];
     }
 
     // Pricing model: each Nano Banana Pro image ≈ $0.134 ≈ 14 credits.
@@ -74,7 +94,7 @@ export async function POST(req: Request) {
     const COST_PER_IMAGE = 14;
     const VARIATIONS_PER_TEMPLATE = 1;
     const COST_PER_TEMPLATE = COST_PER_IMAGE * VARIATIONS_PER_TEMPLATE;
-    const totalCost = templateIds.length * COST_PER_TEMPLATE;
+    const totalCost = templates.length * COST_PER_TEMPLATE;
     
     // Atomic deduction: read → update with current-balance guard, retry on contention.
     // Without this two concurrent /clone calls could both pass the balance check and
@@ -209,7 +229,7 @@ export async function POST(req: Request) {
     }
 
     // Estimation: ~30s per Nano Banana image, processed in parallel batches.
-    const totalImages = templateIds.length * VARIATIONS_PER_TEMPLATE;
+    const totalImages = templates.length * VARIATIONS_PER_TEMPLATE;
     const estimatedMinutes = Math.max(1, Math.ceil(totalImages * 0.3));
     const batches = Math.ceil(totalImages / 10);
 
@@ -217,7 +237,7 @@ export async function POST(req: Request) {
       project,
       generations: allGenerations,
       bulk: {
-        templateCount: templateIds.length,
+        templateCount: templates.length,
         variationsPerTemplate: VARIATIONS_PER_TEMPLATE,
         totalImages,
         totalCreditsDeducted: totalCost,

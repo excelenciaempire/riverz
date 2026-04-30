@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const { filename, contentType } = await req.json();
+    const { filename, contentType, kind } = await req.json();
 
     if (!filename || !contentType) {
       return new NextResponse('Missing filename or contentType', { status: 400 });
@@ -21,9 +21,16 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // Allowed `kind` values are mapped to safe path prefixes inside the
+    // products bucket. Reusing one bucket avoids a Storage migration; the
+    // path prefix keeps user-uploaded templates separate from product photos.
+    const ALLOWED_KINDS = new Set(['product', 'user_template']);
+    const safeKind = ALLOWED_KINDS.has(kind) ? kind : 'product';
+    const prefix = safeKind === 'user_template' ? 'user-templates' : 'products';
+
     const bucket = 'products';
     const cleanName = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const path = `${userId}/${Date.now()}_${cleanName}`;
+    const path = `${prefix}/${userId}/${Date.now()}_${cleanName}`;
 
     // Create a Signed Upload URL (valid for 60 seconds)
     const { data, error } = await supabase.storage
