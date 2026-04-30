@@ -49,12 +49,20 @@ function AnunciosContent() {
     retry: false,
   });
 
-  // Initialize ad account from connection defaults
+  // Keep the local ad-account selection in sync with the saved default.
+  // This fires both on first load and whenever the user changes the
+  // workspace default from the dashboard's AccountPicker — so /anuncios
+  // re-queries automatically without needing a manual refresh.
+  // The URL param (?adAccountId=...) takes precedence so deep links keep working.
+  const urlAdAccountId = searchParams.get('adAccountId');
   useEffect(() => {
-    if (!adAccountId && accountsQuery.data?.default_ad_account_id) {
-      setAdAccountId(accountsQuery.data.default_ad_account_id);
+    if (urlAdAccountId) {
+      if (urlAdAccountId !== adAccountId) setAdAccountId(urlAdAccountId);
+      return;
     }
-  }, [adAccountId, accountsQuery.data]);
+    const def = accountsQuery.data?.default_ad_account_id;
+    if (def && def !== adAccountId) setAdAccountId(def);
+  }, [urlAdAccountId, accountsQuery.data?.default_ad_account_id, adAccountId]);
 
   const adsQuery = useQuery<{ ads: MetaAdSummary[] }>({
     queryKey: ['meta-ads', adAccountId, datePreset],
