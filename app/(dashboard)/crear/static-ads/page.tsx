@@ -445,10 +445,11 @@ export default function StaticAdsPage() {
           {isLoading ? (
             <div className="text-center text-gray-400">Cargando plantillas...</div>
           ) : (
-            // items-start lets each card hug the natural height of its image
-            // — no forced aspect ratio on the container, no letterboxing.
-            // The card grows/shrinks with the underlying file.
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4 items-start">
+            // CSS columns = masonry layout. Each card flows into the shortest
+            // column, so there's no dead vertical space between rows when
+            // templates have wildly different aspect ratios. `break-inside-avoid`
+            // on the children prevents a card from being split across columns.
+            <div className="columns-2 lg:columns-3 xl:columns-4 gap-4">
               {templates?.map((template, index) => {
                 const isSelected = selectedTemplateIds.includes(template.id);
                 const canEdit = canEditTemplate(index);
@@ -457,7 +458,7 @@ export default function StaticAdsPage() {
                   <div
                     key={template.id}
                     className={cn(
-                      "group relative overflow-hidden rounded-lg border-2 bg-[#1a2332] transition-all",
+                      "group relative overflow-hidden rounded-lg border-2 bg-[#1a2332] transition-all mb-4 break-inside-avoid",
                       isSelected ? "border-[#07A498] ring-2 ring-[#07A498]/30" : "border-gray-700"
                     )}
                   >

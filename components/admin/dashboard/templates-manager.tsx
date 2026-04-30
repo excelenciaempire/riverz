@@ -367,10 +367,10 @@ export function TemplatesManager() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 items-start">
+      <div className="columns-1 md:columns-2 lg:columns-4 gap-6">
         {templates?.map((template: any) => {
           return (
-            <div key={template.id} className="group relative overflow-hidden rounded-2xl border border-gray-800 bg-[#141414]">
+            <div key={template.id} className="group relative overflow-hidden rounded-2xl border border-gray-800 bg-[#141414] mb-6 break-inside-avoid">
               <div className="relative overflow-hidden bg-[#0a0a0a]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
