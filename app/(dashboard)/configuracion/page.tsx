@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
@@ -8,14 +9,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loading } from '@/components/ui/loading';
 import { toast } from 'sonner';
-import { Check, Crown, CreditCard, User, Globe, Bell } from 'lucide-react';
+import { Check, Crown, CreditCard, User, Globe, Bell, Plug } from 'lucide-react';
 import { SUBSCRIPTION_PLANS } from '@/types';
+import { ShopifyConnectionPanel } from '@/components/settings/shopify-connection';
 
-type TabType = 'billing' | 'account' | 'notifications';
+type TabType = 'billing' | 'account' | 'notifications' | 'integrations';
 
 export default function ConfiguracionPage() {
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState<TabType>('billing');
+  const searchParams = useSearchParams();
+
+  // Allow `/configuracion?tab=integrations` deep links + the OAuth callback
+  // bouncing back here on success/error so the user lands on the right pane.
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'integrations' || tab === 'billing' || tab === 'account' || tab === 'notifications') {
+      setActiveTab(tab as TabType);
+    }
+    const shopify = searchParams.get('shopify');
+    if (shopify === 'connected') {
+      const shop = searchParams.get('shop');
+      toast.success(`Shopify conectado${shop ? ': ' + shop : ''}`);
+    } else if (shopify === 'error') {
+      const reason = searchParams.get('reason') || 'unknown';
+      toast.error(`Error al conectar Shopify (${reason})`);
+    }
+  }, [searchParams]);
   const [language, setLanguage] = useState<'es' | 'en'>('es');
   const queryClient = useQueryClient();
 
@@ -156,6 +176,17 @@ export default function ConfiguracionPage() {
             Cuenta
           </button>
           <button
+            onClick={() => setActiveTab('integrations')}
+            className={`flex items-center gap-2 pb-4 ${
+              activeTab === 'integrations'
+                ? 'border-b-2 border-brand-accent text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Plug className="h-5 w-5" />
+            Integraciones
+          </button>
+          <button
             onClick={() => setActiveTab('notifications')}
             className={`flex items-center gap-2 pb-4 ${
               activeTab === 'notifications'
@@ -168,6 +199,15 @@ export default function ConfiguracionPage() {
           </button>
         </div>
       </div>
+
+      {/* Integrations Tab */}
+      {activeTab === 'integrations' && (
+        <div className="space-y-6">
+          <div className="rounded-xl border border-gray-800 bg-black/20 p-6">
+            <ShopifyConnectionPanel />
+          </div>
+        </div>
+      )}
 
       {/* Billing Tab */}
       {activeTab === 'billing' && (

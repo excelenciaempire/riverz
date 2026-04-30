@@ -390,6 +390,7 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
     <div class="t-sep"></div>
     <button class="tb tb-gal" onclick="openGallery()">&#x1F4F7; Imagenes</button>
     <button class="tb tb-blue" onclick="exportCurrent()">&#x2B07; Exportar HTML</button>
+    <button class="tb tb-grn" onclick="publishToShopify()" title="Publicar como página en tu Shopify">&#x1F6D2; Publicar en Shopify</button>
     <input type="file" id="file-in" accept="image/*" style="display:none" onchange="onFilePick(event)">
   </div>
 </div>
@@ -1177,6 +1178,100 @@ function buildHTML(proj){
 }
 function exportCurrent(){var proj=getActive();if(!proj){toast('Selecciona una landing',1);return;}cpTxt(buildHTML(proj),'"'+proj.name+'" copiado');}
 function exportAll(){toast(projects.length+' landings — exporta cada una con Exportar HTML',0);}
+
+// ── PUBLISH TO SHOPIFY ────────────────────────────────────────
+// We build the HTML normally but rewrite each <img> src to a unique sentinel
+// like RIVERZ_IMG__img-1__ so the server can swap in the Shopify CDN URL
+// after uploading the bytes. data: URLs (local uploads) and CDN URLs that
+// will eventually expire (kie.ai's *.aiquickdraw.com) all become permanent
+// cdn.shopify.com URLs in one round-trip.
+function buildPublishPayload(proj){
+  if(!proj) return null;
+  collectTexts();
+  var pw=g('page-wrap'),clone=pw.cloneNode(true);
+  clone.querySelectorAll('.iov,.idel,#font-ctrl').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
+  clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
+  clone.classList.remove('edit-mode');
+  var ctaUrl=proj.ctaUrl||'#';clone.querySelectorAll('a.cta-btn,a.sticky-btn').forEach(function(a){a.href=ctaUrl;});
+
+  // Map each [data-v-img] back to the original src in proj.images, then
+  // replace the src with a sentinel + record the upload job for the server.
+  var images=[];
+  clone.querySelectorAll('[data-v-img]').forEach(function(slotEl){
+    var slot=slotEl.getAttribute('data-v-img');
+    var src=proj.images && proj.images[slot];
+    if(typeof src!=='string' || !src) return;
+    var placeholder='RIVERZ_IMG__'+slot+'__'+Math.random().toString(36).slice(2,8)+'__';
+    images.push({slot:slot,placeholder:placeholder,source:src});
+    slotEl.querySelectorAll('img').forEach(function(img){ img.setAttribute('src',placeholder); });
+  });
+  // Strip editor-only data attributes after capturing them.
+  clone.querySelectorAll('[data-v-text],[data-v-img]').forEach(function(el){
+    el.removeAttribute('data-v-text');el.removeAttribute('data-v-img');
+  });
+
+  // Inline the page CSS so the Shopify theme can't override the layout.
+  // We trim everything after the EDITOR UI marker — that section is editor-only.
+  var allCSS='';document.querySelectorAll('style').forEach(function(s){allCSS+=s.textContent;});
+  var cut=allCSS.indexOf('/* EDITOR UI */');if(cut>-1)allCSS=allCSS.substring(0,cut);
+  // Scope the styles to a wrapper so they don't leak into the merchant's
+  // theme (e.g. the merchant's body{} rules vs ours).
+  var wrapId='riverz-landing-'+(proj.id||'x').replace(/[^a-z0-9]/gi,'').slice(0,12);
+  var fontsLink='<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">';
+  var body_html =
+    fontsLink +
+    '<style>'+allCSS+'</style>' +
+    '<div id="'+wrapId+'">'+clone.outerHTML+'</div>';
+
+  return {
+    project_id: proj.id || 'default',
+    title: proj.name || 'Landing',
+    body_html: body_html,
+    images: images,
+  };
+}
+
+async function publishToShopify(){
+  var proj=getActive();
+  if(!proj){ toast('Selecciona una landing',1); return; }
+  var imgCount=Object.values(proj.images||{}).filter(function(v){return typeof v==='string' && v;}).length;
+  if(!confirm('Publicar "'+proj.name+'" en Shopify?\n'+imgCount+' imagen(es) se subirán a Shopify Files.\nEsto puede tardar 20-40 segundos.')) return;
+
+  var payload=buildPublishPayload(proj);
+  if(!payload){ toast('No se pudo preparar la landing',1); return; }
+
+  toast('Publicando en Shopify...',0);
+  try{
+    var res=await fetch('/api/landing-lab/publish',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload),
+    });
+    var data=await res.json();
+    if(!res.ok){
+      if(data.requiresReconnect){
+        if(confirm((data.error||'Conecta tu Shopify primero')+'\n\n¿Ir a Configuración para conectar?')){
+          try{ (window.top||window.parent||window).location.href='/configuracion?tab=integrations'; }catch(e){ window.location.href='/configuracion?tab=integrations'; }
+        }
+        return;
+      }
+      throw new Error(data.error||'Error al publicar');
+    }
+    var url=data.page && data.page.url;
+    toast('✓ Publicado en Shopify');
+    if(url){
+      // Persist the published URL on the project so we can show "View live page" later.
+      proj.shopifyUrl = url;
+      saveAll();
+      setTimeout(function(){ window.open(url,'_blank'); }, 600);
+    }
+  }catch(e){
+    toast(e.message||'Error al publicar',1);
+  }
+}
+window.publishToShopify = publishToShopify;
+
 function cpTxt(t,msg){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast(msg);}).catch(function(){fb(t,msg);});}else fb(t,msg);}
 function fb(t,msg){var ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:-9999px;opacity:0';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);toast(msg);}
 

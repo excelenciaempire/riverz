@@ -11,6 +11,8 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhooks(.*)',
+  '/api/shopify/webhooks(.*)',
+  '/api/shopify/callback',
   '/api/meta/upload/cron-poll',
   '/api/static-ads/process-queue',
   '/api/static-ads/cron-drain',
