@@ -177,12 +177,14 @@ async function runSharedAnalysisForTemplate(
 
     const analysisPrompt = await getPromptText('template_analysis_json');
 
+    // Only the admin-edited system prompt + the template image. No extra
+    // user-role hint — the system prompt is self-contained and any extra
+    // text was just duplicating instructions.
     const messages: GeminiMessage[] = [
       { role: 'developer', content: analysisPrompt },
       {
         role: 'user',
         content: [
-          { type: 'text', text: `This is the template image to analyse (name: ${inputData.templateName || 'Unnamed'}). Extract everything you see — composition, colors, lighting, every text element with its exact wording, and any decorative elements — into the requested JSON.` },
           { type: 'image_url', image_url: { url: templateBase64 } },
         ],
       },
@@ -268,19 +270,14 @@ async function runSharedAnalysisForTemplate(
 
     log(`Step 2: sending ${productImageBlocks.length}/${rawProductUrls.length} product images to ${analysisModel}`);
 
-    const userContent: any[] = [
-      {
-        type: 'text',
-        text: productImageBlocks.length > 0
-          ? `Attached are ${productImageBlocks.length} photo(s) of the user's product. Use them to describe the product's actual shape, packaging, color and label in the adapted JSON. Return ONLY the adapted JSON.`
-          : 'No product photos were available for this run — adapt the template JSON using only the product info text below.',
-      },
-      ...productImageBlocks,
-    ];
-
+    // Only the admin-edited system prompt + the product images. No extra
+    // user-role text — the system prompt already includes everything
+    // (TEMPLATE_JSON, PRODUCT_NAME/DESC/BENEFITS/CATEGORY, RESEARCH_JSON
+    // injected via {VAR} substitution) and any extra hint just duplicated
+    // what's already there.
     const messages: GeminiMessage[] = [
       { role: 'developer', content: adaptationSystemPrompt },
-      { role: 'user', content: userContent },
+      { role: 'user', content: productImageBlocks },
     ];
 
     const { text, modelUsed, fellBack } = await analyzeWithFallback(analysisModel, messages, {
