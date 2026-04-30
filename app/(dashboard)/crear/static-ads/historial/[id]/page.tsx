@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Download, Check, Edit2, Loader2, Save, Undo2, X, Sparkles, Trash2, Clock, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -314,26 +314,38 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     }
   });
   
-  // Effect to trigger queue processing if needed
+  // Throttle process-queue triggers. The query refetches every 2s while
+  // generations are pending, which used to fire process-queue every 2s and
+  // overlapping ticks each created their own Gemini calls. Now we only
+  // POST process-queue at most once every 8s — the backend has its own
+  // atomic claim per step so even concurrent calls are safe, but throttling
+  // here removes the wasted HTTP roundtrips entirely.
+  const lastProcessQueueAtRef = useRef<number>(0);
+  const PROCESS_QUEUE_MIN_INTERVAL_MS = 8_000;
+
   useEffect(() => {
     const processQueue = async () => {
         // Trigger processing for any non-terminal status
         const needsProcessing = project?.generations?.some(
             (g: any) => ['pending_analysis', 'analyzing', 'adapting', 'generating_prompt', 'pending_generation', 'generating'].includes(g.status)
         );
-        if (needsProcessing) {
-            try {
-                await fetch('/api/static-ads/process-queue', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ projectId: params.id })
-                });
-            } catch (e) {
-                console.error('Queue processing error', e);
-            }
+        if (!needsProcessing) return;
+
+        const now = Date.now();
+        if (now - lastProcessQueueAtRef.current < PROCESS_QUEUE_MIN_INTERVAL_MS) return;
+        lastProcessQueueAtRef.current = now;
+
+        try {
+            await fetch('/api/static-ads/process-queue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectId: params.id })
+            });
+        } catch (e) {
+            console.error('Queue processing error', e);
         }
     };
-    
+
     if (project) {
         processQueue();
     }

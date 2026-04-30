@@ -105,8 +105,24 @@ async function runSharedAnalysisForTemplate(
 
   // STEP 1 — Template analysis with vision -------------------------------
   if (!inputData.templateAnalysisJson) {
-    log('Step 1: Analyzing template (Gemini 3 Pro vision)...');
-    await Promise.all(allRows.map((r) => updateGeneration(r.id, { status: 'analyzing' })));
+    // Atomic claim: only the tick that flips status from pending_analysis →
+    // analyzing actually proceeds. Concurrent ticks (the historial page polls
+    // every 2s) lose the CAS and bail out, so we don't hammer Gemini with
+    // duplicate calls for the same row.
+    const { data: claim } = await supabaseAdmin
+      .from('generations')
+      .update({ status: 'analyzing', updated_at: new Date().toISOString() })
+      .eq('id', leader.id)
+      .eq('status', 'pending_analysis')
+      .select('id')
+      .maybeSingle();
+    if (!claim) {
+      log('Step 1: skipped — already in flight on another tick');
+      return;
+    }
+    log('Step 1: claimed → Analyzing template (Gemini 3 Pro vision)...');
+    // Mirror the analyzing status onto siblings so the UI shows progress.
+    await Promise.all(siblings.map((r) => updateGeneration(r.id, { status: 'analyzing' })));
 
     if (!inputData.templateThumbnail) throw new Error('Missing templateThumbnail');
 
@@ -175,12 +191,42 @@ async function runSharedAnalysisForTemplate(
 
     inputData.templateAnalysisJson = parseJsonFromResponse(text);
     inputData.modelUsedAnalysis = modelUsed;
+
+    // Persist immediately so a concurrent tick (or a future restart) sees
+    // the analysis JSON and skips re-running step 1. Without this, inputData
+    // changes only land at the end of the function — meaning if step 2
+    // crashes, we'd retry step 1 from scratch on the next tick.
+    await updateGeneration(leader.id, {
+      input_data: {
+        ...leader.input_data,
+        templateAnalysisJson: inputData.templateAnalysisJson,
+        modelUsedAnalysis: inputData.modelUsedAnalysis,
+        templateAspectRatio: inputData.templateAspectRatio,
+        templateDims: inputData.templateDims,
+      },
+    });
   }
 
   // STEP 2 — Adapt to product (vision: product photos) ------------------
   if (!inputData.adaptedJson) {
-    log('Step 2: Adapting to product (Gemini 3 Pro vision)...');
-    await Promise.all(allRows.map((r) => updateGeneration(r.id, { status: 'adapting' })));
+    // Atomic claim: same idea as Step 1. Only the tick that flips analyzing
+    // → adapting proceeds. Note we accept either 'analyzing' (just finished
+    // step 1) or 'pending_analysis' (rare: a row that was already in DB
+    // with templateAnalysisJson set but never advanced) as valid claim
+    // origins.
+    const { data: claim2 } = await supabaseAdmin
+      .from('generations')
+      .update({ status: 'adapting', updated_at: new Date().toISOString() })
+      .eq('id', leader.id)
+      .in('status', ['analyzing', 'pending_analysis'])
+      .select('id')
+      .maybeSingle();
+    if (!claim2) {
+      log('Step 2: skipped — already in flight on another tick');
+      return;
+    }
+    log('Step 2: claimed → Adapting to product (Gemini 3 Pro vision)...');
+    await Promise.all(siblings.map((r) => updateGeneration(r.id, { status: 'adapting' })));
 
     const adaptationSystemPrompt = await getPromptWithVariables('template_adaptation', {
       TEMPLATE_JSON: JSON.stringify(inputData.templateAnalysisJson, null, 2),
@@ -237,6 +283,19 @@ async function runSharedAnalysisForTemplate(
     if (fellBack) log(`Step 2 fell back to ${modelUsed}`);
 
     inputData.adaptedJson = parseJsonFromResponse(text);
+
+    // Persist step-2 progress so concurrent ticks skip and so the
+    // distribution loop at the end is no longer the only persistence point.
+    await updateGeneration(leader.id, {
+      input_data: {
+        ...leader.input_data,
+        templateAnalysisJson: inputData.templateAnalysisJson,
+        adaptedJson: inputData.adaptedJson,
+        modelUsedAnalysis: inputData.modelUsedAnalysis,
+        templateAspectRatio: inputData.templateAspectRatio,
+        templateDims: inputData.templateDims,
+      },
+    });
   }
 
   // STEP 3 — The Nano Banana prompt IS the adapted JSON, verbatim.
@@ -296,8 +355,22 @@ async function processVariationGeneration(gen: any, generationModel: string, pro
     // user's. Only `productImages` (or the legacy `productImage` fallback)
     // should ever flow into image_input.
     if (gen.status === 'pending_generation' && inputData.generatedPrompt && !inputData.generationTaskId) {
-      log('Step 4: Creating Nano Banana task...');
-      await updateGeneration(id, { status: 'generating' });
+      // Atomic claim — same pattern as the Gemini steps. Without this, two
+      // overlapping ticks each see status=pending_generation + no task ID and
+      // both call createKieTask, ending up with two Nano Banana jobs (one of
+      // which becomes orphaned).
+      const { data: claim4 } = await supabaseAdmin
+        .from('generations')
+        .update({ status: 'generating', updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('status', 'pending_generation')
+        .select('id')
+        .maybeSingle();
+      if (!claim4) {
+        log('Step 4: skipped — already claimed by another tick');
+        return;
+      }
+      log('Step 4: claimed → Creating Nano Banana task...');
 
       const allImages: string[] = inputData.productImages || (inputData.productImage ? [inputData.productImage] : []);
       const imageInputs = allImages.slice(0, 8).filter((url: string) => typeof url === 'string' && url.startsWith('http'));
