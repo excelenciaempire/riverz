@@ -109,7 +109,17 @@ async function runSharedAnalysisForTemplate(
 
     if (!inputData.templateThumbnail) throw new Error('Missing templateThumbnail');
 
-    const templateBase64 = await imageUrlToBase64(inputData.templateThumbnail);
+    // Always inline the template image as a base64 data URI. The Gemini
+    // gateway on kie.ai accepts both URLs and data URIs, but URLs require an
+    // outbound fetch from kie.ai's side that sometimes silently fails on
+    // private-bucket Supabase URLs — base64 guarantees the model sees the
+    // actual pixels.
+    let templateBase64: string;
+    try {
+      templateBase64 = await imageUrlToBase64(inputData.templateThumbnail);
+    } catch (err: any) {
+      throw new Error(`Failed to download template thumbnail (${inputData.templateThumbnail}): ${err.message}`);
+    }
     const analysisPrompt = await getPromptText('template_analysis_json');
 
     const messages: GeminiMessage[] = [
@@ -117,11 +127,13 @@ async function runSharedAnalysisForTemplate(
       {
         role: 'user',
         content: [
-          { type: 'text', text: `Analyze this template thoroughly: ${inputData.templateName || 'Unnamed'}` },
+          { type: 'text', text: `This is the template image to analyse (name: ${inputData.templateName || 'Unnamed'}). Extract everything you see — composition, colors, lighting, every text element with its exact wording, and any decorative elements — into the requested JSON.` },
           { type: 'image_url', image_url: { url: templateBase64 } },
         ],
       },
     ];
+
+    log(`Step 1: sending 1 template image (${Math.round(templateBase64.length / 1024)}KB base64) to ${analysisModel}`);
 
     const { text, modelUsed, fellBack } = await analyzeWithFallback(analysisModel, messages, {
       temperature: 0.3,
@@ -147,12 +159,38 @@ async function runSharedAnalysisForTemplate(
       RESEARCH_JSON: inputData.researchData ? JSON.stringify(inputData.researchData, null, 2) : 'Not available',
     });
 
-    const productImages: string[] = (inputData.productImages || []).slice(0, 4);
+    const rawProductUrls: string[] = (inputData.productImages || [])
+      .slice(0, 4)
+      .filter((u: any) => typeof u === 'string' && u.startsWith('http'));
+
+    if (rawProductUrls.length === 0) {
+      log(`Step 2 WARNING: no productImages on this generation row — Gemini will adapt blind.`);
+    }
+
+    // Inline each product photo as base64 (same reasoning as Step 1: removes
+    // any chance the kie.ai side silently fails to fetch a Supabase URL).
+    // Failures here are not fatal — we drop the bad image and keep going so
+    // a single bad URL doesn't kill the whole generation.
+    const productImageBlocks: Array<{ type: 'image_url'; image_url: { url: string } }> = [];
+    for (const url of rawProductUrls) {
+      try {
+        const dataUri = await imageUrlToBase64(url);
+        productImageBlocks.push({ type: 'image_url', image_url: { url: dataUri } });
+      } catch (err: any) {
+        log(`Step 2: skipping product image (fetch failed: ${err.message}) — ${url}`);
+      }
+    }
+
+    log(`Step 2: sending ${productImageBlocks.length}/${rawProductUrls.length} product images to ${analysisModel}`);
+
     const userContent: any[] = [
-      { type: 'text', text: 'Aquí están las fotos reales del producto. Genera el JSON adaptado.' },
-      ...productImages
-        .filter((u: string) => typeof u === 'string' && u.startsWith('http'))
-        .map((u: string) => ({ type: 'image_url', image_url: { url: u } })),
+      {
+        type: 'text',
+        text: productImageBlocks.length > 0
+          ? `Attached are ${productImageBlocks.length} photo(s) of the user's product. Use them to describe the product's actual shape, packaging, color and label in the adapted JSON. Return ONLY the adapted JSON.`
+          : 'No product photos were available for this run — adapt the template JSON using only the product info text below.',
+      },
+      ...productImageBlocks,
     ];
 
     const messages: GeminiMessage[] = [
