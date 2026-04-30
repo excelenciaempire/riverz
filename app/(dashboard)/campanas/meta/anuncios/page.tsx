@@ -2,8 +2,17 @@
 
 import { Suspense, useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, RefreshCcw, Trophy, Filter, ChevronRight } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import {
+  ArrowLeft,
+  RefreshCcw,
+  Trophy,
+  Filter,
+  ChevronRight,
+  Sparkles,
+  Loader2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { Loading } from '@/components/ui/loading';
 import {
@@ -128,6 +137,59 @@ function AnunciosContent() {
       return res.json();
     },
     enabled: !!adAccountId,
+  });
+
+  // Bulk transcribe — one click queues every ad in this account that
+  // doesn't yet have a transcript. The progress query polls while the
+  // mutation is in flight + 30 s after to catch the final updates.
+  const queryClient = useQueryClient();
+  const [bulkPolling, setBulkPolling] = useState(false);
+  const transcribeBulkMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/meta/transcribe/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adAccountId }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || 'Falló el bulk transcribe');
+      return body as { queued: number; ok: number; failed: number };
+    },
+    onMutate: () => setBulkPolling(true),
+    onSuccess: (data) => {
+      if (data.queued === 0) {
+        toast.info('No hay anuncios pendientes de transcribir');
+      } else {
+        toast.success(`Transcripción: ${data.ok} ok · ${data.failed} fallidos · ${data.queued} totales`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['meta-ads', adAccountId] });
+      queryClient.invalidateQueries({ queryKey: ['transcribe-progress', adAccountId] });
+      setTimeout(() => setBulkPolling(false), 30_000);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+      setBulkPolling(false);
+    },
+  });
+  const progressQuery = useQuery<{
+    total: number;
+    queued: number;
+    running: number;
+    done: number;
+    failed: number;
+    withTranscript: number;
+    pending: number;
+  }>({
+    queryKey: ['transcribe-progress', adAccountId],
+    queryFn: async () => {
+      const r = await fetch(
+        `/api/meta/transcribe/progress?adAccountId=${encodeURIComponent(adAccountId)}`,
+      );
+      if (!r.ok) throw new Error('progress error');
+      return r.json();
+    },
+    enabled: !!adAccountId,
+    refetchInterval: bulkPolling ? 4000 : false,
   });
 
   // Filter doesn't depend on drill level — apply once.
@@ -315,6 +377,13 @@ function AnunciosContent() {
               </SelectContent>
             </Select>
           </FilterBox>
+          <BulkTranscribeButton
+            pending={progressQuery.data?.pending ?? 0}
+            running={progressQuery.data?.running ?? 0}
+            queued={progressQuery.data?.queued ?? 0}
+            isPending={transcribeBulkMutation.isPending}
+            onClick={() => transcribeBulkMutation.mutate()}
+          />
           <button
             onClick={() => adsQuery.refetch()}
             disabled={adsQuery.isFetching}
@@ -506,6 +575,42 @@ function Empty({ children }: { children: React.ReactNode }) {
     <div className="rounded-xl border border-gray-800 bg-[#141414] p-8 text-center text-sm text-gray-400">
       {children}
     </div>
+  );
+}
+
+function BulkTranscribeButton({
+  pending,
+  running,
+  queued,
+  isPending,
+  onClick,
+}: {
+  pending: number;
+  running: number;
+  queued: number;
+  isPending: boolean;
+  onClick: () => void;
+}) {
+  const inFlight = isPending || running > 0 || queued > 0;
+  const label = inFlight
+    ? `Transcribiendo… ${queued + running} en cola`
+    : pending > 0
+      ? `Transcribir ${pending} pendientes`
+      : 'Todo transcrito';
+  return (
+    <button
+      onClick={onClick}
+      disabled={isPending || pending === 0}
+      className="inline-flex items-center gap-1.5 rounded-md border border-brand-accent/40 bg-brand-accent/10 px-3 py-2 text-xs font-medium text-brand-accent transition hover:bg-brand-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+      title="Transcribe con IA cada anuncio sin transcript de esta cuenta. Construye la base de datos de winners + losers."
+    >
+      {inFlight ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Sparkles className="h-3.5 w-3.5" />
+      )}
+      {label}
+    </button>
   );
 }
 

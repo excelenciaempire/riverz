@@ -1,0 +1,23 @@
+name: Riverz weekly comments sync
+
+# Pulls fresh comments + sentiment for every ACTIVE ad once a week.
+# Runs Mondays 06:00 UTC. Manually triggerable for forced refreshes.
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: riverz-comments-sync
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Sync comments for active ads
+        run: |
+          curl -fsS -X GET \
+            -H "Authorization: Bearer ${{ secrets.META_CRON_SECRET }}" \
+            "https://riverzai.com/api/meta/comments/cron-poll"

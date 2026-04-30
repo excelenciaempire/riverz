@@ -15,7 +15,7 @@ const supabaseAdmin = createClient(
 );
 
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const { userId } = await auth();
     const user = await currentUser();
@@ -27,6 +27,33 @@ export async function GET() {
     const userEmail = user.emailAddresses[0]?.emailAddress;
     if (!isAdminEmail(userEmail)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // ?folders=1 — returns the distinct folder names with counts so the
+    // admin UI can populate its filter dropdown without paying for a full
+    // template fetch.
+    const { searchParams } = new URL(req.url);
+    if (searchParams.get('folders') === '1') {
+      const { data, error } = await supabaseAdmin
+        .from('templates')
+        .select('folder');
+      if (error) throw error;
+      const counts = new Map<string, number>();
+      for (const row of data || []) {
+        const f = (row as any).folder || '__none__';
+        counts.set(f, (counts.get(f) || 0) + 1);
+      }
+      const folders = Array.from(counts.entries()).map(([name, count]) => ({
+        name: name === '__none__' ? null : name,
+        count,
+      }));
+      // Stable order: real folders alphabetical, then "Sin carpeta" last.
+      folders.sort((a, b) => {
+        if (a.name === null) return 1;
+        if (b.name === null) return -1;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+      return NextResponse.json({ folders });
     }
 
     const { data, error } = await supabaseAdmin
@@ -64,7 +91,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, thumbnail_url, category, awareness_level, niche, width, height } = body;
+    const { name, thumbnail_url, category, awareness_level, niche, width, height, folder } = body;
 
     if (!name || !thumbnail_url) {
       return NextResponse.json(
@@ -83,6 +110,7 @@ export async function POST(req: Request) {
         niche: niche || null,
         width: typeof width === 'number' && width > 0 ? width : null,
         height: typeof height === 'number' && height > 0 ? height : null,
+        folder: typeof folder === 'string' && folder.trim() ? folder.trim() : null,
         is_active: true,
       })
       .select()
@@ -119,10 +147,27 @@ export async function DELETE(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const templateId = searchParams.get('id');
+    const folder = searchParams.get('folder');
+
+    // Bulk-delete-by-folder mode: ?folder=<name>. Removes every template
+    // tagged with that folder. Use folder=__none__ to nuke all rows that
+    // have folder=NULL (the un-categorised bucket).
+    if (folder !== null) {
+      const folderName = folder === '__none__' ? null : folder;
+      const builder = supabaseAdmin.from('templates').delete();
+      const { error, count } = folderName === null
+        ? await builder.is('folder', null).select('*', { count: 'exact', head: true })
+        : await builder.eq('folder', folderName).select('*', { count: 'exact', head: true });
+      if (error) {
+        console.error('Error deleting folder:', error);
+        throw error;
+      }
+      return NextResponse.json({ success: true, deleted: count ?? 0, folder: folderName });
+    }
 
     if (!templateId) {
       return NextResponse.json(
-        { error: 'Template ID is required' },
+        { error: 'Template ID or folder query is required' },
         { status: 400 }
       );
     }

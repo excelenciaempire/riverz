@@ -78,6 +78,7 @@ export interface Template {
   created_at: string;
   width?: number | null;
   height?: number | null;
+  folder?: string | null;
 }
 
 // Generation Types

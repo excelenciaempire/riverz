@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Plus, Eye, Sparkles, BarChart3 } from 'lucide-react';
+import { Plus, Eye, Sparkles, BarChart3, Atom } from 'lucide-react';
 import type { AccountsResponse } from '@/types/meta';
 
 interface Props {
@@ -16,7 +16,7 @@ export function DashboardActions({ accounts, totalUploads }: Props) {
     : '';
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-3">
       <Link
         href={`/campanas/meta/anuncios${adAccountQs}`}
         className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br from-[#161616] via-[#141414] to-[#0d0d0d] p-6 transition ${
@@ -57,6 +57,28 @@ export function DashboardActions({ accounts, totalUploads }: Props) {
           <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
             <Sparkles className="h-3.5 w-3.5" />
             {totalUploads > 0 ? `${totalUploads} assets disponibles` : 'Sube assets desde Historial'}
+          </div>
+        </div>
+      </Link>
+
+      <Link
+        href={`/campanas/meta/dna${adAccountQs}`}
+        className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br from-[#161616] via-[#141414] to-[#0d0d0d] p-6 transition ${
+          ready ? 'border-gray-700 hover:border-brand-accent' : 'border-gray-800 opacity-60 pointer-events-none'
+        }`}
+      >
+        <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl transition group-hover:bg-violet-500/20" />
+        <div className="relative">
+          <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20 text-violet-300">
+            <Atom className="h-5 w-5" />
+          </div>
+          <h3 className="text-lg font-semibold text-white">Winner DNA Lab</h3>
+          <p className="mt-1 text-sm text-gray-400">
+            Patrones extraídos de tus winners vs los que no funcionan + brief listo para tu próximo creativo.
+          </p>
+          <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-violet-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            Aprende de tu propia data
           </div>
         </div>
       </Link>

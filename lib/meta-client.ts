@@ -842,6 +842,103 @@ async function fetchInsightsForAds(
   return map;
 }
 
+/**
+ * Daily-broken-down insights for a single ad. Same field set + derivation
+ * as fetchInsightsForAds, but with `time_increment=1` so each row is one
+ * day's metrics — used to drive the Performance line chart in the detail
+ * panel. Reuses pickInsightsRow for the purchases/ROAS roll-up.
+ */
+export async function fetchAdTimeSeries(
+  token: string,
+  adId: string,
+  datePreset: string,
+): Promise<Array<{ date_start: string } & MetaInsightsRow>> {
+  const fields = [
+    'date_start',
+    'spend',
+    'impressions',
+    'clicks',
+    'ctr',
+    'cpm',
+    'cpc',
+    'reach',
+    'actions',
+    'action_values',
+  ].join(',');
+  const params = new URLSearchParams({
+    fields,
+    date_preset: datePreset,
+    time_increment: '1',
+    access_token: token,
+  });
+  const json = await metaFetch(`${BASE}/${adId}/insights?${params.toString()}`);
+  const rows = (json?.data ?? []) as any[];
+  return rows.map((r) => {
+    const insights = pickInsightsRow([r]) ?? ({} as MetaInsightsRow);
+    return { date_start: r.date_start as string, ...insights };
+  });
+}
+
+/**
+ * Page-post comments for an ad. Walks the standard /{storyId}/comments
+ * edge with `pages_read_engagement` (already in our scope set, see
+ * app/api/meta/auth/start/route.ts:27). Pagination is honoured up to
+ * `max` rows so we don't blow context on a viral post.
+ */
+export interface MetaComment {
+  id: string;
+  from_name: string | null;
+  message: string;
+  created_time: string;
+  like_count: number;
+  comment_count: number;
+}
+
+export async function getStoryComments(
+  token: string,
+  storyId: string,
+  max = 200,
+): Promise<MetaComment[]> {
+  const out: MetaComment[] = [];
+  let after: string | null = null;
+  while (out.length < max) {
+    const params = new URLSearchParams({
+      fields: 'id,from{name},message,created_time,like_count,comment_count',
+      limit: String(Math.min(100, max - out.length)),
+      access_token: token,
+    });
+    if (after) params.set('after', after);
+    let json: any;
+    try {
+      json = await metaFetch(`${BASE}/${storyId}/comments?${params.toString()}`);
+    } catch {
+      break;
+    }
+    const data = (json?.data ?? []) as Array<{
+      id: string;
+      from?: { name?: string };
+      message?: string;
+      created_time?: string;
+      like_count?: number;
+      comment_count?: number;
+    }>;
+    for (const c of data) {
+      if (!c.message) continue;
+      out.push({
+        id: c.id,
+        from_name: c.from?.name ?? null,
+        message: c.message,
+        created_time: c.created_time ?? '',
+        like_count: c.like_count ?? 0,
+        comment_count: c.comment_count ?? 0,
+      });
+    }
+    after = json?.paging?.cursors?.after ?? null;
+    if (!after || data.length === 0) break;
+  }
+  return out;
+}
+
 export async function getAdInsights(
   token: string,
   adId: string,

@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
-import { getVideoMeta, getAdPreviewVideoUrl, MetaAuthError } from '@/lib/meta-client';
 import { resolveConnection } from '@/lib/meta-connection';
-import { transcribeAsset, TranscribeError } from '@/lib/transcribe-asset';
+import { runTranscribeForIntel } from '@/lib/transcribe-runner';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,15 +13,10 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const META_API_VERSION = process.env.META_GRAPH_API_VERSION || 'v23.0';
-
 /**
- * Transcribes / analyses an ad creative.
- *
- *   IMAGE → kie.ai Gemini 3 Pro on the image URL (current behavior).
- *   VIDEO → Google AI Files API + Gemini for real audio transcription.
- *           Picks up the video's `source` URL on demand if the cached
- *           `asset_url` is missing or stale.
+ * Transcribes / analyses ONE ad creative on demand. Routes the heavy
+ * lifting through `runTranscribeForIntel` so the bulk endpoint shares
+ * the exact same URL-resolution + status-transition behaviour.
  */
 export async function POST(
   _req: Request,
@@ -46,123 +40,38 @@ export async function POST(
     );
   }
 
-  const isVideo = intel.asset_type === 'video';
-  let assetUrl: string | null = isVideo
-    ? intel.asset_url // cached video source
-    : intel.asset_url || intel.thumbnail_url;
-
-  // For videos: if the cached source is missing, try to refetch from Graph
-  // right now. Avoids forcing the user to reload the list page just to refresh
-  // a single video's source URL.
-  if (isVideo && !assetUrl) {
-    const { data: connection } = await supabaseAdmin
-      .from('meta_connections')
-      .select('*')
-      .eq('clerk_user_id', userId)
-      .maybeSingle();
-    const resolved = resolveConnection(connection);
-    if (!resolved.ok) {
-      return NextResponse.json(
-        { requiresReconnect: !!resolved.requiresReconnect, error: resolved.error },
-        { status: resolved.status },
-      );
-    }
-    let videoId: string | null = null;
-    try {
-      const adRes = await fetch(
-        `https://graph.facebook.com/${META_API_VERSION}/${adId}?fields=creative{video_id,object_story_spec,asset_feed_spec}&access_token=${encodeURIComponent(resolved.token)}`,
-      );
-      if (adRes.ok) {
-        const j = await adRes.json();
-        const creative = j?.creative ?? {};
-        videoId =
-          creative.video_id ||
-          creative.object_story_spec?.video_data?.video_id ||
-          creative.asset_feed_spec?.videos?.[0]?.video_id ||
-          null;
-      }
-    } catch {
-      /* ignore */
-    }
-    if (videoId) {
-      try {
-        const meta = await getVideoMeta(resolved.token, videoId);
-        if (meta.source) {
-          assetUrl = meta.source;
-          await supabaseAdmin
-            .from('meta_ad_intel')
-            .update({ asset_url: meta.source, thumbnail_url: meta.thumbnail || intel.thumbnail_url })
-            .eq('clerk_user_id', userId)
-            .eq('meta_ad_id', adId);
-        }
-      } catch (err: any) {
-        if (err instanceof MetaAuthError) {
-          return NextResponse.json({ requiresReconnect: true, error: err.message }, { status: 401 });
-        }
-      }
-    }
-
-    // Fallback: scrape the official ad preview iframe for the .mp4. Works
-    // for ads we own even when /{video_id}?fields=source returns null.
-    if (!assetUrl) {
-      try {
-        const previewUrl = await getAdPreviewVideoUrl(resolved.token, adId);
-        if (previewUrl) {
-          assetUrl = previewUrl;
-          await supabaseAdmin
-            .from('meta_ad_intel')
-            .update({ asset_url: previewUrl })
-            .eq('clerk_user_id', userId)
-            .eq('meta_ad_id', adId);
-        }
-      } catch (err: any) {
-        if (err instanceof MetaAuthError) {
-          return NextResponse.json({ requiresReconnect: true, error: err.message }, { status: 401 });
-        }
-      }
-    }
-  }
-
-  if (!assetUrl) {
+  const { data: connection } = await supabaseAdmin
+    .from('meta_connections')
+    .select('*')
+    .eq('clerk_user_id', userId)
+    .maybeSingle();
+  const resolved = resolveConnection(connection);
+  if (!resolved.ok) {
     return NextResponse.json(
-      {
-        error: isVideo
-          ? 'No pudimos resolver el .mp4 del video, ni vía Graph ni vía preview iframe. Refresca la lista de anuncios y vuelve a intentar.'
-          : 'No hay URL de imagen para analizar.',
-      },
-      { status: 400 },
+      { requiresReconnect: !!resolved.requiresReconnect, error: resolved.error },
+      { status: resolved.status },
     );
   }
 
-  await supabaseAdmin
-    .from('meta_ad_intel')
-    .update({ transcript_status: 'running', transcript_error: null })
-    .eq('clerk_user_id', userId)
-    .eq('meta_ad_id', adId);
+  const outcome = await runTranscribeForIntel(supabaseAdmin, userId, intel, resolved.token);
 
-  try {
-    const transcript = await transcribeAsset(assetUrl, intel.ad_name || `ad-${adId}`, { isVideo });
-    const { data: updated } = await supabaseAdmin
-      .from('meta_ad_intel')
-      .update({
-        transcript,
-        transcript_status: 'done',
-        transcript_error: null,
-      })
-      .eq('clerk_user_id', userId)
-      .eq('meta_ad_id', adId)
-      .select('*')
-      .maybeSingle();
-    return NextResponse.json({ intel: updated });
-  } catch (err: any) {
-    const message =
-      err instanceof TranscribeError ? err.message : err?.message || 'Transcripción falló';
+  if (outcome.kind === 'auth-error') {
     await supabaseAdmin
-      .from('meta_ad_intel')
-      .update({ transcript_status: 'failed', transcript_error: message })
-      .eq('clerk_user_id', userId)
-      .eq('meta_ad_id', adId);
-    const status = err instanceof TranscribeError && err.code === 'config' ? 500 : 502;
-    return NextResponse.json({ error: message }, { status });
+      .from('meta_connections')
+      .update({ status: 'expired', last_error: outcome.message })
+      .eq('clerk_user_id', userId);
+    return NextResponse.json({ requiresReconnect: true, error: outcome.message }, { status: 401 });
   }
+
+  if (outcome.kind !== 'ok') {
+    return NextResponse.json({ error: outcome.message }, { status: 400 });
+  }
+
+  const { data: updated } = await supabaseAdmin
+    .from('meta_ad_intel')
+    .select('*')
+    .eq('clerk_user_id', userId)
+    .eq('meta_ad_id', adId)
+    .maybeSingle();
+  return NextResponse.json({ intel: updated });
 }

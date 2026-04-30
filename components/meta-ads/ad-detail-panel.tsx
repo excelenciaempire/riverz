@@ -14,6 +14,7 @@ import {
   Download,
   Sparkles,
   Mic,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { MetaAdSummary, MetaAdIntel } from '@/types/meta';
@@ -250,6 +251,11 @@ export function AdDetailPanel({ ad, onClose }: Props) {
             </div>
           )}
 
+          {/* Performance time-series */}
+          <Section title="Performance">
+            <AdPerformanceChart adId={ad.id} datePreset="last_30d" />
+          </Section>
+
           {/* Copy */}
           <Section title="Copy del anuncio">
             <CopyRow label="Texto principal" value={ad.primary_text} />
@@ -257,6 +263,13 @@ export function AdDetailPanel({ ad, onClose }: Props) {
             <CopyRow label="CTA" value={ad.cta} />
             <CopyRow label="Link" value={ad.link_url} />
           </Section>
+
+          {/* Comments mining */}
+          <CommentsSection
+            adId={ad.id}
+            initialIntel={intel}
+            onIntelUpdate={setIntel}
+          />
 
           {/* Transcript */}
           <Section title={`${isVideo ? 'Transcripción' : 'Análisis'} IA · kie.ai / Gemini 3 Pro`}>
@@ -376,5 +389,149 @@ function SkeletonBar({ width, delay }: { width: string; delay: string }) {
       className="h-2.5 animate-pulse rounded bg-white/10"
       style={{ width, animationDelay: delay }}
     />
+  );
+}
+
+function CommentsSection({
+  adId,
+  initialIntel,
+  onIntelUpdate,
+}: {
+  adId: string;
+  initialIntel: MetaAdIntel | null;
+  onIntelUpdate: (intel: MetaAdIntel) => void;
+}) {
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/meta/ads/${adId}/comments?force=1`, { method: 'POST' });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || 'Falló la sincronización');
+      return body.intel as MetaAdIntel;
+    },
+    onSuccess: (newIntel) => {
+      onIntelUpdate(newIntel);
+      toast.success('Comentarios sincronizados');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const insights = initialIntel?.comments_insights ?? null;
+  const summary = initialIntel?.comments_summary ?? null;
+  const syncedAt = initialIntel?.comments_synced_at ?? null;
+
+  return (
+    <Section title="Comentarios">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-gray-500">
+          {syncedAt
+            ? `Sincronizado: ${new Date(syncedAt).toLocaleString('es')}`
+            : 'Aún no sincronizado.'}
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => syncMutation.mutate()}
+          disabled={syncMutation.isPending}
+        >
+          {syncMutation.isPending ? (
+            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+          )}
+          {syncedAt ? 'Resincronizar' : 'Sincronizar ahora'}
+        </Button>
+      </div>
+
+      {insights ? (
+        <div className="space-y-3">
+          <SentimentBars sentiment={insights.sentiment} total={insights.total} />
+          {summary && (
+            <p className="rounded border border-gray-800 bg-black/30 p-2.5 text-xs text-gray-200">
+              {summary}
+            </p>
+          )}
+          <CommentsBucket title="Top objeciones" items={insights.top_objections} accent="red" />
+          <CommentsBucket title="Top dudas" items={insights.top_questions} accent="blue" />
+          <CommentsBucket title="Elogios" items={insights.praise} accent="emerald" />
+        </div>
+      ) : (
+        <p className="text-xs text-gray-500">
+          Aprieta "Sincronizar ahora" para traer los comentarios del post + análisis de sentimiento +
+          objeciones recurrentes (kie.ai · Gemini 3 Pro).
+        </p>
+      )}
+    </Section>
+  );
+}
+
+function SentimentBars({
+  sentiment,
+  total,
+}: {
+  sentiment: { positive: number; negative: number; question: number; neutral: number };
+  total: number;
+}) {
+  const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-gray-500">
+        <span>Sentimiento</span>
+        <span>{total} comentarios</span>
+      </div>
+      <div className="flex h-2 w-full overflow-hidden rounded-full bg-black/40">
+        <div className="bg-emerald-500" style={{ width: `${pct(sentiment.positive)}%` }} />
+        <div className="bg-blue-500" style={{ width: `${pct(sentiment.question)}%` }} />
+        <div className="bg-gray-500" style={{ width: `${pct(sentiment.neutral)}%` }} />
+        <div className="bg-red-500" style={{ width: `${pct(sentiment.negative)}%` }} />
+      </div>
+      <div className="flex flex-wrap gap-3 text-[11px]">
+        <SentimentDot color="emerald" label={`Positivos ${sentiment.positive}`} />
+        <SentimentDot color="blue" label={`Preguntas ${sentiment.question}`} />
+        <SentimentDot color="gray" label={`Neutros ${sentiment.neutral}`} />
+        <SentimentDot color="red" label={`Negativos ${sentiment.negative}`} />
+      </div>
+    </div>
+  );
+}
+
+function SentimentDot({ color, label }: { color: string; label: string }) {
+  const map: Record<string, string> = {
+    emerald: 'bg-emerald-500',
+    blue: 'bg-blue-500',
+    gray: 'bg-gray-500',
+    red: 'bg-red-500',
+  };
+  return (
+    <span className="inline-flex items-center gap-1 text-gray-300">
+      <span className={`h-2 w-2 rounded-full ${map[color]}`} />
+      {label}
+    </span>
+  );
+}
+
+function CommentsBucket({
+  title,
+  items,
+  accent,
+}: {
+  title: string;
+  items?: string[];
+  accent: 'red' | 'blue' | 'emerald';
+}) {
+  if (!items || items.length === 0) return null;
+  const map: Record<string, string> = {
+    red: 'border-red-500/30 bg-red-500/5',
+    blue: 'border-blue-500/30 bg-blue-500/5',
+    emerald: 'border-emerald-500/30 bg-emerald-500/5',
+  };
+  return (
+    <div className={`rounded border p-2 ${map[accent]}`}>
+      <p className="text-[10px] uppercase tracking-wide text-gray-400">{title}</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-white">
+        {items.slice(0, 5).map((it, i) => (
+          <li key={i}>{it}</li>
+        ))}
+      </ul>
+    </div>
   );
 }

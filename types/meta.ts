@@ -201,8 +201,79 @@ export interface MetaAdIntel {
   notes: string | null;
   insights: MetaInsightsRow | null;
   insights_synced_at: string | null;
+  // Comments mining (#5)
+  comments_summary: string | null;
+  comments_insights: MetaCommentsInsights | null;
+  comments_synced_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Comments mining (#5)
+// ---------------------------------------------------------------------------
+
+export interface MetaCommentsInsights {
+  total: number;
+  sentiment: {
+    positive: number;
+    negative: number;
+    question: number;
+    neutral: number;
+  };
+  top_objections: string[];
+  top_questions: string[];
+  praise: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Winner DNA Lab (#1)
+// ---------------------------------------------------------------------------
+
+export interface MetaDnaPatterns {
+  hooks: string[];
+  lengths?: { median_seconds?: number; range?: [number, number] } | null;
+  ctas: string[];
+  angles: string[];
+  common_phrases: string[];
+}
+
+export interface MetaDnaData {
+  winner_patterns: MetaDnaPatterns;
+  loser_patterns: MetaDnaPatterns;
+  comparison: string;
+  comments_themes?: string[];
+}
+
+export interface MetaBrandDna {
+  id: string;
+  clerk_user_id: string;
+  ad_account_id: string;
+  winner_count: number;
+  loser_count: number;
+  unmarked_count: number;
+  dna_data: MetaDnaData;
+  brief: string | null;
+  generated_at: string;
+  updated_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Performance time-series (#7)
+// ---------------------------------------------------------------------------
+
+export interface AdTimeSeriesRow {
+  date: string;            // ISO date YYYY-MM-DD
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpm: number;
+  cpc: number;
+  reach?: number;
+  purchases?: number;
+  purchase_value?: number;
+  roas?: number;
 }
 
 export interface CreateCampaignRequest {

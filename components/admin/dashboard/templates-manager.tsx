@@ -26,7 +26,8 @@ export function TemplatesManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
-  const [bulkCommon, setBulkCommon] = useState({ category: '', awareness_level: '', niche: '' });
+  const [bulkCommon, setBulkCommon] = useState({ category: '', awareness_level: '', niche: '', folder: '' });
+  const [folderFilter, setFolderFilter] = useState<string | 'all'>('all');
   const [isBulkUploading, setIsBulkUploading] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -35,6 +36,7 @@ export function TemplatesManager() {
     category: '',
     awareness_level: '',
     niche: '',
+    folder: '',
   });
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [selectedDims, setSelectedDims] = useState<{ width: number; height: number } | null>(null);
@@ -70,6 +72,19 @@ export function TemplatesManager() {
     },
   });
 
+  // Folder list with counts. Re-fetched whenever templates change so the
+  // dropdown stays accurate after add/move/delete.
+  const { data: folders } = useQuery({
+    queryKey: ['admin-templates-folders', templates?.length],
+    queryFn: async (): Promise<Array<{ name: string | null; count: number }>> => {
+      const res = await fetch('/api/admin/templates?folders=1');
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.folders || [];
+    },
+    enabled: true,
+  });
+
   const createTemplate = useMutation({
     mutationFn: async (data: typeof formData & { width?: number; height?: number }) => {
       const res = await fetch('/api/admin/templates', {
@@ -81,6 +96,7 @@ export function TemplatesManager() {
           category: data.category || null,
           awareness_level: data.awareness_level || null,
           niche: data.niche || null,
+          folder: data.folder?.trim() || null,
           width: data.width || null,
           height: data.height || null,
         }),
@@ -93,6 +109,7 @@ export function TemplatesManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-templates-folders'] });
       setIsModalOpen(false);
       resetForm();
       toast.success('Plantilla creada');
@@ -114,6 +131,7 @@ export function TemplatesManager() {
           category: data.category || null,
           awareness_level: data.awareness_level || null,
           niche: data.niche || null,
+          folder: data.folder?.trim() || null,
           ...(data.width ? { width: data.width } : {}),
           ...(data.height ? { height: data.height } : {}),
         }),
@@ -220,7 +238,7 @@ export function TemplatesManager() {
   const resetBulk = () => {
     bulkItems.forEach((it) => URL.revokeObjectURL(it.preview));
     setBulkItems([]);
-    setBulkCommon({ category: '', awareness_level: '', niche: '' });
+    setBulkCommon({ category: '', awareness_level: '', niche: '', folder: '' });
     setIsBulkOpen(false);
   };
 
@@ -244,6 +262,7 @@ export function TemplatesManager() {
           category: bulkCommon.category || null,
           awareness_level: bulkCommon.awareness_level || null,
           niche: bulkCommon.niche || null,
+          folder: bulkCommon.folder?.trim() || null,
           width: item.dims?.width || null,
           height: item.dims?.height || null,
         }),
@@ -287,6 +306,7 @@ export function TemplatesManager() {
       category: '',
       awareness_level: '',
       niche: '',
+      folder: '',
     });
     setEditingTemplate(null);
     setSelectedImage(null);
@@ -301,6 +321,7 @@ export function TemplatesManager() {
       category: template.category || '',
       awareness_level: template.awareness_level || '',
       niche: template.niche || '',
+      folder: template.folder || '',
     });
     setIsModalOpen(true);
   };
@@ -351,6 +372,41 @@ export function TemplatesManager() {
     deleteTemplate.mutate(template.id);
   };
 
+  // ---------- Folder operations ----------
+  const deleteFolder = useMutation({
+    mutationFn: async (folderName: string | null) => {
+      const folderParam = folderName === null ? '__none__' : encodeURIComponent(folderName);
+      const res = await fetch(`/api/admin/templates?folder=${folderParam}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      return res.json() as Promise<{ deleted: number; folder: string | null }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-templates-folders'] });
+      setFolderFilter('all');
+      toast.success(`${data.deleted} plantilla(s) eliminada(s) de "${data.folder ?? 'sin carpeta'}"`);
+    },
+    onError: (err: any) => toast.error(err?.message || 'Error al eliminar carpeta'),
+  });
+
+  const handleDeleteFolder = (folderName: string | null) => {
+    const label = folderName ?? 'Sin carpeta';
+    const count = folders?.find((f) => f.name === folderName)?.count ?? 0;
+    if (!confirm(`¿Eliminar TODAS las ${count} plantillas en "${label}"?\nEsta acción no se puede deshacer.`)) return;
+    deleteFolder.mutate(folderName);
+  };
+
+  // Apply folder filter to the templates list. 'all' = show everything,
+  // '__none__' = show only un-foldered, anything else = show that folder.
+  const filteredTemplates = (templates || []).filter((t: any) => {
+    if (folderFilter === 'all') return true;
+    if (folderFilter === '__none__') return !t.folder;
+    return t.folder === folderFilter;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -367,8 +423,59 @@ export function TemplatesManager() {
         </div>
       </div>
 
+      {/* Folder filter bar — admin-only organisational layer. End users
+          (the /crear/static-ads selector) never see this. */}
+      {folders && folders.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
+          <span className="text-xs text-gray-500 mr-2">📁 Carpeta:</span>
+          <button
+            onClick={() => setFolderFilter('all')}
+            className={cn(
+              'text-xs px-3 py-1.5 rounded-full transition',
+              folderFilter === 'all'
+                ? 'bg-brand-accent text-white'
+                : 'bg-[#141414] text-gray-300 hover:bg-gray-800',
+            )}
+          >
+            Todas ({templates?.length || 0})
+          </button>
+          {folders.map((f) => {
+            const value = f.name === null ? '__none__' : f.name;
+            const label = f.name ?? 'Sin carpeta';
+            const isActive = folderFilter === value;
+            return (
+              <button
+                key={value}
+                onClick={() => setFolderFilter(value)}
+                className={cn(
+                  'text-xs px-3 py-1.5 rounded-full transition',
+                  isActive
+                    ? 'bg-brand-accent text-white'
+                    : 'bg-[#141414] text-gray-300 hover:bg-gray-800',
+                )}
+                title={f.name === null ? 'Plantillas sin carpeta asignada' : undefined}
+              >
+                {label} ({f.count})
+              </button>
+            );
+          })}
+          {folderFilter !== 'all' && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleDeleteFolder(folderFilter === '__none__' ? null : folderFilter)}
+              disabled={deleteFolder.isPending}
+              className="ml-auto text-red-400 border-red-500/40 hover:bg-red-500/10 hover:border-red-500"
+            >
+              {deleteFolder.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
+              Eliminar carpeta
+            </Button>
+          )}
+        </div>
+      )}
+
       <div className="columns-1 md:columns-2 lg:columns-4 gap-6">
-        {templates?.map((template: any) => {
+        {filteredTemplates.map((template: any) => {
           return (
             <div key={template.id} className="group relative overflow-hidden rounded-2xl border border-gray-800 bg-[#141414] mb-6 break-inside-avoid">
               <div className="relative overflow-hidden bg-[#0a0a0a]">
@@ -383,6 +490,11 @@ export function TemplatesManager() {
                     {template.width}×{template.height}
                   </div>
                 )}
+                {template.folder && (
+                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-purple-500/80 backdrop-blur-sm text-[10px] text-white max-w-[60%] truncate" title={`Carpeta: ${template.folder}`}>
+                    📁 {template.folder}
+                  </div>
+                )}
               </div>
               <div className="p-4">
                 <h3 className="font-semibold text-white">{template.name}</h3>
@@ -390,6 +502,34 @@ export function TemplatesManager() {
                 <div className="mt-3 flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => handleEdit(template)}>
                     <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const next = prompt(
+                        `Mover "${template.name}" a carpeta\n(deja vacío para quitar de su carpeta actual):`,
+                        template.folder || '',
+                      );
+                      if (next === null) return; // user cancelled
+                      const folderValue = next.trim() || null;
+                      fetch('/api/admin/templates/bulk-folder', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids: [template.id], folder: folderValue }),
+                      }).then(async (r) => {
+                        if (!r.ok) {
+                          const err = await r.json().catch(() => ({}));
+                          throw new Error(err.error || `HTTP ${r.status}`);
+                        }
+                        queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
+                        queryClient.invalidateQueries({ queryKey: ['admin-templates-folders'] });
+                        toast.success(folderValue ? `Movido a "${folderValue}"` : 'Quitado de su carpeta');
+                      }).catch((e: any) => toast.error(e?.message || 'Error al mover'));
+                    }}
+                    title="Mover a carpeta"
+                  >
+                    📁
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => handleDelete(template)} className="text-red-500 hover:text-red-600">
                     <Trash2 className="h-4 w-4" />
@@ -494,14 +634,32 @@ export function TemplatesManager() {
 
           <div>
             <Label>Nicho</Label>
-            <Input 
-              value={formData.niche} 
-              onChange={(e) => setFormData({ ...formData, niche: e.target.value })} 
+            <Input
+              value={formData.niche}
+              onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
               placeholder="Ej: health, beauty, fitness"
             />
           </div>
 
-          <Button 
+          <div>
+            <Label>📁 Carpeta (admin · opcional)</Label>
+            <Input
+              list="single-folder-list"
+              value={formData.folder}
+              onChange={(e) => setFormData({ ...formData, folder: e.target.value })}
+              placeholder="ej: CreativeOS — Beauty · vacío = sin carpeta"
+            />
+            <datalist id="single-folder-list">
+              {folders?.filter((f) => f.name).map((f) => (
+                <option key={f.name as string} value={f.name as string} />
+              ))}
+            </datalist>
+            <p className="mt-1 text-[10px] text-gray-500">
+              Solo visible en el admin. Los usuarios finales no ven esta etiqueta.
+            </p>
+          </div>
+
+          <Button
             onClick={handleSubmit} 
             className="w-full bg-brand-accent hover:bg-brand-accent/90" 
             disabled={!formData.name || (!selectedImage && !formData.thumbnail_url) || isUploading}
@@ -528,36 +686,58 @@ export function TemplatesManager() {
         title={`Subir varias plantillas${bulkItems.length > 0 ? ` (${bulkItems.length})` : ''}`}
       >
         <div className="space-y-5 max-h-[75vh] overflow-y-auto">
-          {/* Common metadata */}
-          <div className="grid grid-cols-3 gap-3 p-4 rounded-lg bg-[#0a0a0a] border border-gray-800">
+          {/* Common metadata + folder. The folder field accepts free text
+              with autocomplete suggestions from existing folders so the
+              admin can re-use a name across multiple uploads. Folder is
+              admin-only — never shown to end users. */}
+          <div className="space-y-3 p-4 rounded-lg bg-[#0a0a0a] border border-gray-800">
             <div>
-              <Label className="text-xs">Categoría (todas)</Label>
+              <Label className="text-xs">📁 Carpeta (admin · todas)</Label>
               <Input
-                value={bulkCommon.category}
-                onChange={(e) => setBulkCommon({ ...bulkCommon, category: e.target.value })}
-                placeholder="carousel, single..."
+                list="bulk-folder-list"
+                value={bulkCommon.folder}
+                onChange={(e) => setBulkCommon({ ...bulkCommon, folder: e.target.value })}
+                placeholder="ej: CreativeOS — Beauty · Atria DTC · Pack 2026-04..."
               />
+              <datalist id="bulk-folder-list">
+                {folders?.filter((f) => f.name).map((f) => (
+                  <option key={f.name as string} value={f.name as string} />
+                ))}
+              </datalist>
+              <p className="mt-1 text-[10px] text-gray-500">
+                Para organizar y eliminar todas las plantillas del batch a la vez después. Vacío = sin carpeta.
+              </p>
             </div>
-            <div>
-              <Label className="text-xs">Awareness (todas)</Label>
-              <select
-                value={bulkCommon.awareness_level}
-                onChange={(e) => setBulkCommon({ ...bulkCommon, awareness_level: e.target.value })}
-                className="w-full rounded-lg border border-gray-800 bg-[#1a1a1a] px-3 py-2 text-sm text-white"
-              >
-                <option value="">—</option>
-                <option value="unaware">Unaware</option>
-                <option value="problem-aware">Problem Aware</option>
-                <option value="solution-aware">Solution Aware</option>
-              </select>
-            </div>
-            <div>
-              <Label className="text-xs">Nicho (todas)</Label>
-              <Input
-                value={bulkCommon.niche}
-                onChange={(e) => setBulkCommon({ ...bulkCommon, niche: e.target.value })}
-                placeholder="health, beauty..."
-              />
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Categoría</Label>
+                <Input
+                  value={bulkCommon.category}
+                  onChange={(e) => setBulkCommon({ ...bulkCommon, category: e.target.value })}
+                  placeholder="carousel, single..."
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Awareness</Label>
+                <select
+                  value={bulkCommon.awareness_level}
+                  onChange={(e) => setBulkCommon({ ...bulkCommon, awareness_level: e.target.value })}
+                  className="w-full rounded-lg border border-gray-800 bg-[#1a1a1a] px-3 py-2 text-sm text-white"
+                >
+                  <option value="">—</option>
+                  <option value="unaware">Unaware</option>
+                  <option value="problem-aware">Problem Aware</option>
+                  <option value="solution-aware">Solution Aware</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">Nicho</Label>
+                <Input
+                  value={bulkCommon.niche}
+                  onChange={(e) => setBulkCommon({ ...bulkCommon, niche: e.target.value })}
+                  placeholder="health, beauty..."
+                />
+              </div>
             </div>
           </div>
 
