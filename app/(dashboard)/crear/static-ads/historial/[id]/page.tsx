@@ -169,25 +169,23 @@ function VariationSlide({
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             onClick={onToggleSelect}
           />
+          {/* Subtle ring + small check when selected — no big overlay */}
           <div
             className={cn(
-              'absolute inset-0 flex items-center justify-center bg-[#07A498]/20 backdrop-blur-sm transition-opacity cursor-pointer',
-              isSelected ? 'opacity-100' : 'opacity-0'
+              'absolute inset-0 transition-all pointer-events-none rounded-xl',
+              isSelected ? 'ring-2 ring-[#07A498] bg-[#07A498]/5' : '',
             )}
-            onClick={onToggleSelect}
+          />
+          <div
+            className={cn(
+              'absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full transition-all',
+              isSelected
+                ? 'bg-[#07A498] text-white'
+                : 'bg-black/40 text-white/0 group-hover:text-white/80 group-hover:bg-black/60',
+            )}
           >
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#07A498] shadow-xl">
-              <Check className="h-7 w-7 text-white" />
-            </div>
+            <Check className="h-3.5 w-3.5" />
           </div>
-          <div className="absolute top-3 left-3 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide bg-black/60 text-white rounded-full pointer-events-none">
-            {angle}
-          </div>
-          {gen.version && gen.version > 1 && (
-            <div className="absolute top-3 right-3 px-2 py-0.5 text-[10px] font-medium bg-purple-500/90 text-white rounded-full pointer-events-none">
-              v{gen.version}
-            </div>
-          )}
         </>
       ) : isPending ? (
         <LoadingTile
@@ -203,30 +201,16 @@ function VariationSlide({
         </div>
       )}
 
-      {/* Bottom action bar overlay (only on completed) */}
+      {/* Subtle "Editar" pill that appears on hover, only for completed.
+          The full-image click handles selection — no separate checkbox. */}
       {isCompleted && (
-        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={onToggleSelect}
-              className="h-4 w-4 cursor-pointer rounded accent-[#07A498]"
-              onClick={(e) => e.stopPropagation()}
-            />
-            {title && <span className="text-[11px] text-white/80 line-clamp-1 max-w-[170px]">{title}</span>}
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium transition"
-          >
-            <Edit2 className="h-3 w-3" />
-            Editar
-          </button>
-        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 hover:bg-black/80 text-white text-[11px] font-medium transition opacity-0 group-hover:opacity-100"
+        >
+          <Edit2 className="h-3 w-3" />
+          Editar
+        </button>
       )}
     </div>
   );
@@ -255,22 +239,7 @@ function TemplateCard({
   const prev = () => setSlideIndex((i) => (i - 1 + total) % total);
 
   return (
-    <div className="rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/60">
-        {group.templateThumbnail && (
-          <img src={group.templateThumbnail} alt="" className="h-10 w-10 rounded-md object-cover border border-gray-800" />
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white line-clamp-1">{group.templateName}</p>
-          <p className="text-[11px] text-gray-500">
-            {completed}/{total} listas
-            {inProgress > 0 && <span className="text-[#07A498]"> · {inProgress} en proceso</span>}
-            {failed > 0 && <span className="text-red-400"> · {failed} fallidas</span>}
-          </p>
-        </div>
-      </div>
-
+    <div className="rounded-2xl overflow-hidden">
       {/* Carousel */}
       <div className="relative group">
         <VariationSlide
@@ -414,15 +383,31 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
   const handleDownload = async () => {
     if (selectedImages.length === 0) return;
-    
-    // Simple download logic (opens in new tabs for now, zip would be better for many)
-    selectedImages.forEach((id) => {
-      const img = project?.generations.find((g) => g.id === id);
-      if (img?.result_url) {
-        window.open(img.result_url, '_blank');
+    const targets = selectedImages
+      .map((id) => project?.generations.find((g) => g.id === id))
+      .filter((g): g is Generation => !!g?.result_url);
+    if (targets.length === 0) return;
+
+    toast.success(`Descargando ${targets.length} imagen${targets.length === 1 ? '' : 'es'}...`);
+    // Fetch each as a Blob and trigger an actual download via an anchor
+    // with the `download` attribute. This bypasses the browser opening the
+    // image in a new tab (the previous behaviour that prompted this fix).
+    for (const gen of targets) {
+      try {
+        const res = await fetch(gen.result_url);
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = `riverz_${gen.id.slice(0, 8)}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(objectUrl);
+      } catch (err: any) {
+        console.error('Download failed for', gen.id, err);
       }
-    });
-    toast.success('Descarga iniciada');
+    }
   };
 
   // Edit Mutation - Uses new static-ads edit endpoint
@@ -639,32 +624,6 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             </Button>
           </div>
         </div>
-
-        {/* Progress Bar - only show when processing */}
-        {isProcessing && (
-          <div className="mb-6 p-4 rounded-xl bg-[#141414] border border-gray-800">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-5 w-5 animate-spin text-[#07A498]" />
-                <span className="font-medium">Generando imágenes...</span>
-              </div>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="text-green-400">{progressStats.completed} completadas</span>
-                <span className="text-gray-400">{progressStats.inProgress} en proceso</span>
-                {progressStats.failed > 0 && <span className="text-red-400">{progressStats.failed} fallidas</span>}
-              </div>
-            </div>
-            <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-[#07A498] to-[#0AC6B7] transition-all duration-500"
-                style={{ width: `${progressStats.percentage}%` }}
-              />
-            </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Estimado: ~{Math.max(1, Math.ceil(progressStats.inProgress * 0.5))} minutos restantes
-            </p>
-          </div>
-        )}
 
         {/* Grid — one card per template, with carousel of variations.
             When there are no rows yet (clone API still inserting), we render

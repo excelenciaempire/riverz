@@ -606,9 +606,53 @@ export async function analyzeWithModel(
   if (m.startsWith('gemini-flash')) {
     return analyzeWithGeminiFlash2(messages, { temperature: options.temperature });
   }
+  if (m === 'gpt-4o' || m.startsWith('gpt-4o') || m === 'gpt4o') {
+    return analyzeWithGpt4o(messages, options);
+  }
 
   console.warn(`[ANALYZE] Unknown model "${modelName}" — falling back to ${DEFAULT_ANALYSIS_MODEL}`);
   return analyzeWithGemini3Pro(messages, options);
+}
+
+// --- GPT-4o (Multimodal Analysis - Sync) ---
+//
+// Endpoint: https://api.kie.ai/gpt-4o/v1/chat/completions
+// Used as a cross-provider fallback when Gemini misbehaves on kie.ai's
+// gateway. Same OpenAI-compat shape as the rest of our wrappers, so the
+// internal GeminiMessage[] passes straight through.
+
+interface GptOptions {
+  temperature?: number;
+  maxTokens?: number;
+}
+
+export async function analyzeWithGpt4o(messages: GeminiMessage[], options: GptOptions = {}): Promise<string> {
+  const { temperature = 0.5, maxTokens = 8000 } = options;
+  if (!KIE_API_KEY) throw new Error('KIE_API_KEY not set');
+
+  const res = await fetch(`${KIE_BASE_URL}/gpt-4o/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${KIE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messages,
+      stream: false,
+      temperature,
+      max_tokens: maxTokens,
+    }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`GPT-4o (kie.ai) ${res.status}: ${txt.slice(0, 500)}`);
+  }
+  const data = await res.json();
+  if (data.choices?.[0]?.message?.content) return String(data.choices[0].message.content);
+  if (typeof data.response === 'string') return data.response;
+  if (typeof data.content === 'string') return data.content;
+  if (data.code || data.msg) throw new Error(`GPT-4o (kie.ai) ${data.msg || data.code}`);
+  throw new Error(`Unexpected GPT-4o response shape: ${JSON.stringify(data).slice(0, 300)}`);
 }
 
 // --- Gemini Flash 2.0 (Fast Multimodal Analysis - Sync) ---
@@ -899,27 +943,59 @@ export async function getKieModelConfig() {
 }
 
 /**
- * Runs an analysis call with automatic fallback.
- * Tries the primary model (default: Gemini 3 Pro). If it fails, falls back to
- * Gemini Flash 2.0 (same provider, different size — much more reliable than
- * cross-provider fallbacks). Logs which model actually produced the result.
+ * Runs an analysis call with a multi-tier fallback chain.
  *
- * The fallback model is also configurable via admin_config.kie_analysis_fallback_model.
+ * Default chain (primary first, then each fallback in order):
+ *   gemini-3-pro → claude-sonnet-4-6 → gpt-4o → gemini-flash-2-0
+ *
+ * The chain tries each model in order until one returns a non-throwing
+ * response. Cross-provider fallbacks catch gateway-side outages on a single
+ * vendor; gemini-flash is at the end as a fast last resort. Returns the
+ * first successful text plus which model produced it.
+ *
+ * Override either piece via options.fallbackChain (full custom chain) or
+ * options.fallbackModel (single fallback, legacy two-tier mode).
  */
 export async function analyzeWithFallback(
   primaryModel: string,
   messages: GeminiMessage[],
-  options: { temperature?: number; maxTokens?: number; fallbackModel?: string } = {}
+  options: { temperature?: number; maxTokens?: number; fallbackModel?: string; fallbackChain?: string[] } = {}
 ): Promise<{ text: string; modelUsed: string; fellBack: boolean }> {
-  const fallback = options.fallbackModel || 'gemini-flash-2-0';
-  try {
-    const text = await analyzeWithModel(primaryModel, messages, options);
-    return { text, modelUsed: primaryModel, fellBack: false };
-  } catch (primaryError: any) {
-    console.error(`[ANALYZE] Primary model "${primaryModel}" failed: ${primaryError.message}`);
-    if (primaryModel === fallback) throw primaryError;
-    console.warn(`[ANALYZE] Falling back to "${fallback}"...`);
-    const text = await analyzeWithModel(fallback, messages, options);
-    return { text, modelUsed: fallback, fellBack: true };
+  const defaultChain = [
+    primaryModel,
+    'claude-sonnet-4-6',
+    'gpt-4o',
+    'gemini-flash-2-0',
+  ];
+  let chain: string[];
+  if (options.fallbackChain && options.fallbackChain.length > 0) {
+    chain = [primaryModel, ...options.fallbackChain];
+  } else if (options.fallbackModel) {
+    chain = [primaryModel, options.fallbackModel];
+  } else {
+    chain = defaultChain;
   }
+  // Dedupe while preserving order — primary may appear in defaultChain.
+  const seen = new Set<string>();
+  chain = chain.filter((m) => (seen.has(m) ? false : (seen.add(m), true)));
+
+  const errors: Array<{ model: string; error: string }> = [];
+  for (let i = 0; i < chain.length; i++) {
+    const model = chain[i];
+    try {
+      const text = await analyzeWithModel(model, messages, options);
+      if (i > 0) {
+        console.warn(`[ANALYZE] Recovered with fallback "${model}" after ${i} earlier failure(s).`);
+      }
+      return { text, modelUsed: model, fellBack: i > 0 };
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      console.error(`[ANALYZE] "${model}" failed: ${msg}`);
+      errors.push({ model, error: msg });
+      // Continue to next model in chain
+    }
+  }
+
+  const summary = errors.map((e) => `${e.model}: ${e.error}`).join(' | ');
+  throw new Error(`All analysis models failed. ${summary}`);
 }
