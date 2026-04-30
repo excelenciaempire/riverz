@@ -281,7 +281,11 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
 .igp-tab.on{background:#181B27;color:#C8CAD8}
 .igp-close{width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.05);color:#545A72;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:all .15s}
 .igp-close:hover{background:rgba(255,255,255,.1);color:#E2E4EF}
-.igp-ai-section,.igp-url-section,.igp-file-section{display:flex;flex-direction:column}
+.igp-ai-section,.igp-url-section,.igp-file-section,.igp-edit-section{display:flex;flex-direction:column}
+.igp-edit-step{display:flex;flex-direction:column;gap:14px;padding:18px 20px 20px}
+.igp-edit-current{border-radius:8px;overflow:hidden;background:#080910;max-height:200px;display:flex;align-items:center;justify-content:center;border:1px solid #1E2130}
+.igp-edit-current img{width:100%;height:auto;max-height:200px;object-fit:contain;display:block}
+.igp-edit-hint{font-size:10px;color:#3E4560;font-family:'Instrument Sans',sans-serif;line-height:1.5}
 .igp-file-section{padding:18px 20px 20px;gap:12px}
 .igp-drop{border:1.5px dashed #252840;border-radius:10px;padding:28px 18px;text-align:center;background:#080910;cursor:pointer;transition:border-color .15s,background .15s}
 .igp-drop:hover,.igp-drop.over{border-color:#4A90E2;background:#0A0E18}
@@ -819,6 +823,7 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
       </div>
       <div class="igp-tabs">
         <button class="igp-tab on" id="igp-ai-tab" onclick="igpSetMode('ai')">&#x2728; IA</button>
+        <button class="igp-tab" id="igp-edit-tab" onclick="igpSetMode('edit')" style="display:none">&#x1F58B; Editar</button>
         <button class="igp-tab" id="igp-file-tab" onclick="igpSetMode('file')">&#x1F4C1; Archivo</button>
         <button class="igp-tab" id="igp-url-tab" onclick="igpSetMode('url')">&#x1F517; URL</button>
       </div>
@@ -892,6 +897,22 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
         <div class="igp-file-actions">
           <button class="tb tb-ghost" onclick="igpFileReset()">&#x21BA; Otra</button>
           <button class="tb tb-acc" style="flex:1" onclick="igpFileApply()">&#x2713; Usar esta imagen</button>
+        </div>
+      </div>
+    </div>
+    <div class="igp-edit-section" id="igp-edit-section" style="display:none">
+      <div class="igp-edit-step" id="igp-edit-step-prompt">
+        <div class="igp-edit-current"><img id="igp-edit-current-img" src="" alt=""></div>
+        <div>
+          <div class="igp-prompt-hdr">
+            <span class="igp-prompt-label">¿Cómo quieres editarla?</span>
+          </div>
+          <textarea class="igp-prompt-ta" id="igp-edit-prompt" placeholder="ej: cambia el fondo a tarde dorada, suaviza la iluminación, quita el texto..."></textarea>
+        </div>
+        <div class="igp-edit-hint">Usa Nano Banana Pro para editar la imagen actual conservando composición y aspecto.</div>
+        <div class="igp-controls">
+          <select class="igp-select" id="igp-edit-res"><option value="1K">1K</option><option value="2K" selected>2K</option><option value="4K">4K</option></select>
+          <button class="igp-gen-btn" id="igp-edit-btn" onclick="igpEdit()">&#x1F58B; Aplicar edición</button>
         </div>
       </div>
     </div>
@@ -1250,6 +1271,17 @@ function openImgGen(slot) {
   var ratioEl = document.getElementById('igp-ratio');
   if (ratioEl && cfg.ratio) ratioEl.value = cfg.ratio;
   igpShowStep('prompt');
+  // Edit tab is only meaningful when the slot already has a remote (http) image —
+  // kie.ai's image_input rejects data: URLs from local uploads.
+  var proj = window.getActive ? window.getActive() : null;
+  var current = proj && proj.images ? proj.images[slot] : null;
+  var editable = typeof current === 'string' && /^https?:\/\//i.test(current);
+  var editTab = document.getElementById('igp-edit-tab');
+  if (editTab) editTab.style.display = editable ? '' : 'none';
+  var editImg = document.getElementById('igp-edit-current-img');
+  if (editImg) editImg.src = editable ? current : '';
+  var editPrompt = document.getElementById('igp-edit-prompt');
+  if (editPrompt) editPrompt.value = '';
   igpSetMode('ai');
   if (typeof igpFileReset === 'function') igpFileReset();
   modal.classList.add('on');
@@ -1271,18 +1303,25 @@ function igpShowStep(step) {
 }
 
 function igpSetMode(mode) {
-  var ai   = document.getElementById('igp-ai-section');
-  var file = document.getElementById('igp-file-section');
-  var url  = document.getElementById('igp-url-section');
-  var aiTab   = document.getElementById('igp-ai-tab');
-  var fileTab = document.getElementById('igp-file-tab');
-  var urlTab  = document.getElementById('igp-url-tab');
-  if (ai)   ai.style.display   = mode === 'ai'   ? 'flex' : 'none';
-  if (file) file.style.display = mode === 'file' ? 'flex' : 'none';
-  if (url)  url.style.display  = mode === 'url'  ? 'flex' : 'none';
+  var ai    = document.getElementById('igp-ai-section');
+  var edit  = document.getElementById('igp-edit-section');
+  var file  = document.getElementById('igp-file-section');
+  var url   = document.getElementById('igp-url-section');
+  var aiTab    = document.getElementById('igp-ai-tab');
+  var editTab  = document.getElementById('igp-edit-tab');
+  var fileTab  = document.getElementById('igp-file-tab');
+  var urlTab   = document.getElementById('igp-url-tab');
+  if (ai)    ai.style.display    = mode === 'ai'   ? 'flex' : 'none';
+  if (edit)  edit.style.display  = mode === 'edit' ? 'flex' : 'none';
+  if (file)  file.style.display  = mode === 'file' ? 'flex' : 'none';
+  if (url)   url.style.display   = mode === 'url'  ? 'flex' : 'none';
   if (aiTab)   aiTab.classList.toggle('on',   mode === 'ai');
+  if (editTab) editTab.classList.toggle('on', mode === 'edit');
   if (fileTab) fileTab.classList.toggle('on', mode === 'file');
   if (urlTab)  urlTab.classList.toggle('on',  mode === 'url');
+  // While editing/loading/result we want the AI step UI shared (loading + result)
+  // — switching tabs always returns to the prompt step so leftovers don't leak.
+  igpShowStep('prompt');
 }
 
 window.openImgGen  = openImgGen;
@@ -1377,6 +1416,76 @@ async function igpGenerate() {
     igpToast(e.message || 'Error al generar', 1);
   } finally {
     document.getElementById('igp-gen-btn').disabled = false;
+    igpStopLoadAnim();
+  }
+}
+
+// ── EDIT EXISTING IMAGE via kie.ai Nano Banana Pro ────────────
+async function igpEdit() {
+  var prompt = (document.getElementById('igp-edit-prompt').value || '').trim();
+  if (!prompt) { igpToast('Describe el cambio', 1); return; }
+  var proj = window.getActive ? window.getActive() : null;
+  var current = proj && proj.images ? proj.images[igpSlot] : null;
+  if (!current || !/^https?:\/\//i.test(current)) {
+    igpToast('Solo se pueden editar imágenes con URL pública', 1); return;
+  }
+  var resVal = document.getElementById('igp-edit-res').value;
+
+  // Switch to the shared loading/result UI inside the AI section.
+  var ai = document.getElementById('igp-ai-section');
+  var edit = document.getElementById('igp-edit-section');
+  if (ai)   ai.style.display   = 'flex';
+  if (edit) edit.style.display = 'none';
+  igpShowStep('loading');
+  igpPolling = true;
+  igpStartLoadAnim(prompt);
+  igpSetLoadMsg('Editando con Nano Banana Pro...');
+  document.getElementById('igp-edit-btn').disabled = true;
+
+  try {
+    var createRes = await fetch('/api/landing-lab/edit-task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt, imageUrl: current, aspect_ratio: 'auto', resolution: resVal })
+    });
+    var createData = await createRes.json();
+    if (!createData.taskId) throw new Error(createData.error || 'No se pudo iniciar la edición');
+
+    var taskId = createData.taskId;
+    igpSetLoadPct(15);
+
+    var maxAttempts = 60;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise(function(r){ setTimeout(r, 4000); });
+      if (!igpPolling) break;
+      igpSetLoadPct(Math.min(90, 15 + attempt * 1.3));
+
+      var statusRes = await fetch('/api/landing-lab/task-status?taskId=' + taskId);
+      var sd = await statusRes.json();
+
+      if (sd.status === 'SUCCESS' && sd.imageUrl) {
+        igpUrl = sd.imageUrl;
+        igpPolling = false;
+        igpSetLoadPct(100);
+        igpShowStep('result');
+        var ri = document.getElementById('igp-result-img');
+        ri.style.opacity = '0'; ri.src = sd.imageUrl;
+        ri.onload = function(){ ri.style.transition='opacity .5s'; ri.style.opacity='1'; };
+        return;
+      }
+      if (sd.status === 'FAILED') throw new Error('Edición fallida — intenta con otro prompt');
+    }
+    if (igpPolling) throw new Error('Timeout — intenta de nuevo');
+
+  } catch(e) {
+    igpPolling = false;
+    // Return the user to the edit panel so they can tweak the prompt.
+    if (ai)   ai.style.display   = 'none';
+    if (edit) edit.style.display = 'flex';
+    igpToast(e.message || 'Error al editar', 1);
+  } finally {
+    var btn = document.getElementById('igp-edit-btn');
+    if (btn) btn.disabled = false;
     igpStopLoadAnim();
   }
 }
@@ -1573,6 +1682,7 @@ function igpToast(msg, err) {
 // ── EXPOSE ────────────────────────────────────────────────────
 window.igpAutoPrompt = igpAutoPrompt;
 window.igpGenerate   = igpGenerate;
+window.igpEdit       = igpEdit;
 window.igpUse        = igpUse;
 window.igpAnother    = igpAnother;
 window.igpDownloadCurrent = igpDownloadCurrent;
