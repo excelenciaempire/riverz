@@ -45,12 +45,56 @@ const VARIATIONS_PER_TEMPLATE = 1;
 
 // --- Helpers ------------------------------------------------------------
 
+/**
+ * Tolerant JSON extractor for Gemini responses.
+ *
+ * The system prompt says "Return ONLY the JSON object — no markdown fences,
+ * no commentary, no surrounding text" but Gemini (especially in Spanish mode)
+ * sometimes ignores it and prepends "Aquí tiene el JSON solicitado:" or wraps
+ * the response in ```json ... ``` fences anyway. This parser strips both
+ * preamble and postamble, finds the outermost `{...}` or `[...]` block by
+ * brace-balancing, and parses that.
+ */
 function parseJsonFromResponse(response: string): any {
   let s = response.trim();
-  if (s.startsWith('```json')) s = s.slice(7);
-  else if (s.startsWith('```')) s = s.slice(3);
-  if (s.endsWith('```')) s = s.slice(0, -3);
-  return JSON.parse(s.trim());
+
+  // Strip markdown fences if present.
+  if (s.startsWith('```json')) s = s.slice(7).trim();
+  else if (s.startsWith('```')) s = s.slice(3).trim();
+  if (s.endsWith('```')) s = s.slice(0, -3).trim();
+
+  // If the model still added a preamble before the JSON, jump to the first
+  // `{` or `[`. Track which one to find the matching closer.
+  const firstBraceIdx = s.search(/[{[]/);
+  if (firstBraceIdx < 0) {
+    // No JSON-looking content at all — let JSON.parse throw the usual error.
+    return JSON.parse(s);
+  }
+  s = s.slice(firstBraceIdx);
+
+  // Walk the string to find the matching close brace, ignoring quoted
+  // strings. This also strips any trailing chatter after the JSON.
+  const opening = s[0];
+  const closing = opening === '{' ? '}' : ']';
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let end = -1;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\') { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === opening) depth++;
+    else if (c === closing) {
+      depth--;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+  if (end > 0) s = s.slice(0, end + 1);
+
+  return JSON.parse(s);
 }
 
 async function updateGeneration(id: string, updates: any) {
