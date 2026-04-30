@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { createHash } from 'crypto';
 import {
   createKieTask,
   getKieTaskResult,
@@ -102,6 +103,59 @@ async function updateGeneration(id: string, updates: any) {
     .from('generations')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id);
+}
+
+// --- Per-step audit log -------------------------------------------------
+//
+// Each entry captures EXACTLY what kie.ai received in a given step so the
+// admin dashboard can verify visually + cryptographically that the right
+// prompt and the right images were sent. Entries live inside input_data
+// under the `stepLogs` array so no schema migration is needed.
+//
+// Why hashes? The base64 payloads sent to kie.ai are too big to log raw,
+// but a sha256 + byte length uniquely identifies the bytes that left the
+// server. The admin can compare with the hash of the source image in
+// Supabase Storage to confirm no corruption / wrong image leak.
+type StepImageLog = { url: string; sha256?: string; bytes?: number };
+type StepLogEntry = {
+  step: number;
+  status: 'ok' | 'error';
+  startedAt: string;
+  completedAt: string;
+  model: string;
+  promptSent: string;
+  imagesSent: StepImageLog[];
+  outputPreview?: string;
+  errorMessage?: string;
+};
+
+function hashFromBase64(dataUri: string): { sha256: string; bytes: number } {
+  const raw = dataUri.split(',')[1] || dataUri;
+  const buf = Buffer.from(raw, 'base64');
+  return { sha256: createHash('sha256').update(buf).digest('hex'), bytes: buf.length };
+}
+
+/**
+ * Append a step audit entry to a generation row's input_data.stepLogs.
+ *
+ * Mutates the in-memory `mutableInputData` so subsequent persistence calls
+ * in the same flow carry the entry forward, AND immediately writes the
+ * full input_data to the DB so the entry survives even if a later step
+ * crashes before its own persistence point.
+ */
+async function appendStepLog(rowId: string, mutableInputData: any, entry: StepLogEntry): Promise<void> {
+  if (!Array.isArray(mutableInputData.stepLogs)) mutableInputData.stepLogs = [];
+  // Cap large fields so input_data stays bounded per row.
+  const capped: StepLogEntry = {
+    ...entry,
+    promptSent: (entry.promptSent || '').slice(0, 20000),
+    outputPreview: entry.outputPreview ? entry.outputPreview.slice(0, 2000) : undefined,
+  };
+  mutableInputData.stepLogs.push(capped);
+  await supabaseAdmin
+    .from('generations')
+    .update({ input_data: mutableInputData, updated_at: new Date().toISOString() })
+    .eq('id', rowId);
 }
 
 async function failGeneration(id: string, error: string) {
@@ -286,14 +340,48 @@ async function runSharedAnalysisForTemplate(
 
     log(`Step 1: sending 1 template image (${Math.round(templateBase64.length / 1024)}KB base64) to ${analysisModel}`);
 
-    const { text, modelUsed, fellBack } = await analyzeWithFallback(analysisModel, messages, {
-      temperature: 0.3,
-      maxTokens: 4000,
-    });
-    if (fellBack) log(`Step 1 fell back to ${modelUsed}`);
+    const step1StartedAt = new Date().toISOString();
+    const step1ImagesSent: StepImageLog[] = [
+      { url: inputData.templateThumbnail, ...hashFromBase64(templateBase64) },
+    ];
 
-    inputData.templateAnalysisJson = parseJsonFromResponse(text);
-    inputData.modelUsedAnalysis = modelUsed;
+    let step1Text = '';
+    let step1ModelUsed = analysisModel;
+    try {
+      const { text, modelUsed, fellBack } = await analyzeWithFallback(analysisModel, messages, {
+        temperature: 0.3,
+        maxTokens: 4000,
+      });
+      if (fellBack) log(`Step 1 fell back to ${modelUsed}`);
+      step1Text = text;
+      step1ModelUsed = modelUsed;
+    } catch (err: any) {
+      await appendStepLog(leader.id, leader.input_data, {
+        step: 1,
+        status: 'error',
+        startedAt: step1StartedAt,
+        completedAt: new Date().toISOString(),
+        model: analysisModel,
+        promptSent: analysisPrompt,
+        imagesSent: step1ImagesSent,
+        errorMessage: err?.message || String(err),
+      });
+      throw err;
+    }
+
+    inputData.templateAnalysisJson = parseJsonFromResponse(step1Text);
+    inputData.modelUsedAnalysis = step1ModelUsed;
+
+    await appendStepLog(leader.id, leader.input_data, {
+      step: 1,
+      status: 'ok',
+      startedAt: step1StartedAt,
+      completedAt: new Date().toISOString(),
+      model: step1ModelUsed,
+      promptSent: analysisPrompt,
+      imagesSent: step1ImagesSent,
+      outputPreview: step1Text,
+    });
 
     // Persist immediately so a concurrent tick (or a future restart) sees
     // the analysis JSON and skips re-running step 1. Without this, inputData
@@ -368,10 +456,12 @@ async function runSharedAnalysisForTemplate(
     // Failures here are not fatal — we drop the bad image and keep going so
     // a single bad URL doesn't kill the whole generation.
     const productImageBlocks: Array<{ type: 'image_url'; image_url: { url: string } }> = [];
+    const step2ImagesSent: StepImageLog[] = [];
     for (const url of rawProductUrls) {
       try {
         const dataUri = await imageUrlToBase64(url);
         productImageBlocks.push({ type: 'image_url', image_url: { url: dataUri } });
+        step2ImagesSent.push({ url, ...hashFromBase64(dataUri) });
       } catch (err: any) {
         log(`Step 2: skipping product image (fetch failed: ${err.message}) — ${url}`);
       }
@@ -389,13 +479,43 @@ async function runSharedAnalysisForTemplate(
       { role: 'user', content: productImageBlocks },
     ];
 
-    const { text, modelUsed, fellBack } = await analyzeWithFallback(analysisModel, messages, {
-      temperature: 0.4,
-      maxTokens: 4000,
-    });
-    if (fellBack) log(`Step 2 fell back to ${modelUsed}`);
+    const step2StartedAt = new Date().toISOString();
+    let step2Text = '';
+    let step2ModelUsed = analysisModel;
+    try {
+      const { text, modelUsed, fellBack } = await analyzeWithFallback(analysisModel, messages, {
+        temperature: 0.4,
+        maxTokens: 4000,
+      });
+      if (fellBack) log(`Step 2 fell back to ${modelUsed}`);
+      step2Text = text;
+      step2ModelUsed = modelUsed;
+    } catch (err: any) {
+      await appendStepLog(leader.id, leader.input_data, {
+        step: 2,
+        status: 'error',
+        startedAt: step2StartedAt,
+        completedAt: new Date().toISOString(),
+        model: analysisModel,
+        promptSent: adaptationSystemPrompt,
+        imagesSent: step2ImagesSent,
+        errorMessage: err?.message || String(err),
+      });
+      throw err;
+    }
 
-    inputData.adaptedJson = parseJsonFromResponse(text);
+    inputData.adaptedJson = parseJsonFromResponse(step2Text);
+
+    await appendStepLog(leader.id, leader.input_data, {
+      step: 2,
+      status: 'ok',
+      startedAt: step2StartedAt,
+      completedAt: new Date().toISOString(),
+      model: step2ModelUsed,
+      promptSent: adaptationSystemPrompt,
+      imagesSent: step2ImagesSent,
+      outputPreview: step2Text,
+    });
 
     // Persist step-2 progress so concurrent ticks skip and so the
     // distribution loop at the end is no longer the only persistence point.
@@ -461,6 +581,9 @@ async function runSharedAnalysisForTemplate(
           modelUsedAnalysis: inputData.modelUsedAnalysis || analysisModel,
           templateAspectRatio: inputData.templateAspectRatio,
           templateDims: inputData.templateDims,
+          // Steps 1+2 ran on the leader; copy its audit trail to siblings so
+          // the admin can inspect any row and see what was actually sent.
+          stepLogs: leader.input_data?.stepLogs || [],
         },
       });
     })
@@ -517,10 +640,25 @@ async function processVariationGeneration(gen: any, generationModel: string, pro
         output_format: 'png',
       };
 
+      // Nano Banana receives URLs (not base64), so we log URL identity only.
+      // The hash on steps 1-2 already proved which bytes left the server;
+      // here, the same Supabase URLs flow straight through to kie.ai.
+      const step4StartedAt = new Date().toISOString();
+      const step4ImagesSent: StepImageLog[] = imageInputs.map((url: string) => ({ url }));
+
       try {
         const taskId = await createKieTask(generationModel, nanoBananaInput);
         inputData.generationTaskId = taskId;
-        await updateGeneration(id, { input_data: inputData });
+        await appendStepLog(id, inputData, {
+          step: 4,
+          status: 'ok',
+          startedAt: step4StartedAt,
+          completedAt: new Date().toISOString(),
+          model: generationModel,
+          promptSent: nanoBananaInput.prompt,
+          imagesSent: step4ImagesSent,
+          outputPreview: `taskId=${taskId} aspect_ratio=${aspectRatio} resolution=2K`,
+        });
         log(`Step 4 done. taskId=${taskId}`);
         return; // poll on next tick
       } catch (err: any) {
@@ -529,6 +667,16 @@ async function processVariationGeneration(gen: any, generationModel: string, pro
         // adapted JSON from Step 2), so the next tick re-attempts ONLY
         // Step 4 by claiming pending_generation again. Steps 1-3 are
         // preserved.
+        await appendStepLog(id, inputData, {
+          step: 4,
+          status: 'error',
+          startedAt: step4StartedAt,
+          completedAt: new Date().toISOString(),
+          model: generationModel,
+          promptSent: nanoBananaInput.prompt,
+          imagesSent: step4ImagesSent,
+          errorMessage: err?.message || 'Step 4 (Nano Banana) failed',
+        });
         await softRetryOrFail({
           rowId: id,
           currentInputData: inputData,
