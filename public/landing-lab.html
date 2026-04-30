@@ -369,6 +369,8 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
 </head>
 <body>
 <div id="topbar">
+  <button class="tb tb-ghost" onclick="goToDashboard()" title="Volver al dashboard">&#x2190; Dashboard</button>
+  <div class="t-sep"></div>
   <button id="sb-toggle" onclick="toggleSidebar()" title="Sidebar">&#x2630;</button>
   <div class="t-logo"><div class="t-mark">L</div><span class="t-name">Landing Lab</span></div>
   <div class="t-sep"></div>
@@ -1131,6 +1133,12 @@ function closeStickyPanel(){var p=g('sticky-panel');if(p)p.classList.remove('sho
 // ── VIEWPORT ─────────────────────────────────────────────────
 function setVP(mode){vp=mode;g('vp-desk').classList.toggle('on',mode==='desktop');g('vp-mob').classList.toggle('on',mode==='mobile');document.body.classList.toggle('mob-mode',mode==='mobile');if(mode==='mobile'){var pa=g('page-area');if(pa)pa.scrollTop=0;}}
 function toggleSidebar(){sidebarOpen=!sidebarOpen;var sb=g('sidebar'),btn=g('sb-toggle');if(sb)sb.classList.toggle('collapsed',!sidebarOpen);if(btn)btn.textContent=sidebarOpen?'\u2630':'\u276F';}
+function goToDashboard(){
+  // This HTML runs inside an iframe at /landing-lab, so navigate the top
+  // window so we land on the real Riverz dashboard, not just inside the frame.
+  try { (window.top || window.parent || window).location.href = '/crear'; }
+  catch(e) { window.location.href = '/crear'; }
+}
 
 // ── EXPORT ────────────────────────────────────────────────────
 function buildHTML(proj){
@@ -1192,6 +1200,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
 window.setVP=setVP; window.doUndo=doUndo; window.doRedo=doRedo;
 window.toggleSidebar=toggleSidebar;
+window.goToDashboard=goToDashboard;
 window.openNewModal=openNewModal; window.closeNewModal=closeNewModal;
 window.generateWithAI=generateWithAI; window.createManual=createManual;
 window.cloneProject=cloneProject; window.deleteProject=deleteProject;
