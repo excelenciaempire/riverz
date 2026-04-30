@@ -65,6 +65,10 @@ async function failGeneration(id: string, error: string) {
 }
 
 async function saveResult(id: string, kieUrl: string, projectId: string) {
+  // Always try to mirror the rendered image into Supabase Storage so the
+  // public URL we return is on a host the browser CSP allows. Fallback to
+  // the kie/aiquickdraw URL only if BOTH the download and upload fail —
+  // and even then, log loudly so we know.
   try {
     const imageBuffer = await downloadImage(kieUrl);
     const fileName = `${projectId}/${id}_${Date.now()}.png`;
@@ -74,13 +78,16 @@ async function saveResult(id: string, kieUrl: string, projectId: string) {
       .upload(fileName, imageBuffer, { contentType: 'image/png', upsert: true });
 
     if (error) {
+      console.error(`[GEN ${id.slice(0, 8)}] saveResult: storage upload failed, falling back to source URL`, error);
       await updateGeneration(id, { status: 'completed', result_url: kieUrl });
       return;
     }
 
     const { data } = supabaseAdmin.storage.from('generations').getPublicUrl(fileName);
+    console.log(`[GEN ${id.slice(0, 8)}] saveResult: stored at ${data.publicUrl}`);
     await updateGeneration(id, { status: 'completed', result_url: data.publicUrl });
-  } catch {
+  } catch (err: any) {
+    console.error(`[GEN ${id.slice(0, 8)}] saveResult: download failed, falling back to source URL (${kieUrl}):`, err?.message || err);
     await updateGeneration(id, { status: 'completed', result_url: kieUrl });
   }
 }

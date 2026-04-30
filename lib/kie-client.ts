@@ -103,6 +103,11 @@ const SSRF_ALLOWED_SUFFIXES = [
   '.supabase.co',
   '.supabase.in',
   '.kie.ai',
+  // kie.ai hosts result files on aiquickdraw.com (their CDN). Without this,
+  // downloadImage(kieUrl) throws after a Nano Banana run and we end up
+  // saving the aiquickdraw URL straight into result_url — which then trips
+  // the browser CSP because aiquickdraw isn't in img-src either.
+  '.aiquickdraw.com',
   '.googleusercontent.com',
   '.googleapis.com',
   '.cloudfront.net',
