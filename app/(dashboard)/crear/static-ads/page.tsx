@@ -455,53 +455,61 @@ export default function StaticAdsPage() {
         }
       }
 
-      // 2) Fire ONE independent /api/static-ads/clone call per uploaded
-      //    image — each creating its own project, identical to clicking
-      //    "Generar" N separate times. No shared project, no shared
-      //    orchestrator tick, no shared input_data: each image flows
-      //    through a fully isolated clone pipeline.
+      // 2) Each uploaded image gets its OWN /api/static-ads/clone invocation
+      //    — same backend isolation as if the user clicked "Generar" N
+      //    separate times — but they all share ONE project. The first call
+      //    creates the project (no projectId in body); subsequent calls send
+      //    `projectId` so the API appends rows into that project instead of
+      //    spawning new ones. Pipelines stay fully independent
+      //    (separate process-queue invocations, separate orchestrator
+      //    state), only the project_id is shared.
       const baseName = agregarProjectName.trim();
-      const cloneResults = await Promise.allSettled(
-        uploaded.map((tmpl, i) => {
-          const suffix = uploaded.length > 1 ? ` (${i + 1}/${uploaded.length})` : '';
-          return fetch('/api/static-ads/clone', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              inlineTemplate: tmpl,
-              productId: selectedProduct,
-              projectName: `${baseName}${suffix}`,
-            }),
-          }).then(async (r) => {
-            if (!r.ok) {
-              const err = await r.json().catch(() => ({}));
-              if (r.status === 402) throw new Error(`Créditos insuficientes (${err.required || ''})`);
-              throw new Error(err.error || `HTTP ${r.status}`);
-            }
-            return r.json();
-          });
-        }),
-      );
+      const callClone = async (tmpl: typeof uploaded[number], projectId?: string) => {
+        const r = await fetch('/api/static-ads/clone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            inlineTemplate: tmpl,
+            productId: selectedProduct,
+            projectName: baseName,
+            ...(projectId ? { projectId } : {}),
+          }),
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          if (r.status === 402) throw new Error(`Créditos insuficientes (${err.required || ''})`);
+          throw new Error(err.error || `HTTP ${r.status}`);
+        }
+        return r.json();
+      };
 
-      const ok = cloneResults.filter((r) => r.status === 'fulfilled') as Array<PromiseFulfilledResult<any>>;
-      const failed = cloneResults.filter((r) => r.status === 'rejected') as Array<PromiseRejectedResult>;
+      // First image: create project + get id back.
+      const first = await callClone(uploaded[0]);
+      const projectId: string = first.project.id;
 
-      if (ok.length === 0) {
-        throw new Error(failed[0]?.reason?.message || 'No se pudo iniciar ninguna generación');
+      // Remaining images in true parallel, all sharing that projectId.
+      let okCount = 1;
+      let failedCount = 0;
+      let firstErr: string | undefined;
+      if (uploaded.length > 1) {
+        const rest = await Promise.allSettled(
+          uploaded.slice(1).map((tmpl) => callClone(tmpl, projectId)),
+        );
+        for (const r of rest) {
+          if (r.status === 'fulfilled') okCount += 1;
+          else {
+            failedCount += 1;
+            firstErr = firstErr || (r.reason as Error)?.message;
+          }
+        }
       }
-      if (failed.length > 0) {
-        toast.error(`${failed.length} no se pudo iniciar: ${failed[0].reason?.message || 'error'}`);
+
+      if (failedCount > 0) {
+        toast.error(`${failedCount} no se pudo iniciar: ${firstErr || 'error'}`);
       }
-      toast.success(`${ok.length} proyecto(s) iniciado(s) en paralelo`);
+      toast.success(`${okCount} generación(es) en paralelo en el mismo proyecto`);
       resetAgregar();
-
-      // One project → go straight to its historial. Multiple → list view so
-      // the user sees all the runs.
-      if (ok.length === 1) {
-        router.push(`/crear/static-ads/historial/${ok[0].value.project.id}`);
-      } else {
-        router.push('/crear/static-ads/historial');
-      }
+      router.push(`/crear/static-ads/historial/${projectId}`);
     } catch (err: any) {
       toast.error(err.message || 'Error inesperado');
     } finally {

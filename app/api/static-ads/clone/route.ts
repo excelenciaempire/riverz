@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un momento.' }, { status: 429 });
     }
 
-    const { templateIds, inlineTemplate, inlineTemplates, productId, projectName } = await req.json();
+    const { templateIds, inlineTemplate, inlineTemplates, productId, projectName, projectId: existingProjectId } = await req.json();
 
     // Caller must provide ONE of:
     //   - templateIds[]: existing curated templates from the catalogue
@@ -69,8 +69,8 @@ export async function POST(req: Request) {
       return new NextResponse('Missing productId', { status: 400 });
     }
 
-    if (!projectName) {
-      return new NextResponse('Missing projectName', { status: 400 });
+    if (!projectName && !existingProjectId) {
+      return new NextResponse('Missing projectName (or projectId for append)', { status: 400 });
     }
 
     // 1. Fetch Product Data
@@ -171,20 +171,46 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create Project
-    const { data: project, error: projectError } = await supabaseAdmin
-      .from('projects')
-      .insert({
-        clerk_user_id: userId,
-        name: projectName,
-        type: 'static_ads',
-        status: 'processing'
-      })
-      .select()
-      .single();
-
-    if (projectError) {
-      throw new Error(`Failed to create project: ${projectError.message}`);
+    // Create OR reuse project. The Agregar tab fires N independent clone
+    // calls when the user uploads N images — the first creates the project
+    // and subsequent calls pass `projectId` to append rows into the same
+    // project, keeping pipelines fully isolated while presenting one unified
+    // historial entry.
+    let project: any;
+    if (existingProjectId) {
+      const { data: existing, error: lookupError } = await supabaseAdmin
+        .from('projects')
+        .select('*')
+        .eq('id', existingProjectId)
+        .eq('clerk_user_id', userId)
+        .single();
+      if (lookupError || !existing) {
+        return new NextResponse('Existing project not found or not yours', { status: 404 });
+      }
+      project = existing;
+      // Reset status to 'processing' if it had been flipped (e.g. user is
+      // appending to a finished project) so the historial shows it active.
+      if (existing.status !== 'processing') {
+        await supabaseAdmin
+          .from('projects')
+          .update({ status: 'processing' })
+          .eq('id', existing.id);
+      }
+    } else {
+      const { data: created, error: projectError } = await supabaseAdmin
+        .from('projects')
+        .insert({
+          clerk_user_id: userId,
+          name: projectName,
+          type: 'static_ads',
+          status: 'processing',
+        })
+        .select()
+        .single();
+      if (projectError) {
+        throw new Error(`Failed to create project: ${projectError.message}`);
+      }
+      project = created;
     }
 
     // 3. Create Generation Records — 5 variations per template.
