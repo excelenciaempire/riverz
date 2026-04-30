@@ -251,21 +251,16 @@ export function TemplatesManager() {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 items-start">
         {templates?.map((template: any) => {
-          // Use stored width/height to render at native aspect. Falls back to a
-          // 3:4 box so legacy rows without dimensions don't blow up the grid.
-          const nativeRatio = template.width && template.height
-            ? `${template.width} / ${template.height}`
-            : '3 / 4';
           return (
             <div key={template.id} className="group relative overflow-hidden rounded-2xl border border-gray-800 bg-[#141414]">
-              <div className="overflow-hidden bg-[#0a0a0a] flex items-center justify-center" style={{ aspectRatio: nativeRatio }}>
+              <div className="relative overflow-hidden bg-[#0a0a0a]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={template.thumbnail_url}
                   alt={template.name}
-                  className="h-full w-full object-contain"
+                  className="block w-full h-auto"
                 />
                 {template.width && template.height && (
                   <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-sm text-[10px] font-mono text-white">

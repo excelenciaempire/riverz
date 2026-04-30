@@ -445,33 +445,26 @@ export default function StaticAdsPage() {
           {isLoading ? (
             <div className="text-center text-gray-400">Cargando plantillas...</div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
-              {/* Select All / Deselect All Button (if needed outside) - but UI request says direct selector */}
-              
+            // items-start lets each card hug the natural height of its image
+            // — no forced aspect ratio on the container, no letterboxing.
+            // The card grows/shrinks with the underlying file.
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4 items-start">
               {templates?.map((template, index) => {
                 const isSelected = selectedTemplateIds.includes(template.id);
                 const canEdit = canEditTemplate(index);
-                // Render every card at the template's native aspect ratio so
-                // the user sees the true framing of the ad they're about to
-                // generate (square templates as squares, stories as 9:16,
-                // etc). Legacy rows without width/height fall back to 3:4.
-                const nativeAspect = template.width && template.height
-                  ? `${template.width} / ${template.height}`
-                  : '3 / 4';
 
                 return (
                   <div
                     key={template.id}
                     className={cn(
-                      "group relative overflow-hidden rounded-lg border-2 bg-[#1a2332] transition-all flex items-center justify-center",
+                      "group relative overflow-hidden rounded-lg border-2 bg-[#1a2332] transition-all",
                       isSelected ? "border-[#07A498] ring-2 ring-[#07A498]/30" : "border-gray-700"
                     )}
-                    style={{ aspectRatio: nativeAspect }}
                   >
                     <img
                       src={template.thumbnail_url}
                       alt={template.name}
-                      className={cn("h-full w-full object-contain transition-transform duration-300", isSelected && "scale-105")}
+                      className={cn("block w-full h-auto transition-transform duration-300", isSelected && "scale-105")}
                     />
                     
                     {/* Direct Selection Area / Overlay */}
