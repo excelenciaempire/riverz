@@ -12,6 +12,7 @@ import {
   NanoBananaInput,
 } from '@/lib/kie-client';
 import { getPromptText, getPromptWithVariables } from '@/lib/get-ai-prompt';
+import { getImageDimensions, pickClosestNanoBananaAspect } from '@/lib/image-dims';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -120,6 +121,28 @@ async function runSharedAnalysisForTemplate(
     } catch (err: any) {
       throw new Error(`Failed to download template thumbnail (${inputData.templateThumbnail}): ${err.message}`);
     }
+
+    // Detect the template's true aspect ratio so the Nano Banana output
+    // matches its framing (square template → square ad, story → 9:16, etc).
+    // The base64 already in memory is reused for the dim probe — no extra
+    // network round-trip. Failure falls back to 3:4 (the legacy default).
+    let templateAspectRatio: string = inputData.templateAspectRatio || '3:4';
+    let templateDims: { width: number; height: number } | null = null;
+    if (!inputData.templateAspectRatio) {
+      try {
+        const base64 = templateBase64.split(',')[1] || templateBase64;
+        const buf = Buffer.from(base64, 'base64');
+        const dims = getImageDimensions(buf);
+        templateDims = { width: dims.width, height: dims.height };
+        templateAspectRatio = pickClosestNanoBananaAspect(dims.width, dims.height);
+        log(`Step 1: template dims ${dims.width}×${dims.height} (${dims.format}) → aspect ${templateAspectRatio}`);
+      } catch (err: any) {
+        log(`Step 1: aspect detection failed (${err.message}) — using fallback 3:4`);
+      }
+    }
+    inputData.templateAspectRatio = templateAspectRatio;
+    if (templateDims) inputData.templateDims = templateDims;
+
     const analysisPrompt = await getPromptText('template_analysis_json');
 
     const messages: GeminiMessage[] = [
@@ -220,7 +243,8 @@ async function runSharedAnalysisForTemplate(
     // product photos as image_input. The prompt has to spell out that role
     // (the photos ARE the product, not random reference) because Nano Banana
     // has no memory of the earlier Gemini steps.
-    const wrapped = `Generate a single photorealistic advertising image at 3:4 aspect ratio.
+    const aspect = inputData.templateAspectRatio || '3:4';
+    const wrapped = `Generate a single photorealistic advertising image at ${aspect} aspect ratio (matching the original template's framing).
 
 The attached reference photos are the EXACT product that must appear in the rendered image — render this specific product (its real shape, packaging, label, and color), not a stylised approximation.
 
@@ -253,6 +277,8 @@ ${adaptedJsonString}`;
           variationTitle: variation?.title || '',
           generatedPrompt: variation?.prompt || '',
           modelUsedAnalysis: inputData.modelUsedAnalysis || analysisModel,
+          templateAspectRatio: inputData.templateAspectRatio,
+          templateDims: inputData.templateDims,
         },
       });
     })
@@ -281,10 +307,16 @@ async function processVariationGeneration(gen: any, generationModel: string, pro
       const allImages: string[] = inputData.productImages || (inputData.productImage ? [inputData.productImage] : []);
       const imageInputs = allImages.slice(0, 8).filter((url: string) => typeof url === 'string' && url.startsWith('http'));
 
+      // Aspect ratio is detected from the template thumbnail in step 1 and
+      // propagated to every sibling row, so each generated image matches the
+      // original template's framing instead of being hard-coded to 3:4.
+      const aspectRatio = (inputData.templateAspectRatio || '3:4') as NanoBananaInput['aspect_ratio'];
+      log(`Step 4: aspect=${aspectRatio} (template ${inputData.templateDims?.width || '?'}×${inputData.templateDims?.height || '?'})`);
+
       const nanoBananaInput: NanoBananaInput = {
         prompt: inputData.generatedPrompt,
         image_input: imageInputs,
-        aspect_ratio: '3:4',
+        aspect_ratio: aspectRatio,
         resolution: '2K',
         output_format: 'png',
       };

@@ -145,11 +145,16 @@ export async function POST(req: Request) {
 
     const { generationModel } = await getKieModelConfig();
 
+    // Preserve the template's aspect ratio across edits — each row from the
+    // pipeline carries the detected ratio under input_data.templateAspectRatio.
+    // Falls back to '1:1' for legacy rows that pre-date aspect detection.
+    const editAspect = (input_data?.templateAspectRatio || '1:1') as NanoBananaInput['aspect_ratio'];
+
     // Create new generation task
     const nanoBananaInput: NanoBananaInput = {
       prompt: newPrompt,
       image_input: imageInputs,
-      aspect_ratio: '1:1',
+      aspect_ratio: editAspect,
       resolution: '2K',
       output_format: 'png'
     };
