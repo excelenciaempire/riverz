@@ -122,22 +122,31 @@ async function runSharedAnalysisForTemplate(
       throw new Error(`Failed to download template thumbnail (${inputData.templateThumbnail}): ${err.message}`);
     }
 
-    // Detect the template's true aspect ratio so the Nano Banana output
+    // Resolve the template's true aspect ratio so the Nano Banana output
     // matches its framing (square template → square ad, story → 9:16, etc).
-    // The base64 already in memory is reused for the dim probe — no extra
-    // network round-trip. Failure falls back to 3:4 (the legacy default).
+    // Order of preference:
+    //   1. Use templateDims already attached by /api/static-ads/clone (which
+    //      pulls width/height from the templates row when the admin recorded
+    //      them at upload time).
+    //   2. Fall back to probing the base64 buffer we just downloaded.
+    //   3. Hard fallback to 3:4 (legacy default) if everything else fails.
     let templateAspectRatio: string = inputData.templateAspectRatio || '3:4';
-    let templateDims: { width: number; height: number } | null = null;
+    let templateDims: { width: number; height: number } | null = inputData.templateDims || null;
     if (!inputData.templateAspectRatio) {
-      try {
-        const base64 = templateBase64.split(',')[1] || templateBase64;
-        const buf = Buffer.from(base64, 'base64');
-        const dims = getImageDimensions(buf);
-        templateDims = { width: dims.width, height: dims.height };
-        templateAspectRatio = pickClosestNanoBananaAspect(dims.width, dims.height);
-        log(`Step 1: template dims ${dims.width}×${dims.height} (${dims.format}) → aspect ${templateAspectRatio}`);
-      } catch (err: any) {
-        log(`Step 1: aspect detection failed (${err.message}) — using fallback 3:4`);
+      if (templateDims?.width && templateDims?.height) {
+        templateAspectRatio = pickClosestNanoBananaAspect(templateDims.width, templateDims.height);
+        log(`Step 1: aspect ${templateAspectRatio} from stored dims ${templateDims.width}×${templateDims.height}`);
+      } else {
+        try {
+          const base64 = templateBase64.split(',')[1] || templateBase64;
+          const buf = Buffer.from(base64, 'base64');
+          const dims = getImageDimensions(buf);
+          templateDims = { width: dims.width, height: dims.height };
+          templateAspectRatio = pickClosestNanoBananaAspect(dims.width, dims.height);
+          log(`Step 1: aspect ${templateAspectRatio} from probed dims ${dims.width}×${dims.height} (${dims.format})`);
+        } catch (err: any) {
+          log(`Step 1: aspect detection failed (${err.message}) — using fallback 3:4`);
+        }
       }
     }
     inputData.templateAspectRatio = templateAspectRatio;

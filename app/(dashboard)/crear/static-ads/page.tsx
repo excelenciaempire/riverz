@@ -451,19 +451,27 @@ export default function StaticAdsPage() {
               {templates?.map((template, index) => {
                 const isSelected = selectedTemplateIds.includes(template.id);
                 const canEdit = canEditTemplate(index);
+                // Render every card at the template's native aspect ratio so
+                // the user sees the true framing of the ad they're about to
+                // generate (square templates as squares, stories as 9:16,
+                // etc). Legacy rows without width/height fall back to 3:4.
+                const nativeAspect = template.width && template.height
+                  ? `${template.width} / ${template.height}`
+                  : '3 / 4';
 
                 return (
                   <div
                     key={template.id}
                     className={cn(
-                      "group relative aspect-3/4 overflow-hidden rounded-lg border-2 bg-[#1a2332] transition-all",
+                      "group relative overflow-hidden rounded-lg border-2 bg-[#1a2332] transition-all flex items-center justify-center",
                       isSelected ? "border-[#07A498] ring-2 ring-[#07A498]/30" : "border-gray-700"
                     )}
+                    style={{ aspectRatio: nativeAspect }}
                   >
                     <img
                       src={template.thumbnail_url}
                       alt={template.name}
-                      className={cn("h-full w-full object-cover transition-transform duration-300", isSelected && "scale-105")}
+                      className={cn("h-full w-full object-contain transition-transform duration-300", isSelected && "scale-105")}
                     />
                     
                     {/* Direct Selection Area / Overlay */}

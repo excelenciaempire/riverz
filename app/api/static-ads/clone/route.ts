@@ -164,6 +164,13 @@ export async function POST(req: Request) {
                 productId,
                 templateName: template.name,
                 templateThumbnail: template.thumbnail_url,
+                // Copy the template's native dimensions if the admin recorded
+                // them — process-queue uses these to pick the Nano Banana
+                // aspect ratio without an extra image download. Falls back to
+                // runtime detection in step 1 when null.
+                templateDims: template.width && template.height
+                  ? { width: template.width, height: template.height }
+                  : null,
                 productName: product.name,
                 productBenefits: product.benefits,
                 productImages,

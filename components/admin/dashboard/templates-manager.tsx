@@ -21,7 +21,26 @@ export function TemplatesManager() {
     niche: '',
   });
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [selectedDims, setSelectedDims] = useState<{ width: number; height: number } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Reads the file's intrinsic pixel dimensions in the browser. Cheap — no
+  // upload yet, just a transient ObjectURL that gets revoked on cleanup.
+  const detectImageDimensions = (file: File) =>
+    new Promise<{ width: number; height: number }>((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const dims = { width: img.naturalWidth, height: img.naturalHeight };
+        URL.revokeObjectURL(url);
+        resolve(dims);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('No se pudo leer la imagen'));
+      };
+      img.src = url;
+    });
 
   const queryClient = useQueryClient();
 
@@ -36,7 +55,7 @@ export function TemplatesManager() {
   });
 
   const createTemplate = useMutation({
-    mutationFn: async (data: typeof formData) => {
+    mutationFn: async (data: typeof formData & { width?: number; height?: number }) => {
       const res = await fetch('/api/admin/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -46,6 +65,8 @@ export function TemplatesManager() {
           category: data.category || null,
           awareness_level: data.awareness_level || null,
           niche: data.niche || null,
+          width: data.width || null,
+          height: data.height || null,
         }),
       });
       if (!res.ok) {
@@ -67,7 +88,7 @@ export function TemplatesManager() {
   });
 
   const updateTemplate = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+    mutationFn: async ({ id, data }: { id: string; data: typeof formData & { width?: number; height?: number } }) => {
       const res = await fetch(`/api/admin/templates/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -77,6 +98,8 @@ export function TemplatesManager() {
           category: data.category || null,
           awareness_level: data.awareness_level || null,
           niche: data.niche || null,
+          ...(data.width ? { width: data.width } : {}),
+          ...(data.height ? { height: data.height } : {}),
         }),
       });
       if (!res.ok) {
@@ -157,6 +180,7 @@ export function TemplatesManager() {
     });
     setEditingTemplate(null);
     setSelectedImage(null);
+    setSelectedDims(null);
   };
 
   const handleEdit = (template: any) => {
@@ -175,15 +199,23 @@ export function TemplatesManager() {
     try {
       setIsUploading(true);
       let thumbnailUrl = formData.thumbnail_url;
+      let dims = selectedDims;
 
-      // If a new image is selected, upload it
+      // If a new image is selected, upload it (raw, no compression — the
+      // signed URL upload preserves the original bytes byte-for-byte). If we
+      // somehow missed the dim probe earlier, do it now so the row always
+      // lands with width/height populated.
       if (selectedImage) {
         thumbnailUrl = await uploadImage(selectedImage);
+        if (!dims) {
+          try { dims = await detectImageDimensions(selectedImage); } catch { /* ignore */ }
+        }
       }
 
       const dataToSubmit = {
         ...formData,
         thumbnail_url: thumbnailUrl,
+        ...(dims ? { width: dims.width, height: dims.height } : {}),
       };
 
       if (editingTemplate) {
@@ -220,25 +252,42 @@ export function TemplatesManager() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {templates?.map((template) => (
-          <div key={template.id} className="group relative overflow-hidden rounded-2xl border border-gray-800 bg-[#141414]">
-            <div className="aspect-[3/4] overflow-hidden bg-gray-900">{/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={template.thumbnail_url} alt={template.name} className="h-full w-full object-cover" />
-            </div>
-            <div className="p-4">
-              <h3 className="font-semibold text-white">{template.name}</h3>
-              <p className="mt-1 text-xs text-gray-400">{template.category}</p>
-              <div className="mt-3 flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => handleEdit(template)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => handleDelete(template)} className="text-red-500 hover:text-red-600">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+        {templates?.map((template: any) => {
+          // Use stored width/height to render at native aspect. Falls back to a
+          // 3:4 box so legacy rows without dimensions don't blow up the grid.
+          const nativeRatio = template.width && template.height
+            ? `${template.width} / ${template.height}`
+            : '3 / 4';
+          return (
+            <div key={template.id} className="group relative overflow-hidden rounded-2xl border border-gray-800 bg-[#141414]">
+              <div className="overflow-hidden bg-[#0a0a0a] flex items-center justify-center" style={{ aspectRatio: nativeRatio }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={template.thumbnail_url}
+                  alt={template.name}
+                  className="h-full w-full object-contain"
+                />
+                {template.width && template.height && (
+                  <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-sm text-[10px] font-mono text-white">
+                    {template.width}×{template.height}
+                  </div>
+                )}
+              </div>
+              <div className="p-4">
+                <h3 className="font-semibold text-white">{template.name}</h3>
+                <p className="mt-1 text-xs text-gray-400">{template.category}</p>
+                <div className="mt-3 flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => handleEdit(template)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleDelete(template)} className="text-red-500 hover:text-red-600">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm(); }} title={editingTemplate ? 'Editar Plantilla' : 'Nueva Plantilla'}>
@@ -253,21 +302,32 @@ export function TemplatesManager() {
           </div>
           
           <div>
-            <Label className="mb-2 block">Imagen de Plantilla</Label>
+            <Label className="mb-2 block">Imagen de Plantilla (se sube en su tamaño original)</Label>
             {(selectedImage || formData.thumbnail_url) ? (
               <div className="space-y-3">
-                <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg border border-gray-800">
-                  <img 
-                    src={selectedImage ? URL.createObjectURL(selectedImage) : formData.thumbnail_url} 
-                    alt="Preview" 
-                    className="h-full w-full object-cover"
+                {/* Preview at native ratio — no forced 3:4 crop, no object-cover.
+                    Admin sees exactly what was selected, scaled to fit the card. */}
+                <div className="relative w-full overflow-hidden rounded-lg border border-gray-800 bg-[#0a0a0a] flex items-center justify-center min-h-[200px] max-h-[600px]">
+                  <img
+                    src={selectedImage ? URL.createObjectURL(selectedImage) : formData.thumbnail_url}
+                    alt="Preview"
+                    className="max-h-[600px] w-auto h-auto object-contain"
                   />
+                  {(selectedDims || (editingTemplate?.width && editingTemplate?.height)) && (
+                    <div className="absolute bottom-2 left-2 px-2 py-1 rounded-md bg-black/70 backdrop-blur-sm text-[11px] font-mono text-white">
+                      {(selectedDims?.width ?? editingTemplate?.width)} × {(selectedDims?.height ?? editingTemplate?.height)} px
+                      {selectedImage && (
+                        <span className="ml-2 text-gray-400">{(selectedImage.size / 1024 / 1024).toFixed(2)}MB</span>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     setSelectedImage(null);
+                    setSelectedDims(null);
                     if (!editingTemplate) {
                       setFormData({ ...formData, thumbnail_url: '' });
                     }
@@ -279,9 +339,15 @@ export function TemplatesManager() {
               </div>
             ) : (
               <FileUpload
-                onFilesSelected={(files) => {
+                onFilesSelected={async (files) => {
                   if (files[0]) {
                     setSelectedImage(files[0]);
+                    try {
+                      const dims = await detectImageDimensions(files[0]);
+                      setSelectedDims(dims);
+                    } catch {
+                      setSelectedDims(null);
+                    }
                   }
                 }}
                 accept={{ 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] }}

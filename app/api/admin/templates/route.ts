@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, thumbnail_url, category, awareness_level, niche } = body;
+    const { name, thumbnail_url, category, awareness_level, niche, width, height } = body;
 
     if (!name || !thumbnail_url) {
       return NextResponse.json(
@@ -81,6 +81,8 @@ export async function POST(req: Request) {
         category: category || null,
         awareness_level: awareness_level || null,
         niche: niche || null,
+        width: typeof width === 'number' && width > 0 ? width : null,
+        height: typeof height === 'number' && height > 0 ? height : null,
         is_active: true,
       })
       .select()

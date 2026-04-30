@@ -76,6 +76,8 @@ export interface Template {
   view_count: number;
   edit_count: number;
   created_at: string;
+  width?: number | null;
+  height?: number | null;
 }
 
 // Generation Types
