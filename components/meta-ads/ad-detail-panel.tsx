@@ -17,6 +17,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AdPerformanceChart } from '@/components/meta-ads/ad-performance-chart';
 import type { MetaAdSummary, MetaAdIntel } from '@/types/meta';
 import { cn } from '@/lib/utils';
 
