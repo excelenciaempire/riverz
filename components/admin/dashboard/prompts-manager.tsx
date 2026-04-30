@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Loader2, Eye, EyeOff, Code2, Sparkles, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Eye, EyeOff, Code2, Sparkles, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AIPrompt {
@@ -24,27 +24,49 @@ interface AIPrompt {
   updated_at: string;
 }
 
+// Categories grouped by APP FUNCTION. Each value matches what's stored in
+// the `category` column on `ai_prompts`. Order here = display order in the UI.
 const CATEGORIES = [
-  { value: 'product_research', label: '🔬 Research', description: 'Análisis profundo del producto y buyer persona' },
-  { value: 'template_analysis', label: '🎨 Análisis Template', description: 'Analiza estructura JSON de plantillas' },
-  { value: 'template_adaptation', label: '🔄 Adaptación', description: 'Adapta template JSON al producto' },
-  { value: 'prompt_generation', label: '✨ Generación Prompt', description: 'Genera prompt para Nano Banana' },
-  { value: 'editing', label: '✏️ Edición', description: 'Procesa ediciones de usuario' },
-  { value: 'other', label: '📁 Otros', description: 'Prompts de uso general' }
+  { value: 'static_ads', label: '🎨 Static Ads', description: 'Pipeline de generación de imágenes publicitarias (Gemini + Nano Banana Pro)' },
+  { value: 'product_research', label: '🔬 Research de Producto', description: 'Análisis profundo del producto y buyer persona — alimenta a todo el pipeline' },
+  { value: 'stealer', label: '🎬 Stealer (Video clones)', description: 'Pipeline para clonar videos UGC con Veo 3.1' },
+  { value: 'ugc', label: '🎤 UGC Chat', description: 'Generación de videos talking-head con Veo 3.1' },
+  { value: 'landing_lab', label: '📄 Landing Lab', description: 'Copy y prompts visuales para landings' },
+  { value: 'other', label: '📁 Otros / Legacy', description: 'Prompts antiguos o de uso general' }
 ];
+
+// Within static_ads, render in pipeline execution order (analysis → adaptation → edit → legacy).
+const STATIC_ADS_ORDER: Record<string, number> = {
+  template_analysis_json: 1,
+  template_adaptation: 2,
+  static_ads_edit_instructions: 3,
+  static_ads_5_variations_prompts: 90, // legacy
+  static_ads_prompt_generation: 91,    // legacy
+  template_analysis: 92,                // legacy
+};
 
 export function PromptsManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<AIPrompt | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     key: '',
     name: '',
-    category: 'image_generation',
+    category: 'static_ads',
     prompt_text: '',
     description: '',
     variables: '',
     is_active: true
   });
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const queryClient = useQueryClient();
 
@@ -160,7 +182,7 @@ export function PromptsManager() {
     setFormData({
       key: '',
       name: '',
-      category: 'image_generation',
+      category: 'static_ads',
       prompt_text: '',
       description: '',
       variables: '',
@@ -201,17 +223,30 @@ export function PromptsManager() {
     deletePrompt.mutate(prompt.id);
   };
 
-  const getCategoryLabel = (category: string) => {
-    return CATEGORIES.find(c => c.value === category)?.label || category;
-  };
+  const getCategory = (category: string) => CATEGORIES.find(c => c.value === category);
+  const getCategoryLabel = (category: string) => getCategory(category)?.label || `📁 ${category}`;
+  const getCategoryDescription = (category: string) => getCategory(category)?.description || '';
 
-  const groupedPrompts = prompts?.reduce((acc, prompt) => {
-    if (!acc[prompt.category]) {
-      acc[prompt.category] = [];
+  // Group + sort. Categories appear in the order defined in CATEGORIES (so
+  // Static Ads always shows first), and within each category prompts are
+  // ordered by pipeline step when known, otherwise alphabetically by name.
+  const groupedPrompts: Record<string, AIPrompt[]> = {};
+  for (const cat of CATEGORIES) groupedPrompts[cat.value] = [];
+  if (prompts) {
+    for (const p of prompts) {
+      const bucket = groupedPrompts[p.category] ? p.category : 'other';
+      if (!groupedPrompts[bucket]) groupedPrompts[bucket] = [];
+      groupedPrompts[bucket].push(p);
     }
-    acc[prompt.category].push(prompt);
-    return acc;
-  }, {} as Record<string, AIPrompt[]>);
+    for (const list of Object.values(groupedPrompts)) {
+      list.sort((a, b) => {
+        const aOrder = STATIC_ADS_ORDER[a.key] ?? 50;
+        const bOrder = STATIC_ADS_ORDER[b.key] ?? 50;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return a.name.localeCompare(b.name);
+      });
+    }
+  }
 
   if (isLoading) {
     return (
@@ -253,134 +288,179 @@ export function PromptsManager() {
         </div>
       </div>
 
-      {/* Info Panel - Pipeline Explanation */}
+      {/* Info Panel - Pipeline Explanation (current Static Ads flow) */}
       <div className="rounded-xl border border-gray-800 bg-gradient-to-r from-[#141414] to-[#1a1a1a] p-5">
-        <h3 className="text-sm font-medium text-gray-300 mb-3">📋 Pipeline de Static Ads (Gemini Pro 3 + Nano Banana)</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+        <h3 className="text-sm font-medium text-gray-300 mb-3">📋 Pipeline de Static Ads (Gemini 3 Pro + Nano Banana Pro)</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
           <div className="p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
-            <p className="font-medium text-white text-[11px]">1. Research</p>
-            <p className="text-gray-500">Gemini Pro 3</p>
+            <p className="font-medium text-white text-[11px]">1. Research (opcional)</p>
+            <p className="text-gray-500">Gemini 3 Pro</p>
             <code className="text-brand-accent/80 text-[9px]">product_deep_research</code>
           </div>
           <div className="p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
             <p className="font-medium text-white text-[11px]">2. Análisis JSON</p>
-            <p className="text-gray-500">Gemini Pro 3</p>
+            <p className="text-gray-500">Gemini 3 Pro · vision</p>
             <code className="text-brand-accent/80 text-[9px]">template_analysis_json</code>
           </div>
           <div className="p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
-            <p className="font-medium text-white text-[11px]">3. Adaptación</p>
-            <p className="text-gray-500">Gemini Pro 3</p>
+            <p className="font-medium text-white text-[11px]">3. Adaptación al producto</p>
+            <p className="text-gray-500">Gemini 3 Pro · vision</p>
             <code className="text-brand-accent/80 text-[9px]">template_adaptation</code>
           </div>
-          <div className="p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
-            <p className="font-medium text-white text-[11px]">4. Genera Prompt</p>
-            <p className="text-gray-500">Gemini Pro 3</p>
-            <code className="text-brand-accent/80 text-[9px]">static_ads_prompt_generation</code>
-          </div>
           <div className="p-3 rounded-lg bg-[#0a0a0a] border border-[#07A498]/30">
-            <p className="font-medium text-white text-[11px]">5. Imagen</p>
+            <p className="font-medium text-white text-[11px]">4. Imagen</p>
             <p className="text-[#07A498]">Nano Banana Pro</p>
-            <code className="text-gray-500 text-[9px]">Prompt generado</code>
+            <code className="text-gray-500 text-[9px]">JSON adaptado + fotos producto</code>
           </div>
         </div>
+        <p className="mt-3 text-[11px] text-gray-500">
+          El paso de "generar prompt" se eliminó: el JSON adaptado del paso 3 se envía
+          directamente como prompt a Nano Banana, junto con las fotos del producto del usuario.
+        </p>
       </div>
 
-      {/* Grouped by Category */}
+      {/* Grouped by Category — categories appear in the order defined in CATEGORIES,
+          empty categories are hidden, prompts within Static Ads are pipeline-ordered. */}
       <div className="space-y-8">
-        {groupedPrompts && Object.entries(groupedPrompts).map(([category, categoryPrompts]) => (
-          <div key={category} className="space-y-4">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-brand-accent" />
-              {getCategoryLabel(category)}
-            </h3>
-            
-            <div className="grid gap-4 md:grid-cols-2">
-              {categoryPrompts.map((prompt) => (
-                <div
-                  key={prompt.id}
-                  className={cn(
-                    "rounded-xl border bg-[#141414] p-5 transition-all",
-                    prompt.is_active ? "border-gray-800" : "border-gray-800/50 opacity-60"
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-white">{prompt.name}</h4>
-                        {!prompt.is_active && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">
-                            Inactivo
-                          </span>
+        {Object.entries(groupedPrompts)
+          .filter(([, list]) => list.length > 0)
+          .map(([category, categoryPrompts]) => (
+            <div key={category} className="space-y-3">
+              <div>
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-brand-accent" />
+                  {getCategoryLabel(category)}
+                  <span className="text-xs text-gray-500 font-normal">({categoryPrompts.length})</span>
+                </h3>
+                {getCategoryDescription(category) && (
+                  <p className="ml-7 text-xs text-gray-500">{getCategoryDescription(category)}</p>
+                )}
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {categoryPrompts.map((prompt) => {
+                  const isExpanded = expandedIds.has(prompt.id);
+                  const orderHint = STATIC_ADS_ORDER[prompt.key];
+                  const isLegacy = orderHint !== undefined && orderHint >= 90;
+                  return (
+                    <div
+                      key={prompt.id}
+                      className={cn(
+                        'rounded-xl border bg-[#141414] p-5 transition-all',
+                        prompt.is_active ? 'border-gray-800' : 'border-gray-800/50 opacity-60',
+                        isLegacy && 'border-yellow-900/40',
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            {orderHint !== undefined && orderHint < 90 && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand-accent/20 text-brand-accent">
+                                PASO {orderHint}
+                              </span>
+                            )}
+                            <h4 className="font-semibold text-white">{prompt.name}</h4>
+                            {!prompt.is_active && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">
+                                Inactivo
+                              </span>
+                            )}
+                            {isLegacy && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-900/30 text-yellow-400">
+                                Legacy
+                              </span>
+                            )}
+                          </div>
+                          <code className="text-xs text-brand-accent/80 font-mono break-all">
+                            {prompt.key}
+                          </code>
+                        </div>
+
+                        <button
+                          onClick={() => toggleActive.mutate({ id: prompt.id, is_active: !prompt.is_active })}
+                          className={cn(
+                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
+                            prompt.is_active
+                              ? 'bg-brand-accent/20 text-brand-accent hover:bg-brand-accent/30'
+                              : 'bg-gray-800 text-gray-500 hover:bg-gray-700',
+                          )}
+                          title={prompt.is_active ? 'Desactivar' : 'Activar'}
+                        >
+                          {prompt.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </button>
+                      </div>
+
+                      {prompt.description && (
+                        <p className="text-sm text-gray-400 mb-3">
+                          {prompt.description}
+                        </p>
+                      )}
+
+                      <div className="rounded-lg bg-[#0a0a0a] border border-gray-800 p-3 mb-3">
+                        <pre
+                          className={cn(
+                            'text-xs text-gray-300 font-mono whitespace-pre-wrap break-words',
+                            !isExpanded && 'line-clamp-3',
+                          )}
+                        >
+                          {prompt.prompt_text}
+                        </pre>
+                        {prompt.prompt_text.length > 200 && (
+                          <button
+                            onClick={() => toggleExpanded(prompt.id)}
+                            className="mt-2 flex items-center gap-1 text-[11px] text-brand-accent hover:text-brand-accent/80"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <ChevronUp className="h-3 w-3" /> Colapsar
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-3 w-3" /> Ver completo
+                              </>
+                            )}
+                          </button>
                         )}
                       </div>
-                      <code className="text-xs text-brand-accent/80 font-mono">
-                        {prompt.key}
-                      </code>
-                    </div>
-                    
-                    <button
-                      onClick={() => toggleActive.mutate({ id: prompt.id, is_active: !prompt.is_active })}
-                      className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
-                        prompt.is_active 
-                          ? "bg-brand-accent/20 text-brand-accent hover:bg-brand-accent/30"
-                          : "bg-gray-800 text-gray-500 hover:bg-gray-700"
+
+                      {prompt.variables && prompt.variables.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {prompt.variables.map((variable) => (
+                            <span
+                              key={variable}
+                              className="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-300 font-mono"
+                            >
+                              {variable}
+                            </span>
+                          ))}
+                        </div>
                       )}
-                      title={prompt.is_active ? "Desactivar" : "Activar"}
-                    >
-                      {prompt.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                    </button>
-                  </div>
 
-                  {prompt.description && (
-                    <p className="text-sm text-gray-400 mb-3">
-                      {prompt.description}
-                    </p>
-                  )}
-
-                  <div className="rounded-lg bg-[#0a0a0a] border border-gray-800 p-3 mb-3">
-                    <p className="text-xs text-gray-300 font-mono line-clamp-3 whitespace-pre-wrap">
-                      {prompt.prompt_text}
-                    </p>
-                  </div>
-
-                  {prompt.variables && prompt.variables.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {prompt.variables.map((variable) => (
-                        <span
-                          key={variable}
-                          className="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-300 font-mono"
+                      <div className="flex gap-2 pt-3 border-t border-gray-800">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(prompt)}
+                          className="flex-1"
                         >
-                          {variable}
-                        </span>
-                      ))}
+                          <Edit className="mr-2 h-3 w-3" />
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDelete(prompt)}
+                          className="text-red-500 hover:text-red-600 hover:border-red-600"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
-                  )}
-
-                  <div className="flex gap-2 pt-3 border-t border-gray-800">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(prompt)}
-                      className="flex-1"
-                    >
-                      <Edit className="mr-2 h-3 w-3" />
-                      Editar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(prompt)}
-                      className="text-red-500 hover:text-red-600 hover:border-red-600"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
       </div>
 
       {/* Modal */}
@@ -445,11 +525,11 @@ export function PromptsManager() {
               value={formData.prompt_text}
               onChange={(e) => setFormData({ ...formData, prompt_text: e.target.value })}
               placeholder="You are an expert..."
-              rows={8}
-              className="bg-[#0a0a0a] border-gray-800 font-mono text-sm"
+              rows={18}
+              className="bg-[#0a0a0a] border-gray-800 font-mono text-sm min-h-[400px] max-h-[60vh]"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Este es el prompt que se enviará al modelo de IA
+              Este es el prompt que se enviará al modelo de IA · {formData.prompt_text.length.toLocaleString()} caracteres
             </p>
           </div>
 
