@@ -31,11 +31,14 @@ const buildCsp = (frameAncestors: string) =>
     // *.fbcdn.net + *.cdninstagram.com need to be here too — img-src/media-src
     // alone don't cover programmatic fetches.
     "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.riverzai.com https://api.stripe.com https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.kie.ai https://api.elevenlabs.io https://api.openai.com https://graph.facebook.com https://*.fbcdn.net https://*.cdninstagram.com",
-    // www.facebook.com is allowed so the Meta Ads viewer can fall back to
+    // *.facebook.com is allowed so the Meta Ads viewer can fall back to
     // Facebook's official preview iframe when /{video_id}?fields=source
-    // returns null. The iframe loads from facebook.com/ads/api/preview_iframe.php
-    // and is signed with the user's own access token.
-    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.facebook.com",
+    // returns null. Depending on the ad and the user's role, the iframe
+    // URL comes back as either www.facebook.com/ads/api/preview_iframe.php
+    // or business.facebook.com/ads/api/preview_iframe.php — wildcard it so
+    // we cover both. The iframe is signed with the user's own access token,
+    // so this is authorised playback, not a public scrape.
+    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://*.facebook.com",
     "worker-src 'self' blob:",
     `frame-ancestors ${frameAncestors}`,
     "base-uri 'self'",
