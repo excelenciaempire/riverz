@@ -219,6 +219,12 @@ async function processVariationGeneration(gen: any, generationModel: string, pro
 
   try {
     // STEP 4 — Create Nano Banana task -----------------------------------
+    // INVARIANT: image_input is the USER'S product photos, NEVER the template
+    // thumbnail. The template's visual style was already encoded into the
+    // adapted JSON in step 2; sending the template image here would confuse
+    // Nano Banana into reproducing the template's product instead of the
+    // user's. Only `productImages` (or the legacy `productImage` fallback)
+    // should ever flow into image_input.
     if (gen.status === 'pending_generation' && inputData.generatedPrompt && !inputData.generationTaskId) {
       log('Step 4: Creating Nano Banana task...');
       await updateGeneration(id, { status: 'generating' });
