@@ -178,7 +178,18 @@ async function runSharedAnalysisForTemplate(
   if (!inputData.variationPrompts || inputData.variationPrompts.length < VARIATIONS_PER_TEMPLATE) {
     log('Step 3: Wrapping adapted JSON as Nano Banana prompt...');
     const adaptedJsonString = JSON.stringify(inputData.adaptedJson, null, 2);
-    const wrapped = `Generate a photorealistic advertising image that follows this exact specification:\n\n${adaptedJsonString}`;
+    // Self-contained instruction: Nano Banana sees this prompt + the user's
+    // product photos as image_input. The prompt has to spell out that role
+    // (the photos ARE the product, not random reference) because Nano Banana
+    // has no memory of the earlier Gemini steps.
+    const wrapped = `Generate a single photorealistic advertising image at 3:4 aspect ratio.
+
+The attached reference photos are the EXACT product that must appear in the rendered image — render this specific product (its real shape, packaging, label, and color), not a stylised approximation.
+
+Follow the visual style specification below VERBATIM (composition, colors, lighting, mood, props, text content and placement). Do not add, omit, or reword any text element from the spec.
+
+STYLE SPECIFICATION:
+${adaptedJsonString}`;
     inputData.variationPrompts = Array.from({ length: VARIATIONS_PER_TEMPLATE }, (_, i) => ({
       angle: `VARIATION_${i + 1}`,
       title: inputData.productName || 'Product ad',
