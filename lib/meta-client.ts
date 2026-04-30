@@ -428,6 +428,93 @@ export async function getVideoSourceUrl(token: string, videoId: string): Promise
   return meta.source;
 }
 
+/**
+ * Fallback path for video URLs when /{video_id}?fields=source returns null.
+ *
+ * Meta's `/{ad_id}/previews?ad_format=...` returns the official iframe HTML
+ * Ads Manager itself uses to render the preview. That iframe loads from
+ * facebook.com/ads/api/preview_iframe.php and inside its document the real
+ * playable mp4 URL is present as `hd_src` / `sd_src` / `<video src>`.
+ *
+ * Because the preview URL is signed with our token, the mp4 inside is
+ * authorised to play without scraping anything. The mp4 link itself is
+ * short-lived (a few hours) but that's fine — we re-fetch on demand from
+ * the transcribe route, and the ads listing refreshes every time the user
+ * reopens /campanas/meta/anuncios.
+ *
+ * The format list is ordered to maximise the chance of a video preview:
+ *   MOBILE_FEED_STANDARD usually wins for Reels / video creatives;
+ *   DESKTOP_FEED_STANDARD covers desktop in-feed video;
+ *   INSTAGRAM_STANDARD covers IG Reels variants.
+ */
+const PREVIEW_AD_FORMATS = [
+  'MOBILE_FEED_STANDARD',
+  'DESKTOP_FEED_STANDARD',
+  'INSTAGRAM_STANDARD',
+  'INSTAGRAM_REELS',
+  'INSTAGRAM_STORY',
+  'FACEBOOK_REELS_MOBILE',
+];
+
+export async function getAdPreviewVideoUrl(
+  token: string,
+  adId: string,
+): Promise<string | null> {
+  for (const format of PREVIEW_AD_FORMATS) {
+    try {
+      const params = new URLSearchParams({
+        ad_format: format,
+        access_token: token,
+      });
+      const json = await metaFetch(`${BASE}/${adId}/previews?${params.toString()}`);
+      const body = json?.data?.[0]?.body as string | undefined;
+      if (!body) continue;
+      const iframeMatch = body.match(/<iframe[^>]+src=(?:"([^"]+)"|'([^']+)')/i);
+      const iframeSrc = (iframeMatch?.[1] || iframeMatch?.[2] || '').replace(/&amp;/g, '&');
+      if (!iframeSrc) continue;
+      const html = await fetch(iframeSrc, {
+        headers: {
+          // Match a real desktop browser so Meta returns the full preview
+          // doc rather than a placeholder.
+          'user-agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        },
+      })
+        .then((r) => (r.ok ? r.text() : ''))
+        .catch(() => '');
+      if (!html) continue;
+      const url = extractMp4FromHtml(html);
+      if (url) return url;
+    } catch {
+      /* try next format */
+    }
+  }
+  return null;
+}
+
+function extractMp4FromHtml(html: string): string | null {
+  // The escaping inside the FB preview doc is `\/` for slashes and `&`
+  // for ampersands. Normalise once, then run a battery of patterns.
+  const normalised = html
+    .replace(/\\\//g, '/')
+    .replace(/\\u0026/g, '&')
+    .replace(/&amp;/g, '&');
+  const patterns: RegExp[] = [
+    /"hd_src":\s*"([^"]+\.mp4[^"]*)"/,
+    /"sd_src":\s*"([^"]+\.mp4[^"]*)"/,
+    /"playable_url_quality_hd":\s*"([^"]+\.mp4[^"]*)"/,
+    /"playable_url":\s*"([^"]+\.mp4[^"]*)"/,
+    /<video[^>]+src=(?:"([^"]+\.mp4[^"]*)"|'([^']+\.mp4[^']*)')/i,
+    /(https?:\/\/[^"'<>\s]+\.mp4[^"'<>\s]*)/,
+  ];
+  for (const pat of patterns) {
+    const m = normalised.match(pat);
+    const found = m?.[1] || m?.[2];
+    if (found) return found;
+  }
+  return null;
+}
+
 export async function getVideoMeta(token: string, videoId: string): Promise<VideoMeta> {
   // Meta has been quietly returning `source: null` for many ad videos in
   // recent Graph versions. We pull a wider field set and walk through the
@@ -517,7 +604,7 @@ export async function listAdsWithInsights(
     fetchVideoMetas(token, videoIds),
   ]);
 
-  const ads: MetaAdSummary[] = rows.map((row) => {
+  const adsBase: MetaAdSummary[] = rows.map((row) => {
     const creative = row.creative ?? {};
     const media_kind = classifyMedia(creative);
     const fields = extractCreativeFields(creative);
@@ -533,9 +620,6 @@ export async function listAdsWithInsights(
       adset_name: row.adset?.name,
       creative_id: creative.id,
       media_kind,
-      // Prefer the bigger video thumbnail when we have one — Meta's
-      // creative.thumbnail_url is typically a tiny preview that pixelates
-      // at card size. Falls back to the creative-level thumbnail.
       thumbnail_url: videoMeta?.thumbnail || fields.thumbnail_url,
       video_id: fields.video_id,
       video_source_url: videoMeta?.source ?? null,
@@ -550,7 +634,33 @@ export async function listAdsWithInsights(
     };
   });
 
-  return ads;
+  // Second pass: for video ads where the /{video_id}?fields=source path
+  // returned null (Meta's UGC / asset_feed_spec restriction), fall back to
+  // /{ad_id}/previews and pull the playable URL out of the iframe HTML.
+  // Done in parallel chunks to keep the wall-clock latency low.
+  const needsPreview = adsBase.filter(
+    (a) => a.media_kind === 'video' && !a.video_source_url,
+  );
+  if (needsPreview.length > 0) {
+    const chunkSize = 4;
+    for (let i = 0; i < needsPreview.length; i += chunkSize) {
+      const slice = needsPreview.slice(i, i + chunkSize);
+      const results = await Promise.allSettled(
+        slice.map(async (ad) => {
+          const url = await getAdPreviewVideoUrl(token, ad.id);
+          return [ad.id, url] as const;
+        }),
+      );
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value[1]) {
+          const idx = adsBase.findIndex((a) => a.id === r.value[0]);
+          if (idx >= 0) adsBase[idx].video_source_url = r.value[1];
+        }
+      }
+    }
+  }
+
+  return adsBase;
 }
 
 async function fetchVideoMetas(

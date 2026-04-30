@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
-import { getVideoMeta, MetaAuthError } from '@/lib/meta-client';
+import { getVideoMeta, getAdPreviewVideoUrl, MetaAuthError } from '@/lib/meta-client';
 import { resolveConnection } from '@/lib/meta-connection';
 import { transcribeAsset, TranscribeError } from '@/lib/transcribe-asset';
 
@@ -89,10 +89,29 @@ export async function POST(
         const meta = await getVideoMeta(resolved.token, videoId);
         if (meta.source) {
           assetUrl = meta.source;
-          // Cache it back so future runs hit it directly.
           await supabaseAdmin
             .from('meta_ad_intel')
             .update({ asset_url: meta.source, thumbnail_url: meta.thumbnail || intel.thumbnail_url })
+            .eq('clerk_user_id', userId)
+            .eq('meta_ad_id', adId);
+        }
+      } catch (err: any) {
+        if (err instanceof MetaAuthError) {
+          return NextResponse.json({ requiresReconnect: true, error: err.message }, { status: 401 });
+        }
+      }
+    }
+
+    // Fallback: scrape the official ad preview iframe for the .mp4. Works
+    // for ads we own even when /{video_id}?fields=source returns null.
+    if (!assetUrl) {
+      try {
+        const previewUrl = await getAdPreviewVideoUrl(resolved.token, adId);
+        if (previewUrl) {
+          assetUrl = previewUrl;
+          await supabaseAdmin
+            .from('meta_ad_intel')
+            .update({ asset_url: previewUrl })
             .eq('clerk_user_id', userId)
             .eq('meta_ad_id', adId);
         }
@@ -108,7 +127,7 @@ export async function POST(
     return NextResponse.json(
       {
         error: isVideo
-          ? 'Meta Graph API no expone el archivo .mp4 de este video (restricción reciente para videos UGC subidos a Ads). Sin esos bytes la IA no puede transcribirlo. Workaround: ábrelo en Facebook, descárgalo manual y súbelo como un nuevo asset.'
+          ? 'No pudimos resolver el .mp4 del video, ni vía Graph ni vía preview iframe. Refresca la lista de anuncios y vuelve a intentar.'
           : 'No hay URL de imagen para analizar.',
       },
       { status: 400 },
