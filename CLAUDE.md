@@ -1,5 +1,32 @@
 # Claude Code Project Rules
 
+## Auto-commit + push policy
+
+After every set of edits in this repo, commit the changes and push to
+`origin/main` without asking. The owner has authorized this — don't pause for
+confirmation. Workflow:
+
+1. Stage only the files you actually touched (no `git add -A` that could pull
+   in stray secrets).
+2. Use a HEREDOC commit message that explains *why* the change matters,
+   ending with the standard `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
+   trailer.
+3. `git push origin main` immediately after the commit succeeds.
+4. Report the new SHA range (`oldSha..newSha`) in the response so the owner
+   can find the commit.
+
+If `user.email` / `user.name` are unset, configure them locally (no
+`--global`) to `riverzoficial@gmail.com` / "Juan Diego Rios Mesa" — also
+without asking.
+
+Skip the auto-push only when:
+- The edit is a one-off scratch change the user said is exploratory
+- Tests or build are visibly broken — fix first, push second
+- The user explicitly says "don't push" or "don't commit"
+
+Force-pushes, branch deletions, and writes outside this repo still need
+explicit confirmation.
+
 ## Token Optimization
 
 When asking for help, follow these guidelines to minimize token usage:
