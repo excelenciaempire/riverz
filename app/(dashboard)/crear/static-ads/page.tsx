@@ -37,11 +37,16 @@ export default function StaticAdsPage() {
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
   const [isCloneBarVisible, setIsCloneBarVisible] = useState(false);
 
-  // "Agregar" tab — single user-uploaded template that goes through the same
-  // clone pipeline as a curated one. Stored locally until "Generar" is clicked.
-  const [agregarFile, setAgregarFile] = useState<File | null>(null);
-  const [agregarPreview, setAgregarPreview] = useState<string | null>(null);
-  const [agregarDims, setAgregarDims] = useState<{ width: number; height: number } | null>(null);
+  // "Agregar" tab — multi-image upload. Each image runs its own clone
+  // pipeline in parallel, kept isolated by a synthetic per-image templateId.
+  interface AgregarItem {
+    id: string;
+    file: File;
+    preview: string;
+    name: string;
+    dims: { width: number; height: number } | null;
+  }
+  const [agregarItems, setAgregarItems] = useState<AgregarItem[]>([]);
   const [agregarProjectName, setAgregarProjectName] = useState('');
   const [isAgregarSubmitting, setIsAgregarSubmitting] = useState(false);
   
@@ -346,72 +351,120 @@ export default function StaticAdsPage() {
   };
 
   // ---- Agregar tab handlers ----
-  const handleAgregarFile = async (file: File) => {
-    if (agregarPreview) URL.revokeObjectURL(agregarPreview);
-    const preview = URL.createObjectURL(file);
-    setAgregarFile(file);
-    setAgregarPreview(preview);
-    setAgregarDims(null);
-    // Read intrinsic dimensions for the inlineTemplate payload.
-    try {
-      const dims = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-        const img = new window.Image();
-        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-        img.onerror = () => reject(new Error('No se pudo leer la imagen'));
-        img.src = preview;
-      });
-      setAgregarDims(dims);
-    } catch {
-      /* dims optional — clone API still accepts the upload */
+  const detectFileDims = (file: File) =>
+    new Promise<{ width: number; height: number }>((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new window.Image();
+      img.onload = () => {
+        const dims = { width: img.naturalWidth, height: img.naturalHeight };
+        URL.revokeObjectURL(url);
+        resolve(dims);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('No se pudo leer la imagen'));
+      };
+      img.src = url;
+    });
+
+  const handleAgregarFiles = async (files: File[]) => {
+    if (files.length === 0) return;
+    const newItems: AgregarItem[] = [];
+    for (const file of files) {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const preview = URL.createObjectURL(file);
+      const defaultName = file.name.replace(/\.[^.]+$/, '');
+      let dims: { width: number; height: number } | null = null;
+      try {
+        dims = await detectFileDims(file);
+      } catch {
+        /* dims optional */
+      }
+      newItems.push({ id, file, preview, name: defaultName, dims });
     }
+    setAgregarItems((prev) => [...prev, ...newItems]);
+  };
+
+  const updateAgregarItem = (id: string, patch: Partial<AgregarItem>) => {
+    setAgregarItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  };
+
+  const removeAgregarItem = (id: string) => {
+    setAgregarItems((prev) => {
+      const target = prev.find((it) => it.id === id);
+      if (target) URL.revokeObjectURL(target.preview);
+      return prev.filter((it) => it.id !== id);
+    });
   };
 
   const resetAgregar = () => {
-    if (agregarPreview) URL.revokeObjectURL(agregarPreview);
-    setAgregarFile(null);
-    setAgregarPreview(null);
-    setAgregarDims(null);
+    agregarItems.forEach((it) => URL.revokeObjectURL(it.preview));
+    setAgregarItems([]);
     setAgregarProjectName('');
   };
 
+  // Uploads one file to Storage and returns the inlineTemplate payload that
+  // /api/static-ads/clone expects. Each file goes through Storage in
+  // parallel; the clone API then receives them as one batched call so each
+  // image becomes its own template + generation row inside ONE project.
+  const uploadAgregarItem = async (item: AgregarItem) => {
+    const signedRes = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: item.file.name,
+        contentType: item.file.type,
+        kind: 'user_template',
+      }),
+    });
+    if (!signedRes.ok) throw new Error(`No se pudo iniciar la subida de ${item.name}`);
+    const { signedUrl, publicUrl } = await signedRes.json();
+    const putRes = await fetch(signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': item.file.type },
+      body: item.file,
+    });
+    if (!putRes.ok) throw new Error(`Subida fallida para ${item.name} (${putRes.status})`);
+    return {
+      url: publicUrl,
+      name: item.name.trim() || item.file.name,
+      width: item.dims?.width || null,
+      height: item.dims?.height || null,
+    };
+  };
+
   const handleAgregarSubmit = async () => {
-    if (!agregarFile) return toast.error('Selecciona una imagen');
+    if (agregarItems.length === 0) return toast.error('Selecciona al menos una imagen');
     if (!selectedProduct) return toast.error('Selecciona un producto');
     if (!agregarProjectName.trim()) return toast.error('Ponle un nombre al proyecto');
+    if (agregarItems.some((it) => !it.name.trim())) return toast.error('Cada imagen necesita un nombre');
+
     setIsAgregarSubmitting(true);
     try {
-      // 1) Get a signed upload URL on the user-templates path of the products bucket.
-      const signedRes = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: agregarFile.name,
-          contentType: agregarFile.type,
-          kind: 'user_template',
-        }),
-      });
-      if (!signedRes.ok) throw new Error('No se pudo iniciar la subida');
-      const { signedUrl, publicUrl } = await signedRes.json();
+      // Upload all selected files. Bounded concurrency: 5 parallel PUTs to
+      // Storage so a 25-image batch doesn't open 25 sockets at once.
+      const MAX_PARALLEL = 5;
+      const uploaded: Array<{ url: string; name: string; width: number | null; height: number | null }> = [];
+      for (let i = 0; i < agregarItems.length; i += MAX_PARALLEL) {
+        const batch = agregarItems.slice(i, i + MAX_PARALLEL);
+        const results = await Promise.allSettled(batch.map(uploadAgregarItem));
+        for (let j = 0; j < results.length; j++) {
+          const r = results[j];
+          if (r.status === 'fulfilled') uploaded.push(r.value);
+          else throw new Error((r.reason as Error)?.message || 'Subida fallida');
+        }
+      }
 
-      // 2) PUT the raw file bytes (no compression — Supabase Storage stores as-is).
-      const putRes = await fetch(signedUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': agregarFile.type },
-        body: agregarFile,
-      });
-      if (!putRes.ok) throw new Error(`Error al subir la imagen (${putRes.status})`);
-
-      // 3) Run the same clone pipeline with an inlineTemplate payload.
+      // Single clone call with ALL inline templates. The clone API gives each
+      // a unique synthetic templateId; process-queue groups by templateId and
+      // runs each pipeline (analysis → adaptation → Nano Banana) in parallel
+      // with full isolation — kie.ai task IDs are tracked per generation row,
+      // so results never cross between images.
       const cloneRes = await fetch('/api/static-ads/clone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          inlineTemplate: {
-            url: publicUrl,
-            name: agregarProjectName.trim(),
-            width: agregarDims?.width || null,
-            height: agregarDims?.height || null,
-          },
+          inlineTemplates: uploaded,
           productId: selectedProduct,
           projectName: agregarProjectName.trim(),
         }),
@@ -422,7 +475,7 @@ export default function StaticAdsPage() {
         throw new Error(err.error || `HTTP ${cloneRes.status}`);
       }
       const data = await cloneRes.json();
-      toast.success('Iniciando generación con tu plantilla...');
+      toast.success(`Iniciando ${uploaded.length} generación(es) en paralelo…`);
       resetAgregar();
       router.push(`/crear/static-ads/historial/${data.project.id}`);
     } catch (err: any) {
@@ -707,61 +760,86 @@ export default function StaticAdsPage() {
             />
           </div>
 
-          {/* File picker / preview */}
+          {/* File picker — always visible so admin can keep adding more.
+              Each selected image becomes its own clone pipeline running in
+              parallel under the same project. */}
           <div>
-            <label className="mb-1 block text-sm text-gray-300">Imagen de plantilla</label>
-            {agregarPreview ? (
-              <div className="space-y-3">
-                <div className="relative flex items-center justify-center overflow-hidden rounded-xl border border-gray-700 bg-[#0a0a0a] min-h-[200px] max-h-[500px]">
-                  <img src={agregarPreview} alt="preview" className="max-h-[500px] w-auto h-auto object-contain" />
-                  {agregarDims && (
-                    <div className="absolute bottom-2 left-2 rounded-md bg-black/70 backdrop-blur-sm px-2 py-1 text-[11px] font-mono text-white">
-                      {agregarDims.width}×{agregarDims.height}px
-                      {agregarFile && (
-                        <span className="ml-2 text-gray-400">
-                          {(agregarFile.size / 1024 / 1024).toFixed(2)}MB
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <Button variant="outline" onClick={resetAgregar} disabled={isAgregarSubmitting}>
-                  Cambiar imagen
-                </Button>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center cursor-pointer rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] py-12 hover:border-[#07A498] transition-colors">
-                <ImageIcon className="h-10 w-10 text-gray-500 mb-2" />
-                <p className="text-sm text-gray-300">Haz clic o arrastra una imagen</p>
-                <p className="mt-1 text-xs text-gray-500">PNG, JPG, WebP · hasta 50MB</p>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleAgregarFile(f);
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-            )}
+            <label className="mb-1 block text-sm text-gray-300">
+              Imágenes de plantilla {agregarItems.length > 0 && `(${agregarItems.length})`}
+            </label>
+            <label className="flex flex-col items-center justify-center cursor-pointer rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] py-8 hover:border-[#07A498] transition-colors">
+              <ImageIcon className="h-8 w-8 text-gray-500 mb-2" />
+              <p className="text-sm text-gray-300">Haz clic o arrastra varias imágenes</p>
+              <p className="mt-1 text-xs text-gray-500">PNG, JPG, WebP · hasta 50MB cada una · ilimitado</p>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length > 0) handleAgregarFiles(files);
+                  e.target.value = '';
+                }}
+              />
+            </label>
           </div>
+
+          {/* Per-item rows — thumbnail, editable name, dims + size, remove */}
+          {agregarItems.length > 0 && (
+            <div className="space-y-2">
+              {agregarItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 rounded-lg border border-gray-700 bg-[#0a0a0a] p-3"
+                >
+                  <img
+                    src={item.preview}
+                    alt=""
+                    className="h-16 w-16 shrink-0 rounded object-cover border border-gray-800"
+                  />
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) => updateAgregarItem(item.id, { name: e.target.value })}
+                      placeholder="Nombre de esta plantilla"
+                      disabled={isAgregarSubmitting}
+                      className="w-full rounded-md border border-gray-700 bg-[#141414] px-2 py-1 text-sm text-white focus:border-[#07A498] focus:outline-none"
+                    />
+                    <p className="text-[11px] font-mono text-gray-500">
+                      {item.dims ? `${item.dims.width}×${item.dims.height}px` : 'sin dims'}
+                      {' · '}
+                      {(item.file.size / 1024 / 1024).toFixed(2)}MB
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => removeAgregarItem(item.id)}
+                    disabled={isAgregarSubmitting}
+                    className="shrink-0 text-gray-500 hover:text-red-400 disabled:opacity-50"
+                    title="Quitar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           <Button
             onClick={handleAgregarSubmit}
-            disabled={!agregarFile || !selectedProduct || !agregarProjectName.trim() || isAgregarSubmitting}
+            disabled={agregarItems.length === 0 || !selectedProduct || !agregarProjectName.trim() || isAgregarSubmitting}
             className="w-full bg-[#07A498] hover:bg-[#068f84] text-white py-5"
           >
             {isAgregarSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Procesando…
+                Subiendo y procesando…
               </>
             ) : (
               <>
                 <Zap className="mr-2 h-5 w-5" />
-                Generar imagen
+                Generar {agregarItems.length > 0 ? `${agregarItems.length} imagen${agregarItems.length === 1 ? '' : 'es'}` : 'imágenes'}
               </>
             )}
           </Button>

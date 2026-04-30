@@ -26,22 +26,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Demasiadas solicitudes. Intenta en un momento.' }, { status: 429 });
     }
 
-    const { templateIds, inlineTemplate, productId, projectName } = await req.json();
+    const { templateIds, inlineTemplate, inlineTemplates, productId, projectName } = await req.json();
 
-    // Caller must provide EITHER existing templateIds[] (curated catalogue)
-    // OR a single inlineTemplate (user-uploaded one-shot via the "Agregar"
-    // tab). The two paths are mutually exclusive — not both at once.
-    const useInline = !!inlineTemplate && !templateIds?.length;
+    // Caller must provide ONE of:
+    //   - templateIds[]: existing curated templates from the catalogue
+    //   - inlineTemplate: a single user-uploaded one-shot
+    //   - inlineTemplates[]: multiple user-uploaded ones (Agregar bulk path)
+    // All three branches converge to the same `templates` array below — the
+    // rest of the clone flow doesn't care where the rows came from.
+    const useInlineMulti = Array.isArray(inlineTemplates) && inlineTemplates.length > 0;
+    const useInline = !useInlineMulti && !!inlineTemplate && !templateIds?.length;
 
-    if (!useInline) {
+    if (!useInlineMulti && !useInline) {
       if (!templateIds || !Array.isArray(templateIds) || templateIds.length === 0) {
-        return new NextResponse('Missing templateIds or inlineTemplate', { status: 400 });
+        return new NextResponse('Missing templateIds, inlineTemplate, or inlineTemplates', { status: 400 });
       }
       if (templateIds.length > 100) {
         return NextResponse.json({
           error: 'Maximum 100 templates per batch',
           maxAllowed: 100,
         }, { status: 400 });
+      }
+    } else if (useInlineMulti) {
+      if (inlineTemplates.length > 25) {
+        return NextResponse.json({
+          error: 'Maximum 25 plantillas por subida',
+          maxAllowed: 25,
+        }, { status: 400 });
+      }
+      for (const t of inlineTemplates) {
+        if (!t?.url || typeof t.url !== 'string' || !t.url.startsWith('http')) {
+          return NextResponse.json({ error: 'Cada inlineTemplate debe tener una url HTTPS válida' }, { status: 400 });
+        }
       }
     } else {
       if (!inlineTemplate.url || typeof inlineTemplate.url !== 'string' || !inlineTemplate.url.startsWith('http')) {
@@ -68,10 +84,22 @@ export async function POST(req: Request) {
       return new NextResponse('Product not found', { status: 404 });
     }
 
-    // 2. Resolve template list. Inline path skips the templates table entirely
-    // — the file lives in Supabase Storage, not as a curated template row.
+    // 2. Resolve template list. Inline paths skip the templates table entirely
+    // — the files live in Supabase Storage, not as curated template rows.
+    // Each inline template gets a unique synthetic templateId so the
+    // process-queue grouping (byTemplate map) keeps each clone pipeline
+    // isolated — analyses, prompts, Nano Banana tasks and result URLs never
+    // cross between user-uploaded images.
     let templates: any[];
-    if (useInline) {
+    if (useInlineMulti) {
+      templates = inlineTemplates.map((t: any, i: number) => ({
+        id: `inline-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+        name: t.name || `Plantilla ${i + 1}`,
+        thumbnail_url: t.url,
+        width: typeof t.width === 'number' ? t.width : null,
+        height: typeof t.height === 'number' ? t.height : null,
+      }));
+    } else if (useInline) {
       templates = [{
         id: `inline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         name: inlineTemplate.name || 'Plantilla personalizada',
