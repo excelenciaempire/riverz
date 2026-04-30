@@ -136,7 +136,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
               ) : (
                 <FileText className="mr-1.5 h-3.5 w-3.5" />
               )}
-              {intel?.transcript ? 'Re-transcribir' : 'Transcribir con IA'}
+              {intel?.transcript ? 'Re-analizar' : 'Analizar con IA'}
             </Button>
             {ad.link_url && (
               <a
@@ -172,10 +172,10 @@ export function AdDetailPanel({ ad, onClose }: Props) {
           </Section>
 
           {/* Transcript */}
-          <Section title="Transcripción / Análisis IA">
+          <Section title="Análisis IA (kie.ai · Gemini 3 Pro)">
             {intel?.transcript_status === 'failed' && (
               <p className="rounded border border-red-900 bg-red-900/20 p-2 text-xs text-red-300">
-                {intel.transcript_error || 'Falló la transcripción'}
+                {intel.transcript_error || 'Falló el análisis'}
               </p>
             )}
             {intel?.transcript ? (
@@ -195,7 +195,8 @@ export function AdDetailPanel({ ad, onClose }: Props) {
               </div>
             ) : (
               <p className="text-xs text-gray-500">
-                Usa "Transcribir con IA" para extraer el texto hablado y on-screen. Tu base de datos lo recordará.
+                Usa "Analizar con IA" para extraer hook visual, OCR del texto en pantalla y posible ángulo. Tu base de datos lo recordará.
+                {ad.media_kind === 'video' && ' En videos analiza el cover frame (kie.ai/Gemini no procesa audio).'}
               </p>
             )}
           </Section>

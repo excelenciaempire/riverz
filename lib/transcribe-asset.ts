@@ -1,187 +1,106 @@
 /**
- * Lightweight transcription helper for Meta Ads.
+ * Ad transcription / analysis powered by kie.ai (KIE_API_KEY).
  *
- * Pipeline (no extra npm deps):
- *   1. fetch the asset URL → in-memory buffer (cap 95 MB so we stay inside
- *      Vercel's 100 MB body limit and Gemini Files API's per-file limit).
- *   2. upload to Google AI Files API (resumable upload).
- *   3. call models/gemini-2.0-flash:generateContent with a transcription
- *      prompt + the file_uri.
- *   4. return plain-text transcript.
+ * Why kie.ai and not direct Gemini Files API:
+ *  the rest of the project already routes every Gemini call through the kie.ai
+ *  gateway (see lib/kie-client.ts), so we share quota, billing and observability
+ *  by reusing analyzeWithGemini3Pro instead of holding a separate Google AI key.
  *
- * For images we ask Gemini to describe the visual + extract on-image text
- * (subtitles, packaging copy, badges) so the AI memory is uniform regardless
- * of media type.
- *
- * Requires GEMINI_API_KEY (Google AI Studio key) on the server.
+ * Trade-off:
+ *  kie.ai's Gemini wrapper exposes the OpenAI chat-completions shape, which
+ *  accepts text + image_url content blocks but NOT raw audio/video. So for
+ *  videos we analyze the COVER FRAME (Meta's thumbnail_url) — that gives us
+ *  on-screen copy + visual hook + style, but NOT the spoken audio. For audio
+ *  transcription we'd need a Whisper-style endpoint, which kie.ai does not
+ *  currently expose.
  */
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_TRANSCRIBE_MODEL || 'gemini-2.0-flash';
-const FILES_BASE = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
-const GEN_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-
-const MAX_BYTES = 95 * 1024 * 1024;
+import { analyzeWithGemini3Pro, imageUrlToCleanBase64 } from '@/lib/kie-client';
 
 export class TranscribeError extends Error {
-  constructor(message: string, public code: 'config' | 'fetch' | 'upload' | 'generate' = 'generate') {
+  constructor(message: string, public code: 'config' | 'fetch' | 'generate' = 'generate') {
     super(message);
     this.name = 'TranscribeError';
   }
 }
 
-interface FetchedAsset {
-  buffer: Buffer;
-  mimeType: string;
-}
+const VIDEO_PROMPT = `Eres un experto en marketing de respuesta directa y Meta Ads.
+Esta es la portada (cover frame) de un anuncio de video. kie.ai/Gemini no procesa el audio del video — analiza solo lo visible.
+Devuelve EXACTAMENTE este formato, en español:
 
-async function fetchAsset(url: string): Promise<FetchedAsset> {
-  const res = await fetch(url);
-  if (!res.ok) throw new TranscribeError(`No se pudo descargar el asset (HTTP ${res.status})`, 'fetch');
-  const contentLength = Number(res.headers.get('content-length') ?? 0);
-  if (contentLength && contentLength > MAX_BYTES) {
-    throw new TranscribeError(`El asset pesa ${(contentLength / 1024 / 1024).toFixed(1)} MB, máximo 95 MB.`, 'fetch');
-  }
-  const ab = await res.arrayBuffer();
-  if (ab.byteLength > MAX_BYTES) {
-    throw new TranscribeError(`El asset pesa ${(ab.byteLength / 1024 / 1024).toFixed(1)} MB, máximo 95 MB.`, 'fetch');
-  }
-  let mime = res.headers.get('content-type') || 'application/octet-stream';
-  if (mime.includes(';')) mime = mime.split(';')[0].trim();
-  // Meta usually returns video/mp4 or image/jpeg. Default to mp4 for unknown so
-  // Gemini still accepts the upload.
-  if (mime === 'application/octet-stream') {
-    if (url.includes('.mp4')) mime = 'video/mp4';
-    else if (url.includes('.mov')) mime = 'video/quicktime';
-    else if (url.includes('.png')) mime = 'image/png';
-    else if (url.includes('.jpg') || url.includes('.jpeg')) mime = 'image/jpeg';
-    else if (url.includes('.webp')) mime = 'image/webp';
-  }
-  return { buffer: Buffer.from(ab), mimeType: mime };
-}
+HOOK VISUAL:
+<qué llama la atención: producto, persona, color dominante, expresión>
 
-interface UploadedFile {
-  uri: string;
-  mimeType: string;
-  name: string;
-}
+TEXTO EN PANTALLA:
+"<copia textual de cualquier palabra visible: subtítulos, packaging, ofertas, watermarks. Si no hay texto, escribe "ninguno">"
 
-async function uploadToGemini(asset: FetchedAsset, displayName: string): Promise<UploadedFile> {
-  if (!GEMINI_KEY) throw new TranscribeError('GEMINI_API_KEY no está configurada', 'config');
+ESTILO:
+<UGC / studio / lifestyle / animación / talking head / pattern interrupt / etc>
 
-  // 1. start resumable upload
-  const startRes = await fetch(`${FILES_BASE}?key=${GEMINI_KEY}`, {
-    method: 'POST',
-    headers: {
-      'X-Goog-Upload-Protocol': 'resumable',
-      'X-Goog-Upload-Command': 'start',
-      'X-Goog-Upload-Header-Content-Length': String(asset.buffer.byteLength),
-      'X-Goog-Upload-Header-Content-Type': asset.mimeType,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ file: { display_name: displayName } }),
-  });
-  if (!startRes.ok) {
-    const text = await startRes.text();
-    throw new TranscribeError(`Gemini upload start falló: ${startRes.status} ${text}`, 'upload');
-  }
-  const uploadUrl = startRes.headers.get('x-goog-upload-url');
-  if (!uploadUrl) throw new TranscribeError('Gemini no devolvió upload URL', 'upload');
+POSIBLE ÁNGULO:
+<la promesa o problema que parece atacar el anuncio, en 1-2 líneas>
 
-  // 2. push bytes + finalize
-  const finishRes = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Length': String(asset.buffer.byteLength),
-      'X-Goog-Upload-Offset': '0',
-      'X-Goog-Upload-Command': 'upload, finalize',
-    },
-    body: asset.buffer,
-  });
-  if (!finishRes.ok) {
-    const text = await finishRes.text();
-    throw new TranscribeError(`Gemini upload falló: ${finishRes.status} ${text}`, 'upload');
-  }
-  const json = await finishRes.json();
-  const file = json?.file;
-  if (!file?.uri) throw new TranscribeError('Gemini no devolvió file.uri', 'upload');
-  return { uri: file.uri, mimeType: file.mimeType ?? asset.mimeType, name: file.name };
-}
+NOTA:
+La transcripción del audio no está disponible con kie.ai/Gemini. Para audio hablado se necesita Whisper o similar.`;
 
-async function waitForFileActive(name: string): Promise<void> {
-  // Most assets become ACTIVE in <2 s; cap at ~15 s.
-  const deadline = Date.now() + 15_000;
-  while (Date.now() < deadline) {
-    const res = await fetch(`${GEN_BASE}/${name}?key=${GEMINI_KEY}`);
-    if (res.ok) {
-      const j = await res.json();
-      if (j?.state === 'ACTIVE') return;
-      if (j?.state === 'FAILED') throw new TranscribeError('Gemini marcó el archivo como FAILED', 'upload');
-    }
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-}
+const IMAGE_PROMPT = `Eres un experto en marketing de respuesta directa y Meta Ads.
+Analiza este anuncio estático en español. Devuelve EXACTAMENTE este formato:
 
-const VIDEO_PROMPT = `Eres un experto en marketing de respuesta directa y meta ads.
-Transcribe el audio de este anuncio palabra por palabra en su idioma original.
-Si hay texto visible en pantalla (overlays, captions, packaging) inclúyelo entre corchetes así:
-[on-screen: "20% OFF"].
-Devuelve únicamente la transcripción, sin introducción ni cierre.`;
+VISUAL:
+<descripción de la composición: producto, persona, fondo, color dominante>
 
-const IMAGE_PROMPT = `Eres un experto en marketing de respuesta directa y meta ads.
-Describe lo que ves en este anuncio estático con detalle (composición, producto, claim principal).
-Después transcribe TODO el texto visible literal entre comillas.
-Formato:
-- Visual: ...
-- Texto en imagen: "..."`;
+TEXTO EN IMAGEN:
+"<copia textual de TODO el texto visible, palabra por palabra. Si no hay texto, escribe "ninguno">"
 
-async function generateTranscript(file: UploadedFile): Promise<string> {
-  const isImage = file.mimeType.startsWith('image/');
-  const promptText = isImage ? IMAGE_PROMPT : VIDEO_PROMPT;
+CTA O PROMESA PRINCIPAL:
+<la oferta o claim principal en una línea>
 
-  const body = {
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          { fileData: { fileUri: file.uri, mimeType: file.mimeType } },
-          { text: promptText },
-        ],
-      },
-    ],
-    generationConfig: {
-      temperature: 0.2,
-      maxOutputTokens: 4096,
-    },
-  };
+POSIBLE ÁNGULO:
+<la promesa o problema que parece atacar el anuncio, en 1-2 líneas>`;
 
-  const res = await fetch(
-    `${GEN_BASE}/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    },
-  );
-  if (!res.ok) {
-    const text = await res.text();
-    throw new TranscribeError(`Gemini generateContent falló: ${res.status} ${text}`, 'generate');
-  }
-  const json = await res.json();
-  const parts = json?.candidates?.[0]?.content?.parts ?? [];
-  const text = parts.map((p: any) => p?.text ?? '').filter(Boolean).join('\n').trim();
-  if (!text) throw new TranscribeError('Gemini devolvió un transcript vacío', 'generate');
-  return text;
-}
+const KIE_KEY = process.env.KIE_API_KEY;
 
-export async function transcribeAsset(url: string, displayName: string): Promise<string> {
-  if (!GEMINI_KEY) throw new TranscribeError('GEMINI_API_KEY no está configurada', 'config');
-  const asset = await fetchAsset(url);
-  const file = await uploadToGemini(asset, displayName);
+/**
+ * Sends an image (or a video's cover frame) to Gemini 3 Pro on kie.ai and
+ * returns a structured ad analysis as plain text.
+ */
+export async function transcribeAsset(
+  url: string,
+  displayName: string,
+  opts: { isVideo?: boolean } = {},
+): Promise<string> {
+  if (!KIE_KEY) throw new TranscribeError('KIE_API_KEY no está configurada', 'config');
+
+  // Pre-convert the asset to base64 to avoid relying on kie.ai's gateway to
+  // download the URL itself — same pattern used by lib/kie-client's Claude wrapper.
+  let dataUri: string;
   try {
-    await waitForFileActive(file.name);
-  } catch {
-    // If polling fails we still attempt generation — Gemini will return a clear error if not ready.
+    const { base64, mediaType } = await imageUrlToCleanBase64(url);
+    dataUri = `data:${mediaType};base64,${base64}`;
+  } catch (err: any) {
+    throw new TranscribeError(`No se pudo descargar el asset (${displayName}): ${err?.message || err}`, 'fetch');
   }
-  return generateTranscript(file);
+
+  const prompt = opts.isVideo ? VIDEO_PROMPT : IMAGE_PROMPT;
+
+  try {
+    const result = await analyzeWithGemini3Pro(
+      [
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: dataUri } },
+            { type: 'text', text: prompt },
+          ],
+        },
+      ],
+      { temperature: 0.2, maxTokens: 2000 },
+    );
+    const text = String(result || '').trim();
+    if (!text) throw new TranscribeError('Gemini devolvió respuesta vacía', 'generate');
+    return text;
+  } catch (err: any) {
+    if (err instanceof TranscribeError) throw err;
+    throw new TranscribeError(err?.message || 'Análisis con kie.ai/Gemini falló', 'generate');
+  }
 }
