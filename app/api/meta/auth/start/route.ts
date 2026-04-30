@@ -6,7 +6,26 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const API_VERSION = process.env.META_GRAPH_API_VERSION || 'v23.0';
-const SCOPES = 'ads_management,business_management,public_profile';
+// Full read+write scopes the dashboard needs:
+//   ads_management        — create campaigns / upload assets
+//   ads_read              — list ads + insights (fixes "acceso API bloqueado")
+//   business_management   — list business-owned ad accounts
+//   pages_show_list       — let user pick a Facebook Page
+//   pages_read_engagement — read page metadata for the selector
+//   pages_manage_ads      — run ads on behalf of the page
+//   instagram_basic       — read IG business account linked to the page
+//   read_insights         — pull spend/CPM/CTR per ad
+const SCOPES = [
+  'ads_management',
+  'ads_read',
+  'business_management',
+  'pages_show_list',
+  'pages_read_engagement',
+  'pages_manage_ads',
+  'instagram_basic',
+  'read_insights',
+  'public_profile',
+].join(',');
 
 export async function GET() {
   const { userId } = await auth();

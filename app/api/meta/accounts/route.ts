@@ -47,6 +47,10 @@ export async function GET() {
     const response: AccountsResponse = {
       accounts,
       default_ad_account_id: connection!.default_ad_account_id,
+      default_page_id: connection!.default_page_id ?? null,
+      default_page_name: connection!.default_page_name ?? null,
+      default_instagram_id: connection!.default_instagram_id ?? null,
+      default_instagram_username: connection!.default_instagram_username ?? null,
       fb_user_name: connection!.fb_user_name,
     };
     return NextResponse.json(response);

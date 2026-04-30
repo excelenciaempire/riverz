@@ -1,0 +1,247 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { X, Trophy, ThumbsDown, FileText, Loader2, Copy, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { MetaAdSummary, MetaAdIntel } from '@/types/meta';
+import { cn } from '@/lib/utils';
+
+interface Props {
+  ad: MetaAdSummary;
+  onClose: () => void;
+}
+
+export function AdDetailPanel({ ad, onClose }: Props) {
+  const queryClient = useQueryClient();
+  const [intel, setIntel] = useState<MetaAdIntel | null>(ad.intel ?? null);
+  const [notes, setNotes] = useState<string>(ad.intel?.notes ?? '');
+
+  useEffect(() => {
+    setIntel(ad.intel ?? null);
+    setNotes(ad.intel?.notes ?? '');
+  }, [ad.id, ad.intel]);
+
+  const transcribeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/meta/ads/${ad.id}/transcribe`, { method: 'POST' });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || 'No se pudo transcribir');
+      return body.intel as MetaAdIntel;
+    },
+    onSuccess: (newIntel) => {
+      setIntel(newIntel);
+      toast.success('Transcripción lista');
+      queryClient.invalidateQueries({ queryKey: ['meta-ads'] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const intelMutation = useMutation({
+    mutationFn: async (payload: { is_winner?: boolean | null; notes?: string }) => {
+      const res = await fetch(`/api/meta/ads/${ad.id}/intel`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || 'No se pudo guardar');
+      return body.intel as MetaAdIntel;
+    },
+    onSuccess: (newIntel) => {
+      setIntel(newIntel);
+      queryClient.invalidateQueries({ queryKey: ['meta-ads'] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const setWinner = (val: boolean | null) => intelMutation.mutate({ is_winner: val });
+  const saveNotes = () => intelMutation.mutate({ notes });
+
+  const playableUrl = intel?.asset_url || ad.image_url || ad.thumbnail_url || null;
+  const isVideo = ad.media_kind === 'video';
+  const insights = ad.insights || intel?.insights;
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/70" onClick={onClose} />
+      <aside className="relative flex w-full max-w-2xl flex-col overflow-y-auto border-l border-gray-800 bg-[#0d0d0d]">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-800 bg-[#0d0d0d] px-6 py-4">
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold text-white">{ad.name || ad.id}</p>
+            <p className="truncate text-xs text-gray-500">{ad.campaign_name || ad.campaign_id} · {ad.adset_name || ad.adset_id}</p>
+          </div>
+          <button onClick={onClose} className="rounded-md p-1.5 text-gray-400 hover:bg-gray-800 hover:text-white">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Media player */}
+        <div className="border-b border-gray-800 bg-black p-4">
+          <div className="mx-auto aspect-square max-w-md overflow-hidden rounded-lg bg-black">
+            {isVideo && playableUrl ? (
+              <video
+                src={playableUrl}
+                controls
+                playsInline
+                poster={ad.thumbnail_url || undefined}
+                className="h-full w-full object-contain"
+              />
+            ) : playableUrl ? (
+              <img src={playableUrl} alt={ad.name} className="h-full w-full object-contain" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-gray-600">Sin preview</div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-5 px-6 py-5">
+          {/* Quick winner toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setWinner(intel?.is_winner === true ? null : true)}
+              disabled={intelMutation.isPending}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                intel?.is_winner === true
+                  ? 'border-amber-400 bg-amber-400 text-black'
+                  : 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20',
+              )}
+            >
+              <Trophy className="h-3.5 w-3.5" />
+              {intel?.is_winner === true ? 'Es WINNER ✓' : 'Marcar como winner'}
+            </button>
+            <button
+              onClick={() => setWinner(intel?.is_winner === false ? null : false)}
+              disabled={intelMutation.isPending}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                intel?.is_winner === false
+                  ? 'border-red-400 bg-red-500 text-white'
+                  : 'border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20',
+              )}
+            >
+              <ThumbsDown className="h-3.5 w-3.5" />
+              {intel?.is_winner === false ? 'No funciona ✓' : 'Marcar no funciona'}
+            </button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => transcribeMutation.mutate()}
+              disabled={transcribeMutation.isPending || intel?.transcript_status === 'running'}
+            >
+              {transcribeMutation.isPending || intel?.transcript_status === 'running' ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FileText className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              {intel?.transcript ? 'Re-transcribir' : 'Transcribir con IA'}
+            </Button>
+            {ad.link_url && (
+              <a
+                href={ad.link_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-black/40 px-3 py-1.5 text-xs text-gray-300 hover:text-white"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Abrir destino
+              </a>
+            )}
+          </div>
+
+          {/* Insights */}
+          {insights && (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              <Stat label="Spend" value={insights.spend ? `$${Number(insights.spend).toFixed(2)}` : '—'} />
+              <Stat label="Impr." value={insights.impressions ?? '—'} />
+              <Stat label="Clicks" value={insights.clicks ?? '—'} />
+              <Stat label="CTR" value={insights.ctr ? `${Number(insights.ctr).toFixed(2)}%` : '—'} />
+              <Stat label="CPC" value={insights.cpc ? `$${Number(insights.cpc).toFixed(2)}` : '—'} />
+              <Stat label="ROAS" value={insights.roas ? `${insights.roas.toFixed(2)}x` : '—'} />
+            </div>
+          )}
+
+          {/* Copy */}
+          <Section title="Copy del anuncio">
+            <CopyRow label="Texto principal" value={ad.primary_text} />
+            <CopyRow label="Headline" value={ad.headline} />
+            <CopyRow label="CTA" value={ad.cta} />
+            <CopyRow label="Link" value={ad.link_url} />
+          </Section>
+
+          {/* Transcript */}
+          <Section title="Transcripción / Análisis IA">
+            {intel?.transcript_status === 'failed' && (
+              <p className="rounded border border-red-900 bg-red-900/20 p-2 text-xs text-red-300">
+                {intel.transcript_error || 'Falló la transcripción'}
+              </p>
+            )}
+            {intel?.transcript ? (
+              <div className="relative rounded-lg border border-gray-800 bg-black/40 p-3">
+                <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-gray-200">
+                  {intel.transcript}
+                </pre>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(intel.transcript || '');
+                    toast.success('Copiado');
+                  }}
+                  className="absolute right-2 top-2 rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">
+                Usa "Transcribir con IA" para extraer el texto hablado y on-screen. Tu base de datos lo recordará.
+              </p>
+            )}
+          </Section>
+
+          {/* Notes */}
+          <Section title="Notas privadas (memoria de la IA)">
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Por qué funciona / no funciona, ángulo, hook, hipótesis..."
+              className="h-24 w-full resize-y rounded-lg border border-gray-800 bg-black/40 p-3 text-sm text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none"
+            />
+            <Button size="sm" onClick={saveNotes} disabled={intelMutation.isPending}>
+              {intelMutation.isPending ? 'Guardando...' : 'Guardar notas'}
+            </Button>
+          </Section>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <h4 className="text-xs uppercase tracking-wide text-gray-500">{title}</h4>
+      {children}
+    </div>
+  );
+}
+
+function CopyRow({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!value) return null;
+  return (
+    <div className="rounded border border-gray-800 bg-black/30 p-2.5">
+      <p className="text-[10px] uppercase text-gray-500">{label}</p>
+      <p className="mt-0.5 break-words text-sm text-white">{value}</p>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border border-gray-800 bg-black/30 p-2">
+      <div className="text-[9px] uppercase text-gray-500">{label}</div>
+      <div className="text-sm font-semibold text-white">{value}</div>
+    </div>
+  );
+}

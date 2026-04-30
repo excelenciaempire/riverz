@@ -8,6 +8,8 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Loading } from '@/components/ui/loading';
 import { ConnectionCard } from '@/components/meta-ads/connection-card';
+import { AccountPicker } from '@/components/meta-ads/account-picker';
+import { DashboardActions } from '@/components/meta-ads/dashboard-actions';
 import { UploadStatusRow } from '@/components/meta-ads/upload-status-row';
 import type { AccountsResponse, MetaUpload } from '@/types/meta';
 
@@ -58,18 +60,21 @@ function MetaCampaignsContent() {
   const uploadsQuery = useQuery<UploadsListResponse>({
     queryKey: ['meta-uploads-list'],
     queryFn: async () => {
-      const res = await fetch('/api/meta/uploads/list?page=1&pageSize=30');
+      const res = await fetch('/api/meta/uploads/list?page=1&pageSize=20');
       if (!res.ok) throw new Error('Error al cargar historial');
       return res.json();
     },
+    enabled: !!accountsQuery.data,
   });
 
+  const connected = !!accountsQuery.data;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       <div>
         <h1 className="text-3xl font-bold text-white">Meta Ads</h1>
         <p className="mt-1 text-sm text-gray-400">
-          Conecta tu cuenta de Meta y sube tus generaciones a la biblioteca de medios para usarlas al crear anuncios.
+          Conecta Meta, elige cuenta + página + Instagram, y empieza a crear y analizar anuncios desde Riverz.
         </p>
       </div>
 
@@ -86,38 +91,48 @@ function MetaCampaignsContent() {
         }
       />
 
-      <section>
-        <h2 className="mb-3 text-xl font-semibold text-white">Historial de subidas</h2>
-        {uploadsQuery.isLoading ? (
-          <Loading text="Cargando subidas..." />
-        ) : uploadsQuery.error ? (
-          <p className="rounded-lg border border-red-900 bg-red-900/20 p-4 text-sm text-red-400">
-            {(uploadsQuery.error as Error).message}
-          </p>
-        ) : !uploadsQuery.data || uploadsQuery.data.items.length === 0 ? (
-          <div className="rounded-lg border border-gray-800 bg-[#141414] p-8 text-center">
-            <p className="text-gray-400">Aún no has subido nada a Meta Ads.</p>
-            <p className="mt-1 text-xs text-gray-500">
-              Ve a Historial, selecciona varios assets y pulsa "Subir a Meta Ads".
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {uploadsQuery.data.items.map((u) => (
-              <div key={u.id} className="space-y-1">
-                <UploadStatusRow
-                  upload={u}
-                  thumbnailUrl={u.generations?.result_url}
-                  label={`${u.generations?.type?.replace(/_/g, ' ') || u.asset_type} · ${u.ad_account_id}`}
-                />
-                <p className="pl-1 text-[10px] text-gray-500">
-                  {format(new Date(u.created_at), 'PPp', { locale: es })}
+      {connected && accountsQuery.data && (
+        <>
+          <AccountPicker accounts={accountsQuery.data} />
+          <DashboardActions
+            accounts={accountsQuery.data}
+            totalUploads={uploadsQuery.data?.total ?? 0}
+          />
+
+          <section>
+            <h2 className="mb-3 text-xl font-semibold text-white">Subidas recientes</h2>
+            {uploadsQuery.isLoading ? (
+              <Loading text="Cargando subidas..." />
+            ) : uploadsQuery.error ? (
+              <p className="rounded-lg border border-red-900 bg-red-900/20 p-4 text-sm text-red-400">
+                {(uploadsQuery.error as Error).message}
+              </p>
+            ) : !uploadsQuery.data || uploadsQuery.data.items.length === 0 ? (
+              <div className="rounded-lg border border-gray-800 bg-[#141414] p-8 text-center">
+                <p className="text-gray-400">Aún no has subido nada a Meta Ads.</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Ve a Historial, selecciona varios assets y pulsa "Subir a Meta Ads", o usa "Crear nueva campaña" arriba.
                 </p>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            ) : (
+              <div className="space-y-2">
+                {uploadsQuery.data.items.map((u) => (
+                  <div key={u.id} className="space-y-1">
+                    <UploadStatusRow
+                      upload={u}
+                      thumbnailUrl={u.generations?.result_url}
+                      label={`${u.generations?.type?.replace(/_/g, ' ') || u.asset_type} · ${u.ad_account_id}`}
+                    />
+                    <p className="pl-1 text-[10px] text-gray-500">
+                      {format(new Date(u.created_at), 'PPp', { locale: es })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

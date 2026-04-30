@@ -1,0 +1,105 @@
+'use client';
+
+import { Play, Image as ImageIcon, Layers, Trophy, FileText } from 'lucide-react';
+import type { MetaAdSummary } from '@/types/meta';
+import { cn } from '@/lib/utils';
+
+interface Props {
+  ad: MetaAdSummary;
+  onClick: () => void;
+  selected?: boolean;
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  ACTIVE: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  PAUSED: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
+  DELETED: 'bg-red-500/20 text-red-300 border-red-500/30',
+  ARCHIVED: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+};
+
+function fmt(n?: string | number): string {
+  if (n == null || n === '') return '—';
+  const num = typeof n === 'number' ? n : Number(n);
+  if (!Number.isFinite(num)) return String(n);
+  if (num > 1000) return `${(num / 1000).toFixed(1)}k`;
+  if (num < 10) return num.toFixed(2);
+  return num.toFixed(0);
+}
+
+function fmtCurrency(n?: string | number): string {
+  if (n == null || n === '') return '$—';
+  const num = typeof n === 'number' ? n : Number(n);
+  if (!Number.isFinite(num)) return '$—';
+  return `$${num.toFixed(num >= 100 ? 0 : 2)}`;
+}
+
+export function AdCard({ ad, onClick, selected }: Props) {
+  const status = ad.effective_status || ad.status || '';
+  const statusClass = STATUS_COLOR[status] || 'bg-gray-700/30 text-gray-300 border-gray-700';
+  const insights = ad.insights;
+  const intel = ad.intel;
+
+  const Icon = ad.media_kind === 'video' ? Play : ad.media_kind === 'carousel' ? Layers : ImageIcon;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'group relative flex flex-col overflow-hidden rounded-xl border bg-[#141414] text-left transition',
+        selected
+          ? 'border-brand-accent ring-2 ring-brand-accent/40'
+          : 'border-gray-800 hover:border-brand-accent',
+      )}
+    >
+      <div className="relative aspect-square w-full bg-black">
+        {ad.thumbnail_url ? (
+          <img src={ad.thumbnail_url} alt="" className="h-full w-full object-cover" />
+        ) : ad.image_url ? (
+          <img src={ad.image_url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-gray-600">
+            <Icon className="h-10 w-10" />
+          </div>
+        )}
+        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wide text-white">
+          <Icon className="h-3 w-3" />
+          {ad.media_kind}
+        </div>
+        {intel?.is_winner && (
+          <div className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-amber-500/90 px-2 py-1 text-[10px] font-semibold text-black">
+            <Trophy className="h-3 w-3" />
+            WINNER
+          </div>
+        )}
+        {intel?.transcript && (
+          <div className="absolute right-2 bottom-2 rounded-md bg-emerald-500/80 p-1 text-black" title="Transcrito">
+            <FileText className="h-3 w-3" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 p-3">
+        <p className="truncate text-sm font-medium text-white">{ad.name || ad.id}</p>
+        <p className="truncate text-[11px] text-gray-500">{ad.campaign_name || ad.campaign_id}</p>
+        <span className={cn('mt-1.5 inline-block rounded border px-1.5 py-0.5 text-[10px] font-medium', statusClass)}>
+          {status || '—'}
+        </span>
+        <div className="mt-2.5 grid grid-cols-3 gap-1.5 text-[11px]">
+          <Metric label="Spend" value={fmtCurrency(insights?.spend)} />
+          <Metric label="CTR" value={insights?.ctr ? `${Number(insights.ctr).toFixed(2)}%` : '—'} />
+          <Metric label="ROAS" value={insights?.roas ? `${insights.roas.toFixed(2)}x` : '—'} />
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-black/40 px-1.5 py-1">
+      <div className="text-[9px] uppercase text-gray-500">{label}</div>
+      <div className="text-[11px] font-medium text-white">{value}</div>
+    </div>
+  );
+}

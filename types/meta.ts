@@ -7,6 +7,10 @@ export interface MetaConnection {
   fb_user_name: string | null;
   token_expires_at: string | null;
   default_ad_account_id: string | null;
+  default_page_id: string | null;
+  default_page_name: string | null;
+  default_instagram_id: string | null;
+  default_instagram_username: string | null;
   scopes: string[] | null;
   status: MetaConnectionStatus;
   last_error: string | null;
@@ -15,16 +19,38 @@ export interface MetaConnection {
 }
 
 export interface MetaAdAccount {
-  id: string;            // e.g. act_1234567890
-  account_id: string;    // numeric portion
+  id: string;            // act_1234567890
+  account_id: string;
   name: string;
   currency?: string;
   business_name?: string | null;
 }
 
-export type MetaUploadStatus = 'pending' | 'uploading' | 'processing' | 'ready' | 'failed';
+export interface MetaPage {
+  id: string;
+  name: string;
+  category?: string | null;
+  picture_url?: string | null;
+  has_instagram?: boolean;
+}
 
+export interface MetaInstagramAccount {
+  id: string;            // ig business id (used as instagram_actor_id in ad creatives)
+  username: string;
+  profile_picture_url?: string | null;
+}
+
+export type MetaUploadStatus = 'pending' | 'uploading' | 'processing' | 'ready' | 'failed';
 export type MetaAssetType = 'image' | 'video';
+
+export interface MetaAdMetadata {
+  name?: string;
+  primary_text?: string;
+  headline?: string;
+  description?: string;
+  link_url?: string;
+  cta?: string;
+}
 
 export interface MetaUpload {
   id: string;
@@ -39,13 +65,20 @@ export interface MetaUpload {
   error_message: string | null;
   poll_attempts: number;
   last_polled_at: string | null;
+  ad_metadata: MetaAdMetadata | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface BulkUploadAssetMeta {
+  generationId: string;
+  metadata?: MetaAdMetadata;
 }
 
 export interface BulkUploadRequest {
   generationIds: string[];
   adAccountId: string;
+  metadata?: Record<string, MetaAdMetadata>;
 }
 
 export interface BulkUploadResponseRow {
@@ -70,10 +103,125 @@ export interface UploadStatusResponse {
 export interface AccountsResponse {
   accounts: MetaAdAccount[];
   default_ad_account_id: string | null;
+  default_page_id: string | null;
+  default_page_name: string | null;
+  default_instagram_id: string | null;
+  default_instagram_username: string | null;
   fb_user_name: string | null;
 }
 
 export interface RequiresReconnectResponse {
   requiresReconnect: true;
   error?: string;
+}
+
+export interface MetaCampaign {
+  id: string;
+  name: string;
+  objective?: string;
+  status?: string;
+  effective_status?: string;
+  daily_budget?: string;
+  lifetime_budget?: string;
+  created_time?: string;
+  insights?: MetaInsightsRow | null;
+}
+
+export interface MetaInsightsRow {
+  spend?: string;
+  impressions?: string;
+  clicks?: string;
+  ctr?: string;
+  cpm?: string;
+  cpc?: string;
+  reach?: string;
+  purchases?: number;
+  purchase_value?: number;
+  roas?: number;
+}
+
+export type MetaAdMediaKind = 'image' | 'video' | 'carousel' | 'unknown';
+
+export interface MetaAdSummary {
+  id: string;                       // ad id
+  name: string;
+  status?: string;
+  effective_status?: string;
+  campaign_id?: string;
+  campaign_name?: string;
+  adset_id?: string;
+  adset_name?: string;
+  creative_id?: string;
+  media_kind: MetaAdMediaKind;
+  thumbnail_url: string | null;
+  video_id?: string | null;
+  video_source_url?: string | null;
+  image_url?: string | null;
+  primary_text?: string | null;
+  headline?: string | null;
+  cta?: string | null;
+  link_url?: string | null;
+  page_id?: string | null;
+  insights?: MetaInsightsRow | null;
+  intel?: MetaAdIntel | null;
+}
+
+export type MetaTranscriptStatus = 'idle' | 'queued' | 'running' | 'done' | 'failed';
+
+export interface MetaAdIntel {
+  id: string;
+  clerk_user_id: string;
+  ad_account_id: string;
+  meta_ad_id: string;
+  meta_creative_id: string | null;
+  asset_type: MetaAdMediaKind | null;
+  asset_url: string | null;
+  thumbnail_url: string | null;
+  ad_name: string | null;
+  campaign_id: string | null;
+  campaign_name: string | null;
+  adset_id: string | null;
+  adset_name: string | null;
+  page_id: string | null;
+  primary_text: string | null;
+  headline: string | null;
+  cta: string | null;
+  link_url: string | null;
+  effective_status: string | null;
+  transcript: string | null;
+  transcript_status: MetaTranscriptStatus;
+  transcript_error: string | null;
+  is_winner: boolean | null;
+  notes: string | null;
+  insights: MetaInsightsRow | null;
+  insights_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCampaignRequest {
+  adAccountId: string;
+  pageId: string;
+  instagramId?: string | null;
+  campaignName: string;
+  objective:
+    | 'OUTCOME_SALES'
+    | 'OUTCOME_TRAFFIC'
+    | 'OUTCOME_ENGAGEMENT'
+    | 'OUTCOME_LEADS'
+    | 'OUTCOME_AWARENESS';
+  dailyBudgetCents: number;          // smallest currency unit
+  link: string;
+  cta?: string;                       // SHOP_NOW etc.
+  uploadIds: string[];                // meta_uploads ids
+  countries?: string[];               // ['US'] etc.
+  targetingAgeMin?: number;
+  targetingAgeMax?: number;
+}
+
+export interface CreateCampaignResponse {
+  campaign_id: string;
+  adset_id: string;
+  ad_ids: string[];
+  warnings: string[];
 }

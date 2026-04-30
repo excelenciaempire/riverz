@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
   }
 
-  const { generationIds, adAccountId } = body || {};
+  const { generationIds, adAccountId, metadata } = body || {};
   if (!Array.isArray(generationIds) || generationIds.length === 0) {
     return NextResponse.json({ error: 'generationIds es requerido' }, { status: 400 });
   }
@@ -165,6 +165,7 @@ export async function POST(req: Request) {
     asset_type: classify(g.type),
     source_url: g.result_url!,
     status: 'uploading' as const,
+    ad_metadata: metadata?.[g.id] ?? null,
   }));
 
   const { data: inserted, error: insertError } = await supabaseAdmin

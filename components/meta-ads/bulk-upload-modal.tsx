@@ -15,10 +15,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { UploadStatusRow } from '@/components/meta-ads/upload-status-row';
+import { BulkMetadataEditor } from '@/components/meta-ads/bulk-metadata-editor';
 import type {
   AccountsResponse,
   BulkUploadResponse,
   UploadStatusResponse,
+  MetaAdMetadata,
 } from '@/types/meta';
 import type { Generation } from '@/types';
 
@@ -28,7 +30,7 @@ interface Props {
   selectedGenerations: Generation[];
 }
 
-type Step = 'connectionCheck' | 'selectAccount' | 'review' | 'uploading' | 'done';
+type Step = 'connectionCheck' | 'selectAccount' | 'metadata' | 'review' | 'uploading' | 'done';
 
 const VIDEO_TYPES = new Set(['ugc', 'face_swap', 'clips', 'mejorar_calidad_video']);
 
@@ -36,11 +38,13 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
   const [step, setStep] = useState<Step>('connectionCheck');
   const [adAccountId, setAdAccountId] = useState<string>('');
   const [uploadIds, setUploadIds] = useState<string[]>([]);
+  const [metadata, setMetadata] = useState<Record<string, MetaAdMetadata>>({});
 
   useEffect(() => {
     if (!isOpen) return;
     setStep('connectionCheck');
     setUploadIds([]);
+    setMetadata({});
   }, [isOpen]);
 
   const accountsQuery = useQuery<AccountsResponse, Error & { requiresReconnect?: boolean }>({
@@ -89,6 +93,7 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
         body: JSON.stringify({
           generationIds: selectedGenerations.map((g) => g.id),
           adAccountId,
+          metadata,
         }),
       });
       const body = await res.json();
@@ -164,7 +169,7 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
         <div className="space-y-3 py-4 text-center">
           <p className="text-gray-300">No encontramos cuentas de anuncios en tu Meta Business.</p>
           <p className="text-xs text-gray-500">
-            Asegúrate de tener acceso a una ad account y de haber autorizado los permisos `ads_management` y `business_management`.
+            Asegúrate de tener acceso a una ad account y de haber autorizado los permisos solicitados.
           </p>
         </div>
       );
@@ -193,7 +198,7 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={() => setStep('review')} disabled={!adAccountId}>
+          <Button onClick={() => setStep('metadata')} disabled={!adAccountId}>
             Continuar
             <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
@@ -202,15 +207,43 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
     );
   };
 
+  const renderMetadata = () => (
+    <div className="space-y-4">
+      <BulkMetadataEditor
+        generations={selectedGenerations}
+        metadata={metadata}
+        onChange={setMetadata}
+      />
+      <div className="flex justify-between gap-2 border-t border-gray-800 pt-4">
+        <Button variant="ghost" onClick={() => setStep('selectAccount')}>
+          Atrás
+        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setStep('review')}>
+            Saltar (subir solo media)
+          </Button>
+          <Button onClick={() => setStep('review')}>
+            Revisar
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderReview = () => {
     const accountName = accountsQuery.data?.accounts.find((a) => a.id === adAccountId)?.name || adAccountId;
+    const withMeta = Object.keys(metadata).filter((id) => {
+      const m = metadata[id];
+      return m && (m.primary_text || m.headline || m.link_url);
+    }).length;
     return (
       <div className="space-y-4">
         <div className="rounded-lg border border-gray-800 bg-black/40 p-4">
           <p className="text-sm text-gray-400">Cuenta de anuncios</p>
           <p className="text-base font-semibold text-white">{accountName}</p>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="rounded-lg border border-gray-800 bg-black/40 p-4 text-center">
             <ImageIcon className="mx-auto h-5 w-5 text-brand-accent" />
             <p className="mt-1 text-2xl font-bold text-white">{counts.images}</p>
@@ -220,6 +253,10 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
             <Video className="mx-auto h-5 w-5 text-brand-accent" />
             <p className="mt-1 text-2xl font-bold text-white">{counts.videos}</p>
             <p className="text-xs text-gray-400">Videos</p>
+          </div>
+          <div className="rounded-lg border border-gray-800 bg-black/40 p-4 text-center">
+            <p className="mt-1 text-2xl font-bold text-emerald-400">{withMeta}</p>
+            <p className="text-xs text-gray-400">Con copy</p>
           </div>
         </div>
         <div className="grid max-h-64 grid-cols-4 gap-2 overflow-y-auto rounded-lg border border-gray-800 bg-black/30 p-2">
@@ -237,10 +274,10 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
         </div>
         <p className="text-xs text-gray-500">
           Las imágenes se suben directo a la biblioteca de medios. Los videos quedan procesándose en Meta y aparecerán como
-          "Listo" cuando estén disponibles.
+          "Listo" cuando estén disponibles. El copy se guarda con cada asset y se reutiliza cuando creas la campaña.
         </p>
         <div className="flex justify-between gap-2">
-          <Button variant="ghost" onClick={() => setStep('selectAccount')}>
+          <Button variant="ghost" onClick={() => setStep('metadata')}>
             Atrás
           </Button>
           <Button onClick={() => uploadMutation.mutate()} disabled={uploadMutation.isPending}>
@@ -302,7 +339,10 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
             );
           })}
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => (window.location.href = '/campanas/meta/crear')}>
+            Crear campaña con esto
+          </Button>
           <Button onClick={onClose}>Cerrar</Button>
         </div>
       </div>
@@ -310,9 +350,12 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Subir a Meta Ads">
+    <Modal isOpen={isOpen} onClose={onClose} title={
+      step === 'metadata' ? 'Editar copy en bulk' : 'Subir a Meta Ads'
+    } className={step === 'metadata' ? 'max-w-5xl' : undefined}>
       {step === 'connectionCheck' && renderConnectionCheck()}
       {step === 'selectAccount' && renderSelectAccount()}
+      {step === 'metadata' && renderMetadata()}
       {step === 'review' && renderReview()}
       {step === 'uploading' && renderUploading()}
       {step === 'done' && renderDone()}
