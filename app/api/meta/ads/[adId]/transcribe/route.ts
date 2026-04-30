@@ -108,7 +108,7 @@ export async function POST(
     return NextResponse.json(
       {
         error: isVideo
-          ? 'Meta no devuelve el source del video (posiblemente por permisos o antigüedad). Intenta abrirlo en Facebook.'
+          ? 'Meta Graph API no expone el archivo .mp4 de este video (restricción reciente para videos UGC subidos a Ads). Sin esos bytes la IA no puede transcribirlo. Workaround: ábrelo en Facebook, descárgalo manual y súbelo como un nuevo asset.'
           : 'No hay URL de imagen para analizar.',
       },
       { status: 400 },

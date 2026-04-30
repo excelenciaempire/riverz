@@ -26,7 +26,11 @@ const buildCsp = (frameAncestors: string) =>
     // image even though we already paid for it.
     "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://*.kie.ai https://*.aiquickdraw.com https://*.googleusercontent.com https://*.cloudfront.net https://*.amazonaws.com https://*.elevenlabs.io https://riverzai.com https://cdn.riverzai.com https://placehold.co https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://*.fbcdn.net https://*.cdninstagram.com https://graph.facebook.com",
     "media-src 'self' blob: https://*.supabase.co https://*.supabase.in https://*.kie.ai https://*.aiquickdraw.com https://*.cloudfront.net https://*.amazonaws.com https://*.fbcdn.net https://*.cdninstagram.com",
-    "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.riverzai.com https://api.stripe.com https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.kie.ai https://api.elevenlabs.io https://api.openai.com https://graph.facebook.com",
+    // connect-src governs fetch() / XHR / WebSocket. The Descargar button
+    // calls fetch() against Meta's CDN to bundle the asset into a Blob, so
+    // *.fbcdn.net + *.cdninstagram.com need to be here too — img-src/media-src
+    // alone don't cover programmatic fetches.
+    "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.riverzai.com https://api.stripe.com https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.kie.ai https://api.elevenlabs.io https://api.openai.com https://graph.facebook.com https://*.fbcdn.net https://*.cdninstagram.com",
     "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
     "worker-src 'self' blob:",
     `frame-ancestors ${frameAncestors}`,

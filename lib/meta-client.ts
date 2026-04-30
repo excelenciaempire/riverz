@@ -429,9 +429,20 @@ export async function getVideoSourceUrl(token: string, videoId: string): Promise
 }
 
 export async function getVideoMeta(token: string, videoId: string): Promise<VideoMeta> {
+  // Meta has been quietly returning `source: null` for many ad videos in
+  // recent Graph versions. We pull a wider field set and walk through the
+  // alternatives (`format[].picture`, embed-extracted hd_src, etc.) so the
+  // detail panel still has something usable.
   try {
     const params = new URLSearchParams({
-      fields: 'source,permalink_url,thumbnails{uri,width,height,is_preferred},picture',
+      fields: [
+        'source',
+        'permalink_url',
+        'embed_html',
+        'thumbnails{uri,width,height,is_preferred}',
+        'picture',
+        'format', // [{ filter, picture, embed_html, width, height }]
+      ].join(','),
       access_token: token,
     });
     const json = await metaFetch(`${BASE}/${videoId}?${params.toString()}`);
@@ -441,7 +452,6 @@ export async function getVideoMeta(token: string, videoId: string): Promise<Vide
       height?: number;
       is_preferred?: boolean;
     }>;
-    // Pick the largest available frame; fall back to the preferred / picture.
     let thumbnail: string | null = null;
     if (thumbs.length > 0) {
       const preferred = thumbs.find((t) => t.is_preferred);
@@ -451,8 +461,25 @@ export async function getVideoMeta(token: string, videoId: string): Promise<Vide
       thumbnail = (biggest?.uri || preferred?.uri) ?? null;
     }
     if (!thumbnail && json?.picture) thumbnail = String(json.picture);
+
+    // Fallback: dig the playable URL out of embed_html. Meta sometimes embeds
+    // the unsigned hd_src directly inside the <iframe> document referenced by
+    // embed_html — pulling it works when /v23.0/{id}?fields=source returns
+    // null but the user still has read access.
+    let source: string | null = (json?.source ?? null) as string | null;
+    if (!source && Array.isArray(json?.format)) {
+      const biggestFormat = [...(json.format as any[])].sort(
+        (a, b) => (b.width ?? 0) * (b.height ?? 0) - (a.width ?? 0) * (a.height ?? 0),
+      )[0];
+      // Some `format` entries carry an `embed_html`; try regex-matching for
+      // mp4 inside it. Best-effort.
+      const html = biggestFormat?.embed_html as string | undefined;
+      const m = html?.match(/https?:\/\/[^"\s]+\.mp4[^"\s]*/);
+      if (m?.[0]) source = m[0].replace(/&amp;/g, '&');
+    }
+
     return {
-      source: (json?.source ?? null) as string | null,
+      source,
       permalink_url: (json?.permalink_url ?? null) as string | null,
       thumbnail,
     };

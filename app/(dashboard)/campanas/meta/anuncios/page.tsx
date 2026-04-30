@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, RefreshCcw, Trophy, Filter, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
@@ -77,6 +77,7 @@ function rollUp(ads: MetaAdSummary[]): Omit<Group, 'id' | 'name' | 'childCount'>
 
 function AnunciosContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [adAccountId, setAdAccountId] = useState<string>(searchParams.get('adAccountId') || '');
   const [datePreset, setDatePreset] = useState<string>('last_30d');
   const [winnerFilter, setWinnerFilter] = useState<WinnerFilter>('all');
@@ -220,15 +221,34 @@ function AnunciosContent() {
       ? 'adsets'
       : 'campaigns';
 
+  // Volver = subir un nivel del drill-down. Solo cuando ya estás arriba de
+  // todo (nivel campañas) sale al dashboard de Meta Ads.
+  const goBack = () => {
+    if (activeAdSet) {
+      setActiveAdSet(null);
+    } else if (activeCampaign) {
+      setActiveCampaign(null);
+    } else {
+      router.push('/campanas/meta');
+    }
+  };
+
+  const backLabel = activeAdSet
+    ? `Volver a ad sets de "${activeCampaign?.name ?? '...'}"`
+    : activeCampaign
+      ? 'Volver a campañas'
+      : 'Volver a Meta Ads';
+
   return (
     <div className="space-y-5 pb-12">
       <div className="flex items-center gap-3">
-        <Link
-          href="/campanas/meta"
+        <button
+          onClick={goBack}
           className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
         >
-          <ArrowLeft className="h-4 w-4" /> Volver
-        </Link>
+          <ArrowLeft className="h-4 w-4" />
+          <span className="max-w-[280px] truncate">{backLabel}</span>
+        </button>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
