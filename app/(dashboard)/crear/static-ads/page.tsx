@@ -264,28 +264,64 @@ export default function StaticAdsPage() {
     };
   }, []);
 
-  // Clone Mutation
+  // Clone Mutation — N selected templates fan out to N independent
+  // /api/static-ads/clone calls. Each call is its own backend pipeline
+  // (its own process-queue kickoff, its own kie.ai requests for analysis +
+  // adaptation + Nano Banana). The first call creates the project; the
+  // remaining N-1 reuse the projectId so all rows land in the same
+  // historial entry. Same isolation contract as the Agregar tab — no
+  // template-to-template cross-contamination.
   const cloneMutation = useMutation({
     mutationFn: async ({ templateIds, productId, projectName }: { templateIds: string[], productId: string, projectName: string }) => {
-      const response = await fetch('/api/static-ads/clone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateIds, productId, projectName }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (response.status === 402) {
-          throw new Error(`Créditos insuficientes. Necesitas ${errorData.required || 'más'} créditos.`);
+      const callClone = async (templateId: string, sharedProjectId?: string) => {
+        const r = await fetch('/api/static-ads/clone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            templateIds: [templateId],
+            productId,
+            projectName,
+            ...(sharedProjectId ? { projectId: sharedProjectId } : {}),
+          }),
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          if (r.status === 402) {
+            throw new Error(`Créditos insuficientes. Necesitas ${err.required || 'más'} créditos.`);
+          }
+          throw new Error(err.error || 'Error al clonar plantilla');
         }
-        throw new Error(errorData.error || 'Error al clonar plantillas');
+        return r.json();
+      };
+
+      // First template: creates the project, returns id.
+      const first = await callClone(templateIds[0]);
+      const sharedProjectId: string = first.project.id;
+
+      // Remaining templates: parallel, all sharing that projectId.
+      let okCount = 1;
+      let failedCount = 0;
+      let firstErr: string | undefined;
+      if (templateIds.length > 1) {
+        const rest = await Promise.allSettled(
+          templateIds.slice(1).map((id) => callClone(id, sharedProjectId)),
+        );
+        for (const r of rest) {
+          if (r.status === 'fulfilled') okCount += 1;
+          else {
+            failedCount += 1;
+            firstErr = firstErr || (r.reason as Error)?.message;
+          }
+        }
       }
-      return response.json();
+
+      return { project: first.project, okCount, failedCount, firstErr };
     },
     onSuccess: (data) => {
-      toast.success(`Iniciando generación de ${data.bulk?.total || selectedTemplateIds.length} imágenes...`);
-      
-      // Redirect immediately to project page - no popup
+      if (data.failedCount > 0) {
+        toast.error(`${data.failedCount} no se pudo iniciar: ${data.firstErr || 'error'}`);
+      }
+      toast.success(`Iniciando ${data.okCount} generación(es) en paralelo`);
       router.push(`/crear/static-ads/historial/${data.project.id}`);
     },
     onError: (error) => {
