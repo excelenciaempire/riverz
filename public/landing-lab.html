@@ -281,7 +281,18 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
 .igp-tab.on{background:#181B27;color:#C8CAD8}
 .igp-close{width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.05);color:#545A72;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:all .15s}
 .igp-close:hover{background:rgba(255,255,255,.1);color:#E2E4EF}
-.igp-ai-section,.igp-url-section{display:flex;flex-direction:column}
+.igp-ai-section,.igp-url-section,.igp-file-section{display:flex;flex-direction:column}
+.igp-file-section{padding:18px 20px 20px;gap:12px}
+.igp-drop{border:1.5px dashed #252840;border-radius:10px;padding:28px 18px;text-align:center;background:#080910;cursor:pointer;transition:border-color .15s,background .15s}
+.igp-drop:hover,.igp-drop.over{border-color:#4A90E2;background:#0A0E18}
+.igp-drop-icon{font-size:28px;margin-bottom:6px;opacity:.7}
+.igp-drop-msg{font-size:12px;color:#9AA3C0;font-family:'Instrument Sans',sans-serif;margin-bottom:2px}
+.igp-drop-hint{font-size:10px;color:#3E4560;font-family:'Instrument Sans',sans-serif;letter-spacing:.5px}
+.igp-file-preview{display:none;flex-direction:column;gap:10px}
+.igp-file-preview.on{display:flex}
+.igp-file-preview img{max-width:100%;max-height:220px;border-radius:8px;object-fit:contain;background:#080910;display:block;margin:0 auto}
+.igp-file-meta{font-size:10px;color:#5B6490;font-family:'Instrument Sans',sans-serif;text-align:center}
+.igp-file-actions{display:flex;gap:8px}
 .igp-step{display:flex;flex-direction:column;gap:14px;padding:18px 20px 20px}
 .igp-prompt-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
 .igp-prompt-label{font-size:10px;color:#3E4560;letter-spacing:1px;text-transform:uppercase;font-family:'Instrument Sans',sans-serif}
@@ -801,11 +812,12 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
   <div class="igp-panel">
     <div class="igp-header">
       <div class="igp-title-wrap">
-        <div class="igp-slot-label">Generar imagen con FLUX AI</div>
+        <div class="igp-slot-label">Generar imagen con Nano Banana Pro</div>
         <div class="igp-slot-name" id="igp-title">Imagen</div>
       </div>
       <div class="igp-tabs">
         <button class="igp-tab on" id="igp-ai-tab" onclick="igpSetMode('ai')">&#x2728; IA</button>
+        <button class="igp-tab" id="igp-file-tab" onclick="igpSetMode('file')">&#x1F4C1; Archivo</button>
         <button class="igp-tab" id="igp-url-tab" onclick="igpSetMode('url')">&#x1F517; URL</button>
       </div>
       <button class="igp-close" onclick="closeImgGen()">&#x2715;</button>
@@ -839,7 +851,7 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
       </div>
       <div class="igp-step igp-step-loading" id="igp-step-loading" style="display:none">
         <div class="igp-load-icon">&#x1F9EA;</div>
-        <div class="igp-load-msg" id="igp-load-msg">Generando con FLUX AI...</div>
+        <div class="igp-load-msg" id="igp-load-msg">Generando con Nano Banana Pro...</div>
         <div class="igp-load-prompt" id="igp-load-prompt"></div>
         <div class="igp-load-bar-wrap">
           <div class="igp-load-bar-bg"><div class="igp-load-bar-fill" id="igp-load-bar"></div></div>
@@ -859,11 +871,26 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
       </div>
     </div>
     <div class="igp-url-section" id="igp-url-section" style="display:none">
-      <div class="igp-url-hint">Shopify Admin &rarr; Contenido &rarr; Archivos &rarr; Subir &rarr; copiar URL CDN</div>
+      <div class="igp-url-hint">Pega una URL pública (Shopify CDN, Imgur, etc.)</div>
       <input class="igp-url-input" id="igp-url-input" placeholder="https://cdn.shopify.com/s/files/...">
       <div class="igp-url-btns">
-        <label class="tb tb-ghost" style="cursor:pointer">&#x1F4C1; Archivo<input type="file" accept="image/*" style="display:none" onchange="igpFileChange(event)"></label>
         <button class="tb tb-acc" style="flex:1" onclick="igpApplyUrl()">Aplicar</button>
+      </div>
+    </div>
+    <div class="igp-file-section" id="igp-file-section" style="display:none">
+      <div class="igp-drop" id="igp-drop" onclick="document.getElementById('igp-file-input').click()">
+        <div class="igp-drop-icon">&#x1F4C1;</div>
+        <div class="igp-drop-msg">Haz clic o arrastra una imagen aquí</div>
+        <div class="igp-drop-hint">PNG · JPG · WEBP · hasta 12MB</div>
+        <input type="file" id="igp-file-input" accept="image/*" style="display:none" onchange="igpFileChange(event)">
+      </div>
+      <div class="igp-file-preview" id="igp-file-preview">
+        <img id="igp-file-preview-img" src="" alt="">
+        <div class="igp-file-meta" id="igp-file-meta"></div>
+        <div class="igp-file-actions">
+          <button class="tb tb-ghost" onclick="igpFileReset()">&#x21BA; Otra</button>
+          <button class="tb tb-acc" style="flex:1" onclick="igpFileApply()">&#x2713; Usar esta imagen</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1215,6 +1242,7 @@ function openImgGen(slot) {
   if (ratioEl && cfg.ratio) ratioEl.value = cfg.ratio;
   igpShowStep('prompt');
   igpSetMode('ai');
+  if (typeof igpFileReset === 'function') igpFileReset();
   modal.classList.add('on');
   setTimeout(function(){ igpAutoPrompt(); }, 80);
 }
@@ -1234,14 +1262,18 @@ function igpShowStep(step) {
 }
 
 function igpSetMode(mode) {
-  var ai = document.getElementById('igp-ai-section');
-  var url = document.getElementById('igp-url-section');
-  var aiTab = document.getElementById('igp-ai-tab');
-  var urlTab = document.getElementById('igp-url-tab');
-  if (ai) ai.style.display = mode === 'ai' ? 'flex' : 'none';
-  if (url) url.style.display = mode === 'url' ? 'flex' : 'none';
-  if (aiTab) aiTab.classList.toggle('on', mode === 'ai');
-  if (urlTab) urlTab.classList.toggle('on', mode === 'url');
+  var ai   = document.getElementById('igp-ai-section');
+  var file = document.getElementById('igp-file-section');
+  var url  = document.getElementById('igp-url-section');
+  var aiTab   = document.getElementById('igp-ai-tab');
+  var fileTab = document.getElementById('igp-file-tab');
+  var urlTab  = document.getElementById('igp-url-tab');
+  if (ai)   ai.style.display   = mode === 'ai'   ? 'flex' : 'none';
+  if (file) file.style.display = mode === 'file' ? 'flex' : 'none';
+  if (url)  url.style.display  = mode === 'url'  ? 'flex' : 'none';
+  if (aiTab)   aiTab.classList.toggle('on',   mode === 'ai');
+  if (fileTab) fileTab.classList.toggle('on', mode === 'file');
+  if (urlTab)  urlTab.classList.toggle('on',  mode === 'url');
 }
 
 window.openImgGen  = openImgGen;
@@ -1378,18 +1410,70 @@ function igpApplyUrl() {
   window.snapshot(); window.saveAll(); closeImgGen(); igpToast('✓ Imagen aplicada');
 }
 
-function igpFileChange(e) {
-  var file = e.target.files[0]; if (!file) return;
-  if (file.size > 12*1024*1024) { igpToast('Imagen grande — usa URL Shopify', 1); return; }
+var igpPendingFile = null;
+
+function igpHandleFile(file) {
+  if (!file) return;
+  if (!/^image\//.test(file.type)) { igpToast('El archivo no es una imagen', 1); return; }
+  if (file.size > 12*1024*1024) { igpToast('Imagen grande — máx 12MB', 1); return; }
   var r = new FileReader();
   r.onload = function(ev) {
-    window.setSlot(igpSlot, ev.target.result);
-    var proj = window.getActive();
-    if (proj) proj.images[igpSlot] = ev.target.result;
-    window.snapshot(); window.saveAll(); closeImgGen(); igpToast('✓ Imagen cargada');
+    igpPendingFile = ev.target.result;
+    var img  = document.getElementById('igp-file-preview-img');
+    var meta = document.getElementById('igp-file-meta');
+    var prev = document.getElementById('igp-file-preview');
+    var drop = document.getElementById('igp-drop');
+    if (img)  img.src = igpPendingFile;
+    if (meta) meta.textContent = file.name + ' · ' + Math.round(file.size/1024) + ' KB';
+    if (prev) prev.classList.add('on');
+    if (drop) drop.style.display = 'none';
   };
   r.readAsDataURL(file);
 }
+
+function igpFileChange(e) {
+  igpHandleFile(e.target.files && e.target.files[0]);
+  // reset so the same file can be picked again later
+  if (e.target) e.target.value = '';
+}
+
+function igpFileApply() {
+  if (!igpPendingFile || !igpSlot) { igpToast('Elige una imagen', 1); return; }
+  window.setSlot(igpSlot, igpPendingFile);
+  var proj = window.getActive();
+  if (proj) proj.images[igpSlot] = igpPendingFile;
+  window.snapshot(); window.saveAll();
+  igpFileReset();
+  closeImgGen();
+  igpToast('✓ Imagen cargada');
+}
+
+function igpFileReset() {
+  igpPendingFile = null;
+  var prev = document.getElementById('igp-file-preview');
+  var drop = document.getElementById('igp-drop');
+  var img  = document.getElementById('igp-file-preview-img');
+  var meta = document.getElementById('igp-file-meta');
+  if (prev) prev.classList.remove('on');
+  if (drop) drop.style.display = '';
+  if (img)  img.src = '';
+  if (meta) meta.textContent = '';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var drop = document.getElementById('igp-drop');
+  if (!drop) return;
+  ['dragenter','dragover'].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); drop.classList.add('over'); });
+  });
+  ['dragleave','drop'].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function(e){
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) igpHandleFile(f);
+  });
+});
 
 // ── GALLERY ───────────────────────────────────────────────────
 var GALLERY_SK = 'igp_gallery_v1';
@@ -1485,6 +1569,8 @@ window.igpAnother    = igpAnother;
 window.igpDownloadCurrent = igpDownloadCurrent;
 window.igpApplyUrl   = igpApplyUrl;
 window.igpFileChange = igpFileChange;
+window.igpFileApply  = igpFileApply;
+window.igpFileReset  = igpFileReset;
 window.openGallery   = openGallery;
 window.closeGallery  = closeGallery;
 window.igpDownloadAll = igpDownloadAll;

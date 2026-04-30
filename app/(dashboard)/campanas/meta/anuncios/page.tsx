@@ -1,9 +1,9 @@
 'use client';
 
 import { Suspense, useState, useMemo, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, RefreshCcw, Trophy, Filter } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, Trophy, Filter, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Loading } from '@/components/ui/loading';
 import {
@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CampaignSection } from '@/components/meta-ads/campaign-section';
+import { AdCard } from '@/components/meta-ads/ad-card';
+import { LevelRow } from '@/components/meta-ads/level-row';
 import { AdDetailPanel } from '@/components/meta-ads/ad-detail-panel';
 import type { AccountsResponse, MetaAdSummary } from '@/types/meta';
 
@@ -30,14 +31,61 @@ const DATE_PRESETS = [
 type WinnerFilter = 'all' | 'winners' | 'losers' | 'unmarked';
 type MediaFilter = 'all' | 'video' | 'image' | 'carousel';
 
+interface Group {
+  id: string;
+  name: string;
+  status: string;
+  spend: number;
+  purchases: number;
+  purchaseValue: number;
+  roas: number;
+  active: number;
+  winners: number;
+  childCount: number;
+}
+
+function rollUp(ads: MetaAdSummary[]): Omit<Group, 'id' | 'name' | 'childCount'> {
+  let spend = 0;
+  let purchases = 0;
+  let purchaseValue = 0;
+  let active = 0;
+  let winners = 0;
+  let anyActive = false;
+  let firstStatus = 'PAUSED';
+  for (const ad of ads) {
+    const s = ad.effective_status || ad.status || 'PAUSED';
+    if (firstStatus === 'PAUSED' && s) firstStatus = s;
+    if (s === 'ACTIVE') {
+      active += 1;
+      anyActive = true;
+    }
+    if (ad.intel?.is_winner === true) winners += 1;
+    if (ad.insights?.spend) spend += Number(ad.insights.spend) || 0;
+    if (ad.insights?.purchases) purchases += Number(ad.insights.purchases) || 0;
+    if (ad.insights?.purchase_value) purchaseValue += Number(ad.insights.purchase_value) || 0;
+  }
+  return {
+    status: anyActive ? 'ACTIVE' : firstStatus,
+    spend,
+    purchases,
+    purchaseValue,
+    roas: spend > 0 ? purchaseValue / spend : 0,
+    active,
+    winners,
+  };
+}
+
 function AnunciosContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [adAccountId, setAdAccountId] = useState<string>(searchParams.get('adAccountId') || '');
   const [datePreset, setDatePreset] = useState<string>('last_30d');
   const [winnerFilter, setWinnerFilter] = useState<WinnerFilter>('all');
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>('all');
   const [selectedAd, setSelectedAd] = useState<MetaAdSummary | null>(null);
+
+  // Drill-down navigation
+  const [activeCampaign, setActiveCampaign] = useState<{ id: string; name: string } | null>(null);
+  const [activeAdSet, setActiveAdSet] = useState<{ id: string; name: string } | null>(null);
 
   const accountsQuery = useQuery<AccountsResponse>({
     queryKey: ['meta-accounts'],
@@ -49,11 +97,6 @@ function AnunciosContent() {
     retry: false,
   });
 
-  // Keep the local ad-account selection in sync with the saved default.
-  // This fires both on first load and whenever the user changes the
-  // workspace default from the dashboard's AccountPicker — so /anuncios
-  // re-queries automatically without needing a manual refresh.
-  // The URL param (?adAccountId=...) takes precedence so deep links keep working.
   const urlAdAccountId = searchParams.get('adAccountId');
   useEffect(() => {
     if (urlAdAccountId) {
@@ -63,6 +106,13 @@ function AnunciosContent() {
     const def = accountsQuery.data?.default_ad_account_id;
     if (def && def !== adAccountId) setAdAccountId(def);
   }, [urlAdAccountId, accountsQuery.data?.default_ad_account_id, adAccountId]);
+
+  // Reset drill-down when account or filters change so we don't end up
+  // looking at a stale campaign that's no longer in the result set.
+  useEffect(() => {
+    setActiveCampaign(null);
+    setActiveAdSet(null);
+  }, [adAccountId, datePreset]);
 
   const adsQuery = useQuery<{ ads: MetaAdSummary[] }>({
     queryKey: ['meta-ads', adAccountId, datePreset],
@@ -79,6 +129,7 @@ function AnunciosContent() {
     enabled: !!adAccountId,
   });
 
+  // Filter doesn't depend on drill level — apply once.
   const filteredAds = useMemo(() => {
     if (!adsQuery.data?.ads) return [] as MetaAdSummary[];
     return adsQuery.data.ads.filter((ad) => {
@@ -90,35 +141,84 @@ function AnunciosContent() {
     });
   }, [adsQuery.data, winnerFilter, mediaFilter]);
 
-  // Group filtered ads by campaign — preserves API order so the most recently
-  // active / paid campaigns show first.
-  const campaignGroups = useMemo(() => {
-    const groups = new Map<string, { id: string; name: string; ads: MetaAdSummary[]; spend: number }>();
+  // Level 1 — campaigns (rollup of all ads grouped by campaign_id).
+  const campaignGroups: Group[] = useMemo(() => {
+    const buckets = new Map<string, { id: string; name: string; ads: MetaAdSummary[] }>();
     for (const ad of filteredAds) {
       const id = ad.campaign_id || 'unknown';
       const name = ad.campaign_name || 'Sin campaña';
-      let g = groups.get(id);
+      let g = buckets.get(id);
       if (!g) {
-        g = { id, name, ads: [], spend: 0 };
-        groups.set(id, g);
+        g = { id, name, ads: [] };
+        buckets.set(id, g);
       }
       g.ads.push(ad);
-      if (ad.insights?.spend) g.spend += Number(ad.insights.spend) || 0;
     }
-    // Sort campaigns: highest spend first, then by ad count.
-    return Array.from(groups.values()).sort((a, b) => {
-      if (b.spend !== a.spend) return b.spend - a.spend;
-      return b.ads.length - a.ads.length;
-    });
+    return Array.from(buckets.values())
+      .map((g) => {
+        const adSetIds = new Set(g.ads.map((a) => a.adset_id || 'unknown'));
+        return {
+          id: g.id,
+          name: g.name,
+          childCount: adSetIds.size,
+          ...rollUp(g.ads),
+        };
+      })
+      .sort((a, b) => b.spend - a.spend || b.childCount - a.childCount);
   }, [filteredAds]);
 
-  // Keep selectedAd in sync with the latest fetched data so detail panel
-  // reflects mutations (intel updates / transcript) without manual refetch.
+  // Level 2 — ad sets within the active campaign.
+  const adSetGroups: Group[] = useMemo(() => {
+    if (!activeCampaign) return [];
+    const buckets = new Map<string, { id: string; name: string; ads: MetaAdSummary[] }>();
+    for (const ad of filteredAds) {
+      if ((ad.campaign_id || 'unknown') !== activeCampaign.id) continue;
+      const id = ad.adset_id || 'unknown';
+      const name = ad.adset_name || 'Sin ad set';
+      let g = buckets.get(id);
+      if (!g) {
+        g = { id, name, ads: [] };
+        buckets.set(id, g);
+      }
+      g.ads.push(ad);
+    }
+    return Array.from(buckets.values())
+      .map((g) => ({
+        id: g.id,
+        name: g.name,
+        childCount: g.ads.length,
+        ...rollUp(g.ads),
+      }))
+      .sort((a, b) => b.spend - a.spend || b.childCount - a.childCount);
+  }, [filteredAds, activeCampaign]);
+
+  // Level 3 — ads inside the active ad set.
+  const adsInActiveSet: MetaAdSummary[] = useMemo(() => {
+    if (!activeCampaign || !activeAdSet) return [];
+    return filteredAds.filter(
+      (ad) =>
+        (ad.campaign_id || 'unknown') === activeCampaign.id &&
+        (ad.adset_id || 'unknown') === activeAdSet.id,
+    );
+  }, [filteredAds, activeCampaign, activeAdSet]);
+
+  // Detail panel: keep the selected ad in sync with refreshed data.
   useEffect(() => {
     if (!selectedAd) return;
     const fresh = adsQuery.data?.ads.find((a) => a.id === selectedAd.id);
     if (fresh) setSelectedAd(fresh);
   }, [adsQuery.data, selectedAd]);
+
+  // Derived stats for the header line + filter chip
+  const totalCampaigns = campaignGroups.length;
+  const totalAds = filteredAds.length;
+  const totalWinners = filteredAds.filter((a) => a.intel?.is_winner === true).length;
+
+  const level: 'campaigns' | 'adsets' | 'ads' = activeAdSet
+    ? 'ads'
+    : activeCampaign
+      ? 'adsets'
+      : 'campaigns';
 
   return (
     <div className="space-y-5 pb-12">
@@ -206,6 +306,19 @@ function AnunciosContent() {
         </div>
       </div>
 
+      {/* Breadcrumb */}
+      {(activeCampaign || activeAdSet) && (
+        <Breadcrumb
+          activeCampaign={activeCampaign}
+          activeAdSet={activeAdSet}
+          onResetAll={() => {
+            setActiveCampaign(null);
+            setActiveAdSet(null);
+          }}
+          onResetAdSet={() => setActiveAdSet(null)}
+        />
+      )}
+
       {!adAccountId ? (
         <div className="rounded-xl border border-gray-800 bg-[#141414] p-8 text-center">
           <p className="text-gray-400">Configura tu cuenta publicitaria primero.</p>
@@ -225,32 +338,86 @@ function AnunciosContent() {
             Si ves "acceso API bloqueado", desconecta y reconecta para autorizar los nuevos permisos (ads_read, insights, pages, instagram).
           </p>
         </div>
-      ) : filteredAds.length === 0 ? (
-        <div className="rounded-xl border border-gray-800 bg-[#141414] p-8 text-center">
-          <p className="text-gray-400">No hay anuncios que cumplan los filtros.</p>
-        </div>
       ) : (
         <>
+          {/* Stats line */}
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <Filter className="h-3 w-3" />
-            {campaignGroups.length} campaña{campaignGroups.length === 1 ? '' : 's'} · {filteredAds.length} ad{filteredAds.length === 1 ? '' : 's'}
+            {level === 'campaigns'
+              ? `${totalCampaigns} campaña${totalCampaigns === 1 ? '' : 's'} · ${totalAds} ad${totalAds === 1 ? '' : 's'}`
+              : level === 'adsets'
+                ? `${adSetGroups.length} ad set${adSetGroups.length === 1 ? '' : 's'} · ${campaignGroups.find((c) => c.id === activeCampaign?.id)?.spend ? `$${campaignGroups.find((c) => c.id === activeCampaign?.id)!.spend.toFixed(2)} gastado` : ''}`
+                : `${adsInActiveSet.length} ad${adsInActiveSet.length === 1 ? '' : 's'} en este conjunto`}
             {' · '}
             <Trophy className="h-3 w-3 text-amber-400" />
-            {filteredAds.filter((a) => a.intel?.is_winner === true).length} winners
+            {totalWinners} winners
           </div>
-          <div className="space-y-3">
-            {campaignGroups.map((g, i) => (
-              <CampaignSection
-                key={g.id}
-                campaignId={g.id}
-                campaignName={g.name}
-                ads={g.ads}
-                onAdClick={(ad) => setSelectedAd(ad)}
-                selectedAdId={selectedAd?.id}
-                defaultOpen={i < 3 || g.spend > 0}
-              />
-            ))}
-          </div>
+
+          {/* Level: Campaigns */}
+          {level === 'campaigns' && (
+            <div className="space-y-2">
+              {campaignGroups.length === 0 ? (
+                <Empty>No hay campañas que cumplan los filtros.</Empty>
+              ) : (
+                campaignGroups.map((c) => (
+                  <LevelRow
+                    key={c.id}
+                    name={c.name}
+                    status={c.status}
+                    childCountLabel={`${c.childCount} ad set${c.childCount === 1 ? '' : 's'} · ${c.active} ad${c.active === 1 ? '' : 's'} activo${c.active === 1 ? '' : 's'}`}
+                    winners={c.winners}
+                    spend={c.spend}
+                    purchases={c.purchases}
+                    roas={c.roas}
+                    onClick={() => setActiveCampaign({ id: c.id, name: c.name })}
+                  />
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Level: Ad sets */}
+          {level === 'adsets' && (
+            <div className="space-y-2">
+              {adSetGroups.length === 0 ? (
+                <Empty>Esta campaña no tiene ad sets que cumplan los filtros.</Empty>
+              ) : (
+                adSetGroups.map((s) => (
+                  <LevelRow
+                    key={s.id}
+                    name={s.name}
+                    status={s.status}
+                    childCountLabel={`${s.childCount} ad${s.childCount === 1 ? '' : 's'} · ${s.active} activo${s.active === 1 ? '' : 's'}`}
+                    winners={s.winners}
+                    spend={s.spend}
+                    purchases={s.purchases}
+                    roas={s.roas}
+                    onClick={() => setActiveAdSet({ id: s.id, name: s.name })}
+                  />
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Level: Ads */}
+          {level === 'ads' && (
+            <>
+              {adsInActiveSet.length === 0 ? (
+                <Empty>Este ad set no tiene anuncios que cumplan los filtros.</Empty>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+                  {adsInActiveSet.map((ad) => (
+                    <AdCard
+                      key={ad.id}
+                      ad={ad}
+                      onClick={() => setSelectedAd(ad)}
+                      selected={selectedAd?.id === ad.id}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
 
@@ -259,10 +426,64 @@ function AnunciosContent() {
   );
 }
 
+interface BreadcrumbProps {
+  activeCampaign: { id: string; name: string } | null;
+  activeAdSet: { id: string; name: string } | null;
+  onResetAll: () => void;
+  onResetAdSet: () => void;
+}
+
+function Breadcrumb({ activeCampaign, activeAdSet, onResetAll, onResetAdSet }: BreadcrumbProps) {
+  return (
+    <nav className="flex flex-wrap items-center gap-1.5 text-sm">
+      <button
+        onClick={onResetAll}
+        className="text-gray-400 hover:text-white"
+      >
+        Todas las campañas
+      </button>
+      {activeCampaign && (
+        <>
+          <ChevronRight className="h-3.5 w-3.5 text-gray-600" />
+          {activeAdSet ? (
+            <button
+              onClick={onResetAdSet}
+              className="max-w-[260px] truncate text-gray-400 hover:text-white"
+              title={activeCampaign.name}
+            >
+              {activeCampaign.name}
+            </button>
+          ) : (
+            <span className="max-w-[260px] truncate font-medium text-white" title={activeCampaign.name}>
+              {activeCampaign.name}
+            </span>
+          )}
+        </>
+      )}
+      {activeAdSet && (
+        <>
+          <ChevronRight className="h-3.5 w-3.5 text-gray-600" />
+          <span className="max-w-[260px] truncate font-medium text-white" title={activeAdSet.name}>
+            {activeAdSet.name}
+          </span>
+        </>
+      )}
+    </nav>
+  );
+}
+
 function FilterBox({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-[140px]">
       <div className="mb-1 text-[10px] uppercase tracking-wide text-gray-500">{label}</div>
+      {children}
+    </div>
+  );
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-gray-800 bg-[#141414] p-8 text-center text-sm text-gray-400">
       {children}
     </div>
   );
