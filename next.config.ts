@@ -31,7 +31,11 @@ const buildCsp = (frameAncestors: string) =>
     // *.fbcdn.net + *.cdninstagram.com need to be here too — img-src/media-src
     // alone don't cover programmatic fetches.
     "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.riverzai.com https://api.stripe.com https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.kie.ai https://api.elevenlabs.io https://api.openai.com https://graph.facebook.com https://*.fbcdn.net https://*.cdninstagram.com",
-    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
+    // www.facebook.com is allowed so the Meta Ads viewer can fall back to
+    // Facebook's official preview iframe when /{video_id}?fields=source
+    // returns null. The iframe loads from facebook.com/ads/api/preview_iframe.php
+    // and is signed with the user's own access token.
+    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.facebook.com",
     "worker-src 'self' blob:",
     `frame-ancestors ${frameAncestors}`,
     "base-uri 'self'",

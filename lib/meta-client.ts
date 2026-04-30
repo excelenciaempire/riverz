@@ -345,6 +345,7 @@ const AD_FIELDS = [
   'adset_id',
   'adset{name}',
   'creative{id,thumbnail_url,object_story_spec,asset_feed_spec,video_id,image_url,image_hash,object_type,effective_object_story_id}',
+  'effective_object_story_id',
 ].join(',');
 
 function pickInsightsRow(rows: any[] | undefined): MetaInsightsRow | null {
@@ -389,12 +390,14 @@ function classifyMedia(creative: any): MetaAdMediaKind {
 function extractCreativeFields(creative: any): {
   thumbnail_url: string | null;
   image_url: string | null;
+  image_hash: string | null;
   video_id: string | null;
   primary_text: string | null;
   headline: string | null;
   cta: string | null;
   link_url: string | null;
   page_id: string | null;
+  effective_object_story_id: string | null;
 } {
   const oss = creative?.object_story_spec ?? {};
   const link = oss.link_data ?? {};
@@ -404,16 +407,98 @@ function extractCreativeFields(creative: any): {
   const firstAfsTitle = afs?.titles?.[0]?.text ?? null;
   const firstAfsCta = afs?.call_to_action_types?.[0] ?? null;
   const firstAfsLink = afs?.link_urls?.[0]?.website_url ?? null;
+  const image_hash =
+    creative?.image_hash ??
+    link.image_hash ??
+    afs?.images?.[0]?.hash ??
+    null;
   return {
     thumbnail_url: creative?.thumbnail_url ?? null,
     image_url: creative?.image_url ?? null,
+    image_hash,
     video_id: creative?.video_id ?? video.video_id ?? afs?.videos?.[0]?.video_id ?? null,
     primary_text: link.message ?? video.message ?? firstAfsBody,
     headline: link.name ?? video.title ?? firstAfsTitle,
     cta: link.call_to_action?.type ?? video.call_to_action?.type ?? firstAfsCta,
     link_url: link.link ?? video.call_to_action?.value?.link ?? firstAfsLink,
     page_id: oss.page_id ?? null,
+    effective_object_story_id: creative?.effective_object_story_id ?? null,
   };
+}
+
+/**
+ * For images: resolve the ORIGINAL upload via /act_X/adimages?hashes=[...].
+ * `creative.image_url` is sometimes a preview-sized derivative (especially
+ * for Advantage+ assets). The adimages edge returns the full-resolution
+ * upload along with width/height — that's the URL we want for downloads.
+ */
+export async function getOriginalImageUrls(
+  token: string,
+  adAccountId: string,
+  hashes: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (hashes.length === 0) return map;
+  const acct = ensureActPrefix(adAccountId);
+  const unique = Array.from(new Set(hashes));
+  // /act_X/adimages accepts up to ~50 hashes per call. Chunk defensively.
+  const chunkSize = 25;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const slice = unique.slice(i, i + chunkSize);
+    try {
+      const params = new URLSearchParams({
+        hashes: JSON.stringify(slice),
+        fields: 'hash,url,permalink_url,width,height,original_width,original_height',
+        access_token: token,
+      });
+      const json = await metaFetch(`${BASE}/${acct}/adimages?${params.toString()}`);
+      const data = (json?.data ?? []) as Array<{
+        hash?: string;
+        url?: string;
+        permalink_url?: string;
+      }>;
+      for (const row of data) {
+        const playable = row.url || row.permalink_url;
+        if (row.hash && playable) map.set(row.hash, playable);
+      }
+    } catch {
+      /* best-effort */
+    }
+  }
+  return map;
+}
+
+/**
+ * For ads built on top of a Page post (the common pattern for organic-then-
+ * boosted creatives), the playable mp4 lives on the post's `attachments`
+ * edge as `media.source`. This edge respects page-admin permission rather
+ * than the stricter video-source rule, so it often succeeds when
+ * /{video_id}?fields=source returns null.
+ */
+export async function getStoryVideoSource(
+  token: string,
+  storyId: string,
+): Promise<string | null> {
+  try {
+    const params = new URLSearchParams({
+      fields: 'attachments{media{source,image,height,width},type,subattachments}',
+      access_token: token,
+    });
+    const json = await metaFetch(`${BASE}/${storyId}?${params.toString()}`);
+    const atts = json?.attachments?.data ?? [];
+    for (const a of atts) {
+      const src = a?.media?.source;
+      if (typeof src === 'string' && src.includes('.mp4')) return src;
+      const subs = a?.subattachments?.data ?? [];
+      for (const s of subs) {
+        const ss = s?.media?.source;
+        if (typeof ss === 'string' && ss.includes('.mp4')) return ss;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export interface VideoMeta {
@@ -456,10 +541,15 @@ const PREVIEW_AD_FORMATS = [
   'FACEBOOK_REELS_MOBILE',
 ];
 
-export async function getAdPreviewVideoUrl(
-  token: string,
-  adId: string,
-): Promise<string | null> {
+export interface AdPreviewResult {
+  /** Direct mp4 URL when we managed to extract one. Useful for playback + transcription. */
+  mp4: string | null;
+  /** First iframe src that responded with HTML — playback fallback when mp4 is null. */
+  iframe: string | null;
+}
+
+export async function getAdPreview(token: string, adId: string): Promise<AdPreviewResult> {
+  let firstIframe: string | null = null;
   for (const format of PREVIEW_AD_FORMATS) {
     try {
       const params = new URLSearchParams({
@@ -472,10 +562,9 @@ export async function getAdPreviewVideoUrl(
       const iframeMatch = body.match(/<iframe[^>]+src=(?:"([^"]+)"|'([^']+)')/i);
       const iframeSrc = (iframeMatch?.[1] || iframeMatch?.[2] || '').replace(/&amp;/g, '&');
       if (!iframeSrc) continue;
+      if (!firstIframe) firstIframe = iframeSrc;
       const html = await fetch(iframeSrc, {
         headers: {
-          // Match a real desktop browser so Meta returns the full preview
-          // doc rather than a placeholder.
           'user-agent':
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
         },
@@ -484,12 +573,22 @@ export async function getAdPreviewVideoUrl(
         .catch(() => '');
       if (!html) continue;
       const url = extractMp4FromHtml(html);
-      if (url) return url;
+      if (url) return { mp4: url, iframe: iframeSrc };
     } catch {
       /* try next format */
     }
   }
-  return null;
+  return { mp4: null, iframe: firstIframe };
+}
+
+// Backwards-compatible thin wrapper — kept so the transcribe route's import
+// still works without touching the consumer.
+export async function getAdPreviewVideoUrl(
+  token: string,
+  adId: string,
+): Promise<string | null> {
+  const r = await getAdPreview(token, adId);
+  return r.mp4;
 }
 
 function extractMp4FromHtml(html: string): string | null {
@@ -592,23 +691,25 @@ export async function listAdsWithInsights(
   const json = await metaFetch(`${BASE}/${acct}/ads?${params.toString()}`);
   const rows = (json?.data ?? []) as any[];
 
-  // Insights + video sources in parallel — both make per-ad/per-video Graph
-  // calls so doing them concurrently halves the wall-clock latency.
-  const allCreatives = rows.map((r) => r.creative ?? {});
-  const videoIds = allCreatives
-    .map((c) => extractCreativeFields(c).video_id)
-    .filter((v): v is string => !!v);
+  // Insights + video metas + original image URLs in parallel.
+  const extracted = rows.map((r) => extractCreativeFields(r.creative ?? {}));
+  const videoIds = extracted.map((e) => e.video_id).filter((v): v is string => !!v);
+  const imageHashes = extracted.map((e) => e.image_hash).filter((h): h is string => !!h);
 
-  const [insightsByAd, videoMetaById] = await Promise.all([
+  const [insightsByAd, videoMetaById, originalImagesByHash] = await Promise.all([
     fetchInsightsForAds(token, rows.map((r) => r.id), opts.datePreset || 'last_30d'),
     fetchVideoMetas(token, videoIds),
+    getOriginalImageUrls(token, adAccountId, imageHashes),
   ]);
 
-  const adsBase: MetaAdSummary[] = rows.map((row) => {
+  const adsBase: MetaAdSummary[] = rows.map((row, i) => {
     const creative = row.creative ?? {};
     const media_kind = classifyMedia(creative);
-    const fields = extractCreativeFields(creative);
+    const fields = extracted[i];
     const videoMeta = fields.video_id ? videoMetaById.get(fields.video_id) : null;
+    // Prefer the /act_X/adimages original URL — it's the full-resolution
+    // upload, not the resized derivative creative.image_url often returns.
+    const fullResImage = fields.image_hash ? originalImagesByHash.get(fields.image_hash) : null;
     return {
       id: row.id,
       name: row.name,
@@ -619,12 +720,16 @@ export async function listAdsWithInsights(
       adset_id: row.adset_id ?? row.adset?.id,
       adset_name: row.adset?.name,
       creative_id: creative.id,
+      effective_object_story_id:
+        row.effective_object_story_id ?? fields.effective_object_story_id ?? null,
       media_kind,
       thumbnail_url: videoMeta?.thumbnail || fields.thumbnail_url,
       video_id: fields.video_id,
       video_source_url: videoMeta?.source ?? null,
       video_permalink_url: videoMeta?.permalink_url ?? null,
-      image_url: fields.image_url,
+      video_embed_url: null,
+      image_url: fullResImage || fields.image_url,
+      image_full_url: fullResImage || null,
       primary_text: fields.primary_text,
       headline: fields.headline,
       cta: fields.cta,
@@ -634,28 +739,38 @@ export async function listAdsWithInsights(
     };
   });
 
-  // Second pass: for video ads where the /{video_id}?fields=source path
-  // returned null (Meta's UGC / asset_feed_spec restriction), fall back to
-  // /{ad_id}/previews and pull the playable URL out of the iframe HTML.
-  // Done in parallel chunks to keep the wall-clock latency low.
-  const needsPreview = adsBase.filter(
+  // Second pass for video ads where /{video_id}?fields=source returned null:
+  //   1. Try /{effective_object_story_id}?fields=attachments{media{source}}
+  //      (works for ads built from a Page post — different permission rule).
+  //   2. Try /{ad_id}/previews iframe scraping for the mp4. Also captures
+  //      the iframe URL itself so the UI can fall back to <iframe> playback
+  //      when no .mp4 can be extracted.
+  const needsFallback = adsBase.filter(
     (a) => a.media_kind === 'video' && !a.video_source_url,
   );
-  if (needsPreview.length > 0) {
+  if (needsFallback.length > 0) {
     const chunkSize = 4;
-    for (let i = 0; i < needsPreview.length; i += chunkSize) {
-      const slice = needsPreview.slice(i, i + chunkSize);
+    for (let i = 0; i < needsFallback.length; i += chunkSize) {
+      const slice = needsFallback.slice(i, i + chunkSize);
       const results = await Promise.allSettled(
         slice.map(async (ad) => {
-          const url = await getAdPreviewVideoUrl(token, ad.id);
-          return [ad.id, url] as const;
+          // 1. Page-post attachments path
+          if (ad.effective_object_story_id) {
+            const src = await getStoryVideoSource(token, ad.effective_object_story_id);
+            if (src) return { id: ad.id, mp4: src, iframe: null as string | null };
+          }
+          // 2. Preview iframe path (also returns iframe URL for embed fallback)
+          const preview = await getAdPreview(token, ad.id);
+          return { id: ad.id, mp4: preview.mp4, iframe: preview.iframe };
         }),
       );
       for (const r of results) {
-        if (r.status === 'fulfilled' && r.value[1]) {
-          const idx = adsBase.findIndex((a) => a.id === r.value[0]);
-          if (idx >= 0) adsBase[idx].video_source_url = r.value[1];
-        }
+        if (r.status !== 'fulfilled') continue;
+        const { id, mp4, iframe } = r.value;
+        const idx = adsBase.findIndex((a) => a.id === id);
+        if (idx < 0) continue;
+        if (mp4) adsBase[idx].video_source_url = mp4;
+        if (iframe) adsBase[idx].video_embed_url = iframe;
       }
     }
   }

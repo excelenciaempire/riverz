@@ -154,10 +154,15 @@ export interface MetaAdSummary {
   creative_id?: string;
   media_kind: MetaAdMediaKind;
   thumbnail_url: string | null;
+  effective_object_story_id?: string | null;
   video_id?: string | null;
   video_source_url?: string | null;
   video_permalink_url?: string | null;
+  /** Facebook iframe URL for embed-style playback when the mp4 can't be extracted. */
+  video_embed_url?: string | null;
   image_url?: string | null;
+  /** Full-resolution original image URL from /act_X/adimages — used for downloads. */
+  image_full_url?: string | null;
   primary_text?: string | null;
   headline?: string | null;
   cta?: string | null;

@@ -74,8 +74,12 @@ export function AdDetailPanel({ ad, onClose }: Props) {
   const playableUrl = isVideo
     ? ad.video_source_url || intel?.asset_url || null
     : ad.image_url || intel?.asset_url || ad.thumbnail_url || null;
+  const iframeFallbackUrl = isVideo && !playableUrl ? ad.video_embed_url || null : null;
   const previewUrl = playableUrl || ad.thumbnail_url || ad.image_url || null;
-  const downloadUrl = playableUrl || (!isVideo ? ad.image_url || ad.thumbnail_url : null);
+  // Always download the full-resolution variant when we have it.
+  const downloadUrl = isVideo
+    ? playableUrl
+    : ad.image_full_url || ad.image_url || intel?.asset_url || ad.thumbnail_url || null;
   const downloadFilename = `${(ad.name || ad.id).replace(/[^a-z0-9-_]+/gi, '_')}.${
     isVideo ? 'mp4' : 'jpg'
   }`;
@@ -126,9 +130,17 @@ export function AdDetailPanel({ ad, onClose }: Props) {
                 poster={ad.thumbnail_url || undefined}
                 className="h-full w-full object-contain"
               />
+            ) : iframeFallbackUrl ? (
+              // No mp4 — embed Meta's official preview iframe so playback
+              // still works (transcription won't, since we don't have bytes).
+              <iframe
+                src={iframeFallbackUrl}
+                title={ad.name}
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                className="h-full w-full border-0"
+              />
             ) : isVideo && !playableUrl && previewUrl ? (
-              // Video without a usable source URL — show poster + a CTA to
-              // open it on Facebook so the user can still watch it.
               <>
                 <img src={previewUrl} alt={ad.name} className="h-full w-full object-contain opacity-90" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40">

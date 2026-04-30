@@ -60,20 +60,21 @@ export function AdCard({ ad, onClick, selected }: Props) {
   const intel = ad.intel;
 
   const isVideo = ad.media_kind === 'video';
-  // Cards: prefer the highest-resolution source available so they don't
-  // pixelate. For images, image_url is the original upload; thumbnail_url
-  // is a tiny preview. For videos, the bigger of {creative.thumbnail_url,
-  // /{video_id}/thumbnails biggest frame} is already in ad.thumbnail_url.
   const previewSrc = isVideo
     ? ad.thumbnail_url || ad.image_url || null
     : ad.image_url || ad.thumbnail_url || null;
   const playableVideoSrc = isVideo
     ? (ad.video_source_url || ad.intel?.asset_url || null)
     : null;
-  const downloadUrl = isVideo ? playableVideoSrc : ad.image_url || ad.thumbnail_url;
+  // Downloads always grab the highest-resolution variant we know about.
+  // For images that's the /act_X/adimages original (image_full_url).
+  const downloadUrl = isVideo
+    ? playableVideoSrc
+    : ad.image_full_url || ad.image_url || ad.thumbnail_url;
   const downloadFilename = `${(ad.name || ad.id).replace(/[^a-z0-9-_]+/gi, '_')}.${
     isVideo ? 'mp4' : 'jpg'
   }`;
+  const iframeFallbackUrl = isVideo && !playableVideoSrc ? ad.video_embed_url || null : null;
 
   const [showVideo, setShowVideo] = useState(false);
   const Icon = isVideo ? Play : ad.media_kind === 'carousel' ? Layers : ImageIcon;
@@ -96,6 +97,18 @@ export function AdCard({ ad, onClick, selected }: Props) {
             autoPlay
             playsInline
             className="h-full w-full object-cover"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : isVideo && showVideo && iframeFallbackUrl ? (
+          // No mp4 available, but Meta gave us the official embed iframe.
+          // Sandbox allows-scripts so the FB player can run; allow-same-origin
+          // is dropped to keep our session cookies isolated.
+          <iframe
+            src={iframeFallbackUrl}
+            title={ad.name}
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            className="h-full w-full border-0"
             onClick={(e) => e.stopPropagation()}
           />
         ) : previewSrc ? (
@@ -138,7 +151,7 @@ export function AdCard({ ad, onClick, selected }: Props) {
                 onClick={(e) => {
                   e.stopPropagation();
                   if (isVideo) {
-                    if (playableVideoSrc) {
+                    if (playableVideoSrc || iframeFallbackUrl) {
                       setShowVideo(true);
                     } else if (ad.video_permalink_url) {
                       window.open(ad.video_permalink_url, '_blank', 'noopener,noreferrer');
@@ -155,13 +168,15 @@ export function AdCard({ ad, onClick, selected }: Props) {
                   isVideo
                     ? playableVideoSrc
                       ? 'Reproducir'
-                      : ad.video_permalink_url
-                        ? 'Ver en Facebook'
-                        : 'Detalle'
+                      : iframeFallbackUrl
+                        ? 'Reproducir (preview de Facebook)'
+                        : ad.video_permalink_url
+                          ? 'Ver en Facebook'
+                          : 'Detalle'
                     : 'Detalle'
                 }
               >
-                {isVideo && !playableVideoSrc && ad.video_permalink_url ? (
+                {isVideo && !playableVideoSrc && !iframeFallbackUrl && ad.video_permalink_url ? (
                   <ExternalLink className="h-5 w-5" />
                 ) : isVideo ? (
                   <Play className="h-6 w-6 fill-current" />
