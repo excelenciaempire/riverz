@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/admin/ui/button';
 import { Input } from '@/components/admin/ui/input';
@@ -8,8 +8,121 @@ import { Label } from '@/components/admin/ui/label';
 import { Modal } from '@/components/admin/ui/modal';
 import { FileUpload } from '@/components/admin/ui/file-upload';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Loader2, Upload, X, Check, AlertCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Upload, X, Check, AlertCircle, Folder, FolderPlus, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// localStorage key for pending folders — folders the admin created
+// explicitly via "Nueva carpeta" but that don't yet have any templates.
+// Without this, an empty folder vanishes between page loads because the
+// DB only knows about folders attached to at least one template row.
+const PENDING_FOLDERS_KEY = 'riverz.adminTemplates.pendingFolders';
+
+// Small reusable folder picker. Renders a button that opens a popover with
+// every known folder (from API + pending state) + "Sin carpeta" + an inline
+// "Crear nueva carpeta" input. Used by both per-card move-to-folder and
+// bulk/single upload modals so every dropdown reflects the same source.
+function FolderPicker({
+  value,
+  onChange,
+  folderOptions,
+  onCreateFolder,
+  placeholder = 'Selecciona o crea…',
+  disabled = false,
+}: {
+  value: string | null;
+  onChange: (folder: string | null) => void;
+  folderOptions: Array<{ name: string | null; count: number }>;
+  onCreateFolder: (name: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const display = value === null
+    ? <span className="text-gray-400">Sin carpeta</span>
+    : value
+      ? <span className="text-white">📁 {value}</span>
+      : <span className="text-gray-500">{placeholder}</span>;
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-700 bg-[#0a0a0a] px-3 py-2 text-sm text-left disabled:opacity-50"
+      >
+        {display}
+        <ChevronDown className="h-4 w-4 text-gray-500 shrink-0" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute z-20 left-0 right-0 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-700 bg-[#141414] shadow-xl">
+            <button
+              type="button"
+              onClick={() => { onChange(null); setOpen(false); }}
+              className={cn(
+                'w-full text-left px-3 py-2 text-sm hover:bg-gray-800 transition',
+                value === null ? 'bg-gray-800 text-white' : 'text-gray-300',
+              )}
+            >
+              Sin carpeta
+            </button>
+            {folderOptions.filter((f) => f.name).map((f) => (
+              <button
+                key={f.name as string}
+                type="button"
+                onClick={() => { onChange(f.name); setOpen(false); }}
+                className={cn(
+                  'w-full text-left px-3 py-2 text-sm hover:bg-gray-800 transition flex items-center justify-between',
+                  value === f.name ? 'bg-gray-800 text-white' : 'text-gray-300',
+                )}
+              >
+                <span>📁 {f.name}</span>
+                <span className="text-[10px] text-gray-500">{f.count}</span>
+              </button>
+            ))}
+            <div className="border-t border-gray-800 p-2 flex gap-1">
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newName.trim()) {
+                    e.preventDefault();
+                    const name = newName.trim();
+                    onCreateFolder(name);
+                    onChange(name);
+                    setNewName('');
+                    setOpen(false);
+                  }
+                }}
+                placeholder="Nueva carpeta..."
+                className="flex-1 text-sm"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  if (!newName.trim()) return;
+                  const name = newName.trim();
+                  onCreateFolder(name);
+                  onChange(name);
+                  setNewName('');
+                  setOpen(false);
+                }}
+                disabled={!newName.trim()}
+                className="bg-brand-accent text-white shrink-0"
+              >
+                <FolderPlus className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // One row in the bulk-upload modal. Tracks the file, the metadata the admin
 // can override per-row, and the lifecycle status of its upload.
@@ -42,6 +155,29 @@ export function TemplatesManager() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [selectedDims, setSelectedDims] = useState<{ width: number; height: number } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [movingTemplateId, setMovingTemplateId] = useState<string | null>(null);
+  const [headerNewFolder, setHeaderNewFolder] = useState('');
+  const [showHeaderNewFolder, setShowHeaderNewFolder] = useState(false);
+
+  // Pending folders — names the admin created via "Nueva carpeta" but that
+  // don't have any templates yet. Persisted to localStorage so they survive
+  // reloads. Auto-pruned when a template is added that uses the name.
+  const [pendingFolders, setPendingFolders] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PENDING_FOLDERS_KEY);
+      if (raw) setPendingFolders(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, []);
+  const persistPending = (next: string[]) => {
+    setPendingFolders(next);
+    try { localStorage.setItem(PENDING_FOLDERS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+  };
+  const addPendingFolder = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    persistPending(Array.from(new Set([...pendingFolders, trimmed])));
+  };
 
   // Reads the file's intrinsic pixel dimensions in the browser. Cheap — no
   // upload yet, just a transient ObjectURL that gets revoked on cleanup.
@@ -85,6 +221,27 @@ export function TemplatesManager() {
     },
     enabled: true,
   });
+
+  // Single source of truth for every dropdown/filter: API folders + any
+  // pending (empty) folders the admin created locally. Once a folder shows
+  // up in the API response we prune it from pendingFolders so we don't
+  // double-count.
+  const mergedFolderOptions = useMemo<Array<{ name: string | null; count: number }>>(() => {
+    const fromApi = folders || [];
+    const apiNames = new Set(fromApi.map((f) => f.name).filter(Boolean) as string[]);
+    const stillPending = pendingFolders.filter((n) => !apiNames.has(n));
+    if (stillPending.length !== pendingFolders.length) {
+      // Prune asynchronously to avoid setState during render warning.
+      setTimeout(() => persistPending(stillPending), 0);
+    }
+    const pendingEntries = stillPending.map((n) => ({ name: n, count: 0 }));
+    return [...fromApi, ...pendingEntries].sort((a, b) => {
+      if (a.name === null) return 1;
+      if (b.name === null) return -1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folders, pendingFolders]);
 
   const createTemplate = useMutation({
     mutationFn: async (data: typeof formData & { width?: number; height?: number }) => {
@@ -412,7 +569,55 @@ export function TemplatesManager() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white">Plantillas de Static Ads</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {showHeaderNewFolder ? (
+            <div className="flex gap-1 items-center">
+              <Input
+                autoFocus
+                value={headerNewFolder}
+                onChange={(e) => setHeaderNewFolder(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && headerNewFolder.trim()) {
+                    addPendingFolder(headerNewFolder);
+                    setFolderFilter(headerNewFolder.trim());
+                    setHeaderNewFolder('');
+                    setShowHeaderNewFolder(false);
+                  } else if (e.key === 'Escape') {
+                    setHeaderNewFolder('');
+                    setShowHeaderNewFolder(false);
+                  }
+                }}
+                placeholder="Nombre de carpeta"
+                className="w-56"
+              />
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (!headerNewFolder.trim()) return;
+                  addPendingFolder(headerNewFolder);
+                  setFolderFilter(headerNewFolder.trim());
+                  setHeaderNewFolder('');
+                  setShowHeaderNewFolder(false);
+                }}
+                disabled={!headerNewFolder.trim()}
+                className="bg-brand-accent text-white"
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { setHeaderNewFolder(''); setShowHeaderNewFolder(false); }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button variant="outline" onClick={() => setShowHeaderNewFolder(true)}>
+              <FolderPlus className="mr-2 h-4 w-4" />
+              Nueva carpeta
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setIsBulkOpen(true)}>
             <Upload className="mr-2 h-4 w-4" />
             Subir varias
@@ -426,7 +631,7 @@ export function TemplatesManager() {
 
       {/* Folder filter bar — admin-only organisational layer. End users
           (the /crear/static-ads selector) never see this. */}
-      {folders && folders.length > 0 && (
+      {mergedFolderOptions.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
           <span className="text-xs text-gray-500 mr-2">📁 Carpeta:</span>
           <button
@@ -440,7 +645,7 @@ export function TemplatesManager() {
           >
             Todas ({templates?.length || 0})
           </button>
-          {folders.map((f) => {
+          {mergedFolderOptions.map((f) => {
             const value = f.name === null ? '__none__' : f.name;
             const label = f.name ?? 'Sin carpeta';
             const isActive = folderFilter === value;
@@ -500,38 +705,47 @@ export function TemplatesManager() {
               <div className="p-4">
                 <h3 className="font-semibold text-white">{template.name}</h3>
                 <p className="mt-1 text-xs text-gray-400">{template.category}</p>
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex gap-2 items-center">
                   <Button size="sm" variant="outline" onClick={() => handleEdit(template)}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const next = prompt(
-                        `Mover "${template.name}" a carpeta\n(deja vacío para quitar de su carpeta actual):`,
-                        template.folder || '',
-                      );
-                      if (next === null) return; // user cancelled
-                      const folderValue = next.trim() || null;
-                      fetch('/api/admin/templates/bulk-folder', {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ids: [template.id], folder: folderValue }),
-                      }).then(async (r) => {
-                        if (!r.ok) {
-                          const err = await r.json().catch(() => ({}));
-                          throw new Error(err.error || `HTTP ${r.status}`);
-                        }
-                        queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
-                        queryClient.invalidateQueries({ queryKey: ['admin-templates-folders'] });
-                        toast.success(folderValue ? `Movido a "${folderValue}"` : 'Quitado de su carpeta');
-                      }).catch((e: any) => toast.error(e?.message || 'Error al mover'));
-                    }}
-                    title="Mover a carpeta"
-                  >
-                    📁
-                  </Button>
+                  <div className="relative flex-1 min-w-0">
+                    {movingTemplateId === template.id ? (
+                      <FolderPicker
+                        value={template.folder || null}
+                        onChange={(folderValue) => {
+                          setMovingTemplateId(null);
+                          fetch('/api/admin/templates/bulk-folder', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ids: [template.id], folder: folderValue }),
+                          }).then(async (r) => {
+                            if (!r.ok) {
+                              const err = await r.json().catch(() => ({}));
+                              throw new Error(err.error || `HTTP ${r.status}`);
+                            }
+                            queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
+                            queryClient.invalidateQueries({ queryKey: ['admin-templates-folders'] });
+                            toast.success(folderValue ? `Movido a "${folderValue}"` : 'Quitado de su carpeta');
+                          }).catch((e: any) => toast.error(e?.message || 'Error al mover'));
+                        }}
+                        folderOptions={mergedFolderOptions}
+                        onCreateFolder={addPendingFolder}
+                        placeholder="Selecciona carpeta…"
+                      />
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setMovingTemplateId(template.id)}
+                        title="Mover a carpeta"
+                        className="w-full"
+                      >
+                        <Folder className="h-4 w-4 mr-1" />
+                        {template.folder ? template.folder : 'Sin carpeta'}
+                      </Button>
+                    )}
+                  </div>
                   <Button size="sm" variant="outline" onClick={() => handleDelete(template)} className="text-red-500 hover:text-red-600">
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -644,17 +858,13 @@ export function TemplatesManager() {
 
           <div>
             <Label>📁 Carpeta (admin · opcional)</Label>
-            <Input
-              list="single-folder-list"
-              value={formData.folder}
-              onChange={(e) => setFormData({ ...formData, folder: e.target.value })}
-              placeholder="ej: CreativeOS — Beauty · vacío = sin carpeta"
+            <FolderPicker
+              value={formData.folder ? formData.folder : null}
+              onChange={(v) => setFormData({ ...formData, folder: v || '' })}
+              folderOptions={mergedFolderOptions}
+              onCreateFolder={addPendingFolder}
+              placeholder="Sin carpeta"
             />
-            <datalist id="single-folder-list">
-              {folders?.filter((f) => f.name).map((f) => (
-                <option key={f.name as string} value={f.name as string} />
-              ))}
-            </datalist>
             <p className="mt-1 text-[10px] text-gray-500">
               Solo visible en el admin. Los usuarios finales no ven esta etiqueta.
             </p>
@@ -694,17 +904,14 @@ export function TemplatesManager() {
           <div className="space-y-3 p-4 rounded-lg bg-[#0a0a0a] border border-gray-800">
             <div>
               <Label className="text-xs">📁 Carpeta (admin · todas)</Label>
-              <Input
-                list="bulk-folder-list"
-                value={bulkCommon.folder}
-                onChange={(e) => setBulkCommon({ ...bulkCommon, folder: e.target.value })}
-                placeholder="ej: CreativeOS — Beauty · Atria DTC · Pack 2026-04..."
+              <FolderPicker
+                value={bulkCommon.folder ? bulkCommon.folder : null}
+                onChange={(v) => setBulkCommon({ ...bulkCommon, folder: v || '' })}
+                folderOptions={mergedFolderOptions}
+                onCreateFolder={addPendingFolder}
+                placeholder="Sin carpeta"
+                disabled={isBulkUploading}
               />
-              <datalist id="bulk-folder-list">
-                {folders?.filter((f) => f.name).map((f) => (
-                  <option key={f.name as string} value={f.name as string} />
-                ))}
-              </datalist>
               <p className="mt-1 text-[10px] text-gray-500">
                 Para organizar y eliminar todas las plantillas del batch a la vez después. Vacío = sin carpeta.
               </p>
