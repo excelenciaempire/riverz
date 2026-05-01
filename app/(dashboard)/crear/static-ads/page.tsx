@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/dropdown';
 import { toast } from 'sonner';
-import { Star, Check, Loader2, Zap, Clock, AlertCircle, X, Image as ImageIcon } from 'lucide-react';
+import { Star, Check, Loader2, Zap, Clock, AlertCircle, X, Image as ImageIcon, Sparkles, Package } from 'lucide-react';
 import { subscribeToGenerations, ProgressState } from '@/lib/realtime-helper';
 
 // Maximum templates per generation - now supports parallel processing
@@ -916,91 +916,123 @@ export default function StaticAdsPage() {
 
       {/* Floating Bottom Bar for Cloning */}
       {isCloneBarVisible && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-800 bg-[#0a0a0a]/95 backdrop-blur-lg p-4 transition-transform duration-300 transform translate-y-0">
-          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-            {/* Selection count with estimate */}
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#07A498]/20 text-[#07A498] font-bold text-lg">
-                {selectedTemplateIds.length}
+        <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 pt-2 pointer-events-none">
+          {/* Wrapper card — gives the bar a true "floating panel" feel
+              instead of being glued to the viewport edge. Glass blur +
+              soft brand-accent glow at the top edge so it reads as the
+              primary CTA region. */}
+          <div className="pointer-events-auto mx-auto max-w-6xl rounded-2xl border border-white/10 bg-gradient-to-b from-[#141414]/95 to-[#0a0a0a]/95 px-5 py-3 shadow-[0_-12px_48px_-12px_rgba(7,164,152,0.25)] backdrop-blur-xl">
+            <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap lg:gap-5">
+              {/* Selection count + estimate */}
+              <div className="flex items-center gap-3">
+                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#07A498]/30 to-[#07A498]/10 ring-1 ring-[#07A498]/40">
+                  <span className="text-lg font-bold text-[#07A498]">
+                    {selectedTemplateIds.length}
+                  </span>
+                  <span className="absolute -top-1 -right-1 inline-flex h-2.5 w-2.5 rounded-full bg-[#07A498] opacity-80 animate-pulse" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold leading-tight text-white">
+                    {selectedTemplateIds.length === 1 ? 'Plantilla seleccionada' : 'Plantillas seleccionadas'}
+                  </p>
+                  {bulkEstimate && (
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-400">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-yellow-500/10 px-1.5 py-0.5 text-yellow-400 ring-1 ring-yellow-500/20">
+                        <Zap className="h-3 w-3" />
+                        {bulkEstimate.totalCredits.toLocaleString()}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-1.5 py-0.5 text-blue-300 ring-1 ring-blue-500/20">
+                        <Clock className="h-3 w-3" />
+                        ~{bulkEstimate.estimatedMinutes} min
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-white">
-                  Plantillas seleccionadas
-                </p>
-                {bulkEstimate && (
-                  <div className="flex items-center gap-3 text-xs text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <Zap className="h-3 w-3 text-yellow-500" />
-                      {bulkEstimate.totalCredits.toLocaleString()} créditos
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3 text-blue-400" />
-                      ~{bulkEstimate.estimatedMinutes} min
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Product selector */}
-            <div className="flex flex-1 items-center gap-3 max-w-md">
-              <span className="text-sm font-medium text-gray-300 whitespace-nowrap">Producto:</span>
-              <div className="flex-1">
-                 <Dropdown
+              {/* Vertical divider — anchors the visual rhythm so the bar
+                  reads as 3 distinct sections instead of a wall. */}
+              <div className="hidden h-10 w-px bg-white/10 lg:block" />
+
+              {/* Product selector */}
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <Package className="h-4 w-4 shrink-0 text-gray-500" />
+                <div className="flex-1 min-w-0">
+                  <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wider text-gray-500">
+                    Producto
+                  </p>
+                  <Dropdown
                     options={products?.map(p => ({ value: p.id, label: p.name })) || []}
                     value={selectedProduct}
                     onChange={setSelectedProduct}
-                    placeholder={products && products.length > 0 ? "Seleccionar producto..." : "No hay productos creados"}
+                    placeholder={products && products.length > 0 ? 'Seleccionar producto...' : 'No hay productos creados'}
                     className="w-full"
                     openDirection="up"
                   />
+                </div>
               </div>
-            </div>
 
-            {/* Research Suggestion (optional, not blocking) */}
-            {needsResearch && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                <AlertCircle className="h-4 w-4 text-amber-500" />
-                <span className="text-xs text-amber-400">Sin research — la calidad mejora si lo completas</span>
-                <Button
-                  variant="link"
-                  size="sm"
+              {/* Research suggestion — compact pill, only shows when relevant.
+                  Click target = the whole pill so it's easy to tap on mobile. */}
+              {needsResearch && (
+                <button
+                  type="button"
                   onClick={() => router.push(`/marcas/${selectedProduct}`)}
-                  className="text-xs text-amber-500 hover:text-amber-400 p-0 h-auto"
+                  className="group flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-left transition hover:border-amber-500/60 hover:bg-amber-500/15"
+                  title="Sin research — la calidad mejora si lo completas"
                 >
-                  Completar
-                </Button>
-              </div>
-            )}
+                  <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold leading-tight text-amber-300">
+                      Sin research
+                    </p>
+                    <p className="text-[10px] leading-tight text-amber-400/80 group-hover:text-amber-300">
+                      Completar para mejor calidad →
+                    </p>
+                  </div>
+                </button>
+              )}
 
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedTemplateIds([]);
-                  setIsCloneBarVisible(false);
-                }}
-                className="border-gray-700 text-gray-300 hover:text-white"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={initiateCloneProcess}
-                disabled={cloneMutation.isPending || !selectedProduct}
-                className="bg-[#07A498] text-white hover:bg-[#068f84] px-6 py-5 rounded-xl shadow-lg shadow-[#07A498]/20 disabled:opacity-50"
-              >
-                {cloneMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Procesando...
-                  </>
-                ) : (
-                  <>
-                    Generar {selectedTemplateIds.length} Imágenes
-                  </>
-                )}
-              </Button>
+              {/* Vertical divider before the action cluster. */}
+              <div className="hidden h-10 w-px bg-white/10 lg:block" />
+
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTemplateIds([]);
+                    setIsCloneBarVisible(false);
+                  }}
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-gray-400 transition hover:bg-white/5 hover:text-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={initiateCloneProcess}
+                  disabled={cloneMutation.isPending || !selectedProduct}
+                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-br from-[#07A498] to-[#068f84] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#07A498]/30 transition-all hover:shadow-xl hover:shadow-[#07A498]/40 hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                >
+                  {/* Subtle shimmer that sweeps on hover — gives the primary
+                      CTA a premium feel without being distracting. */}
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full"
+                  />
+                  {cloneMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Procesando…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Generar {selectedTemplateIds.length} {selectedTemplateIds.length === 1 ? 'imagen' : 'imágenes'}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
