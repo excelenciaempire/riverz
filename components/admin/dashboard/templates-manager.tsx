@@ -9,6 +9,7 @@ import { Modal } from '@/components/admin/ui/modal';
 import { FileUpload } from '@/components/admin/ui/file-upload';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Loader2, Upload, X, Check, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // One row in the bulk-upload modal. Tracks the file, the metadata the admin
 // can override per-row, and the lifecycle status of its upload.
