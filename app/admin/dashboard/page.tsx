@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
+import { Workflow } from 'lucide-react';
 import { DashboardStats } from '@/components/admin/dashboard/stats';
 import { UsersTable } from '@/components/admin/dashboard/users-table';
 import { GenerationsTable } from '@/components/admin/dashboard/generations-table';
@@ -57,9 +59,18 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <div className="border-b border-gray-900 bg-black px-8 py-6">
-        <div className="mx-auto max-w-[1800px]">
-          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-          <p className="mt-2 text-gray-400">Panel de administración de Riverz</p>
+        <div className="mx-auto flex max-w-[1800px] items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+            <p className="mt-2 text-gray-400">Panel de administración de Riverz</p>
+          </div>
+          <Link
+            href="/admin/workflows"
+            className="flex items-center gap-2 rounded-lg border border-gray-800 bg-[#141414] px-4 py-2 text-sm text-white transition hover:border-gray-700 hover:bg-[#1a1a1a]"
+          >
+            <Workflow size={16} className="text-brand-accent" />
+            Workflows
+          </Link>
         </div>
       </div>
 
