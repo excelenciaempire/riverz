@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -38,10 +38,24 @@ function MetaCampaignsContent() {
     }
   }, [searchParams, router]);
 
-  const accountsQuery = useQuery<AccountsResponse, Error & { requiresReconnect?: boolean }>({
+  const queryClient = useQueryClient();
+  const accountsQuery = useQuery<
+    AccountsResponse,
+    Error & { requiresReconnect?: boolean; rateLimited?: boolean; retryAfterSec?: number }
+  >({
     queryKey: ['meta-accounts'],
     queryFn: async () => {
       const res = await fetch('/api/meta/accounts');
+      if (res.status === 429) {
+        const body = await res.json().catch(() => ({}));
+        const err = new Error(body?.error || 'Rate limit') as Error & {
+          rateLimited?: boolean;
+          retryAfterSec?: number;
+        };
+        err.rateLimited = true;
+        err.retryAfterSec = Number(body?.retryAfterSec) || 600;
+        throw err;
+      }
       if (res.status === 401) {
         const body = await res.json().catch(() => ({}));
         const err = new Error(body?.error || 'Reconectar') as Error & { requiresReconnect?: boolean };
@@ -89,8 +103,13 @@ function MetaCampaignsContent() {
             ? {
                 message: accountsQuery.error.message,
                 requiresReconnect: (accountsQuery.error as any)?.requiresReconnect,
+                rateLimited: (accountsQuery.error as any)?.rateLimited,
+                retryAfterSec: (accountsQuery.error as any)?.retryAfterSec,
               }
             : undefined
+        }
+        onRateLimitExpire={() =>
+          queryClient.invalidateQueries({ queryKey: ['meta-accounts'] })
         }
       />
 

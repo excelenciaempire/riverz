@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { resolveConnection } from '@/lib/meta-connection';
+import { assertNotRateLimited, RateLimitedError } from '@/lib/meta-rate-limit';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -66,6 +67,41 @@ export async function markConnectionExpired(userId: string, message: string): Pr
     .from('meta_connections')
     .update({ status: 'expired', last_error: message })
     .eq('clerk_user_id', userId);
+}
+
+/**
+ * Pre-flight check for a known cooldown. Returns a typed 429 NextResponse
+ * if we're inside the window so route handlers can `return` immediately.
+ *
+ *   const limited = await checkRateLimit(supabase, userId, adAccountId);
+ *   if (limited) return limited;
+ *
+ * Pass `adAccountId=null` for endpoints that aren't tied to a specific
+ * account yet (e.g. /accounts).
+ */
+export async function checkRateLimit(
+  supabase: typeof supabaseAdmin,
+  userId: string,
+  adAccountId: string | null,
+): Promise<NextResponse | null> {
+  try {
+    await assertNotRateLimited(supabase, userId, adAccountId);
+    return null;
+  } catch (err) {
+    if (err instanceof RateLimitedError) {
+      return NextResponse.json(
+        {
+          rateLimited: true,
+          retryAfterSec: err.retryAfterSec,
+          retryAfterMin: Math.ceil(err.retryAfterSec / 60),
+          adAccountId: err.adAccountId,
+          error: err.message,
+        },
+        { status: 429, headers: { 'retry-after': String(err.retryAfterSec) } },
+      );
+    }
+    throw err;
+  }
 }
 
 export { supabaseAdmin };

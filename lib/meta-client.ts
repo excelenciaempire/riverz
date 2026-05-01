@@ -40,8 +40,82 @@ interface MetaErrorPayload {
 }
 
 const RATE_LIMIT_CODES = new Set([4, 17, 32, 613]);
+// 80000=ads_insights, 80004=ads_management, 80003=custom_audience,
+// 80002=instagram, 80005=leadgen, 80006=messenger, 80001=pages,
+// 80008=whatsapp, 80014=catalog batch, 80009=catalog management.
+const BUC_RATE_LIMIT_CODES = new Set([80000, 80001, 80002, 80003, 80004, 80005, 80006, 80008, 80009, 80014]);
 const AUTH_ERROR_CODES = new Set([190, 102, 463]);
 const MAX_RETRIES = 3;
+
+// ============================================================================
+// Persistent cooldown hooks — set by metaFetch and read by routes
+// ============================================================================
+//
+// metaFetch() runs on every Graph call but lives in a module that can't
+// import from the supabase route helpers without creating a cycle. We
+// expose a callback hook so server routes can register a sink.
+//
+// Production: app/api routes call setMetaUsageReporter(reporter) once at
+// module init (via meta-rate-limit-bridge.ts), and metaFetch invokes the
+// reporter on every response with the parsed BUC snapshot + any rate-
+// limit code so the reporter can persist to meta_rate_limit_state.
+
+type UsageReport = {
+  /** parsed x-business-use-case-usage worst entry, when present */
+  snapshot: {
+    adAccountId: string;
+    type: string;
+    callCountPct: number | null;
+    totalCpuPct: number | null;
+    totalTimePct: number | null;
+    estimatedTimeToRegainAccessMin: number;
+  } | null;
+  /** the API error code, if the response was an error */
+  errorCode?: number;
+  errorSubcode?: number;
+  errorMessage?: string;
+};
+
+let usageReporter: ((r: UsageReport) => void) | null = null;
+export function setMetaUsageReporter(fn: ((r: UsageReport) => void) | null): void {
+  usageReporter = fn;
+}
+
+function parseBucWorst(headerValue: string | null): UsageReport['snapshot'] {
+  if (!headerValue) return null;
+  let json: Record<string, any[]>;
+  try {
+    json = JSON.parse(headerValue);
+  } catch {
+    return null;
+  }
+  let worst: UsageReport['snapshot'] = null;
+  for (const [accountId, entries] of Object.entries(json)) {
+    if (!Array.isArray(entries)) continue;
+    for (const e of entries) {
+      const callCountPct = Number.isFinite(Number(e?.call_count)) ? Number(e.call_count) : null;
+      const totalCpuPct = Number.isFinite(Number(e?.total_cputime)) ? Number(e.total_cputime) : null;
+      const totalTimePct = Number.isFinite(Number(e?.total_time)) ? Number(e.total_time) : null;
+      const score = Math.max(callCountPct ?? 0, totalCpuPct ?? 0, totalTimePct ?? 0);
+      const candidate = {
+        adAccountId: accountId,
+        type: String(e?.type ?? ''),
+        callCountPct,
+        totalCpuPct,
+        totalTimePct,
+        estimatedTimeToRegainAccessMin: Number(e?.estimated_time_to_regain_access ?? 0) || 0,
+      };
+      if (
+        !worst ||
+        score >
+          Math.max(worst.callCountPct ?? 0, worst.totalCpuPct ?? 0, worst.totalTimePct ?? 0)
+      ) {
+        worst = candidate;
+      }
+    }
+  }
+  return worst;
+}
 
 async function metaFetch(url: string, init: RequestInit = {}): Promise<any> {
   let attempt = 0;
@@ -56,27 +130,22 @@ async function metaFetch(url: string, init: RequestInit = {}): Promise<any> {
     }
 
     if (res.ok) {
-      const usageHeader = res.headers.get('x-business-use-case-usage');
-      if (usageHeader) {
+      const snapshot = parseBucWorst(res.headers.get('x-business-use-case-usage'));
+      if (usageReporter) {
         try {
-          const usage = JSON.parse(usageHeader);
-          for (const accountUsage of Object.values(usage) as any[]) {
-            if (Array.isArray(accountUsage)) {
-              for (const entry of accountUsage) {
-                const max = Math.max(
-                  Number(entry?.call_count ?? 0),
-                  Number(entry?.total_cputime ?? 0),
-                  Number(entry?.total_time ?? 0),
-                );
-                if (max > 75) {
-                  await sleep(1000 + Math.random() * 1000);
-                }
-              }
-            }
-          }
+          usageReporter({ snapshot });
         } catch {
-          /* ignore malformed header */
+          /* never let reporter break the request */
         }
+      }
+      // Local in-request soft-throttle to spread load when usage is high.
+      if (snapshot) {
+        const max = Math.max(
+          snapshot.callCountPct ?? 0,
+          snapshot.totalCpuPct ?? 0,
+          snapshot.totalTimePct ?? 0,
+        );
+        if (max > 75) await sleep(1000 + Math.random() * 1000);
       }
       return json;
     }
@@ -86,8 +155,29 @@ async function metaFetch(url: string, init: RequestInit = {}): Promise<any> {
     const subcode = err.error?.error_subcode;
     const message = err.error?.message || `Meta API HTTP ${res.status}`;
 
+    // Always report errors to the cooldown sink — even if we're going to
+    // retry below, the hard rate-limit codes tell us to stop everywhere.
+    if (usageReporter) {
+      try {
+        const snapshot = parseBucWorst(res.headers.get('x-business-use-case-usage'));
+        usageReporter({
+          snapshot,
+          errorCode: code,
+          errorSubcode: subcode,
+          errorMessage: message,
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+
     if (code && AUTH_ERROR_CODES.has(code)) {
       throw new MetaAuthError(message, code);
+    }
+
+    // Hard BUC stops — no retry. Throw immediately so the cooldown takes effect.
+    if (code && BUC_RATE_LIMIT_CODES.has(code)) {
+      throw new MetaApiError(message, code, subcode, res.status);
     }
 
     if (code && RATE_LIMIT_CODES.has(code) && attempt < MAX_RETRIES) {
@@ -532,14 +622,10 @@ export async function getVideoSourceUrl(token: string, videoId: string): Promise
  *   DESKTOP_FEED_STANDARD covers desktop in-feed video;
  *   INSTAGRAM_STANDARD covers IG Reels variants.
  */
-const PREVIEW_AD_FORMATS = [
-  'MOBILE_FEED_STANDARD',
-  'DESKTOP_FEED_STANDARD',
-  'INSTAGRAM_STANDARD',
-  'INSTAGRAM_REELS',
-  'INSTAGRAM_STORY',
-  'FACEBOOK_REELS_MOBILE',
-];
+// Trimmed to 2 candidates so we burn at most 2 BUC calls per video on the
+// fallback path. Mobile + Desktop covers >95% of placements; if neither
+// surfaces an mp4 we accept that this video can only play via the iframe.
+const PREVIEW_AD_FORMATS = ['MOBILE_FEED_STANDARD', 'DESKTOP_FEED_STANDARD'];
 
 export interface AdPreviewResult {
   /** Direct mp4 URL when we managed to extract one. Useful for playback + transcription. */
@@ -677,7 +763,15 @@ export async function getVideoMeta(token: string, videoId: string): Promise<Vide
 export async function listAdsWithInsights(
   token: string,
   adAccountId: string,
-  opts: { limit?: number; campaignId?: string; datePreset?: string } = {},
+  opts: {
+    limit?: number;
+    campaignId?: string;
+    datePreset?: string;
+    /** Cached video/image URL per ad — when present we skip the
+     *  expensive second-pass fallbacks (Story-id source, preview iframe
+     *  scrape) and just reuse what's already in the DB. */
+    cachedAssetByAdId?: Map<string, string>;
+  } = {},
 ): Promise<MetaAdSummary[]> {
   const acct = ensureActPrefix(adAccountId);
   const params = new URLSearchParams({
@@ -702,6 +796,8 @@ export async function listAdsWithInsights(
     getOriginalImageUrls(token, adAccountId, imageHashes),
   ]);
 
+  const cachedAssets = opts.cachedAssetByAdId ?? new Map<string, string>();
+
   const adsBase: MetaAdSummary[] = rows.map((row, i) => {
     const creative = row.creative ?? {};
     const media_kind = classifyMedia(creative);
@@ -710,6 +806,9 @@ export async function listAdsWithInsights(
     // Prefer the /act_X/adimages original URL — it's the full-resolution
     // upload, not the resized derivative creative.image_url often returns.
     const fullResImage = fields.image_hash ? originalImagesByHash.get(fields.image_hash) : null;
+    // Reuse cached video URL when Graph didn't return source — no
+    // additional Graph calls in the fallback pass for these.
+    const cachedSrc = cachedAssets.get(row.id) || null;
     return {
       id: row.id,
       name: row.name,
@@ -725,7 +824,7 @@ export async function listAdsWithInsights(
       media_kind,
       thumbnail_url: videoMeta?.thumbnail || fields.thumbnail_url,
       video_id: fields.video_id,
-      video_source_url: videoMeta?.source ?? null,
+      video_source_url: videoMeta?.source ?? cachedSrc,
       video_permalink_url: videoMeta?.permalink_url ?? null,
       video_embed_url: null,
       image_url: fullResImage || fields.image_url,

@@ -4,15 +4,23 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { LogOut, CheckCircle2, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { RateLimitBanner } from '@/components/meta-ads/rate-limit-banner';
 import type { AccountsResponse } from '@/types/meta';
 
 interface Props {
   data?: AccountsResponse;
-  error?: { message: string; requiresReconnect?: boolean };
+  error?: {
+    message: string;
+    requiresReconnect?: boolean;
+    rateLimited?: boolean;
+    retryAfterSec?: number;
+  };
   isLoading?: boolean;
+  /** Called when the rate-limit countdown reaches 0 — used to refetch. */
+  onRateLimitExpire?: () => void;
 }
 
-export function ConnectionCard({ data, error, isLoading }: Props) {
+export function ConnectionCard({ data, error, isLoading, onRateLimitExpire }: Props) {
   const queryClient = useQueryClient();
 
   const disconnectMutation = useMutation({
@@ -43,6 +51,18 @@ export function ConnectionCard({ data, error, isLoading }: Props) {
       <div className="rounded-xl border border-gray-800 bg-[#141414] p-6">
         <p className="text-gray-400">Verificando conexión con Meta...</p>
       </div>
+    );
+  }
+
+  // Rate-limited: show ONLY the banner — the user is fully connected,
+  // we just can't talk to Meta right now. Don't render "No conectado".
+  if (error?.rateLimited && error.retryAfterSec) {
+    return (
+      <RateLimitBanner
+        retryAfterSec={error.retryAfterSec}
+        message={error.message}
+        onExpire={onRateLimitExpire}
+      />
     );
   }
 

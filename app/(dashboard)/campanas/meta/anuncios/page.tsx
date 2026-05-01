@@ -25,6 +25,7 @@ import {
 import { AdCard } from '@/components/meta-ads/ad-card';
 import { LevelRow } from '@/components/meta-ads/level-row';
 import { AdDetailPanel } from '@/components/meta-ads/ad-detail-panel';
+import { RateLimitBanner } from '@/components/meta-ads/rate-limit-banner';
 import type { AccountsResponse, MetaAdSummary } from '@/types/meta';
 
 const DATE_PRESETS = [
@@ -124,12 +125,29 @@ function AnunciosContent() {
     setActiveAdSet(null);
   }, [adAccountId, datePreset]);
 
-  const adsQuery = useQuery<{ ads: MetaAdSummary[] }>({
+  const adsQuery = useQuery<{
+    ads: MetaAdSummary[];
+    rateLimited?: boolean;
+    cachedAt?: string;
+    fromCache?: boolean;
+  }>({
     queryKey: ['meta-ads', adAccountId, datePreset],
     queryFn: async () => {
       const res = await fetch(
         `/api/meta/ads?adAccountId=${encodeURIComponent(adAccountId)}&datePreset=${datePreset}&limit=50`,
       );
+      // 429 from our route still means "we have no cache to serve" because
+      // when we DO have cache the route returns 200 + rateLimited:true.
+      if (res.status === 429) {
+        const body = await res.json().catch(() => ({}));
+        const err = new Error(body?.error || 'Rate limit') as Error & {
+          rateLimited?: boolean;
+          retryAfterSec?: number;
+        };
+        err.rateLimited = true;
+        err.retryAfterSec = Number(body?.retryAfterSec) || 600;
+        throw err;
+      }
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error || 'No se pudieron cargar anuncios');
@@ -420,6 +438,14 @@ function AnunciosContent() {
         </div>
       ) : adsQuery.isLoading ? (
         <Loading text="Cargando anuncios desde Meta..." />
+      ) : adsQuery.error && (adsQuery.error as any)?.rateLimited ? (
+        <RateLimitBanner
+          retryAfterSec={(adsQuery.error as any).retryAfterSec || 600}
+          message={(adsQuery.error as Error).message}
+          onExpire={() =>
+            queryClient.invalidateQueries({ queryKey: ['meta-ads', adAccountId] })
+          }
+        />
       ) : adsQuery.error ? (
         <div className="rounded-xl border border-red-900 bg-red-900/20 p-6 text-center">
           <p className="text-sm text-red-300">{(adsQuery.error as Error).message}</p>
@@ -429,6 +455,19 @@ function AnunciosContent() {
         </div>
       ) : (
         <>
+          {/* When the route served cached data because we're rate-limited,
+              still surface the banner so the user understands why. */}
+          {adsQuery.data?.rateLimited && (
+            <RateLimitBanner
+              retryAfterSec={3600}
+              message={
+                'Mostrando datos cacheados (hasta 5 min). Meta tiene la cuenta en cooldown — los nuevos cambios aparecerán al expirar.'
+              }
+              onExpire={() =>
+                queryClient.invalidateQueries({ queryKey: ['meta-ads', adAccountId] })
+              }
+            />
+          )}
           {/* Stats line */}
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <Filter className="h-3 w-3" />

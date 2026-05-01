@@ -3,6 +3,8 @@ import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { resolveConnection } from '@/lib/meta-connection';
 import { runTranscribeForIntel } from '@/lib/transcribe-runner';
+import { assertNotRateLimited, RateLimitedError } from '@/lib/meta-rate-limit';
+import { bindMetaUsageReporter } from '@/lib/meta-rate-limit-bridge';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,6 +42,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'adAccountId requerido' }, { status: 400 });
   }
 
+  // Refuse bulk runs while the account is locked out — they'd just burn
+  // through the cooldown window and make things worse.
+  try {
+    await assertNotRateLimited(supabaseAdmin, userId, body.adAccountId);
+  } catch (err) {
+    if (err instanceof RateLimitedError) {
+      return NextResponse.json(
+        {
+          rateLimited: true,
+          retryAfterSec: err.retryAfterSec,
+          retryAfterMin: Math.ceil(err.retryAfterSec / 60),
+          error: err.message,
+        },
+        { status: 429, headers: { 'retry-after': String(err.retryAfterSec) } },
+      );
+    }
+    throw err;
+  }
+
   // Resolve token once — every ad in the same account uses it.
   const { data: connection } = await supabaseAdmin
     .from('meta_connections')
@@ -54,6 +75,7 @@ export async function POST(req: Request) {
     );
   }
   const token = resolved.token;
+  const unbindReporter = bindMetaUsageReporter(supabaseAdmin, userId);
 
   // Pick the queue: any intel row without a transcript yet, optionally
   // narrowed to the ids the client passed (useful for re-running just
@@ -91,12 +113,23 @@ export async function POST(req: Request) {
   let ok = 0;
   let failed = 0;
   let authFailed = false;
+  let bucThrottled = false;
 
-  // Sequential chunks of CHUNK_SIZE running in parallel. If we hit an
-  // auth error, mark the connection expired and stop — every subsequent
-  // ad would fail the same way.
+  // Sequential chunks of CHUNK_SIZE running in parallel. We bail on the
+  // first auth error (everything downstream would fail the same way) AND
+  // on the first BUC throttle (Meta has locked us out for the next hour).
   for (let i = 0; i < queue.length; i += CHUNK_SIZE) {
-    if (authFailed) break;
+    if (authFailed || bucThrottled) break;
+    // Re-check the cooldown row mid-run — the in-flight reporter may have
+    // written it during a previous chunk.
+    try {
+      await assertNotRateLimited(supabaseAdmin, userId, body.adAccountId);
+    } catch (err) {
+      if (err instanceof RateLimitedError) {
+        bucThrottled = true;
+        break;
+      }
+    }
     const slice = queue.slice(i, i + CHUNK_SIZE);
     const results = await Promise.allSettled(
       slice.map((row) => runTranscribeForIntel(supabaseAdmin, userId, row, token)),
@@ -120,6 +153,7 @@ export async function POST(req: Request) {
       .update({ status: 'expired', last_error: 'Token rejected during bulk transcribe' })
       .eq('clerk_user_id', userId);
   }
+  unbindReporter();
 
   return NextResponse.json({
     queued: queue.length,
@@ -127,5 +161,6 @@ export async function POST(req: Request) {
     ok,
     failed,
     requiresReconnect: authFailed || undefined,
+    rateLimited: bucThrottled || undefined,
   });
 }

@@ -6,8 +6,11 @@ import {
   listPages,
   listInstagramAccountsForPage,
   MetaAuthError,
+  MetaApiError,
 } from '@/lib/meta-client';
 import { resolveConnection } from '@/lib/meta-connection';
+import { assertNotRateLimited, RateLimitedError } from '@/lib/meta-rate-limit';
+import { bindMetaUsageReporter } from '@/lib/meta-rate-limit-bridge';
 import type { AccountsResponse } from '@/types/meta';
 
 export const runtime = 'nodejs';
@@ -60,6 +63,27 @@ export async function GET() {
     return NextResponse.json(body, { status: resolved.status });
   }
 
+  // Pre-flight cooldown check. If we're inside a BUC window we surface
+  // a 429 with retry-after so the UI can show a clear "wait N min" banner
+  // instead of bouncing around with vague errors.
+  try {
+    await assertNotRateLimited(supabaseAdmin, userId, null);
+  } catch (err) {
+    if (err instanceof RateLimitedError) {
+      return NextResponse.json(
+        {
+          rateLimited: true,
+          retryAfterSec: err.retryAfterSec,
+          retryAfterMin: Math.ceil(err.retryAfterSec / 60),
+          error: err.message,
+        },
+        { status: 429, headers: { 'retry-after': String(err.retryAfterSec) } },
+      );
+    }
+    throw err;
+  }
+
+  const unbind = bindMetaUsageReporter(supabaseAdmin, userId);
   try {
     const accounts = await listAdAccounts(resolved.token);
 
@@ -140,6 +164,16 @@ export async function GET() {
         { status: 401 },
       );
     }
+    if (err instanceof MetaApiError && err.code && err.code >= 80000 && err.code <= 80099) {
+      // The usage reporter already wrote a cooldown for us — surface
+      // the structured 429 so the UI can render the banner.
+      return NextResponse.json(
+        { rateLimited: true, error: err.message, retryAfterSec: 60 * 60 },
+        { status: 429, headers: { 'retry-after': '3600' } },
+      );
+    }
     return NextResponse.json({ error: err?.message || 'Error en Meta API' }, { status: 502 });
+  } finally {
+    unbind();
   }
 }
