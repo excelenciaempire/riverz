@@ -149,6 +149,29 @@ export async function DELETE(req: Request) {
     const templateId = searchParams.get('id');
     const folder = searchParams.get('folder');
 
+    // Bulk-delete-by-ids mode: JSON body { ids: string[] }. Used by the
+    // multi-select toolbar so the admin can wipe a hand-picked set in one
+    // round trip instead of N parallel single-id calls.
+    const ctype = req.headers.get('content-type') || '';
+    if (!templateId && folder === null && ctype.includes('application/json')) {
+      const body = await req.json().catch(() => ({} as any));
+      const ids: string[] = Array.isArray(body?.ids)
+        ? body.ids.filter((x: any) => typeof x === 'string' && x.length > 0)
+        : [];
+      if (ids.length > 0) {
+        const { error, count } = await supabaseAdmin
+          .from('templates')
+          .delete()
+          .in('id', ids)
+          .select('*', { count: 'exact', head: true });
+        if (error) {
+          console.error('Error bulk deleting templates:', error);
+          throw error;
+        }
+        return NextResponse.json({ success: true, deleted: count ?? ids.length });
+      }
+    }
+
     // Bulk-delete-by-folder mode: ?folder=<name>. Removes every template
     // tagged with that folder. Use folder=__none__ to nuke all rows that
     // have folder=NULL (the un-categorised bucket).

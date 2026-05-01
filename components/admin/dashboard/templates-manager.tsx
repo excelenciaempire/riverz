@@ -159,6 +159,19 @@ export function TemplatesManager() {
   const [headerNewFolder, setHeaderNewFolder] = useState('');
   const [showHeaderNewFolder, setShowHeaderNewFolder] = useState(false);
 
+  // Multi-select for bulk move/delete. We store ids in a Set for O(1)
+  // toggle/has lookups; clear on every successful bulk action.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkMovePicker, setShowBulkMovePicker] = useState(false);
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+
   // Pending folders — names the admin created via "Nueva carpeta" but that
   // don't have any templates yet. Persisted to localStorage so they survive
   // reloads. Auto-pruned when a template is added that uses the name.
@@ -333,6 +346,58 @@ export function TemplatesManager() {
     },
   });
 
+  // Bulk delete a hand-picked set of templates (selected via checkboxes).
+  // Single round-trip via the JSON-body branch of DELETE /api/admin/templates.
+  const bulkDeleteTemplates = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await fetch('/api/admin/templates', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      return res.json() as Promise<{ deleted: number }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-templates-folders'] });
+      clearSelection();
+      toast.success(`${data.deleted} plantilla(s) eliminada(s)`);
+    },
+    onError: (err: any) => toast.error(err?.message || 'Error al eliminar'),
+  });
+
+  // Bulk move (or remove from folder when folder=null) a hand-picked set.
+  const bulkMoveTemplates = useMutation({
+    mutationFn: async ({ ids, folder }: { ids: string[]; folder: string | null }) => {
+      const res = await fetch('/api/admin/templates/bulk-folder', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, folder }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      return res.json() as Promise<{ moved: number; folder: string | null }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-templates-folders'] });
+      clearSelection();
+      setShowBulkMovePicker(false);
+      toast.success(
+        data.folder
+          ? `${data.moved} movida(s) a "${data.folder}"`
+          : `${data.moved} sin carpeta`,
+      );
+    },
+    onError: (err: any) => toast.error(err?.message || 'Error al mover'),
+  });
+
   const uploadImage = async (file: File): Promise<string> => {
     const fileExt = file.name.split('.').pop() || 'png';
     
@@ -444,6 +509,8 @@ export function TemplatesManager() {
     setIsBulkUploading(true);
     // Concurrency of 3 — Supabase Storage handles parallel uploads fine but
     // we keep it bounded so a 50-image batch doesn't open 50 sockets at once.
+    // processBulkItem updates per-row status, which drives both the per-row
+    // spinners and the overall progress bar (derived from bulkItems below).
     const MAX_PARALLEL = 3;
     for (let i = 0; i < pending.length; i += MAX_PARALLEL) {
       const batch = pending.slice(i, i + MAX_PARALLEL);
@@ -451,10 +518,16 @@ export function TemplatesManager() {
     }
     setIsBulkUploading(false);
     queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
-    const successes = bulkItems.filter((it) => it.status === 'done').length;
-    if (successes > 0) {
-      toast.success(`${successes} plantilla(s) subidas exitosamente`);
-    }
+    queryClient.invalidateQueries({ queryKey: ['admin-templates-folders'] });
+    // Count from the latest state (functional setState trick to read fresh),
+    // not the closure variable, since processBulkItem mutates rows out of band.
+    setBulkItems((current) => {
+      const successes = current.filter((it) => it.status === 'done').length;
+      const failures = current.filter((it) => it.status === 'error').length;
+      if (successes > 0) toast.success(`${successes} plantilla(s) subidas exitosamente`);
+      if (failures > 0) toast.error(`${failures} con error — revisa los items en rojo`);
+      return current;
+    });
   };
 
   const resetForm = () => {
@@ -541,9 +614,14 @@ export function TemplatesManager() {
       }
       return res.json() as Promise<{ deleted: number; folder: string | null }>;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, folderName) => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] });
       queryClient.invalidateQueries({ queryKey: ['admin-templates-folders'] });
+      // Drop the folder from the pending list too — otherwise an empty
+      // folder the admin just nuked would re-appear in the filter chips.
+      if (folderName) {
+        persistPending(pendingFolders.filter((n) => n !== folderName));
+      }
       setFolderFilter('all');
       toast.success(`${data.deleted} plantilla(s) eliminada(s) de "${data.folder ?? 'sin carpeta'}"`);
     },
@@ -552,8 +630,19 @@ export function TemplatesManager() {
 
   const handleDeleteFolder = (folderName: string | null) => {
     const label = folderName ?? 'Sin carpeta';
-    const count = folders?.find((f) => f.name === folderName)?.count ?? 0;
-    if (!confirm(`¿Eliminar TODAS las ${count} plantillas en "${label}"?\nEsta acción no se puede deshacer.`)) return;
+    const count = mergedFolderOptions.find((f) => f.name === folderName)?.count ?? 0;
+    // Empty (pending-only) folder — no API call needed, just drop locally.
+    if (count === 0) {
+      if (folderName) persistPending(pendingFolders.filter((n) => n !== folderName));
+      setFolderFilter('all');
+      toast.success(`Carpeta "${label}" eliminada`);
+      return;
+    }
+    if (!confirm(
+      `¿Eliminar la carpeta "${label}" y sus ${count} plantilla(s)?\n\n` +
+      `Solo se eliminarán las plantillas dentro de esta carpeta. ` +
+      `Las que están en otras carpetas no se tocan.\n\nEsta acción no se puede deshacer.`,
+    )) return;
     deleteFolder.mutate(folderName);
   };
 
@@ -629,6 +718,91 @@ export function TemplatesManager() {
         </div>
       </div>
 
+      {/* Multi-select action bar — only renders when at least one card is
+          checked. Sticky so it stays visible while the admin scrolls a
+          long list. Actions: select-all-visible, move to folder (inline
+          picker), bulk delete, clear. */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-2 z-30 flex flex-wrap items-center gap-2 p-3 rounded-xl border border-brand-accent/40 bg-[#0a0a0a]/95 backdrop-blur shadow-lg">
+          <span className="text-sm text-white font-medium">
+            {selectedIds.size} seleccionada(s)
+          </span>
+          <span className="text-gray-600">·</span>
+          <button
+            onClick={() => setSelectedIds(new Set(filteredTemplates.map((t: any) => t.id)))}
+            className="text-xs text-gray-300 hover:text-white underline-offset-2 hover:underline"
+          >
+            Seleccionar todas las visibles ({filteredTemplates.length})
+          </button>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <div className="relative w-56">
+              {showBulkMovePicker ? (
+                <FolderPicker
+                  value={null}
+                  onChange={(folderValue) => {
+                    bulkMoveTemplates.mutate({ ids: Array.from(selectedIds), folder: folderValue });
+                  }}
+                  folderOptions={mergedFolderOptions}
+                  onCreateFolder={addPendingFolder}
+                  placeholder="Mover a…"
+                  disabled={bulkMoveTemplates.isPending}
+                />
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowBulkMovePicker(true)}
+                  disabled={bulkMoveTemplates.isPending}
+                  className="w-full"
+                >
+                  {bulkMoveTemplates.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Folder className="h-3 w-3 mr-1" />
+                  )}
+                  Mover a carpeta
+                </Button>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => bulkMoveTemplates.mutate({ ids: Array.from(selectedIds), folder: null })}
+              disabled={bulkMoveTemplates.isPending}
+              title="Quitar de la carpeta actual"
+            >
+              Sacar de carpeta
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (!confirm(`¿Eliminar ${selectedIds.size} plantilla(s) seleccionada(s)?\nEsta acción no se puede deshacer.`)) return;
+                bulkDeleteTemplates.mutate(Array.from(selectedIds));
+              }}
+              disabled={bulkDeleteTemplates.isPending}
+              className="text-red-400 border-red-500/40 hover:bg-red-500/10 hover:border-red-500"
+            >
+              {bulkDeleteTemplates.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : (
+                <Trash2 className="h-3 w-3 mr-1" />
+              )}
+              Eliminar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { clearSelection(); setShowBulkMovePicker(false); }}
+              disabled={bulkDeleteTemplates.isPending || bulkMoveTemplates.isPending}
+            >
+              <X className="h-3 w-3 mr-1" />
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Folder filter bar — admin-only organisational layer. End users
           (the /crear/static-ads selector) never see this. */}
       {mergedFolderOptions.length > 0 && (
@@ -682,22 +856,47 @@ export function TemplatesManager() {
 
       <div className="columns-1 md:columns-2 lg:columns-4 gap-6">
         {filteredTemplates.map((template: any) => {
+          const isSelected = selectedIds.has(template.id);
           return (
-            <div key={template.id} className="group relative overflow-hidden rounded-2xl border border-gray-800 bg-[#141414] mb-6 break-inside-avoid">
+            <div
+              key={template.id}
+              className={cn(
+                'group relative overflow-hidden rounded-2xl border bg-[#141414] mb-6 break-inside-avoid transition',
+                isSelected ? 'border-brand-accent ring-2 ring-brand-accent/40' : 'border-gray-800',
+              )}
+            >
               <div className="relative overflow-hidden bg-[#0a0a0a]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={template.thumbnail_url}
                   alt={template.name}
-                  className="block w-full h-auto"
+                  className="block w-full h-auto cursor-pointer"
+                  onClick={() => toggleSelected(template.id)}
                 />
+                {/* Selection checkbox — always visible so the admin doesn't
+                    have to enter a separate "select mode" first. Click toggles
+                    the row; the image itself also toggles for a bigger hit area. */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleSelected(template.id); }}
+                  aria-label={isSelected ? 'Deseleccionar' : 'Seleccionar'}
+                  className={cn(
+                    'absolute top-2 left-2 z-10 h-6 w-6 rounded-md border-2 flex items-center justify-center transition shadow',
+                    isSelected
+                      ? 'bg-brand-accent border-brand-accent'
+                      : 'bg-black/60 border-white/70 hover:border-white opacity-0 group-hover:opacity-100',
+                    isSelected && 'opacity-100',
+                  )}
+                >
+                  {isSelected && <Check className="h-4 w-4 text-white" />}
+                </button>
                 {template.width && template.height && (
                   <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-sm text-[10px] font-mono text-white">
                     {template.width}×{template.height}
                   </div>
                 )}
                 {template.folder && (
-                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-purple-500/80 backdrop-blur-sm text-[10px] text-white max-w-[60%] truncate" title={`Carpeta: ${template.folder}`}>
+                  <div className="absolute top-10 left-2 px-2 py-0.5 rounded-md bg-purple-500/80 backdrop-blur-sm text-[10px] text-white max-w-[60%] truncate" title={`Carpeta: ${template.folder}`}>
                     📁 {template.folder}
                   </div>
                 )}
@@ -964,6 +1163,58 @@ export function TemplatesManager() {
             variant="minimal"
             hideFileList
           />
+
+          {/* Overall progress bar — visible whenever there's anything to
+              upload, not only mid-upload, so the admin can see how far
+              along a 199-image batch is even after closing/reopening or
+              after a partial failure. Counts done + error against the
+              total queue (uploading rows tick into "done" as they finish). */}
+          {bulkItems.length > 0 && (() => {
+            const total = bulkItems.length;
+            const done = bulkItems.filter((i) => i.status === 'done').length;
+            const errored = bulkItems.filter((i) => i.status === 'error').length;
+            const uploading = bulkItems.filter((i) => i.status === 'uploading').length;
+            const finished = done + errored;
+            const pct = total === 0 ? 0 : Math.round((finished / total) * 100);
+            return (
+              <div className="space-y-2 p-3 rounded-lg bg-[#0a0a0a] border border-gray-800">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-3 text-gray-400">
+                    {isBulkUploading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-accent" />
+                    ) : null}
+                    <span className="text-white font-medium">
+                      {finished} / {total}
+                    </span>
+                    <span className="text-gray-500">·</span>
+                    <span className="text-green-400">{done} listas</span>
+                    {uploading > 0 && (
+                      <>
+                        <span className="text-gray-500">·</span>
+                        <span className="text-brand-accent">{uploading} subiendo</span>
+                      </>
+                    )}
+                    {errored > 0 && (
+                      <>
+                        <span className="text-gray-500">·</span>
+                        <span className="text-red-400">{errored} con error</span>
+                      </>
+                    )}
+                  </div>
+                  <span className="text-white font-mono">{pct}%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-gray-800 overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full transition-all duration-300',
+                      errored > 0 && !isBulkUploading ? 'bg-amber-500' : 'bg-brand-accent',
+                    )}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Per-item rows */}
           {bulkItems.length > 0 && (
