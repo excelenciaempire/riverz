@@ -8,7 +8,6 @@ import { UsersTable } from '@/components/admin/dashboard/users-table';
 import { GenerationsTable } from '@/components/admin/dashboard/generations-table';
 import { TemplatesManager } from '@/components/admin/dashboard/templates-manager';
 import { AvatarsManager } from '@/components/admin/dashboard/avatars-manager';
-import { LogsViewer } from '@/components/admin/dashboard/logs-viewer';
 import { CreditsManager } from '@/components/admin/dashboard/credits-manager';
 import { PricingConfig } from '@/components/admin/dashboard/pricing-config';
 import { ProductsManager } from '@/components/admin/dashboard/products-manager';
@@ -48,12 +47,11 @@ export default function DashboardPage() {
     { id: 'users', name: 'Usuarios' },
     { id: 'products', name: 'Productos' },
     { id: 'prompts', name: 'Prompts IA' },
-    { id: 'generations', name: 'Generaciones' },
+    { id: 'generations', name: 'Generaciones & Logs' },
     { id: 'credits', name: 'Créditos' },
     { id: 'pricing', name: 'Precios' },
     { id: 'templates', name: 'Plantillas' },
     { id: 'avatars', name: 'Avatares' },
-    { id: 'logs', name: 'Logs' },
   ];
 
   return (
@@ -94,7 +92,6 @@ export default function DashboardPage() {
           {activeTab === 'pricing' && <PricingConfig />}
           {activeTab === 'templates' && <TemplatesManager />}
           {activeTab === 'avatars' && <AvatarsManager />}
-          {activeTab === 'logs' && <LogsViewer />}
         </div>
       </div>
     </div>

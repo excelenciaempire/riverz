@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { ArrowLeft, Sparkles, Plus } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, Upload, X, FileText, Loader2 } from 'lucide-react';
 import { ResearchProgress } from '@/components/products/research-progress';
 import type { Product } from '@/types';
 
@@ -44,6 +45,9 @@ export default function ProductClient({ product }: { product: ProductWithResearc
   const router = useRouter();
   const [localResearchData, setLocalResearchData] = useState(product.research_data);
   const [localResearchStatus, setLocalResearchStatus] = useState(product.research_status);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadText, setUploadText] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Deep Research Mutation
   const deepResearch = useMutation({
@@ -71,6 +75,73 @@ export default function ProductClient({ product }: { product: ProductWithResearc
       setLocalResearchStatus('failed');
     },
   });
+
+  // Upload-research mutation: takes raw text and ships it through Gemini
+  // for normalization into the same schema /api/research produces.
+  const uploadResearch = useMutation({
+    mutationFn: async (rawText: string) => {
+      const response = await fetch('/api/products/upload-research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: product.id, rawText }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'Error procesando el research');
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.parseError) {
+        toast.warning('Se subió, pero Gemini no logró estructurarlo. Revisa el research crudo.');
+      } else {
+        toast.success('Research subido y estructurado correctamente');
+      }
+      setLocalResearchData(data.researchData);
+      setLocalResearchStatus(data.parseError ? 'failed' : 'completed');
+      setUploadOpen(false);
+      setUploadText('');
+      router.refresh();
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Error al subir el research');
+    },
+  });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Allow .txt, .md, .markdown — anything that's plain text. We don't parse
+    // PDF/DOCX in MVP; users with those should copy-paste the content.
+    const okExt = /\.(txt|md|markdown)$/i.test(file.name);
+    const okMime = file.type === 'text/plain' || file.type === 'text/markdown' || file.type === '';
+    if (!okExt && !okMime) {
+      toast.error('Sube un archivo .txt o .md (para PDF/DOCX por ahora copia y pega el contenido)');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Archivo demasiado grande (>2 MB). Reduce el contenido.');
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      setUploadText(text);
+      toast.success(`${file.name} cargado (${(file.size / 1024).toFixed(1)} KB)`);
+    } catch (err: any) {
+      toast.error(`No se pudo leer el archivo: ${err.message}`);
+    }
+  };
+
+  const handleSubmitUpload = () => {
+    const trimmed = uploadText.trim();
+    if (trimmed.length < 50) {
+      toast.error('El research está muy corto — pega al menos un párrafo con contenido real');
+      return;
+    }
+    uploadResearch.mutate(trimmed);
+  };
 
   const handleStartResearch = () => {
     setLocalResearchStatus('processing');
@@ -138,9 +209,9 @@ export default function ProductClient({ product }: { product: ProductWithResearc
               <Sparkles className="mr-2 h-5 w-5 text-brand-accent" />
               Deep Research de Mercado
             </h3>
-            
+
             <p className="mb-4 text-sm text-gray-400">
-              {hasResearch 
+              {hasResearch
                 ? 'El research profundo está listo. Úsalo para crear ads que conecten emocionalmente con tu audiencia.'
                 : 'La IA analizará Reddit, reseñas y redes sociales para descubrir los verdaderos motivadores emocionales de compra de tu público objetivo.'
               }
@@ -175,6 +246,123 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                 </div>
               );
             })()}
+
+            {/* Divider + upload-your-own-research entry point. The user can
+                bring an external research doc (Notion / Google Doc / Reddit
+                dump / call transcript) and Gemini normalizes it into the same
+                schema /api/research generates. */}
+            <div className="mt-5 border-t border-brand-accent/20 pt-4">
+              {!uploadOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setUploadOpen(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-700 bg-black/20 px-4 py-3 text-sm text-gray-300 transition hover:border-brand-accent hover:text-white"
+                >
+                  <Upload className="h-4 w-4" />
+                  Subir mi propio research
+                </button>
+              ) : (
+                <div className="space-y-3 rounded-lg border border-gray-800 bg-black/40 p-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="flex items-center gap-2 text-sm font-semibold text-white">
+                      <Upload className="h-4 w-4 text-brand-accent" />
+                      Subir research propio
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUploadOpen(false);
+                        setUploadText('');
+                      }}
+                      className="text-gray-500 hover:text-white"
+                      aria-label="Cerrar"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-gray-400">
+                    Pega el contenido de tu research (Notion, Google Doc, transcripción de llamadas,
+                    posts de Reddit, etc.) o sube un archivo <code className="rounded bg-black px-1">.txt</code> /
+                    <code className="rounded bg-black px-1">.md</code>. Gemini lo estructurará en el
+                    mismo formato que el Deep Research automático.
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".txt,.md,.markdown,text/plain,text/markdown"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Cargar archivo .txt / .md
+                    </Button>
+                    <span className="text-[11px] text-gray-500">
+                      o pega el texto abajo
+                    </span>
+                  </div>
+
+                  <Textarea
+                    value={uploadText}
+                    onChange={(e) => setUploadText(e.target.value)}
+                    placeholder="Pega aquí tu research completo. Cuanto más contexto, mejor: testimonios, dolores, miedos, lenguaje del cliente, soluciones que probaron antes, etc."
+                    className="min-h-[180px] border-gray-700 bg-black/60 text-sm text-white"
+                    disabled={uploadResearch.isPending}
+                  />
+
+                  <div className="flex items-center justify-between text-[11px] text-gray-500">
+                    <span>{uploadText.length.toLocaleString()} caracteres</span>
+                    {uploadText.length > 0 && uploadText.length < 50 && (
+                      <span className="text-yellow-500">Mínimo 50 caracteres</span>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setUploadOpen(false);
+                        setUploadText('');
+                      }}
+                      disabled={uploadResearch.isPending}
+                      className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSubmitUpload}
+                      disabled={uploadResearch.isPending || uploadText.trim().length < 50}
+                      className="bg-brand-accent text-white hover:bg-brand-accent/80"
+                    >
+                      {uploadResearch.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Estructurando con Gemini...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Procesar research
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
         </div>

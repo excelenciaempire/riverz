@@ -369,7 +369,24 @@ async function runSharedAnalysisForTemplate(
       throw err;
     }
 
-    inputData.templateAnalysisJson = parseJsonFromResponse(step1Text);
+    try {
+      inputData.templateAnalysisJson = parseJsonFromResponse(step1Text);
+    } catch (parseErr: any) {
+      // Capture parse failures explicitly so the admin sees them in the
+      // Generaciones tab instead of just a silent retry counter bump.
+      await appendStepLog(leader.id, leader.input_data, {
+        step: 1,
+        status: 'error',
+        startedAt: step1StartedAt,
+        completedAt: new Date().toISOString(),
+        model: step1ModelUsed,
+        promptSent: analysisPrompt,
+        imagesSent: step1ImagesSent,
+        outputPreview: step1Text,
+        errorMessage: `JSON parse failed: ${parseErr?.message || parseErr}`,
+      });
+      throw parseErr;
+    }
     inputData.modelUsedAnalysis = step1ModelUsed;
 
     await appendStepLog(leader.id, leader.input_data, {
@@ -504,7 +521,24 @@ async function runSharedAnalysisForTemplate(
       throw err;
     }
 
-    inputData.adaptedJson = parseJsonFromResponse(step2Text);
+    try {
+      inputData.adaptedJson = parseJsonFromResponse(step2Text);
+    } catch (parseErr: any) {
+      // Same as Step 1: surface parse failures as visible step entries so the
+      // admin can inspect the raw output instead of guessing what went wrong.
+      await appendStepLog(leader.id, leader.input_data, {
+        step: 2,
+        status: 'error',
+        startedAt: step2StartedAt,
+        completedAt: new Date().toISOString(),
+        model: step2ModelUsed,
+        promptSent: adaptationSystemPrompt,
+        imagesSent: step2ImagesSent,
+        outputPreview: step2Text,
+        errorMessage: `JSON parse failed: ${parseErr?.message || parseErr}`,
+      });
+      throw parseErr;
+    }
 
     await appendStepLog(leader.id, leader.input_data, {
       step: 2,
@@ -552,6 +586,7 @@ async function runSharedAnalysisForTemplate(
   // the JSON unmodified. Aspect ratio + image_input are passed via the
   // request body in step 4, not as text in the prompt.
   if (!inputData.variationPrompts || inputData.variationPrompts.length < VARIATIONS_PER_TEMPLATE) {
+    const step3StartedAt = new Date().toISOString();
     log('Step 3: Nano Banana prompt = adapted JSON (raw)');
     const adaptedJsonString = JSON.stringify(inputData.adaptedJson, null, 2);
     inputData.variationPrompts = Array.from({ length: VARIATIONS_PER_TEMPLATE }, (_, i) => ({
@@ -559,6 +594,18 @@ async function runSharedAnalysisForTemplate(
       title: inputData.productName || 'Product ad',
       prompt: adaptedJsonString,
     }));
+    // Step 3 is purely deterministic (no LLM call) but we still emit a log
+    // entry so the admin sees the full 1→5 chain for every generation.
+    await appendStepLog(leader.id, leader.input_data, {
+      step: 3,
+      status: 'ok',
+      startedAt: step3StartedAt,
+      completedAt: new Date().toISOString(),
+      model: '—',
+      promptSent: '(no LLM call — Step 3 reuses the adapted JSON from Step 2 as the Nano Banana prompt)',
+      imagesSent: [],
+      outputPreview: adaptedJsonString,
+    });
   }
 
   // Persist shared results into all sibling rows (including leader).
@@ -754,6 +801,35 @@ export async function POST(req: Request) {
       .eq('project_id', projectId)
       .in('status', ['analyzing', 'adapting', 'generating_prompt'])
       .lt('updated_at', twoMinutesAgo);
+
+    // Reset rows stuck in 'generating' (Nano Banana polling) for >10 min.
+    // The kie.ai task is almost certainly dead at that point — drop the
+    // taskId and rewind to pending_generation so Step 4 re-creates a fresh
+    // task on the next tick. Without this, a wedged task ID locks the row
+    // forever because Step 5 keeps polling a task that never resolves.
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: stuckGenerating } = await supabaseAdmin
+      .from('generations')
+      .select('id, input_data')
+      .eq('project_id', projectId)
+      .eq('status', 'generating')
+      .lt('updated_at', tenMinutesAgo);
+    if (stuckGenerating && stuckGenerating.length > 0) {
+      for (const row of stuckGenerating as any[]) {
+        const cleaned = { ...(row.input_data || {}) };
+        delete cleaned.generationTaskId;
+        await supabaseAdmin
+          .from('generations')
+          .update({
+            status: 'pending_generation',
+            input_data: cleaned,
+            error_message: 'Nano Banana task >10 min sin respuesta — reintentando con tarea nueva',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', row.id);
+      }
+      console.log(`[PROCESS-QUEUE] Reset ${stuckGenerating.length} stuck generating rows`);
+    }
 
     // Fetch every non-terminal row in this project.
     const { data: generations, error } = await supabaseAdmin
