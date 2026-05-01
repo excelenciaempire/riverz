@@ -101,7 +101,7 @@ Responde ÚNICAMENTE con el JSON, sin markdown ni explicaciones adicionales.`
       console.log('[RESEARCH] Calling Gemini 3 Pro with', userContent.length - 1, 'images...');
       researchResponse = await analyzeWithGemini3Pro(messages, {
         temperature: 0.7,
-        maxTokens: 12000
+        maxTokens: 64000
       });
       console.log('[RESEARCH] Gemini response received, length:', researchResponse?.length || 0);
       console.log('[RESEARCH] Response preview:', researchResponse?.substring(0, 300));

@@ -76,7 +76,7 @@ Genera el análisis basándote en esta información del producto.`;
     
     const researchResponse = await analyzeWithGemini3Pro(messages, {
       temperature: 0.5,
-      maxTokens: 8000
+      maxTokens: 64000
     });
 
     // 7. Parse JSON response

@@ -26,7 +26,7 @@ export interface ClaudeOptions {
  * across both runtimes.
  */
 export async function callClaude(messages: AnthropicMessage[], options: ClaudeOptions = {}): Promise<string> {
-  const { system, temperature = 0.5, maxTokens = 12000, model = 'claude-sonnet-4-6' } = options;
+  const { system, temperature = 0.5, maxTokens = 64000, model = 'claude-sonnet-4-6' } = options;
   if (!config.kie.apiKey) throw new Error('KIE_API_KEY not set');
 
   const body: Record<string, any> = {

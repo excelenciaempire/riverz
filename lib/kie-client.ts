@@ -334,7 +334,7 @@ export async function analyzeWithClaudeSonnet(
   try {
     const {
       temperature = 0.7,
-      maxTokens = 8000,
+      maxTokens = 64000,
       model = 'claude-sonnet-4-5-20250929'
     } = options;
 
@@ -400,7 +400,7 @@ interface GeminiOptions {
  */
 export async function analyzeWithGemini3Pro(messages: GeminiMessage[], options: GeminiOptions = {}) {
   try {
-    const { temperature = 0.7, maxTokens = 12000 } = options;
+    const { temperature = 0.7, maxTokens = 64000 } = options;
     
     const requestBody = {
       messages,
@@ -523,7 +523,7 @@ export interface ClaudeKieOptions {
  * Use for: template analysis with vision, adaptation reasoning, prompt generation.
  */
 export async function analyzeWithClaude46(messages: GeminiMessage[], options: ClaudeKieOptions = {}): Promise<string> {
-  const { temperature = 0.5, maxTokens = 8000, model = 'claude-sonnet-4-6' } = options;
+  const { temperature = 0.5, maxTokens = 64000, model = 'claude-sonnet-4-6' } = options;
   const { system, messages: anthropicMessages } = await toAnthropicMessages(messages);
 
   const requestBody: Record<string, any> = {
@@ -627,7 +627,7 @@ interface GptOptions {
 }
 
 export async function analyzeWithGpt4o(messages: GeminiMessage[], options: GptOptions = {}): Promise<string> {
-  const { temperature = 0.5, maxTokens = 8000 } = options;
+  const { temperature = 0.5, maxTokens = 64000 } = options;
   if (!KIE_API_KEY) throw new Error('KIE_API_KEY not set');
 
   const res = await fetch(`${KIE_BASE_URL}/gpt-4o/v1/chat/completions`, {

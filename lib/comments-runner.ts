@@ -109,7 +109,7 @@ export async function runCommentsForAd(
 
   let raw: string;
   try {
-    raw = String(await analyzeWithGemini3Pro(messages, { temperature: 0.2, maxTokens: 4000 }));
+    raw = String(await analyzeWithGemini3Pro(messages, { temperature: 0.2, maxTokens: 64000 }));
   } catch (err: any) {
     return { kind: 'failed', message: err?.message || 'kie.ai/Gemini falló' };
   }

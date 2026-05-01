@@ -53,7 +53,7 @@ export async function handleGeneratePrompts(job: StealerJob) {
   try {
     const text = await callGemini(
       [{ role: 'user', content: [{ type: 'text', text: 'Analyze this keyframe and return the JSON.' }, imageBlock] }],
-      { system: systemPrompt, temperature: 0.5, maxTokens: 8000 }
+      { system: systemPrompt, temperature: 0.5, maxTokens: 64000 }
     );
     parsed = parseJsonFromGemini(text);
   } catch (err: any) {
