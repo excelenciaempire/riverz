@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { StepLogCard, type StepLogEntry } from './step-log-card';
@@ -19,23 +18,19 @@ export function LogsViewer() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [stepFilter, setStepFilter] = useState('all');
-  const supabase = createClient();
 
-  // Pull recent generations and flatten their stepLogs into a time-ordered
-  // stream of kie.ai calls. This is the only place that records what
-  // actually went on the wire, so it lives here instead of api_logs (which
-  // never had any writers).
-  const { data: rows, isLoading } = useQuery({
+  // Pull recent generations via the admin API route — it uses the service
+  // role and bypasses the per-user RLS that would otherwise hide every
+  // row from the admin client (the table is gated by
+  // clerk_user_id = auth.jwt()->>'sub', and the browser client doesn't
+  // forward a Clerk JWT). The route is already gated by isAdminEmail.
+  const { data: rows, isLoading, error } = useQuery({
     queryKey: ['admin-step-logs'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('generations')
-        .select('id, type, input_data, created_at, users(email)')
-        .order('created_at', { ascending: false })
-        .limit(200);
-
-      if (error) throw error;
-      return data || [];
+      const res = await fetch('/api/admin/generations?limit=200', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      return (json.generations || []) as any[];
     },
     refetchInterval: 5000,
   });
