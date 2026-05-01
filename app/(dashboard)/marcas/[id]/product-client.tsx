@@ -47,6 +47,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
   const [localResearchStatus, setLocalResearchStatus] = useState(product.research_status);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadText, setUploadText] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Deep Research Mutation
@@ -76,15 +77,33 @@ export default function ProductClient({ product }: { product: ProductWithResearc
     },
   });
 
-  // Upload-research mutation: takes raw text and ships it through Gemini
-  // for normalization into the same schema /api/research produces.
+  // We track two upload sources:
+  //   - `uploadText`: pasted text, or content read client-side from .txt/.md
+  //   - `uploadFile`: a binary file (.pdf/.docx) that the SERVER will
+  //     extract text from. We don't parse those in the browser because
+  //     pdf.js / mammoth pull in megabytes of WASM/JS we'd rather not ship.
+  // Submission picks the right channel: FormData if a binary is attached,
+  // JSON otherwise.
   const uploadResearch = useMutation({
-    mutationFn: async (rawText: string) => {
-      const response = await fetch('/api/products/upload-research', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: product.id, rawText }),
-      });
+    mutationFn: async (payload: { rawText?: string; file?: File }) => {
+      let response: Response;
+      if (payload.file) {
+        const fd = new FormData();
+        fd.set('productId', product.id);
+        fd.set('file', payload.file);
+        // If the user also pasted text on top of a file pick, the file wins.
+        // Send only the file so the server doesn't double-process.
+        response = await fetch('/api/products/upload-research', {
+          method: 'POST',
+          body: fd,
+        });
+      } else {
+        response = await fetch('/api/products/upload-research', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId: product.id, rawText: payload.rawText }),
+        });
+      }
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(data.error || 'Error procesando el research');
@@ -94,6 +113,8 @@ export default function ProductClient({ product }: { product: ProductWithResearc
     onSuccess: (data) => {
       if (data.parseError) {
         toast.warning('Se subió, pero Gemini no logró estructurarlo. Revisa el research crudo.');
+      } else if (data.truncated) {
+        toast.success('Research procesado (se truncó la cola por exceso de longitud)');
       } else {
         toast.success('Research subido y estructurado correctamente');
       }
@@ -101,6 +122,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
       setLocalResearchStatus(data.parseError ? 'failed' : 'completed');
       setUploadOpen(false);
       setUploadText('');
+      setUploadFile(null);
       router.refresh();
     },
     onError: (err: any) => {
@@ -112,35 +134,61 @@ export default function ProductClient({ product }: { product: ProductWithResearc
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Allow .txt, .md, .markdown — anything that's plain text. We don't parse
-    // PDF/DOCX in MVP; users with those should copy-paste the content.
-    const okExt = /\.(txt|md|markdown)$/i.test(file.name);
-    const okMime = file.type === 'text/plain' || file.type === 'text/markdown' || file.type === '';
-    if (!okExt && !okMime) {
-      toast.error('Sube un archivo .txt o .md (para PDF/DOCX por ahora copia y pega el contenido)');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Archivo demasiado grande (>2 MB). Reduce el contenido.');
+    const name = file.name.toLowerCase();
+    const isText = /\.(txt|md|markdown)$/.test(name);
+    const isPdf = name.endsWith('.pdf') || file.type === 'application/pdf';
+    const isDocx =
+      name.endsWith('.docx') ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+    if (!isText && !isPdf && !isDocx) {
+      toast.error('Formato no soportado. Sube .pdf, .docx, .txt o .md');
       return;
     }
 
-    try {
-      const text = await file.text();
-      setUploadText(text);
-      toast.success(`${file.name} cargado (${(file.size / 1024).toFixed(1)} KB)`);
-    } catch (err: any) {
-      toast.error(`No se pudo leer el archivo: ${err.message}`);
+    // Size caps: text files we read client-side stay small; binaries are sent
+    // straight to the server which has its own 25 MB cap.
+    if (isText && file.size > 2 * 1024 * 1024) {
+      toast.error('Archivo de texto demasiado grande (>2 MB)');
+      return;
+    }
+    if (!isText && file.size > 25 * 1024 * 1024) {
+      toast.error('Archivo demasiado grande (>25 MB). Reduce el documento.');
+      return;
+    }
+
+    if (isText) {
+      try {
+        const text = await file.text();
+        setUploadText(text);
+        setUploadFile(null);
+        toast.success(`${file.name} cargado (${(file.size / 1024).toFixed(1)} KB)`);
+      } catch (err: any) {
+        toast.error(`No se pudo leer el archivo: ${err.message}`);
+      }
+    } else {
+      // PDF / DOCX → don't parse in the browser; let the server do it. We
+      // store the File and clear the textarea so the UI shows clearly that
+      // this submission is a binary upload.
+      setUploadFile(file);
+      setUploadText('');
+      toast.success(
+        `${file.name} listo para procesar (${(file.size / 1024 / 1024).toFixed(2)} MB · ${isPdf ? 'PDF' : 'DOCX'})`
+      );
     }
   };
 
   const handleSubmitUpload = () => {
+    if (uploadFile) {
+      uploadResearch.mutate({ file: uploadFile });
+      return;
+    }
     const trimmed = uploadText.trim();
     if (trimmed.length < 50) {
       toast.error('El research está muy corto — pega al menos un párrafo con contenido real');
       return;
     }
-    uploadResearch.mutate(trimmed);
+    uploadResearch.mutate({ rawText: trimmed });
   };
 
   const handleStartResearch = () => {
@@ -273,6 +321,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                       onClick={() => {
                         setUploadOpen(false);
                         setUploadText('');
+                        setUploadFile(null);
                       }}
                       className="text-gray-500 hover:text-white"
                       aria-label="Cerrar"
@@ -282,9 +331,12 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                   </div>
 
                   <p className="text-xs text-gray-400">
-                    Pega el contenido de tu research (Notion, Google Doc, transcripción de llamadas,
-                    posts de Reddit, etc.) o sube un archivo <code className="rounded bg-black px-1">.txt</code> /
-                    <code className="rounded bg-black px-1">.md</code>. Gemini lo estructurará en el
+                    Sube un archivo <code className="rounded bg-black px-1">.pdf</code>,
+                    {' '}<code className="rounded bg-black px-1">.docx</code>,
+                    {' '}<code className="rounded bg-black px-1">.txt</code> o
+                    {' '}<code className="rounded bg-black px-1">.md</code>, o pega texto
+                    directamente (Notion, Google Doc, transcripción de llamadas, posts de Reddit, reseñas).
+                    El sistema extrae el texto, lo convierte a markdown y Gemini lo estructura en el
                     mismo formato que el Deep Research automático.
                   </p>
 
@@ -292,7 +344,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".txt,.md,.markdown,text/plain,text/markdown"
+                      accept=".pdf,.docx,.txt,.md,.markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
                       onChange={handleFileUpload}
                       className="hidden"
                     />
@@ -301,27 +353,66 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                       variant="outline"
                       size="sm"
                       onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadResearch.isPending}
                       className="border-gray-700 text-gray-300 hover:bg-gray-800"
                     >
                       <FileText className="mr-2 h-4 w-4" />
-                      Cargar archivo .txt / .md
+                      Cargar archivo (PDF, DOCX, TXT, MD)
                     </Button>
                     <span className="text-[11px] text-gray-500">
                       o pega el texto abajo
                     </span>
                   </div>
 
+                  {uploadFile && (
+                    <div className="flex items-center justify-between gap-2 rounded-lg border border-brand-accent/40 bg-brand-accent/5 px-3 py-2">
+                      <div className="flex items-center gap-2 text-xs text-white">
+                        <FileText className="h-4 w-4 text-brand-accent" />
+                        <span className="truncate font-medium">{uploadFile.name}</span>
+                        <span className="text-gray-400">
+                          {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadFile(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        disabled={uploadResearch.isPending}
+                        className="text-gray-500 hover:text-white"
+                        aria-label="Quitar archivo"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+
                   <Textarea
                     value={uploadText}
-                    onChange={(e) => setUploadText(e.target.value)}
-                    placeholder="Pega aquí tu research completo. Cuanto más contexto, mejor: testimonios, dolores, miedos, lenguaje del cliente, soluciones que probaron antes, etc."
-                    className="min-h-[180px] border-gray-700 bg-black/60 text-sm text-white"
-                    disabled={uploadResearch.isPending}
+                    onChange={(e) => {
+                      setUploadText(e.target.value);
+                      // Pasting text takes priority over a previously selected
+                      // binary so the user can switch modes without an extra
+                      // click.
+                      if (uploadFile && e.target.value.length > 0) setUploadFile(null);
+                    }}
+                    placeholder={
+                      uploadFile
+                        ? 'Archivo seleccionado arriba — al procesar se usará el archivo (no este texto). Si quieres usar texto, quita el archivo primero.'
+                        : 'Pega aquí tu research completo. Cuanto más contexto, mejor: testimonios, dolores, miedos, lenguaje del cliente, soluciones que probaron antes, etc.'
+                    }
+                    className="min-h-[160px] border-gray-700 bg-black/60 text-sm text-white"
+                    disabled={uploadResearch.isPending || !!uploadFile}
                   />
 
                   <div className="flex items-center justify-between text-[11px] text-gray-500">
-                    <span>{uploadText.length.toLocaleString()} caracteres</span>
-                    {uploadText.length > 0 && uploadText.length < 50 && (
+                    <span>
+                      {uploadFile
+                        ? 'Texto se extrae en el servidor'
+                        : `${uploadText.length.toLocaleString()} caracteres`}
+                    </span>
+                    {!uploadFile && uploadText.length > 0 && uploadText.length < 50 && (
                       <span className="text-yellow-500">Mínimo 50 caracteres</span>
                     )}
                   </div>
@@ -334,6 +425,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                       onClick={() => {
                         setUploadOpen(false);
                         setUploadText('');
+                        setUploadFile(null);
                       }}
                       disabled={uploadResearch.isPending}
                       className="border-gray-700 text-gray-300 hover:bg-gray-800"
@@ -344,13 +436,16 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                       type="button"
                       size="sm"
                       onClick={handleSubmitUpload}
-                      disabled={uploadResearch.isPending || uploadText.trim().length < 50}
+                      disabled={
+                        uploadResearch.isPending ||
+                        (!uploadFile && uploadText.trim().length < 50)
+                      }
                       className="bg-brand-accent text-white hover:bg-brand-accent/80"
                     >
                       {uploadResearch.isPending ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Estructurando con Gemini...
+                          {uploadFile ? 'Extrayendo + estructurando...' : 'Estructurando con Gemini...'}
                         </>
                       ) : (
                         <>

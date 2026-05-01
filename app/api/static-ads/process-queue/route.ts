@@ -145,11 +145,16 @@ function hashFromBase64(dataUri: string): { sha256: string; bytes: number } {
  */
 async function appendStepLog(rowId: string, mutableInputData: any, entry: StepLogEntry): Promise<void> {
   if (!Array.isArray(mutableInputData.stepLogs)) mutableInputData.stepLogs = [];
-  // Cap large fields so input_data stays bounded per row.
+  // Cap large fields so input_data stays bounded per row, but generously —
+  // the previous 2k cap on outputPreview was truncating real Gemini JSON
+  // responses mid-document, making the "Respuesta" panel useless. Bumped to
+  // 200k chars (≈50k tokens) which fits any single 64k-token model output
+  // with margin while still keeping the row JSONB under Postgres's row-size
+  // sweet spot.
   const capped: StepLogEntry = {
     ...entry,
-    promptSent: (entry.promptSent || '').slice(0, 20000),
-    outputPreview: entry.outputPreview ? entry.outputPreview.slice(0, 2000) : undefined,
+    promptSent: (entry.promptSent || '').slice(0, 100_000),
+    outputPreview: entry.outputPreview ? entry.outputPreview.slice(0, 200_000) : undefined,
   };
   mutableInputData.stepLogs.push(capped);
   await supabaseAdmin

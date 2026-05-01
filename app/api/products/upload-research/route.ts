@@ -7,15 +7,16 @@ export const runtime = 'nodejs';
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-// Hard cap so a malicious or accidental megabyte-sized paste can't blow past
-// the model's input window or balloon the request body. ~400k chars ≈ 100k
-// tokens — well under Gemini 3 Pro's 1M context but big enough to fit any
-// realistic research doc.
-const MAX_INPUT_CHARS = 400_000;
+// Hard cap on the *normalized* text we feed Gemini. ~400k chars ≈ 100k
+// tokens — well under Gemini 3 Pro's 1M context. Anything bigger gets
+// truncated with a notice in the response so the user knows part was
+// dropped (vs. silently hallucinating from a partial doc).
+const MAX_TEXT_CHARS = 400_000;
+// Hard cap on raw uploaded file size. PDFs/DOCXs above this are too big
+// to extract reliably in a 5-min serverless function and almost never
+// research material — they're scans or full books.
+const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB
 
-// Schema delivered to the model in the system prompt. Matches exactly what
-// `/marcas/[id]/research` page renders so any new upload behaves like an
-// AI-generated research from /api/research.
 const RESEARCH_SCHEMA = `{
   "perfil_demografico": {
     "nombre_avatar": "",
@@ -80,7 +81,7 @@ const RESEARCH_SCHEMA = `{
 }`;
 
 function buildNormalizationPrompt(productName: string, productDescription: string) {
-  return `Eres un analista de research de mercado. El usuario te entrega su propia investigación de mercado en formato libre (puede ser un Google Doc, notas, entrevistas transcritas, posts de Reddit, reseñas, etc.) y tu tarea es ESTRUCTURARLA en el JSON exacto que sigue.
+  return `Eres un analista de research de mercado. El usuario te entrega su propia investigación de mercado en formato libre (puede ser un Google Doc, notas, entrevistas transcritas, posts de Reddit, reseñas, un PDF, un docx, etc.) y tu tarea es ESTRUCTURARLA en el JSON exacto que sigue.
 
 PRODUCTO: ${productName}
 DESCRIPCIÓN: ${productDescription || 'No disponible'}
@@ -108,7 +109,6 @@ function parseJsonTolerant(s: string): any {
   const firstBrace = txt.indexOf('{');
   if (firstBrace > 0) txt = txt.slice(firstBrace);
 
-  // Walk to find the matching close brace.
   let depth = 0;
   let inString = false;
   let escape = false;
@@ -129,6 +129,98 @@ function parseJsonTolerant(s: string): any {
   return JSON.parse(txt);
 }
 
+/**
+ * Light "text → markdown-ish" pass for raw extractor output. Preserves
+ * paragraph breaks, collapses runs of whitespace, and strips form-feed
+ * characters PDFs love to emit. We don't try to reverse-engineer headings —
+ * Gemini reads paragraphs fine and inventing # / ## from font sizes we don't
+ * have would just add noise.
+ */
+function toMarkdown(raw: string): string {
+  return raw
+    .replace(/\f/g, '\n\n') // form feeds → paragraph break
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+/**
+ * Detect the kind of file we got and return the extension we'll route on.
+ * Both the MIME type and the filename can be wrong/missing, so we trust
+ * whichever signal is more specific.
+ */
+function detectKind(file: File): 'pdf' | 'docx' | 'text' | 'unknown' {
+  const name = (file.name || '').toLowerCase();
+  const mime = (file.type || '').toLowerCase();
+
+  if (name.endsWith('.pdf') || mime === 'application/pdf') return 'pdf';
+  if (
+    name.endsWith('.docx') ||
+    mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ) return 'docx';
+  if (
+    name.endsWith('.txt') ||
+    name.endsWith('.md') ||
+    name.endsWith('.markdown') ||
+    mime === 'text/plain' ||
+    mime === 'text/markdown'
+  ) return 'text';
+  return 'unknown';
+}
+
+async function extractPdf(buf: Buffer): Promise<string> {
+  // unpdf has no filesystem deps so it works on Vercel serverless.
+  // extractText returns { text: string[] } where each entry is one page.
+  const { extractText, getDocumentProxy } = await import('unpdf');
+  const pdf = await getDocumentProxy(new Uint8Array(buf));
+  const { text } = await extractText(pdf, { mergePages: false });
+  if (!Array.isArray(text)) return String(text || '');
+  // Stitch pages with double newline so paragraph boundaries survive.
+  return text.join('\n\n');
+}
+
+async function extractDocx(buf: Buffer): Promise<string> {
+  // mammoth has a `convertToMarkdown` style via convertToHtml + htmlToMd, but
+  // for our purposes raw text is enough — the AI doesn't care about headings
+  // and converting back to markdown loses fidelity on tables anyway.
+  const mammoth = await import('mammoth');
+  const result = await mammoth.extractRawText({ buffer: buf });
+  return result.value || '';
+}
+
+/**
+ * Pull text out of an uploaded file regardless of its format. Returns an
+ * object with the text and a tag noting which extractor was used so the
+ * caller can record provenance on the saved research.
+ */
+async function extractFileText(file: File): Promise<{ text: string; kind: string; bytes: number }> {
+  const kind = detectKind(file);
+  if (kind === 'unknown') {
+    throw new Error(
+      `Tipo de archivo no soportado: ${file.name || file.type || 'desconocido'}. Sube .pdf, .docx, .txt o .md.`
+    );
+  }
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error(
+      `Archivo demasiado grande (${(file.size / 1024 / 1024).toFixed(1)} MB). Máx ${(MAX_FILE_BYTES / 1024 / 1024).toFixed(0)} MB.`
+    );
+  }
+
+  const arrayBuf = await file.arrayBuffer();
+  const buf = Buffer.from(arrayBuf);
+
+  let text: string;
+  if (kind === 'pdf') text = await extractPdf(buf);
+  else if (kind === 'docx') text = await extractDocx(buf);
+  else text = buf.toString('utf-8');
+
+  text = toMarkdown(text);
+  return { text, kind, bytes: file.size };
+}
+
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
@@ -136,34 +228,71 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
-    const productId: string | undefined = body.productId;
-    const rawText: string | undefined = body.rawText;
+    // Two input modes:
+    //   - multipart/form-data with a `file` field → server extracts text
+    //   - application/json with `{ rawText }`     → already plain text
+    // The UI picks the mode based on whether the user uploaded a binary
+    // (.pdf/.docx) or pasted/uploaded plain text.
+    const contentType = req.headers.get('content-type') || '';
+
+    let productId: string | undefined;
+    let rawText: string;
+    let sourceTag: 'paste' | 'pdf' | 'docx' | 'text-file' = 'paste';
+    let truncated = false;
+
+    if (contentType.includes('multipart/form-data')) {
+      const form = await req.formData();
+      productId = String(form.get('productId') || '') || undefined;
+      const file = form.get('file');
+      const pastedText = String(form.get('rawText') || '');
+
+      if (file instanceof File && file.size > 0) {
+        const extracted = await extractFileText(file);
+        rawText = extracted.text;
+        sourceTag = (extracted.kind === 'pdf'
+          ? 'pdf'
+          : extracted.kind === 'docx'
+          ? 'docx'
+          : 'text-file') as typeof sourceTag;
+      } else if (pastedText.trim().length > 0) {
+        rawText = pastedText;
+      } else {
+        return NextResponse.json({ error: 'Sube un archivo o pega texto.' }, { status: 400 });
+      }
+    } else {
+      const body = await req.json();
+      productId = body.productId;
+      const pasted: string | undefined = body.rawText;
+      if (!pasted || typeof pasted !== 'string') {
+        return NextResponse.json({ error: 'Missing or invalid rawText' }, { status: 400 });
+      }
+      rawText = pasted;
+    }
 
     if (!productId) {
       return NextResponse.json({ error: 'Missing productId' }, { status: 400 });
     }
-    if (!rawText || typeof rawText !== 'string') {
-      return NextResponse.json({ error: 'Missing or invalid rawText' }, { status: 400 });
-    }
 
-    const trimmed = rawText.trim();
-    if (trimmed.length < 50) {
+    rawText = (rawText || '').trim();
+    if (rawText.length < 50) {
       return NextResponse.json(
-        { error: 'El research está demasiado corto. Pega al menos un párrafo con contenido real.' },
+        {
+          error:
+            'El research está demasiado corto o el archivo no contenía texto extraíble. Si era un PDF escaneado, conviértelo primero a texto (OCR) y vuelve a subirlo.',
+        },
         { status: 400 }
       );
     }
-    if (trimmed.length > MAX_INPUT_CHARS) {
-      return NextResponse.json(
-        { error: `Research demasiado largo (${trimmed.length.toLocaleString()} chars). Máx ${MAX_INPUT_CHARS.toLocaleString()}.` },
-        { status: 413 }
-      );
+    if (rawText.length > MAX_TEXT_CHARS) {
+      // Trim the tail rather than failing — most research docs put the meat
+      // up front and the tail is appendices/references. We tag the response
+      // so the user knows part was dropped.
+      rawText = rawText.slice(0, MAX_TEXT_CHARS);
+      truncated = true;
     }
 
     const supabase = await createClient();
 
-    // 1. Verify the product belongs to the caller.
     const { data: product, error: fetchError } = await supabase
       .from('products')
       .select('*')
@@ -177,13 +306,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No autorizado para este producto' }, { status: 403 });
     }
 
-    // 2. Mark as processing so the existing UI shows the spinner.
     await supabase
       .from('products')
       .update({ research_status: 'processing' })
       .eq('id', productId);
 
-    // 3. Build normalization prompt + send to Gemini.
     const systemPrompt = buildNormalizationPrompt(
       product.name || '',
       product.description || product.benefits || product.website || ''
@@ -191,7 +318,7 @@ export async function POST(req: Request) {
 
     const messages: GeminiMessage[] = [
       { role: 'developer', content: systemPrompt },
-      { role: 'user', content: `RESEARCH DEL USUARIO:\n\n${trimmed}` },
+      { role: 'user', content: `RESEARCH DEL USUARIO:\n\n${rawText}` },
     ];
 
     let modelResponse: string;
@@ -209,6 +336,7 @@ export async function POST(req: Request) {
             error: `Gemini falló al normalizar: ${err?.message || err}`,
             timestamp: new Date().toISOString(),
             source: 'user_upload',
+            source_kind: sourceTag,
           },
         })
         .eq('id', productId);
@@ -218,9 +346,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Parse the structured JSON. On parse failure, save the raw response so
-    //    the user can at least see what the model returned (mirrors the
-    //    existing /api/research fallback behavior).
     let researchData: any;
     try {
       researchData = parseJsonTolerant(modelResponse);
@@ -229,18 +354,19 @@ export async function POST(req: Request) {
         raw_response: modelResponse,
         parse_error: true,
         source: 'user_upload',
+        source_kind: sourceTag,
         parse_error_message: parseErr?.message || String(parseErr),
       };
     }
 
-    // Tag the source so future analytics can distinguish AI-generated vs
-    // user-uploaded research.
     if (!researchData.parse_error) {
       researchData.source = 'user_upload';
+      researchData.source_kind = sourceTag;
       researchData.uploaded_at = new Date().toISOString();
+      researchData.input_chars = rawText.length;
+      if (truncated) researchData.input_truncated = true;
     }
 
-    // 5. Persist.
     const { error: updateError } = await supabase
       .from('products')
       .update({
@@ -257,6 +383,9 @@ export async function POST(req: Request) {
       success: !researchData.parse_error,
       researchData,
       parseError: !!researchData.parse_error,
+      sourceKind: sourceTag,
+      inputChars: rawText.length,
+      truncated,
     });
   } catch (error: any) {
     console.error('[UPLOAD-RESEARCH] Fatal:', error);
