@@ -2,9 +2,55 @@
 
 import { Fragment, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronLeft, ExternalLink } from 'lucide-react';
 import { StepLogCard, type StepLogEntry } from './step-log-card';
+
+const PAGE_SIZE = 50;
+
+type GenerationRow = {
+  id: string;
+  type: string;
+  status: string;
+  cost: number | null;
+  result_url: string | null;
+  created_at: string;
+  clerk_user_id: string | null;
+  input_data: any;
+  users?: { email: string | null };
+};
+
+type GenerationsResponse = {
+  generations: GenerationRow[];
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+};
+
+const TYPE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'all', label: 'Todos los tipos' },
+  { value: 'static_ad_generation', label: 'Static Ad · Generación' },
+  { value: 'static_ad_edit', label: 'Static Ad · Edición' },
+  { value: 'static_ads_ideacion', label: 'Static Ad · Ideación' },
+  { value: 'ugc', label: 'UGC' },
+  { value: 'ugc_video', label: 'UGC Video' },
+  { value: 'ugc_chat', label: 'UGC Chat' },
+  { value: 'face_swap', label: 'Face Swap' },
+  { value: 'clips', label: 'Clips' },
+  { value: 'editar_foto_crear', label: 'Editar Foto · Crear' },
+  { value: 'editar_foto_editar', label: 'Editar Foto · Editar' },
+  { value: 'editar_foto_combinar', label: 'Editar Foto · Combinar' },
+  { value: 'editar_foto_clonar', label: 'Editar Foto · Clonar' },
+  { value: 'editar_foto_draw_edit', label: 'Editar Foto · Draw & Edit' },
+  { value: 'mejorar_calidad_video', label: 'Mejorar Calidad Video' },
+  { value: 'mejorar_calidad_imagen', label: 'Mejorar Calidad Imagen' },
+];
+
+const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'all', label: 'Todos los estados' },
+  { value: 'pending', label: 'Pendiente' },
+  { value: 'processing', label: 'Procesando' },
+  { value: 'generating', label: 'Generando' },
+  { value: 'completed', label: 'Completado' },
+  { value: 'failed', label: 'Fallido' },
+];
 
 function GenerationDetailPanel({ inputData }: { inputData: any }) {
   const stepLogs: StepLogEntry[] = Array.isArray(inputData?.stepLogs) ? inputData.stepLogs : [];
@@ -23,11 +69,7 @@ function GenerationDetailPanel({ inputData }: { inputData: any }) {
             {templateThumb ? (
               <a href={templateThumb} target="_blank" rel="noopener noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={templateThumb}
-                  alt=""
-                  className="h-32 rounded-lg border border-gray-800 object-cover"
-                />
+                <img src={templateThumb} alt="" className="h-32 rounded-lg border border-gray-800 object-cover" />
               </a>
             ) : (
               <div className="text-xs text-gray-500 italic">Sin plantilla</div>
@@ -44,17 +86,11 @@ function GenerationDetailPanel({ inputData }: { inputData: any }) {
               {productImages.map((url, i) => (
                 <a key={i} href={url} target="_blank" rel="noopener noreferrer">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
-                    alt=""
-                    className="h-20 w-20 rounded-lg border border-gray-800 object-cover"
-                  />
+                  <img src={url} alt="" className="h-20 w-20 rounded-lg border border-gray-800 object-cover" />
                 </a>
               ))}
             </div>
-            <div className="mt-1 text-[10px] text-gray-500">
-              {inputData?.productName}
-            </div>
+            <div className="mt-1 text-[10px] text-gray-500">{inputData?.productName}</div>
           </div>
         </div>
       </div>
@@ -65,8 +101,8 @@ function GenerationDetailPanel({ inputData }: { inputData: any }) {
         </div>
         {stepLogs.length === 0 ? (
           <div className="rounded-lg border border-dashed border-gray-800 p-4 text-xs text-gray-500">
-            Esta generación no tiene logs de pasos. Es probable que se haya
-            generado antes de que se activara la auditoría por paso.
+            Esta generación no tiene logs de pasos. Es probable que se haya generado antes de que se
+            activara la auditoría por paso.
           </div>
         ) : (
           <div className="space-y-3">
@@ -83,32 +119,34 @@ function GenerationDetailPanel({ inputData }: { inputData: any }) {
 export function GenerationsTable() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const supabase = createClient();
 
-  const { data: generations, isLoading } = useQuery({
-    queryKey: ['admin-generations', typeFilter, statusFilter],
+  const { data, isLoading } = useQuery<GenerationsResponse>({
+    queryKey: ['admin-generations', typeFilter, statusFilter, page],
     queryFn: async () => {
-      let query = supabase
-        .from('generations')
-        .select('*, users(email)')
-        .order('created_at', { ascending: false })
-        .limit(100);
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(PAGE_SIZE),
+      });
+      if (typeFilter !== 'all') params.set('type', typeFilter);
+      if (statusFilter !== 'all') params.set('status', statusFilter);
 
-      if (typeFilter !== 'all') query = query.eq('type', typeFilter);
-      if (statusFilter !== 'all') query = query.eq('status', statusFilter);
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      const res = await fetch(`/api/admin/generations?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch generations');
+      return res.json();
     },
     refetchInterval: 10000,
   });
 
+  const generations = data?.generations || [];
+  const pagination = data?.pagination;
+
   const statusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'text-green-500 bg-green-500/10';
-      case 'processing': return 'text-yellow-500 bg-yellow-500/10';
+      case 'processing':
+      case 'generating': return 'text-yellow-500 bg-yellow-500/10';
       case 'failed': return 'text-red-500 bg-red-500/10';
       default: return 'text-gray-500 bg-gray-500/10';
     }
@@ -116,33 +154,30 @@ export function GenerationsTable() {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-4">
         <select
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
+          onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
           className="rounded-lg border border-gray-800 bg-[#1a1a1a] px-4 py-2 text-white"
         >
-          <option value="all">Todos los tipos</option>
-          <option value="static_ad_generation">Static Ads (clonación)</option>
-          <option value="ugc">UGC</option>
-          <option value="face_swap">Face Swap</option>
-          <option value="clips">Clips</option>
-          <option value="editar_foto_crear">Editar Foto - Crear</option>
-          <option value="editar_foto_editar">Editar Foto - Editar</option>
-          <option value="editar_foto_combinar">Editar Foto - Combinar</option>
-          <option value="editar_foto_clonar">Editar Foto - Clonar</option>
+          {TYPE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
         </select>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           className="rounded-lg border border-gray-800 bg-[#1a1a1a] px-4 py-2 text-white"
         >
-          <option value="all">Todos los estados</option>
-          <option value="pending">Pendiente</option>
-          <option value="processing">Procesando</option>
-          <option value="completed">Completado</option>
-          <option value="failed">Fallido</option>
+          {STATUS_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
         </select>
+        {pagination && (
+          <p className="ml-auto self-center text-sm text-gray-400">
+            Total filtrado: <span className="font-bold text-white">{pagination.total.toLocaleString()}</span>
+          </p>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-gray-800 bg-[#141414]">
@@ -161,12 +196,10 @@ export function GenerationsTable() {
           <tbody className="divide-y divide-gray-800">
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
-                  Cargando generaciones...
-                </td>
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-400">Cargando generaciones...</td>
               </tr>
-            ) : generations && generations.length > 0 ? (
-              generations.map((gen: any) => {
+            ) : generations.length > 0 ? (
+              generations.map((gen) => {
                 const isExpanded = expandedId === gen.id;
                 const hasDetail = gen.input_data && (
                   Array.isArray(gen.input_data.stepLogs) ||
@@ -184,7 +217,9 @@ export function GenerationsTable() {
                           isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
                         ) : null}
                       </td>
-                      <td className="px-6 py-4 text-sm text-white">{gen.users?.email || 'N/A'}</td>
+                      <td className="px-6 py-4 text-sm text-white">
+                        {gen.users?.email || gen.clerk_user_id || 'N/A'}
+                      </td>
                       <td className="px-6 py-4 text-sm text-white">{gen.type}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${statusColor(gen.status)}`}>
@@ -233,6 +268,30 @@ export function GenerationsTable() {
           </tbody>
         </table>
       </div>
+
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-400">
+            Página {pagination.page} de {pagination.totalPages}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="rounded-lg border border-gray-800 bg-[#141414] px-4 py-2 text-sm text-white disabled:opacity-50"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= pagination.totalPages}
+              className="rounded-lg border border-gray-800 bg-[#141414] px-4 py-2 text-sm text-white disabled:opacity-50"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -60,8 +60,55 @@ export async function GET(req: Request) {
       throw error;
     }
 
+    // Enriquecer cada user con conteos reales: productos, generaciones (todas
+    // y completadas) y créditos consumidos. Todos via clerk_user_id porque el
+    // legacy users.id (uuid) está vacío y nunca se enlaza.
+    const rows = data || [];
+    const clerkIds = rows.map((u: any) => u.clerk_user_id).filter(Boolean);
+
+    const counts: Record<string, {
+      products: number;
+      generations: number;
+      completed: number;
+      creditsSpent: number;
+    }> = {};
+
+    if (clerkIds.length > 0) {
+      const [{ data: prods }, { data: gens }] = await Promise.all([
+        supabaseAdmin
+          .from('products')
+          .select('clerk_user_id')
+          .in('clerk_user_id', clerkIds),
+        supabaseAdmin
+          .from('generations')
+          .select('clerk_user_id, status, cost')
+          .in('clerk_user_id', clerkIds),
+      ]);
+
+      for (const cid of clerkIds) {
+        counts[cid] = { products: 0, generations: 0, completed: 0, creditsSpent: 0 };
+      }
+      for (const p of prods || []) {
+        if (p.clerk_user_id && counts[p.clerk_user_id]) counts[p.clerk_user_id].products += 1;
+      }
+      for (const g of gens || []) {
+        const c = counts[g.clerk_user_id];
+        if (!c) continue;
+        c.generations += 1;
+        if (g.status === 'completed') {
+          c.completed += 1;
+          c.creditsSpent += g.cost || 0;
+        }
+      }
+    }
+
+    const enriched = rows.map((u: any) => ({
+      ...u,
+      stats: counts[u.clerk_user_id] || { products: 0, generations: 0, completed: 0, creditsSpent: 0 },
+    }));
+
     return NextResponse.json({
-      users: data || [],
+      users: enriched,
       pagination: {
         total: count || 0,
         page,

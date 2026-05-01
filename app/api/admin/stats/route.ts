@@ -70,40 +70,54 @@ export async function GET() {
     
     const totalCredits = creditsData?.reduce((sum, user) => sum + (user.credits || 0), 0) || 0;
 
-    // Total de créditos consumidos (suma de costos de generaciones completadas)
-    const { data: generationsData } = await supabaseAdmin
+    // Generaciones completadas con costo + clerk_user_id (una sola pasada)
+    const { data: completedRows } = await supabaseAdmin
       .from('generations')
-      .select('cost')
-      .eq('status', 'completed');
-    
-    const creditsConsumed = generationsData?.reduce((sum, gen) => sum + (gen.cost || 0), 0) || 0;
-
-    // Generaciones por tipo
-    const { data: generationsByType } = await supabaseAdmin
-      .from('generations')
-      .select('type')
+      .select('clerk_user_id, type, cost')
       .eq('status', 'completed');
 
-    const typeBreakdown = generationsByType?.reduce((acc: any, gen) => {
-      acc[gen.type] = (acc[gen.type] || 0) + 1;
+    const completed = completedRows || [];
+    const creditsConsumed = completed.reduce((sum, g) => sum + (g.cost || 0), 0);
+
+    const typeBreakdown = completed.reduce((acc: Record<string, number>, gen) => {
+      if (gen.type) acc[gen.type] = (acc[gen.type] || 0) + 1;
       return acc;
-    }, {}) || {};
+    }, {});
 
-    // Usuarios más activos (top 10)
-    const { data: topUsers } = await supabaseAdmin
-      .from('generations')
-      .select('clerk_user_id')
-      .eq('status', 'completed');
+    // Top 10 usuarios por créditos gastados (refleja consumo real, no solo conteo)
+    const userSpend: Record<string, { generationCount: number; creditsSpent: number }> = {};
+    for (const gen of completed) {
+      const cid = gen.clerk_user_id;
+      if (!cid) continue;
+      if (!userSpend[cid]) userSpend[cid] = { generationCount: 0, creditsSpent: 0 };
+      userSpend[cid].generationCount += 1;
+      userSpend[cid].creditsSpent += gen.cost || 0;
+    }
 
-    const userActivity = topUsers?.reduce((acc: any, gen) => {
-      acc[gen.clerk_user_id] = (acc[gen.clerk_user_id] || 0) + 1;
-      return acc;
-    }, {}) || {};
-
-    const topUsersArray = Object.entries(userActivity)
-      .sort(([, a]: any, [, b]: any) => b - a)
+    const topClerkIds = Object.entries(userSpend)
+      .sort(([, a], [, b]) => b.creditsSpent - a.creditsSpent)
       .slice(0, 10)
-      .map(([userId, count]) => ({ userId, generationCount: count }));
+      .map(([cid]) => cid);
+
+    // Resolver email + plan_type desde user_credits (única fuente de verdad)
+    const userInfoByClerkId: Record<string, { email: string | null; plan_type: string | null }> = {};
+    if (topClerkIds.length > 0) {
+      const { data: profiles } = await supabaseAdmin
+        .from('user_credits')
+        .select('clerk_user_id, email, plan_type')
+        .in('clerk_user_id', topClerkIds);
+      for (const p of profiles || []) {
+        userInfoByClerkId[p.clerk_user_id] = { email: p.email, plan_type: p.plan_type };
+      }
+    }
+
+    const topUsersArray = topClerkIds.map((cid) => ({
+      clerkUserId: cid,
+      email: userInfoByClerkId[cid]?.email || null,
+      planType: userInfoByClerkId[cid]?.plan_type || null,
+      generationCount: userSpend[cid].generationCount,
+      creditsSpent: userSpend[cid].creditsSpent,
+    }));
 
     // Plantillas más populares
     const { data: templates } = await supabaseAdmin
@@ -111,6 +125,42 @@ export async function GET() {
       .select('id, name, view_count, edit_count')
       .order('view_count', { ascending: false })
       .limit(10);
+
+    // Conteos crudos: productos y plantillas totales
+    const { count: totalProducts } = await supabaseAdmin
+      .from('products')
+      .select('*', { count: 'exact', head: true });
+
+    const { count: totalTemplates } = await supabaseAdmin
+      .from('templates')
+      .select('*', { count: 'exact', head: true });
+
+    // Clasificación video/imagen calculada a partir del breakdown real,
+    // no a partir de un set hardcodeado de tipos
+    const VIDEO_TYPES = new Set([
+      'ugc',
+      'ugc_video',
+      'face_swap',
+      'clips',
+      'mejorar_calidad_video',
+    ]);
+    const IMAGE_TYPES = new Set([
+      'static_ad_generation',
+      'static_ad_edit',
+      'editar_foto_crear',
+      'editar_foto_editar',
+      'editar_foto_combinar',
+      'editar_foto_clonar',
+      'editar_foto_draw_edit',
+      'mejorar_calidad_imagen',
+    ]);
+
+    let totalVideos = 0;
+    let totalImages = 0;
+    for (const [type, count] of Object.entries(typeBreakdown)) {
+      if (VIDEO_TYPES.has(type)) totalVideos += count as number;
+      else if (IMAGE_TYPES.has(type)) totalImages += count as number;
+    }
 
     return NextResponse.json({
       users: {
@@ -122,11 +172,17 @@ export async function GET() {
         total: totalGenerations || 0,
         completed: completedGenerations || 0,
         failed: failedGenerations || 0,
+        videos: totalVideos,
+        images: totalImages,
         byType: typeBreakdown,
       },
       credits: {
         inCirculation: totalCredits,
         consumed: creditsConsumed,
+      },
+      counts: {
+        products: totalProducts || 0,
+        templates: totalTemplates || 0,
       },
       topUsers: topUsersArray,
       topTemplates: templates || [],

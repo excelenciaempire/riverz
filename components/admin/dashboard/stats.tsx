@@ -1,15 +1,36 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Users, CreditCard, Video, Image, Package, TrendingUp, Zap, AlertTriangle, RefreshCw } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { Users, CreditCard, Video, Image, Package, TrendingUp, Zap, AlertTriangle, RefreshCw, FileImage } from 'lucide-react';
 import { useState } from 'react';
 
+type TopUser = {
+  clerkUserId: string;
+  email: string | null;
+  planType: string | null;
+  generationCount: number;
+  creditsSpent: number;
+};
+
+type AdminStats = {
+  users: { total: number; paid: number; activeSubscriptions: number };
+  generations: {
+    total: number;
+    completed: number;
+    failed: number;
+    videos: number;
+    images: number;
+    byType: Record<string, number>;
+  };
+  credits: { inCirculation: number; consumed: number };
+  counts: { products: number; templates: number };
+  topUsers: TopUser[];
+  topTemplates: Array<{ id: string; name: string; view_count: number; edit_count: number }>;
+};
+
 export function DashboardStats() {
-  const supabase = createClient();
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
 
-  // Fetch Kie.ai balance (API Provider)
   const { data: providerBalance, refetch: refetchBalance } = useQuery({
     queryKey: ['provider-balance'],
     queryFn: async () => {
@@ -17,7 +38,7 @@ export function DashboardStats() {
       if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
     },
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 60000,
   });
 
   const handleRefreshBalance = async () => {
@@ -26,167 +47,93 @@ export function DashboardStats() {
     setIsRefreshingBalance(false);
   };
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<AdminStats>({
     queryKey: ['admin-stats'],
     queryFn: async () => {
-      // Total users
-      const { count: totalUsers } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true });
-
-      // Upgraded users
-      const { count: upgradedUsers } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .neq('plan_type', 'free');
-
-      // Active subscriptions
-      const { count: activeSubscriptions } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .not('stripe_subscription_id', 'is', null);
-
-      // Total generations
-      const { count: totalVideos } = await supabase
-        .from('generations')
-        .select('*', { count: 'exact', head: true })
-        .in('type', ['ugc', 'face_swap', 'clips', 'mejorar_calidad_video']);
-
-      const { count: totalImages } = await supabase
-        .from('generations')
-        .select('*', { count: 'exact', head: true })
-        .in('type', [
-          'editar_foto_crear',
-          'editar_foto_editar',
-          'editar_foto_combinar',
-          'editar_foto_clonar',
-          'mejorar_calidad_imagen',
-        ]);
-
-      // Total products
-      const { count: totalProducts } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true });
-
-      // Total templates
-      const { count: totalTemplates } = await supabase
-        .from('templates')
-        .select('*', { count: 'exact', head: true });
-
-      // Total credits used
-      const { data: creditsData } = await supabase
-        .from('generations')
-        .select('cost');
-      
-      const totalCreditsUsed = creditsData?.reduce((acc, gen) => acc + (gen.cost || 0), 0) || 0;
-
-      // Top 10 users by credit usage
-      const { data: topUsers } = await supabase
-        .from('generations')
-        .select('user_id, users(email, plan_type)')
-        .not('user_id', 'is', null);
-
-      const userCredits: { [key: string]: { email: string; plan: string; total: number } } = {};
-      
-      topUsers?.forEach((gen: any) => {
-        if (gen.user_id && gen.users) {
-          if (!userCredits[gen.user_id]) {
-            userCredits[gen.user_id] = {
-              email: gen.users.email,
-              plan: gen.users.plan_type,
-              total: 0,
-            };
-          }
-        }
-      });
-
-      const { data: generationsWithCost } = await supabase
-        .from('generations')
-        .select('user_id, cost')
-        .not('user_id', 'is', null);
-
-      generationsWithCost?.forEach((gen) => {
-        if (gen.user_id && userCredits[gen.user_id]) {
-          userCredits[gen.user_id].total += gen.cost || 0;
-        }
-      });
-
-      const topUsersList = Object.values(userCredits)
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 10);
-
-      return {
-        totalUsers: totalUsers || 0,
-        upgradedUsers: upgradedUsers || 0,
-        activeSubscriptions: activeSubscriptions || 0,
-        totalVideos: totalVideos || 0,
-        totalImages: totalImages || 0,
-        totalProducts: totalProducts || 0,
-        totalTemplates: totalTemplates || 0,
-        totalCreditsUsed,
-        topUsers: topUsersList,
-      };
+      const res = await fetch('/api/admin/stats');
+      if (!res.ok) throw new Error('Failed to fetch admin stats');
+      return res.json();
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000,
   });
 
   const statCards = [
     {
       title: 'Total Usuarios',
-      value: stats?.totalUsers || 0,
+      value: stats?.users.total ?? 0,
       icon: Users,
       color: 'text-blue-500',
       bg: 'bg-blue-500/10',
     },
     {
       title: 'Usuarios Premium',
-      value: stats?.upgradedUsers || 0,
+      value: stats?.users.paid ?? 0,
       icon: TrendingUp,
       color: 'text-green-500',
       bg: 'bg-green-500/10',
     },
     {
       title: 'Suscripciones Activas',
-      value: stats?.activeSubscriptions || 0,
+      value: stats?.users.activeSubscriptions ?? 0,
       icon: CreditCard,
       color: 'text-purple-500',
       bg: 'bg-purple-500/10',
     },
     {
       title: 'Videos Generados',
-      value: stats?.totalVideos || 0,
+      value: stats?.generations.videos ?? 0,
       icon: Video,
       color: 'text-red-500',
       bg: 'bg-red-500/10',
     },
     {
       title: 'Imágenes Generadas',
-      value: stats?.totalImages || 0,
+      value: stats?.generations.images ?? 0,
       icon: Image,
       color: 'text-yellow-500',
       bg: 'bg-yellow-500/10',
     },
     {
       title: 'Productos Registrados',
-      value: stats?.totalProducts || 0,
+      value: stats?.counts.products ?? 0,
       icon: Package,
       color: 'text-brand-accent',
       bg: 'bg-brand-accent/10',
     },
+    {
+      title: 'Plantillas Activas',
+      value: stats?.counts.templates ?? 0,
+      icon: FileImage,
+      color: 'text-pink-500',
+      bg: 'bg-pink-500/10',
+    },
+    {
+      title: 'Generaciones Totales',
+      value: stats?.generations.total ?? 0,
+      icon: Zap,
+      color: 'text-cyan-500',
+      bg: 'bg-cyan-500/10',
+    },
   ];
 
-  // Determine balance status
   const balance = providerBalance?.balance || 0;
   const isLowBalance = balance < 1000;
   const isCriticalBalance = balance < 200;
 
+  const successRate = stats && stats.generations.total > 0
+    ? Math.round((stats.generations.completed / stats.generations.total) * 100)
+    : 0;
+
+  const typeBreakdown = stats?.generations.byType
+    ? Object.entries(stats.generations.byType).sort(([, a], [, b]) => b - a)
+    : [];
+
   return (
     <div className="space-y-8">
-      {/* API Provider Balance - Admin Only */}
       <div className={`rounded-2xl border p-6 ${
-        isCriticalBalance 
-          ? 'border-red-500/50 bg-red-500/10' 
-          : isLowBalance 
+        isCriticalBalance
+          ? 'border-red-500/50 bg-red-500/10'
+          : isLowBalance
             ? 'border-yellow-500/50 bg-yellow-500/10'
             : 'border-brand-accent/50 bg-brand-accent/10'
       }`}>
@@ -238,8 +185,7 @@ export function DashboardStats() {
         )}
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -263,46 +209,80 @@ export function DashboardStats() {
         })}
       </div>
 
-      {/* Credits Used */}
-      <div className="rounded-2xl border border-gray-800 bg-[#141414] p-6">
-        <h3 className="text-lg font-semibold text-white">Créditos Usados Total</h3>
-        <p className="mt-4 text-4xl font-bold text-brand-accent">
-          {(stats?.totalCreditsUsed || 0).toLocaleString()}
-        </p>
-        <p className="mt-2 text-sm text-gray-400">
-          Créditos consumidos por todos los usuarios
-        </p>
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="rounded-2xl border border-gray-800 bg-[#141414] p-6">
+          <h3 className="text-sm text-gray-400">Créditos en Circulación</h3>
+          <p className="mt-2 text-3xl font-bold text-white">
+            {(stats?.credits.inCirculation || 0).toLocaleString()}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">Saldo total en cuentas de usuarios</p>
+        </div>
+        <div className="rounded-2xl border border-gray-800 bg-[#141414] p-6">
+          <h3 className="text-sm text-gray-400">Créditos Consumidos</h3>
+          <p className="mt-2 text-3xl font-bold text-brand-accent">
+            {(stats?.credits.consumed || 0).toLocaleString()}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">Suma de costos de generaciones completadas</p>
+        </div>
+        <div className="rounded-2xl border border-gray-800 bg-[#141414] p-6">
+          <h3 className="text-sm text-gray-400">Tasa de Éxito</h3>
+          <p className="mt-2 text-3xl font-bold text-green-500">{successRate}%</p>
+          <p className="mt-1 text-xs text-gray-500">
+            {stats?.generations.completed ?? 0} OK · {stats?.generations.failed ?? 0} fallidas
+          </p>
+        </div>
       </div>
 
-      {/* Top 10 Users */}
+      {typeBreakdown.length > 0 && (
+        <div className="rounded-2xl border border-gray-800 bg-[#141414] p-6">
+          <h3 className="mb-4 text-lg font-semibold text-white">Generaciones Completadas por Tipo</h3>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {typeBreakdown.map(([type, count]) => (
+              <div
+                key={type}
+                className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0a0a0a] px-4 py-3"
+              >
+                <span className="text-sm text-gray-300">{type}</span>
+                <span className="font-bold text-brand-accent">{count.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="rounded-2xl border border-gray-800 bg-[#141414] p-6">
         <h3 className="mb-6 text-lg font-semibold text-white">
           Top 10 Usuarios por Uso de Créditos
         </h3>
         <div className="space-y-3">
-          {stats?.topUsers.map((user, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0a0a0a] p-4"
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent/20 text-sm font-bold text-brand-accent">
-                  {index + 1}
+          {(stats?.topUsers || []).length === 0 ? (
+            <p className="text-sm text-gray-500">Sin datos todavía.</p>
+          ) : (
+            (stats?.topUsers || []).map((user, index) => (
+              <div
+                key={user.clerkUserId}
+                className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0a0a0a] p-4"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent/20 text-sm font-bold text-brand-accent">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">{user.email || user.clerkUserId}</p>
+                    <p className="text-sm text-gray-400">
+                      Plan: {user.planType || '—'} · {user.generationCount} generaciones
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-white">{user.email}</p>
-                  <p className="text-sm text-gray-400">Plan: {user.plan}</p>
+                <div className="text-right">
+                  <p className="font-bold text-white">{user.creditsSpent.toLocaleString()}</p>
+                  <p className="text-xs text-gray-400">créditos</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="font-bold text-white">{user.total.toLocaleString()}</p>
-                <p className="text-xs text-gray-400">créditos</p>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>
   );
 }
-

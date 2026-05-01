@@ -2,105 +2,155 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Save } from 'lucide-react';
 
-const GENERATION_TYPES = [
-  { key: 'ugc_cost', label: 'UGC Video', default: 100 },
-  { key: 'face_swap_cost', label: 'Face Swap', default: 80 },
-  { key: 'clips_cost', label: 'Clips', default: 90 },
-  { key: 'editar_foto_crear_cost', label: 'Editar Foto - Crear', default: 30 },
-  { key: 'editar_foto_editar_cost', label: 'Editar Foto - Editar', default: 40 },
-  { key: 'editar_foto_combinar_cost', label: 'Editar Foto - Combinar', default: 50 },
-  { key: 'editar_foto_clonar_cost', label: 'Editar Foto - Clonar', default: 60 },
-  { key: 'mejorar_calidad_video_cost', label: 'Mejorar Calidad Video', default: 120 },
-  { key: 'mejorar_calidad_imagen_cost', label: 'Mejorar Calidad Imagen', default: 70 },
-  { key: 'script_generation_cost', label: 'Generación de Script', default: 20 },
-];
+type PricingRow = {
+  id: string;
+  mode: string;
+  credits_cost: number;
+  description: string | null;
+  is_active: boolean;
+  updated_at: string;
+};
+
+const MODE_LABELS: Record<string, string> = {
+  ugc: 'UGC Video',
+  ugc_chat: 'UGC Chat',
+  face_swap: 'Face Swap',
+  clips: 'Clips',
+  editar_foto_crear: 'Editar Foto · Crear',
+  editar_foto_editar: 'Editar Foto · Editar',
+  editar_foto_combinar: 'Editar Foto · Combinar',
+  editar_foto_clonar: 'Editar Foto · Clonar',
+  editar_foto_draw_edit: 'Editar Foto · Draw & Edit',
+  mejorar_calidad_video: 'Mejorar Calidad Video',
+  mejorar_calidad_imagen: 'Mejorar Calidad Imagen',
+  static_ad_generation: 'Static Ad · Generación',
+  static_ad_edit: 'Static Ad · Edición',
+  static_ads_ideacion: 'Static Ad · Ideación',
+};
 
 export function PricingConfig() {
-  const [costs, setCosts] = useState<{ [key: string]: string }>({});
-  const supabase = createClient();
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
 
-  const { data: savedCosts } = useQuery({
+  const { data: pricing, isLoading } = useQuery<PricingRow[]>({
     queryKey: ['pricing-config'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('admin_config')
-        .select('*')
-        .like('key', '%_cost');
-      if (error) throw error;
-      return data;
+      const res = await fetch('/api/admin/pricing');
+      if (!res.ok) throw new Error('Failed to fetch pricing');
+      const json = await res.json();
+      return json.pricing || [];
     },
   });
 
   useEffect(() => {
-    if (savedCosts) {
-      const costMap: { [key: string]: string } = {};
-      savedCosts.forEach((config: any) => {
-        costMap[config.key] = config.value;
-      });
-      setCosts(costMap);
+    if (pricing) {
+      const next: Record<string, string> = {};
+      for (const row of pricing) {
+        next[row.mode] = String(row.credits_cost);
+      }
+      setDrafts(next);
     }
-  }, [savedCosts]);
+  }, [pricing]);
 
   const saveCost = useMutation({
-    mutationFn: async ({ key, value, description }: { key: string; value: string; description: string }) => {
-      const { error } = await supabase.from('admin_config').upsert([
-        { key, value, description, updated_at: new Date().toISOString() },
-      ]);
-      if (error) throw error;
+    mutationFn: async ({ mode, credits_cost }: { mode: string; credits_cost: number }) => {
+      const res = await fetch('/api/admin/pricing', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode, credits_cost }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update pricing');
+      }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pricing-config'] });
       toast.success('Precio actualizado');
     },
+    onError: (e: any) => toast.error(e.message || 'Error guardando precio'),
   });
 
-  const handleSave = (key: string, label: string) => {
-    const value = costs[key] || '0';
-    saveCost.mutate({ key, value, description: `Costo en créditos para ${label}` });
+  const handleSave = (mode: string) => {
+    const value = parseInt(drafts[mode] ?? '');
+    if (Number.isNaN(value) || value < 0) {
+      toast.error('Ingresa un número válido (>= 0)');
+      return;
+    }
+    saveCost.mutate({ mode, credits_cost: value });
   };
+
+  if (isLoading) {
+    return (
+      <div>
+        <h2 className="text-2xl font-bold text-white">Configuración de Precios</h2>
+        <p className="mt-4 text-gray-400">Cargando precios desde pricing_config…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white">Configuración de Precios</h2>
-        <p className="mt-2 text-gray-400">Costo en créditos de cada modo de uso</p>
+        <p className="mt-2 text-gray-400">
+          Costo en créditos por modo de generación. Los valores se guardan en{' '}
+          <code className="text-brand-accent">pricing_config</code> — la misma tabla que el runtime
+          consulta antes de cada generación.
+        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {GENERATION_TYPES.map((type) => (
-          <div key={type.key} className="rounded-2xl border border-gray-800 bg-[#141414] p-6">
-            <Label className="mb-2 block text-base font-semibold">{type.label}</Label>
-            <p className="mb-4 text-sm text-gray-400">
-              Créditos que se cobrarán por generación
-            </p>
-            <div className="flex gap-3">
-              <Input
-                type="number"
-                value={costs[type.key] || type.default}
-                onChange={(e) => setCosts({ ...costs, [type.key]: e.target.value })}
-                placeholder={type.default.toString()}
-                min="0"
-                className="flex-1"
-              />
-              <Button
-                onClick={() => handleSave(type.key, type.label)}
-                className="bg-brand-accent hover:bg-brand-accent/90"
-              >
-                <Save className="h-4 w-4" />
-              </Button>
+        {(pricing || []).map((row) => {
+          const label = MODE_LABELS[row.mode] || row.mode;
+          const draft = drafts[row.mode] ?? String(row.credits_cost);
+          const dirty = draft !== String(row.credits_cost);
+          return (
+            <div key={row.id} className="rounded-2xl border border-gray-800 bg-[#141414] p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <Label className="text-base font-semibold">{label}</Label>
+                  <p className="mt-1 text-xs text-gray-500">mode: {row.mode}</p>
+                </div>
+                {!row.is_active && (
+                  <span className="rounded-full bg-gray-700 px-2 py-0.5 text-[10px] text-gray-300">
+                    inactivo
+                  </span>
+                )}
+              </div>
+              <p className="mb-4 mt-2 text-sm text-gray-400">
+                {row.description || 'Sin descripción'}
+              </p>
+              <div className="flex gap-3">
+                <Input
+                  type="number"
+                  value={draft}
+                  onChange={(e) => setDrafts({ ...drafts, [row.mode]: e.target.value })}
+                  min="0"
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => handleSave(row.mode)}
+                  disabled={!dirty || saveCost.isPending}
+                  className="bg-brand-accent hover:bg-brand-accent/90"
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="mt-2 text-[10px] text-gray-500">
+                Última actualización: {new Date(row.updated_at).toLocaleString('es-ES')}
+              </p>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
-
