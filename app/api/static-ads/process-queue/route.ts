@@ -485,7 +485,7 @@ async function runSharedAnalysisForTemplate(
     try {
       const { text, modelUsed, fellBack } = await analyzeWithFallback(analysisModel, messages, {
         temperature: 0.4,
-        maxTokens: 4000,
+        maxTokens: 12000,
       });
       if (fellBack) log(`Step 2 fell back to ${modelUsed}`);
       step2Text = text;

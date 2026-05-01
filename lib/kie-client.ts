@@ -400,7 +400,7 @@ interface GeminiOptions {
  */
 export async function analyzeWithGemini3Pro(messages: GeminiMessage[], options: GeminiOptions = {}) {
   try {
-    const { temperature = 0.7, maxTokens = 8000 } = options;
+    const { temperature = 0.7, maxTokens = 12000 } = options;
     
     const requestBody = {
       messages,

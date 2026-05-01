@@ -93,7 +93,7 @@ export async function transcribeAsset(
     // truncated mid-section.
     const result = await analyzeWithGemini3Pro(messages, {
       temperature: 0.2,
-      maxTokens: opts.isVideo ? 4000 : 2000,
+      maxTokens: opts.isVideo ? 8000 : 4000,
     });
     const text = String(result || '').trim();
     if (!text) throw new TranscribeError('kie.ai/Gemini devolvió respuesta vacía', 'generate');

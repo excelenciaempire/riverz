@@ -29,7 +29,7 @@ export interface GeminiOptions {
  * prompts behave the same across both runtimes.
  */
 export async function callGemini(messages: OpenAIMessage[], options: GeminiOptions = {}): Promise<string> {
-  const { system, temperature = 0.5, maxTokens = 4000 } = options;
+  const { system, temperature = 0.5, maxTokens = 12000 } = options;
   if (!config.kie.apiKey) throw new Error('KIE_API_KEY not set');
 
   const allMessages: OpenAIMessage[] = system

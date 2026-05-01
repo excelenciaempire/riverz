@@ -155,7 +155,7 @@ export async function POST(req: Request) {
 
   let raw: string;
   try {
-    raw = String(await analyzeWithGemini3Pro(messages, { temperature: 0.3, maxTokens: 6000 }));
+    raw = String(await analyzeWithGemini3Pro(messages, { temperature: 0.3, maxTokens: 12000 }));
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message || 'kie.ai/Gemini falló' },
