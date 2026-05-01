@@ -30,69 +30,145 @@ interface ProjectDetail {
 // Each backend status maps to a [floor, ceiling] window on the loader ring.
 // The floor is GROUND TRUTH — when the backend advances the row's status,
 // the ring snaps to at least the floor of the new segment. Within a segment
-// we ramp smoothly toward the ceiling (asymptotic, never quite reaches it)
-// so the user sees movement even between status changes. This keeps the
-// loader anchored to actual kie.ai progress rather than a fake timer.
+// we ramp smoothly toward the ceiling using REAL elapsed time since the
+// status started (read from updated_at / stepLogs), so a page reload keeps
+// the same percentage instead of restarting from the floor.
+//
+// Floor/ceiling allocation is roughly proportional to typical wall-clock
+// time per stage so the ring's pace feels honest end-to-end:
+//   analyzing  (Step 1, Gemini vision)        ~90s
+//   adapting   (Step 2, Gemini vision)        ~80s
+//   pending_generation (Step 4 claim)         ~5s
+//   generating (Step 4+5, Nano Banana)        ~75s
+//
+// Total per image ≈ 4–5 minutes. The ranges below sum to 0→99; 100% is only
+// reachable by `status='completed'`, at which point the parent unmounts the
+// tile and shows the actual image.
 const STATUS_RANGE: Record<string, { label: string; floor: number; ceiling: number }> = {
-  pending_analysis:   { label: 'En cola',     floor: 0,  ceiling: 5  },
-  pending_variation:  { label: 'En cola',     floor: 0,  ceiling: 5  },
-  analyzing:          { label: 'Analizando',  floor: 5,  ceiling: 30 },
-  adapting:           { label: 'Adaptando',   floor: 30, ceiling: 60 },
-  generating_prompt:  { label: 'Procesando',  floor: 60, ceiling: 65 },
-  pending_generation: { label: 'Procesando',  floor: 60, ceiling: 65 },
-  generating:         { label: 'Generando',   floor: 65, ceiling: 99 },
+  pending_analysis:   { label: 'En cola',     floor: 0,   ceiling: 5  },
+  pending_variation:  { label: 'En cola',     floor: 0,   ceiling: 5  },
+  analyzing:          { label: 'Analizando',  floor: 5,   ceiling: 35 },
+  adapting:           { label: 'Adaptando',   floor: 35,  ceiling: 65 },
+  generating_prompt:  { label: 'Procesando',  floor: 65,  ceiling: 70 },
+  pending_generation: { label: 'Procesando',  floor: 65,  ceiling: 70 },
+  generating:         { label: 'Generando',   floor: 70,  ceiling: 99 },
   completed:          { label: 'Listo',       floor: 100, ceiling: 100 },
   failed:             { label: 'Error',       floor: 0,   ceiling: 0  },
 };
 
+// Empirical P75 wall-clock per status (in ms). Derived from observed kie.ai
+// latencies per step. The ring's eased curve uses this as the "this status
+// will probably take roughly N ms" anchor; if the real call takes longer,
+// the ring asymptotes toward 95% of the segment ceiling without crossing.
+const SEGMENT_DURATION_MS: Record<string, number> = {
+  pending_analysis: 5_000,
+  pending_variation: 5_000,
+  analyzing: 120_000,
+  adapting: 100_000,
+  generating_prompt: 5_000,
+  pending_generation: 10_000,
+  generating: 90_000,
+};
+
 /**
- * Minimalist loading tile, synced to backend status.
+ * Resolve the wall-clock time at which the row entered its current status.
  *
- * The progress ring's value is determined by the row's actual status:
- *   - On status change, the ring snaps to the new segment's `floor`.
- *   - While status holds, the ring ramps slowly toward the `ceiling` with
- *     an asymptotic ease-out, never quite reaching it. The next status
- *     transition is what pushes it forward.
- *   - 100% is unreachable by simulation — only `status='completed'` lands
- *     it there, at which point the parent unmounts the tile and renders
- *     the actual image.
- *
- * Result: the ring reflects what kie.ai is actually doing, not a wall-clock
- * pretending to make progress. If a step takes 5 seconds, the ring jumps;
- * if it takes 90 seconds, the ring crawls — exactly as it should.
+ * Priority of sources (most → least precise):
+ *   1. The relevant stepLog's completedAt — these are the exact instants
+ *      Gemini Step N finished, which is the same instant the row moved into
+ *      Step N+1's status. Survives page reloads because stepLogs live on
+ *      input_data in the DB.
+ *   2. Row updated_at — bumped on every status transition (atomic claim).
+ *      Slightly off if input_data was persisted after the claim, but the gap
+ *      is microseconds in practice.
+ *   3. created_at — last-resort fallback for brand-new rows.
  */
-function LoadingTile({ status }: { status: string; hint?: string; templateThumbnail?: string }) {
+function getStatusStartedAtMs(gen: Generation): number {
+  const logs: Array<{ step: number; status: string; completedAt: string }> = Array.isArray(
+    gen.input_data?.stepLogs,
+  )
+    ? gen.input_data.stepLogs
+    : [];
+  const lastOk = (step: number) => {
+    // Walk backwards so retries pick the most recent successful boundary.
+    for (let i = logs.length - 1; i >= 0; i--) {
+      const l = logs[i];
+      if (l.step === step && l.status === 'ok') return new Date(l.completedAt).getTime();
+    }
+    return null;
+  };
+  let derived: number | null = null;
+  switch (gen.status) {
+    case 'analyzing':
+      // Step 1 in flight — segment started at row claim, before any log exists.
+      break;
+    case 'adapting':
+      derived = lastOk(1);
+      break;
+    case 'generating_prompt':
+    case 'pending_generation':
+      derived = lastOk(2);
+      break;
+    case 'generating':
+      derived = lastOk(4) ?? lastOk(2);
+      break;
+    default:
+      break;
+  }
+  if (derived) return derived;
+  if (gen.updated_at) return new Date(gen.updated_at).getTime();
+  if (gen.created_at) return new Date(gen.created_at).getTime();
+  return Date.now();
+}
+
+/**
+ * Minimalist loading tile, synced to backend status AND wall-clock time.
+ *
+ * The progress ring's value is determined by:
+ *   1. The row's actual status → fixes the [floor, ceiling] segment.
+ *   2. The real elapsed time since that status started → eases through the
+ *      segment with a fixed time budget. Reloading the page just re-reads
+ *      the segment start from the row, so the ring resumes where it was
+ *      instead of snapping back to the floor.
+ *
+ * 100% is unreachable by simulation — only `status='completed'` lands it
+ * there, at which point the parent unmounts the tile.
+ */
+function LoadingTile({ gen }: { gen: Generation; hint?: string; templateThumbnail?: string }) {
+  const status = gen.status;
   const cfg = STATUS_RANGE[status] || STATUS_RANGE.pending_analysis;
-  const [progress, setProgress] = useState(cfg.floor);
+  const segmentStartedAt = useMemo(
+    () => getStatusStartedAtMs(gen),
+    // We intentionally re-derive only when the status or the tracked timestamps
+    // change — within a status, segmentStartedAt is invariant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [gen.id, gen.status, gen.updated_at, gen.input_data?.stepLogs?.length],
+  );
+
+  const computeProgress = (): number => {
+    if (status === 'completed') return 100;
+    if (status === 'failed') return cfg.floor;
+    const segmentMs = SEGMENT_DURATION_MS[status] || 30_000;
+    const elapsed = Math.max(0, Date.now() - segmentStartedAt);
+    const t = Math.min(1, elapsed / segmentMs);
+    const eased = 1 - Math.pow(1 - t, 2);
+    // 0.95 keeps us short of the ceiling so the next status transition feels
+    // like genuine forward motion instead of a no-op.
+    return cfg.floor + (cfg.ceiling - cfg.floor) * eased * 0.95;
+  };
+
+  const [progress, setProgress] = useState<number>(() => computeProgress());
 
   useEffect(() => {
     if (status === 'failed' || status === 'completed') {
-      setProgress(cfg.floor);
+      setProgress(computeProgress());
       return;
     }
-
-    // Snap to the floor of the new segment immediately so a status change is
-    // visible. Then ramp asymptotically toward the ceiling — the curve never
-    // reaches the ceiling on its own; the next status transition does.
-    const segmentStart = Date.now();
-    const SEGMENT_MS = 30_000; // empirical: each backend stage takes 15–45s
-    const startProgress = Math.max(progress, cfg.floor);
-    setProgress(startProgress);
-
-    const tick = () => {
-      const elapsed = Date.now() - segmentStart;
-      const t = Math.min(1, elapsed / SEGMENT_MS);
-      const eased = 1 - Math.pow(1 - t, 2);
-      // 0.92 keeps us short of the ceiling — leaves room for the next status
-      // bump to feel like real progress instead of a no-op.
-      const target = startProgress + (cfg.ceiling - startProgress) * eased * 0.92;
-      setProgress((prev) => Math.max(prev, target));
-    };
-    tick();
-    const id = setInterval(tick, 250);
+    setProgress(computeProgress());
+    const id = setInterval(() => setProgress(computeProgress()), 500);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [status, segmentStartedAt]);
 
   const r = 44;
   const C = 2 * Math.PI * r;
@@ -189,7 +265,7 @@ function VariationSlide({
         </>
       ) : isPending ? (
         <LoadingTile
-          status={gen.status}
+          gen={gen}
           hint={angle}
           templateThumbnail={gen.input_data?.templateThumbnail}
         />
@@ -640,7 +716,17 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   <div className="h-2 w-20 rounded bg-white/5 animate-pulse" />
                 </div>
               </div>
-              <LoadingTile status="pending_analysis" hint="Iniciando" />
+              <LoadingTile
+                gen={{
+                  id: '__placeholder__',
+                  result_url: '',
+                  status: 'pending_analysis',
+                  input_data: {},
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                } as Generation}
+                hint="Iniciando"
+              />
             </div>
           )}
 
