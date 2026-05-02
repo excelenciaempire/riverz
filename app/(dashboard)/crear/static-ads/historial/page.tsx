@@ -97,7 +97,7 @@ function FlatGenerationTile({
 
   if (isCompleted) {
     return (
-      <div className="group relative mb-3 break-inside-avoid overflow-hidden rounded-xl bg-[#0a0a0a]">
+      <div className="group relative mb-4 break-inside-avoid overflow-hidden rounded-xl bg-[#0a0a0a]">
         <img
           src={gen.result_url!}
           alt={label}
@@ -127,30 +127,31 @@ function FlatGenerationTile({
         </button>
 
         {/* Hover overlay — suppressed in selectMode so the user only has one
-            click target (the image itself = toggle selection). */}
+            click target (the image itself = toggle selection). Pills are
+            compact so all three fit even on the narrowest column. */}
         {!selectMode && (
-          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-2 px-3 pt-8 pb-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition">
+          <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center justify-center gap-1.5 px-2 pt-8 pb-3 bg-gradient-to-t from-black/85 via-black/45 to-transparent opacity-0 group-hover:opacity-100 transition">
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/70 hover:bg-black/90 text-white text-[12px] font-medium transition border border-white/10"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium transition border border-white/10 whitespace-nowrap"
             >
-              <Edit2 className="h-3.5 w-3.5" />
+              <Edit2 className="h-3 w-3" />
               Editar
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onCompare(); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/70 hover:bg-black/90 text-white text-[12px] font-medium transition border border-white/10"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium transition border border-white/10 whitespace-nowrap"
             >
-              <Columns2 className="h-3.5 w-3.5" />
+              <Columns2 className="h-3 w-3" />
               Comparar
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDownload(); }}
               aria-label="Descargar"
               title="Descargar"
-              className="flex items-center justify-center h-[30px] w-[30px] rounded-md bg-black/70 hover:bg-black/90 text-white transition border border-white/10"
+              className="flex items-center justify-center h-[26px] w-[26px] shrink-0 rounded-md bg-black/70 hover:bg-black/90 text-white transition border border-white/10"
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-3 w-3" />
             </button>
           </div>
         )}
@@ -160,7 +161,7 @@ function FlatGenerationTile({
 
   if (isPending) {
     return (
-      <div className="mb-3 break-inside-avoid relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0f0f0f] border border-gray-800">
+      <div className="mb-4 break-inside-avoid relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0f0f0f] border border-gray-800">
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center">
           <Loader2 className="h-5 w-5 animate-spin text-[#07A498]" />
           <p className="text-[11px] text-gray-400">{STATUS_LABEL[gen.status] || 'Procesando'}</p>
@@ -171,7 +172,7 @@ function FlatGenerationTile({
   }
 
   return (
-    <div className="mb-3 break-inside-avoid relative aspect-[3/4] overflow-hidden rounded-xl">
+    <div className="mb-4 break-inside-avoid relative aspect-[3/4] overflow-hidden rounded-xl">
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 border border-red-500/20 bg-red-950/30 text-center rounded-xl">
         <AlertCircle className="h-5 w-5 text-red-400" />
         <p className="text-[11px] font-medium text-red-400">Error</p>
@@ -451,7 +452,7 @@ export default function HistorialPage() {
             </p>
           </div>
         ) : (
-          <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3">
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
             {flatGens.map((gen) => (
               <FlatGenerationTile
                 key={gen.id}

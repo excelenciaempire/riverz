@@ -334,31 +334,30 @@ function VariationSlide({
           <Check className="h-3.5 w-3.5" />
         </button>
 
-        {/* Hover overlay anchored to the bottom of the image, holding the two
-            actions: Editar (opens AI editor drawer) and Comparar (opens the
-            template-vs-result modal). */}
-        <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-2 px-3 pt-8 pb-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition">
+        {/* Hover overlay — Editar / Comparar / Descargar. Compact pills so
+            all three fit on the narrowest column without wrapping. */}
+        <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center justify-center gap-1.5 px-2 pt-8 pb-3 bg-gradient-to-t from-black/85 via-black/45 to-transparent opacity-0 group-hover:opacity-100 transition">
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/70 hover:bg-black/90 text-white text-[12px] font-medium transition border border-white/10"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium transition border border-white/10 whitespace-nowrap"
           >
-            <Edit2 className="h-3.5 w-3.5" />
+            <Edit2 className="h-3 w-3" />
             Editar
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onCompare(); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/70 hover:bg-black/90 text-white text-[12px] font-medium transition border border-white/10"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium transition border border-white/10 whitespace-nowrap"
           >
-            <Columns2 className="h-3.5 w-3.5" />
+            <Columns2 className="h-3 w-3" />
             Comparar
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDownload(); }}
             aria-label="Descargar"
             title="Descargar"
-            className="flex items-center justify-center h-[30px] w-[30px] rounded-md bg-black/70 hover:bg-black/90 text-white transition border border-white/10"
+            className="flex items-center justify-center h-[26px] w-[26px] shrink-0 rounded-md bg-black/70 hover:bg-black/90 text-white transition border border-white/10"
           >
-            <Download className="h-3.5 w-3.5" />
+            <Download className="h-3 w-3" />
           </button>
         </div>
       </div>
