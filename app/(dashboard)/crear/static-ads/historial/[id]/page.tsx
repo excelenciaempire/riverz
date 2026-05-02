@@ -681,17 +681,20 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const editMutation = useMutation({
     mutationFn: async () => {
       if (!editingImage) return;
+      // Source the edit from the *exact same object* that backs the visible
+      // <img>. `currentVersion` is what the drawer is rendering right now, so
+      // sending its id (instead of the looser `currentVersionId ?? editingImage.id`
+      // fallback) guarantees the photo on screen is the photo kie.ai receives,
+      // even if the chain is mid-refetch or the id state lags by a tick.
+      const source = currentVersion ?? editingImage;
+      if (!source) return;
       setIsGenerating(true);
 
-      // Edit the currently-viewed version (which may be a descendant of
-      // editingImage if the user has navigated forward in the chain), not
-      // necessarily the original opened image.
-      const sourceId = currentVersionId ?? editingImage.id;
       const response = await fetch('/api/static-ads/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          generationId: sourceId,
+          generationId: source.id,
           editInstructions: editPrompt
         }),
       });
