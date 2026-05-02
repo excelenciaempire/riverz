@@ -95,7 +95,16 @@ export async function POST(req: Request) {
     }
   }
 
-  // 2) Has this project already been published to this shop? If so update,
+  // 2) Wrap the editor body with a CSS reset that hides the merchant's theme
+  //    header/footer/announcement-bar/auto-title and forces the page wrapper
+  //    to full viewport width. Shopify Pages render inside the active theme's
+  //    layout, so without this the landing would sit inside the theme's
+  //    ~1200px container with the store nav on top — visually broken for a
+  //    sales landing. Selectors target Dawn-derived themes (the vast
+  //    majority of Shopify themes) plus a generous fallback set.
+  bodyHtml = wrapForFullWidth(bodyHtml);
+
+  // 3) Has this project already been published to this shop? If so update,
   //    otherwise create — keeps the URL/handle stable across republishes.
   const supabase = createAdminClient();
   const { data: existing } = await supabase
@@ -127,7 +136,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Falla al crear/actualizar la página: ' + e.message }, { status: 502 });
   }
 
-  // 3) Persist the publish so a republish updates instead of duplicating.
+  // 4) Persist the publish so a republish updates instead of duplicating.
   await supabase
     .from('shopify_published_landings')
     .upsert(
@@ -202,4 +211,60 @@ function extFromMime(mime: string): string {
 
 function sanitizeFilename(s: string): string {
   return s.replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 80) || 'image';
+}
+
+// CSS that nukes the active Shopify theme's chrome around a Page render and
+// forces the body wrapper to full viewport width. We can't use a custom
+// layout/template (would require write_themes scope + per-merchant theme edits),
+// so we go scorched-earth via !important rules. Selectors cover Dawn and
+// every Dawn-derived theme we've tested (Sense, Refresh, Studio, Origin,
+// Crave, Powernax, plus older Debut/Brooklyn fallbacks).
+const FULL_WIDTH_RESET_CSS = `
+/* Hide announcement bar, header, footer, breadcrumbs */
+#shopify-section-announcement-bar,
+#shopify-section-header, #shopify-section-footer,
+.shopify-section-header, .shopify-section-footer,
+.shopify-section-group-header-group, .shopify-section-group-footer-group,
+[id*="shopify-section-announcement"],
+[id*="shopify-section-header"],
+[id*="shopify-section-footer"],
+header.section-header, header.site-header, header[role="banner"],
+footer.site-footer, footer.footer, footer[role="contentinfo"],
+.announcement-bar, .announcement-bar-section,
+.header-wrapper, .header__wrapper,
+.breadcrumb, .breadcrumbs, nav.breadcrumb {
+  display: none !important;
+}
+
+/* Hide auto-rendered page title — landing has its own hero */
+.template-page .main-page-title,
+.template-page .page__title,
+.template-page .page-title,
+.template-page main h1:first-of-type,
+main .page-width > .main-page-title,
+main .page-width > .page__title,
+.page__header, .main-page-header, .section-header__title {
+  display: none !important;
+}
+
+/* Force every wrapper between <body> and our content to full width, no padding */
+html, body { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; background: #fff !important; }
+main, #MainContent, [role="main"], .content-for-layout, .main-content,
+.template-page main, .template-page .main-content,
+.shopify-section, .shopify-section--main-page,
+.page, .page-width, .page__content, .main-page,
+.rte, .container, .grid, .grid__item, .layout {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+/* Some themes drop a min-height/padding on main; flatten it */
+main, #MainContent { min-height: 0 !important; }
+`.trim();
+
+function wrapForFullWidth(bodyHtml: string): string {
+  return `<style data-riverz-reset>${FULL_WIDTH_RESET_CSS}</style>\n${bodyHtml}`;
 }
