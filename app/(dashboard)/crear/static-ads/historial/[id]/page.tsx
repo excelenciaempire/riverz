@@ -212,6 +212,68 @@ function LoadingTile({ gen }: { gen: Generation; hint?: string; templateThumbnai
   );
 }
 
+/**
+ * Circular progress ring for the edit drawer overlay, time-synced to the
+ * kie.ai Nano Banana edit call. There's no backend status stream for a
+ * single edit (the /api/static-ads/edit endpoint blocks until the poll
+ * completes), so we ease 0→95% over the empirical P75 wall-clock for the
+ * `generating` segment (SEGMENT_DURATION_MS.generating). When the fetch
+ * resolves and `active` flips false, the parent unmounts the overlay,
+ * which is the de-facto "100% complete" signal.
+ */
+function EditProgressRing({ active }: { active: boolean }) {
+  const SEGMENT_MS = SEGMENT_DURATION_MS.generating; // ~90s — matches LoadingTile
+  const startedAtRef = useRef<number>(0);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (!active) return;
+    startedAtRef.current = Date.now();
+    const tick = () => {
+      const elapsed = Math.max(0, Date.now() - startedAtRef.current);
+      const t = Math.min(1, elapsed / SEGMENT_MS);
+      const eased = 1 - Math.pow(1 - t, 2);
+      // Cap short of 100 so the actual completion (overlay unmount) feels
+      // like real forward motion instead of a no-op.
+      setProgress(eased * 95);
+    };
+    tick();
+    const id = setInterval(tick, 200);
+    return () => clearInterval(id);
+  }, [active, SEGMENT_MS]);
+
+  const r = 44;
+  const C = 2 * Math.PI * r;
+  const dash = (C * progress) / 100;
+
+  return (
+    <div className="relative h-16 w-16">
+      <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
+        <circle
+          cx="50" cy="50" r={r}
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth="3"
+          fill="none"
+        />
+        <circle
+          cx="50" cy="50" r={r}
+          stroke="currentColor"
+          strokeWidth="3"
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${C}`}
+          className="text-[#07A498] transition-[stroke-dasharray] duration-200 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-[11px] font-medium tabular-nums text-gray-200">
+          {Math.round(progress)}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
 interface TemplateGroup {
   templateId: string;
   templateName: string;
@@ -898,8 +960,8 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 className="max-h-[65vh] w-auto max-w-full object-contain"
               />
               {isGenerating && (
-                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-[#07A498] mb-2" />
+                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3">
+                  <EditProgressRing active={isGenerating} />
                   <p className="text-sm text-gray-300">Generando magia...</p>
                 </div>
               )}
