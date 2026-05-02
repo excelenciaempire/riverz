@@ -983,6 +983,24 @@ function loadAll(){
     pb.id='vitalu_b'; pb.texts=JSON.parse(JSON.stringify(TEXTS_B)); projects.push(pb);
     activeId='vitalu_a';
   }
+  // The new dashboard at /landing-lab navigates here with ?p=<id> when the
+  // user clicks one of their existing pages — use it to override activeId
+  // before the first render so we land directly in the right project.
+  // ?template=<id> is reserved for the template-load flow (next ticket); for
+  // now we show a toast pointing the user back at the gallery.
+  try{
+    var qs=new URLSearchParams(window.location.search);
+    var pid=qs.get('p');
+    if(pid && projects.find(function(p){return p.id===pid;})) activeId=pid;
+    var tpl=qs.get('template');
+    if(tpl){
+      var inline = (tpl==='vitalu-frustracion') ? 'vitalu_b'
+                 : (tpl==='vitalu-ancestral')  ? 'vitalu_a'
+                 : null;
+      if(inline && projects.find(function(p){return p.id===inline;})) activeId=inline;
+      else setTimeout(function(){ try{ toast('Ese template todavía no es editable. Estamos conectándolo al editor.',1); }catch(e){} }, 600);
+    }
+  }catch(e){}
   renderSidebar();
   var found=activeId&&projects.find(function(p){return p.id===activeId;});
   if(found) activateProject(activeId);
@@ -1212,10 +1230,12 @@ function closeStickyPanel(){var p=g('sticky-panel');if(p)p.classList.remove('sho
 function setVP(mode){vp=mode;g('vp-desk').classList.toggle('on',mode==='desktop');g('vp-mob').classList.toggle('on',mode==='mobile');document.body.classList.toggle('mob-mode',mode==='mobile');if(mode==='mobile'){var pa=g('page-area');if(pa)pa.scrollTop=0;}}
 function toggleSidebar(){sidebarOpen=!sidebarOpen;var sb=g('sidebar'),btn=g('sb-toggle');if(sb)sb.classList.toggle('collapsed',!sidebarOpen);if(btn)btn.textContent=sidebarOpen?'\u2630':'\u276F';}
 function goToDashboard(){
-  // This HTML runs inside an iframe at /landing-lab, so navigate the top
-  // window so we land on the real Riverz dashboard, not just inside the frame.
-  try { (window.top || window.parent || window).location.href = '/crear'; }
-  catch(e) { window.location.href = '/crear'; }
+  // This HTML runs inside an iframe at /landing-lab/edit, so navigate the
+  // top window back to the landing-lab dashboard (template gallery + my
+  // pages). The "Salir" link inside that dashboard is what takes the user
+  // out to the rest of Riverz.
+  try { (window.top || window.parent || window).location.href = '/landing-lab'; }
+  catch(e) { window.location.href = '/landing-lab'; }
 }
 
 // ── EXPORT ────────────────────────────────────────────────────
