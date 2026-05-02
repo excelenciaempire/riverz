@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Download, Check, Edit2, Loader2, X, Sparkles, Trash2, Clock, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Columns2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -427,16 +427,19 @@ function TemplateCard({
 
         {total > 1 && (
           <>
+            {/* Arrows sit at top-1/3 instead of vertical center so they don't
+                visually collide with the bottom-anchored Editar/Comparar/
+                Descargar pills that appear on hover. */}
             <button
               onClick={prev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition opacity-0 group-hover:opacity-100"
+              className="absolute left-2 top-1/3 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition opacity-0 group-hover:opacity-100 z-20"
               aria-label="Variación anterior"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <button
               onClick={next}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition opacity-0 group-hover:opacity-100"
+              className="absolute right-2 top-1/3 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition opacity-0 group-hover:opacity-100 z-20"
               aria-label="Variación siguiente"
             >
               <ChevronRight className="h-5 w-5" />
@@ -477,6 +480,7 @@ function TemplateCard({
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [editingImage, setEditingImage] = useState<Generation | null>(null);
@@ -560,6 +564,29 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         processQueue();
     }
   }, [project, params.id]);
+
+  // Auto-open the AI editor drawer when arriving with ?edit=<genId>. This is
+  // how the flat-view ("sin carpetas") list links to the editor — clicking
+  // Editar there navigates here with the generation id, and we surface the
+  // drawer immediately instead of forcing the user to find the tile and
+  // hover-click again. Strips the param from the URL after opening so a
+  // browser refresh doesn't re-open the drawer endlessly.
+  useEffect(() => {
+    if (!project || editingImage) return;
+    const editId = searchParams?.get('edit');
+    if (!editId) return;
+    const target = project.generations.find((g) => g.id === editId);
+    if (!target) return;
+    setEditingImage(target);
+    setEditPrompt('');
+    setCurrentVersionId(target.id);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('edit');
+      window.history.replaceState({}, '', url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, searchParams]);
 
   const toggleSelection = (id: string) => {
     setSelectedImages((prev) =>

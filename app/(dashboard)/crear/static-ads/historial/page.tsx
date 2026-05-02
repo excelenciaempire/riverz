@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Loader2, ArrowLeft, Folder, Calendar, Trash2, X, CheckSquare, Square, Check, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Folder, Calendar, Trash2, X, CheckSquare, Square, Check, Image as ImageIcon, AlertCircle, Edit2, Columns2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -53,15 +53,39 @@ const STATUS_LABEL: Record<string, string> = {
 /**
  * Single tile in the flat (sin-carpetas) view.
  *
- * Three states map to three visuals so the grid reads at a glance:
- *   - completed → the rendered image, click navigates to the parent project
- *   - pending  → a quiet loader card with the human label of the current
- *                step. We don't replicate the per-status progress ring from
- *                the per-project page — at this density, a small spinner +
- *                step name is plenty of signal without visual noise.
- *   - failed   → red-bordered card with the truncated error.
+ * Mirrors the look of `VariationSlide` in /historial/[id]:
+ *   - completed → image at natural aspect ratio (no crop) with a hover
+ *                 overlay holding the same Editar / Comparar / Descargar
+ *                 actions. Click on the image opens the comparison modal
+ *                 (same as in the per-project view). Editar redirects to
+ *                 the project page with ?edit=genId to open the AI editor
+ *                 drawer there — we don't duplicate the drawer here.
+ *   - pending  → loader card sized to a 3:4 placeholder (same approximate
+ *                geometry as a typical ad) so the masonry doesn't reflow
+ *                when the image lands.
+ *   - failed   → red card with the truncated error.
+ *
+ * Selection check lives at top-right; click it to enter multi-select.
+ * When the parent is in select mode the hover pills are suppressed so the
+ * click target is unambiguous.
  */
-function FlatGenerationTile({ gen, onOpen }: { gen: FlatGeneration; onOpen: () => void }) {
+function FlatGenerationTile({
+  gen,
+  isSelected,
+  onToggleSelect,
+  onCompare,
+  onEdit,
+  onDownload,
+  selectMode,
+}: {
+  gen: FlatGeneration;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onCompare: () => void;
+  onEdit: () => void;
+  onDownload: () => void;
+  selectMode: boolean;
+}) {
   const isCompleted = gen.status === 'completed' && !!gen.result_url;
   const isFailed = gen.status === 'failed';
   const isPending = !isCompleted && !isFailed;
@@ -71,46 +95,91 @@ function FlatGenerationTile({ gen, onOpen }: { gen: FlatGeneration; onOpen: () =
     gen.input_data?.productName ||
     'Imagen';
 
-  return (
-    <button
-      onClick={onOpen}
-      className={cn(
-        'group relative aspect-[3/4] overflow-hidden rounded-xl border bg-[#0f0f0f] text-left transition',
-        isCompleted ? 'border-gray-800 hover:border-[#07A498]' : 'border-gray-800',
-      )}
-      title={label}
-    >
-      {isCompleted ? (
-        <>
-          <img
-            src={gen.result_url!}
-            alt={label}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-          />
-          {/* Bottom gradient with the source label so the user remembers which
-              project / idea this image came from when scrolling fast. */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
-            <p className="truncate text-[11px] text-white">{label}</p>
+  if (isCompleted) {
+    return (
+      <div className="group relative mb-3 break-inside-avoid overflow-hidden rounded-xl bg-[#0a0a0a]">
+        <img
+          src={gen.result_url!}
+          alt={label}
+          loading="lazy"
+          decoding="async"
+          onClick={() => (selectMode ? onToggleSelect() : onCompare())}
+          className="block w-full h-auto select-none cursor-pointer"
+          draggable={false}
+        />
+        <div
+          className={cn(
+            'absolute inset-0 transition-all pointer-events-none rounded-xl',
+            isSelected ? 'ring-2 ring-[#07A498] bg-[#07A498]/5' : '',
+          )}
+        />
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          aria-label={isSelected ? 'Deseleccionar' : 'Seleccionar'}
+          className={cn(
+            'absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full transition-all cursor-pointer z-10',
+            isSelected
+              ? 'bg-[#07A498] text-white'
+              : 'bg-black/40 text-white/40 hover:text-white hover:bg-black/70 group-hover:text-white/80 group-hover:bg-black/60',
+          )}
+        >
+          <Check className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Hover overlay — suppressed in selectMode so the user only has one
+            click target (the image itself = toggle selection). */}
+        {!selectMode && (
+          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-2 px-3 pt-8 pb-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition">
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/70 hover:bg-black/90 text-white text-[12px] font-medium transition border border-white/10"
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+              Editar
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onCompare(); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/70 hover:bg-black/90 text-white text-[12px] font-medium transition border border-white/10"
+            >
+              <Columns2 className="h-3.5 w-3.5" />
+              Comparar
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDownload(); }}
+              aria-label="Descargar"
+              title="Descargar"
+              className="flex items-center justify-center h-[30px] w-[30px] rounded-md bg-black/70 hover:bg-black/90 text-white transition border border-white/10"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </button>
           </div>
-        </>
-      ) : isPending ? (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-3 text-center">
+        )}
+      </div>
+    );
+  }
+
+  if (isPending) {
+    return (
+      <div className="mb-3 break-inside-avoid relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0f0f0f] border border-gray-800">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center">
           <Loader2 className="h-5 w-5 animate-spin text-[#07A498]" />
           <p className="text-[11px] text-gray-400">{STATUS_LABEL[gen.status] || 'Procesando'}</p>
           <p className="line-clamp-2 text-[10px] text-gray-600">{label}</p>
         </div>
-      ) : (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-2 border border-red-500/20 bg-red-950/30 px-3 text-center">
-          <AlertCircle className="h-5 w-5 text-red-400" />
-          <p className="text-[11px] font-medium text-red-400">Error</p>
-          <p className="line-clamp-2 text-[10px] text-red-400/70">
-            {gen.error_message || 'Generación fallida'}
-          </p>
-        </div>
-      )}
-    </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-3 break-inside-avoid relative aspect-[3/4] overflow-hidden rounded-xl">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 border border-red-500/20 bg-red-950/30 text-center rounded-xl">
+        <AlertCircle className="h-5 w-5 text-red-400" />
+        <p className="text-[11px] font-medium text-red-400">Error</p>
+        <p className="line-clamp-2 text-[10px] text-red-400/70">
+          {gen.error_message || 'Generación fallida'}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -146,6 +215,42 @@ export default function HistorialPage() {
       return response.json() as Promise<Project[]>;
     },
   });
+
+  // Flat-view-specific state. Lives only when flatView is on; entering
+  // selectMode for the project grid is unrelated.
+  const [flatSelectedIds, setFlatSelectedIds] = useState<Set<string>>(new Set());
+  const [comparingGen, setComparingGen] = useState<FlatGeneration | null>(null);
+  const flatSelectMode = flatSelectedIds.size > 0;
+
+  const toggleFlatSelected = (id: string) => {
+    setFlatSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Mirror the download logic from /historial/[id]: fetch the image as a
+  // blob and trigger a real save dialog via an anchor with `download`.
+  // Otherwise the browser tends to navigate to the image instead of saving.
+  const downloadFlat = async (gen: FlatGeneration) => {
+    if (!gen.result_url) return;
+    try {
+      const res = await fetch(gen.result_url);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `riverz_${gen.id.slice(0, 8)}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err: any) {
+      toast.error(`No se pudo descargar: ${err.message || err}`);
+    }
+  };
 
   // Fetch the flat generations only when the toggle is on. Refetches every
   // 4s while there's at least one pending tile so the loaders advance to
@@ -330,9 +435,9 @@ export default function HistorialPage() {
           </p>
         </div>
       ) : flatView ? (
-        // Flat view — every generation across every project as its own tile.
-        // Tiles preserve provenance (click navigates to the parent project's
-        // historial) so the user can still drill in for editing/comparison.
+        // Flat view — every generation across every project as a tile, no
+        // folder grouping. Layout = CSS columns masonry so each image keeps
+        // its natural aspect ratio (matches the static-ads template grid).
         isLoadingFlat && !flatGens ? (
           <div className="flex h-64 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-[#07A498]" />
@@ -346,12 +451,17 @@ export default function HistorialPage() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3">
             {flatGens.map((gen) => (
               <FlatGenerationTile
                 key={gen.id}
                 gen={gen}
-                onOpen={() => router.push(`/crear/static-ads/historial/${gen.project_id}`)}
+                isSelected={flatSelectedIds.has(gen.id)}
+                selectMode={flatSelectMode}
+                onToggleSelect={() => toggleFlatSelected(gen.id)}
+                onCompare={() => setComparingGen(gen)}
+                onEdit={() => router.push(`/crear/static-ads/historial/${gen.project_id}?edit=${gen.id}`)}
+                onDownload={() => downloadFlat(gen)}
               />
             ))}
           </div>
@@ -561,6 +671,65 @@ export default function HistorialPage() {
                   </>
                 )}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comparison modal — flat-view counterpart of the per-project page's
+          modal. Shows the original template thumbnail next to the generated
+          result at full natural size. Skipped silently for ideación rows
+          which don't have a templateThumbnail (the source side becomes a
+          placeholder). */}
+      {comparingGen && (
+        <div
+          className="fixed inset-0 z-[60] flex flex-col bg-black/95 backdrop-blur-sm"
+          onClick={() => setComparingGen(null)}
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+            <div className="text-sm text-gray-300">
+              <span className="text-gray-500">Comparando:</span>{' '}
+              <span className="text-white">
+                {comparingGen.input_data?.templateName || comparingGen.input_data?.ideaHeadline || 'Imagen'}
+              </span>
+            </div>
+            <button
+              onClick={() => setComparingGen(null)}
+              className="flex items-center gap-2 text-gray-300 hover:text-white text-sm"
+              aria-label="Cerrar comparación"
+            >
+              <X className="h-5 w-5" />
+              Cerrar
+            </button>
+          </div>
+
+          <div
+            className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div className="text-xs uppercase tracking-wider text-gray-400">Plantilla original</div>
+              {comparingGen.input_data?.templateThumbnail ? (
+                <img
+                  src={comparingGen.input_data.templateThumbnail}
+                  alt="Plantilla original"
+                  className="max-w-full h-auto rounded-lg border border-white/10"
+                />
+              ) : (
+                <div className="flex items-center justify-center w-full aspect-[3/4] rounded-lg border border-white/10 text-gray-500 text-sm">
+                  Sin plantilla original disponible
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <div className="text-xs uppercase tracking-wider text-[#07A498]">Resultado generado</div>
+              {comparingGen.result_url && (
+                <img
+                  src={comparingGen.result_url}
+                  alt="Resultado generado"
+                  className="max-w-full h-auto rounded-lg border border-white/10"
+                />
+              )}
             </div>
           </div>
         </div>
