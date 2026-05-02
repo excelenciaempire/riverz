@@ -587,6 +587,24 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project, searchParams]);
 
+  // Same trick for ?compare=<genId> — flat view's "Comparar" pill navigates
+  // here with that param so the SAME comparison modal that lives on this
+  // page renders the chosen generation. No duplicated UI in the flat view.
+  useEffect(() => {
+    if (!project || comparingGen) return;
+    const compareId = searchParams?.get('compare');
+    if (!compareId) return;
+    const target = project.generations.find((g) => g.id === compareId);
+    if (!target) return;
+    setComparingGen(target);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('compare');
+      window.history.replaceState({}, '', url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, searchParams]);
+
   const toggleSelection = (id: string) => {
     setSelectedImages((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]

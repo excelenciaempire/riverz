@@ -98,13 +98,20 @@ function FlatGenerationTile({
   if (isCompleted) {
     return (
       <div className="group relative mb-4 break-inside-avoid overflow-hidden rounded-xl bg-[#0a0a0a]">
+        {/* Image is intentionally inert: in selectMode click toggles
+            selection, otherwise nothing happens. The Editar / Comparar /
+            Descargar pills in the hover overlay are the only triggers
+            for those actions — same as in the per-project view. */}
         <img
           src={gen.result_url!}
           alt={label}
           loading="lazy"
           decoding="async"
-          onClick={() => (selectMode ? onToggleSelect() : onCompare())}
-          className="block w-full h-auto select-none cursor-pointer"
+          onClick={() => { if (selectMode) onToggleSelect(); }}
+          className={cn(
+            'block w-full h-auto select-none',
+            selectMode ? 'cursor-pointer' : 'cursor-default'
+          )}
           draggable={false}
         />
         <div
@@ -219,8 +226,13 @@ export default function HistorialPage() {
 
   // Flat-view-specific state. Lives only when flatView is on; entering
   // selectMode for the project grid is unrelated.
+  //
+  // Compare and Edit do NOT live here: they reuse the modal/drawer in
+  // /historial/[id] via query params (?compare=<genId> / ?edit=<genId>).
+  // That keeps a single implementation of those UIs and matches the
+  // owner's principle: con-carpetas vs sin-carpetas is just a *grouping*
+  // toggle, not a separate set of features.
   const [flatSelectedIds, setFlatSelectedIds] = useState<Set<string>>(new Set());
-  const [comparingGen, setComparingGen] = useState<FlatGeneration | null>(null);
   const flatSelectMode = flatSelectedIds.size > 0;
 
   const toggleFlatSelected = (id: string) => {
@@ -514,7 +526,7 @@ export default function HistorialPage() {
                 isSelected={flatSelectedIds.has(gen.id)}
                 selectMode={flatSelectMode}
                 onToggleSelect={() => toggleFlatSelected(gen.id)}
-                onCompare={() => setComparingGen(gen)}
+                onCompare={() => router.push(`/crear/static-ads/historial/${gen.project_id}?compare=${gen.id}`)}
                 onEdit={() => router.push(`/crear/static-ads/historial/${gen.project_id}?edit=${gen.id}`)}
                 onDownload={() => downloadFlat(gen)}
               />
@@ -726,65 +738,6 @@ export default function HistorialPage() {
                   </>
                 )}
               </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Comparison modal — flat-view counterpart of the per-project page's
-          modal. Shows the original template thumbnail next to the generated
-          result at full natural size. Skipped silently for ideación rows
-          which don't have a templateThumbnail (the source side becomes a
-          placeholder). */}
-      {comparingGen && (
-        <div
-          className="fixed inset-0 z-[60] flex flex-col bg-black/95 backdrop-blur-sm"
-          onClick={() => setComparingGen(null)}
-        >
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-            <div className="text-sm text-gray-300">
-              <span className="text-gray-500">Comparando:</span>{' '}
-              <span className="text-white">
-                {comparingGen.input_data?.templateName || comparingGen.input_data?.ideaHeadline || 'Imagen'}
-              </span>
-            </div>
-            <button
-              onClick={() => setComparingGen(null)}
-              className="flex items-center gap-2 text-gray-300 hover:text-white text-sm"
-              aria-label="Cerrar comparación"
-            >
-              <X className="h-5 w-5" />
-              Cerrar
-            </button>
-          </div>
-
-          <div
-            className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 overflow-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex flex-col items-center gap-3 min-h-0">
-              <div className="text-xs uppercase tracking-wider text-gray-400">Plantilla original</div>
-              {comparingGen.input_data?.templateThumbnail ? (
-                <img
-                  src={comparingGen.input_data.templateThumbnail}
-                  alt="Plantilla original"
-                  className="max-h-[60vh] max-w-full w-auto h-auto object-contain rounded-lg border border-white/10"
-                />
-              ) : (
-                <div className="flex items-center justify-center w-full max-w-md aspect-[3/4] rounded-lg border border-white/10 text-gray-500 text-sm">
-                  Sin plantilla original disponible
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col items-center gap-3 min-h-0">
-              <div className="text-xs uppercase tracking-wider text-[#07A498]">Resultado generado</div>
-              {comparingGen.result_url && (
-                <img
-                  src={comparingGen.result_url}
-                  alt="Resultado generado"
-                  className="max-h-[60vh] max-w-full w-auto h-auto object-contain rounded-lg border border-white/10"
-                />
-              )}
             </div>
           </div>
         </div>
