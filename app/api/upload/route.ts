@@ -23,10 +23,13 @@ export async function POST(req: Request) {
 
     // Allowed `kind` values are mapped to safe path prefixes inside the
     // products bucket. Reusing one bucket avoids a Storage migration; the
-    // path prefix keeps user-uploaded templates separate from product photos.
-    const ALLOWED_KINDS = new Set(['product', 'user_template']);
+    // path prefix keeps each surface's uploads separated.
+    const ALLOWED_KINDS = new Set(['product', 'user_template', 'landing_image']);
     const safeKind = ALLOWED_KINDS.has(kind) ? kind : 'product';
-    const prefix = safeKind === 'user_template' ? 'user-templates' : 'products';
+    const prefix =
+      safeKind === 'user_template' ? 'user-templates' :
+      safeKind === 'landing_image' ? 'landing-images' :
+      'products';
 
     const bucket = 'products';
     const cleanName = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
