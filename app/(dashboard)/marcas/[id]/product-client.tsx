@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { ArrowLeft, Sparkles, Plus, Upload, X, FileText, Loader2 } from 'lucide-react';
 import { ResearchProgress } from '@/components/products/research-progress';
+import { KnowledgeBaseSection } from '@/components/products/knowledge-base-section';
 import type { Product } from '@/types';
 
 // Extended product type with research fields
@@ -459,6 +460,10 @@ export default function ProductClient({ product }: { product: ProductWithResearc
               )}
             </div>
           </div>
+
+          {/* Knowledge Base — additional context (briefs, docs, links) the
+              ideation pipeline reads alongside the deep research above. */}
+          <KnowledgeBaseSection productId={product.id} />
 
         </div>
       </div>
