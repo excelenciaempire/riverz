@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Download, Check, Edit2, Loader2, Save, Undo2, X, Sparkles, Trash2, Clock, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Columns2 } from 'lucide-react';
+import { ArrowLeft, Download, Check, Edit2, Loader2, X, Sparkles, Trash2, Clock, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Columns2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -482,8 +482,15 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const [editingImage, setEditingImage] = useState<Generation | null>(null);
   const [comparingGen, setComparingGen] = useState<Generation | null>(null);
   const [editPrompt, setEditPrompt] = useState('');
-  const [generatedEditUrl, setGeneratedEditUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  // Currently-displayed version inside the editor drawer. Each edit produces a
+  // new generation linked to its parent via parent_id, so a "version chain" is
+  // just the ancestor/descendant walk from the original `editingImage`.
+  const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
+  // After a successful edit, the new generation's id may not be in the React
+  // Query cache yet (refetch is in flight). Stash it here and a small effect
+  // navigates to it as soon as it lands in the chain.
+  const [pendingVersionId, setPendingVersionId] = useState<string | null>(null);
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', params.id],
@@ -608,19 +615,83 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     await downloadGeneration(gen);
   };
 
+  // Build the version chain that contains `editingImage`. We walk parent_id
+  // back to the chain root (a generation with no parent in this project) and
+  // then forward to its newest descendant, picking the most-recently-created
+  // child at each fork. The result is an ordered list from v1 → vN that the
+  // editor drawer paginates through with chevrons.
+  const versionChain = useMemo<Generation[]>(() => {
+    if (!editingImage || !project?.generations?.length) return editingImage ? [editingImage] : [];
+    const all = project.generations;
+    const byId = new Map(all.map(g => [g.id, g]));
+    const childrenByParent = new Map<string, Generation[]>();
+    for (const g of all) {
+      if (!g.parent_id) continue;
+      const arr = childrenByParent.get(g.parent_id) ?? [];
+      arr.push(g);
+      childrenByParent.set(g.parent_id, arr);
+    }
+    let root: Generation = editingImage;
+    while (root.parent_id && byId.has(root.parent_id)) {
+      root = byId.get(root.parent_id)!;
+    }
+    const chain: Generation[] = [root];
+    let cur: Generation | undefined = root;
+    while (cur) {
+      const kids = childrenByParent.get(cur.id);
+      if (!kids?.length) break;
+      const next = kids.slice().sort(
+        (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+      )[0];
+      chain.push(next);
+      cur = next;
+    }
+    return chain;
+  }, [editingImage, project]);
+
+  // When the drawer opens (or the user re-opens with a different image), jump
+  // the viewer to that image. The chain above will span its full version history.
+  useEffect(() => {
+    if (editingImage) {
+      setCurrentVersionId(editingImage.id);
+      setPendingVersionId(null);
+      setEditPrompt('');
+    } else {
+      setCurrentVersionId(null);
+      setPendingVersionId(null);
+    }
+  }, [editingImage?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After a successful edit, navigate to the new version as soon as it shows
+  // up in the refetched chain.
+  useEffect(() => {
+    if (!pendingVersionId) return;
+    if (versionChain.some(g => g.id === pendingVersionId)) {
+      setCurrentVersionId(pendingVersionId);
+      setPendingVersionId(null);
+    }
+  }, [pendingVersionId, versionChain]);
+
+  const currentVersionIdx = versionChain.findIndex(g => g.id === currentVersionId);
+  const currentVersion = currentVersionIdx >= 0 ? versionChain[currentVersionIdx] : editingImage;
+  const hasPrevVersion = currentVersionIdx > 0;
+  const hasNextVersion = currentVersionIdx >= 0 && currentVersionIdx < versionChain.length - 1;
+
   // Edit Mutation - Uses new static-ads edit endpoint
   const editMutation = useMutation({
     mutationFn: async () => {
       if (!editingImage) return;
       setIsGenerating(true);
-      setGeneratedEditUrl(null);
 
-      // Call the new edit endpoint which handles Claude + Nano Banana internally
+      // Edit the currently-viewed version (which may be a descendant of
+      // editingImage if the user has navigated forward in the chain), not
+      // necessarily the original opened image.
+      const sourceId = currentVersionId ?? editingImage.id;
       const response = await fetch('/api/static-ads/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          generationId: editingImage.id,
+          generationId: sourceId,
           editInstructions: editPrompt
         }),
       });
@@ -642,9 +713,11 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     },
     onSuccess: (result) => {
       if (result) {
-        setGeneratedEditUrl(result.resultUrl);
+        // Stash the new generation id and let the chain effect navigate to it
+        // once the React Query refetch surfaces it.
+        setPendingVersionId(result.newGenerationId);
+        setEditPrompt('');
         toast.success(`Edición completada - Versión ${result.version || 2}`);
-        // Refresh the project to show the new version
         queryClient.invalidateQueries({ queryKey: ['project', params.id] });
       }
       setIsGenerating(false);
@@ -655,15 +728,6 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       console.error(error);
     }
   });
-
-  const handleSaveEdit = async () => {
-    // The new edit endpoint already saves the image, so we just need to close the drawer
-    toast.success('Imagen guardada');
-    setEditingImage(null);
-    setGeneratedEditUrl(null);
-    setEditPrompt('');
-    // Refresh is already done in the mutation onSuccess
-  };
 
   // Delete single generation
   const deleteGenerationMutation = useMutation({
@@ -860,7 +924,6 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               onEdit={(gen) => {
                 setEditingImage(gen);
                 setEditPrompt('');
-                setGeneratedEditUrl(null);
               }}
               onCompare={(gen) => setComparingGen(gen)}
               onDownload={(gen) => handleDownloadOne(gen)}
@@ -946,19 +1009,51 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </button>
         </div>
 
-        {editingImage && (
-          <div className="flex-1 flex flex-col gap-6 overflow-y-auto">
-            {/* Image Preview — uses object-contain so the full generation is
-                always visible regardless of its aspect ratio (3:4, 1:1, 9:16
-                all show un-cropped). The container caps height to roughly
-                two-thirds of the viewport so the Instrucciones panel below
-                stays reachable without scrolling on most screens. */}
-            <div className="relative rounded-lg overflow-hidden border border-gray-700 bg-[#0a0a0a] flex items-center justify-center max-h-[65vh]">
+        {editingImage && currentVersion && (
+          // min-h-0 lets the inner image area actually shrink/grow to fit
+          // available vertical space instead of forcing a scrollbar on the
+          // whole drawer when the image is tall.
+          <div className="flex-1 min-h-0 flex flex-col gap-4">
+            {/* Image preview — fills all space the controls don't need.
+                object-contain keeps any aspect ratio (3:4, 1:1, 9:16) visible
+                end-to-end without cropping. */}
+            <div className="relative flex-1 min-h-0 rounded-lg overflow-hidden border border-gray-700 bg-[#0a0a0a] flex items-center justify-center">
               <img
-                src={generatedEditUrl || editingImage.result_url}
-                alt="Editing"
-                className="max-h-[65vh] w-auto max-w-full object-contain"
+                src={currentVersion.result_url}
+                alt={`Versión ${currentVersionIdx + 1}`}
+                className="max-h-full max-w-full w-auto h-auto object-contain"
               />
+
+              {/* Version pager — arrows live INSIDE the image so the layout
+                  stays compact and feels like a carousel. Only render an arrow
+                  when there's somewhere to go. */}
+              {hasPrevVersion && !isGenerating && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentVersionId(versionChain[currentVersionIdx - 1].id)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur flex items-center justify-center text-white transition shadow-lg"
+                  aria-label="Versión anterior"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              )}
+              {hasNextVersion && !isGenerating && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentVersionId(versionChain[currentVersionIdx + 1].id)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur flex items-center justify-center text-white transition shadow-lg"
+                  aria-label="Siguiente versión"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              )}
+
+              {versionChain.length > 1 && (
+                <div className="absolute top-2 right-2 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur text-[11px] font-medium text-white tabular-nums">
+                  v{currentVersionIdx + 1} / {versionChain.length}
+                </div>
+              )}
+
               {isGenerating && (
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3">
                   <EditProgressRing active={isGenerating} />
@@ -967,47 +1062,34 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               )}
             </div>
 
-            {/* Controls */}
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">
-                  Instrucciones
-                </label>
-                <Textarea
-                  placeholder="Ej: Cambia el fondo a un atardecer en la playa, haz que sonría más..."
-                  value={editPrompt}
-                  onChange={(e) => setEditPrompt(e.target.value)}
-                  className="bg-[#0a0a0a] border-gray-800 focus:border-[#07A498] min-h-[100px]"
-                />
-              </div>
+            {/* Controls — always visible at the bottom of the drawer, never
+                scrolled out of reach. */}
+            <div className="shrink-0 space-y-3">
+              <Textarea
+                placeholder="Ej: Cambia el fondo a un atardecer en la playa, haz que sonría más..."
+                value={editPrompt}
+                onChange={(e) => setEditPrompt(e.target.value)}
+                disabled={isGenerating}
+                className="bg-[#0a0a0a] border-gray-800 focus:border-[#07A498] min-h-[88px] resize-none"
+              />
 
               <Button
                 onClick={() => editMutation.mutate()}
                 disabled={isGenerating || !editPrompt}
-                className="w-full bg-[#07A498] hover:bg-[#068f84] text-white"
+                className="w-full bg-[#07A498] hover:bg-[#068f84] text-white h-11"
               >
-                {isGenerating ? 'Generando...' : 'Generar Edición'}
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generando...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generar Edición
+                  </>
+                )}
               </Button>
-
-              {generatedEditUrl && (
-                <div className="grid grid-cols-2 gap-3 mt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setGeneratedEditUrl(null)}
-                    className="border-gray-700 hover:bg-gray-800 text-gray-300"
-                  >
-                    <Undo2 className="mr-2 h-4 w-4" />
-                    Deshacer
-                  </Button>
-                  <Button
-                    onClick={handleSaveEdit}
-                    className="bg-white text-black hover:bg-gray-200"
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    Guardar
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
         )}
