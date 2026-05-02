@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Download, Check, Edit2, Loader2, Save, Undo2, X, Sparkles, Trash2, Clock, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Download, Check, Edit2, Loader2, Save, Undo2, X, Sparkles, Trash2, Clock, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Columns2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -237,63 +237,78 @@ function VariationSlide({
   const angle = gen.input_data?.variationAngle || `V${gen.input_data?.variationIndex || ''}`;
   const title = gen.input_data?.variationTitle || '';
 
+  if (isCompleted && gen.result_url) {
+    return (
+      <div className="relative overflow-hidden rounded-xl bg-[#0a0a0a]">
+        {/* Image renders at its natural aspect ratio so masonry placement
+            matches the static-ads template grid — no forced 3:4 crop. The
+            image itself is intentionally inert: clicking does nothing. The
+            Editar / Comparar actions live in the hover overlay below. */}
+        <img
+          src={gen.result_url}
+          alt={title || `Variation ${gen.input_data?.variationIndex || ''}`}
+          className="block w-full h-auto select-none"
+          draggable={false}
+        />
+        <div
+          className={cn(
+            'absolute inset-0 transition-all pointer-events-none rounded-xl',
+            isSelected ? 'ring-2 ring-[#07A498] bg-[#07A498]/5' : '',
+          )}
+        />
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          aria-label={isSelected ? 'Deseleccionar' : 'Seleccionar'}
+          className={cn(
+            'absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full transition-all cursor-pointer z-10',
+            isSelected
+              ? 'bg-[#07A498] text-white'
+              : 'bg-black/40 text-white/40 hover:text-white hover:bg-black/70 group-hover:text-white/80 group-hover:bg-black/60',
+          )}
+        >
+          <Check className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Hover overlay anchored to the bottom of the image, holding the two
+            actions: Editar (opens AI editor drawer) and Comparar (opens the
+            template-vs-result modal). */}
+        <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-2 px-3 pt-8 pb-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/70 hover:bg-black/90 text-white text-[12px] font-medium transition border border-white/10"
+          >
+            <Edit2 className="h-3.5 w-3.5" />
+            Editar
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onCompare(); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/70 hover:bg-black/90 text-white text-[12px] font-medium transition border border-white/10"
+          >
+            <Columns2 className="h-3.5 w-3.5" />
+            Comparar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isPending) {
+    return (
+      <LoadingTile
+        gen={gen}
+        hint={angle}
+        templateThumbnail={gen.input_data?.templateThumbnail}
+      />
+    );
+  }
+
   return (
     <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0a0a0a]">
-      {isCompleted && gen.result_url ? (
-        <>
-          {/* Click on the image opens the comparison modal (template ↔ result).
-              Selection moved to the dedicated top-right circle so a single
-              click can't both open the modal AND toggle selection. */}
-          <img
-            src={gen.result_url}
-            alt={title || `Variation ${gen.input_data?.variationIndex || ''}`}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] cursor-zoom-in"
-            onClick={onCompare}
-          />
-          <div
-            className={cn(
-              'absolute inset-0 transition-all pointer-events-none rounded-xl',
-              isSelected ? 'ring-2 ring-[#07A498] bg-[#07A498]/5' : '',
-            )}
-          />
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
-            aria-label={isSelected ? 'Deseleccionar' : 'Seleccionar'}
-            className={cn(
-              'absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full transition-all cursor-pointer',
-              isSelected
-                ? 'bg-[#07A498] text-white'
-                : 'bg-black/40 text-white/40 hover:text-white hover:bg-black/70 group-hover:text-white/80 group-hover:bg-black/60',
-            )}
-          >
-            <Check className="h-3.5 w-3.5" />
-          </button>
-        </>
-      ) : isPending ? (
-        <LoadingTile
-          gen={gen}
-          hint={angle}
-          templateThumbnail={gen.input_data?.templateThumbnail}
-        />
-      ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-red-950/40 to-red-900/10 border border-red-500/20 rounded-xl">
-          <AlertCircle className="h-12 w-12 mb-2 text-red-400" />
-          <p className="text-sm font-bold text-red-400 mb-1">Error</p>
-          <p className="text-[10px] text-red-400/70 line-clamp-3 text-center">{gen.error_message || 'Error en generación'}</p>
-        </div>
-      )}
-
-      {/* Subtle "Editar" pill that appears on hover, only for completed.
-          The full-image click handles selection — no separate checkbox. */}
-      {isCompleted && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 hover:bg-black/80 text-white text-[11px] font-medium transition opacity-0 group-hover:opacity-100"
-        >
-          <Edit2 className="h-3 w-3" />
-          Editar
-        </button>
-      )}
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-red-950/40 to-red-900/10 border border-red-500/20 rounded-xl">
+        <AlertCircle className="h-12 w-12 mb-2 text-red-400" />
+        <p className="text-sm font-bold text-red-400 mb-1">Error</p>
+        <p className="text-[10px] text-red-400/70 line-clamp-3 text-center">{gen.error_message || 'Error en generación'}</p>
+      </div>
     </div>
   );
 }
@@ -323,7 +338,7 @@ function TemplateCard({
   const prev = () => setSlideIndex((i) => (i - 1 + total) % total);
 
   return (
-    <div className="rounded-2xl overflow-hidden">
+    <div className="mb-4 break-inside-avoid rounded-2xl overflow-hidden">
       {/* Carousel */}
       <div className="relative group">
         <VariationSlide
@@ -666,7 +681,8 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   return (
     <div className="flex h-screen overflow-hidden bg-black text-white">
       {/* Main Content */}
-      <div className={cn("flex-1 overflow-y-auto p-6 transition-all", editingImage ? "mr-[560px]" : "")}>
+      <div className={cn("flex-1 overflow-y-auto transition-all", editingImage ? "mr-[560px]" : "")}>
+        <div className="mx-auto max-w-[1800px] p-6">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -722,14 +738,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </div>
         </div>
 
-        {/* Grid — one card per template, with carousel of variations.
-            When there are no rows yet (clone API still inserting), we render
-            a single LoadingTile placeholder so the user sees the same
-            liquid-glass loading animation as a real tile. The query keeps
-            polling, so the placeholder is replaced as soon as the row lands. */}
-        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        {/* Masonry — same column layout as the templates grid (static-ads page).
+            Each card flows into the shortest column, so images render at their
+            natural aspect ratio without forced 3:4 cropping. */}
+        <div className="columns-2 lg:columns-3 xl:columns-4 gap-4">
           {templateGroups.length === 0 && (
-            <div className="rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] overflow-hidden">
+            <div className="mb-4 break-inside-avoid rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/60">
                 <div className="h-10 w-10 rounded-md bg-white/5 animate-pulse" />
                 <div className="flex-1 min-w-0 space-y-1">
@@ -766,63 +780,66 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             />
           ))}
         </div>
+        </div>
       </div>
 
-      {/* Comparison modal — opens when clicking a completed image.
-          Shows the original template thumbnail next to the generated result
-          at FULL natural size (object-contain, never cropped). The user can
-          scroll independently if either image overflows the viewport. */}
+      {/* Comparison modal — centered card (not fullscreen) showing the
+          original template thumbnail next to the generated result. Both
+          images use object-contain inside a fixed-aspect cell so they sit
+          side by side at the same visual size, regardless of source aspect. */}
       {comparingGen && (
         <div
-          className="fixed inset-0 z-[60] flex flex-col bg-black/95 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           onClick={() => setComparingGen(null)}
         >
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-            <div className="text-sm text-gray-300">
-              <span className="text-gray-500">Comparando:</span>{' '}
-              <span className="text-white">
-                {comparingGen.input_data?.templateName || 'Plantilla'}
-              </span>
-            </div>
-            <button
-              onClick={() => setComparingGen(null)}
-              className="flex items-center gap-2 text-gray-300 hover:text-white text-sm"
-              aria-label="Cerrar comparación"
-            >
-              <X className="h-5 w-5" />
-              Cerrar
-            </button>
-          </div>
-
           <div
-            className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 overflow-auto"
+            className="relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl border border-gray-800 bg-[#141414] shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex flex-col items-center gap-3">
-              <div className="text-xs uppercase tracking-wider text-gray-400">
-                Plantilla original
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800">
+              <div className="text-sm text-gray-300 truncate">
+                <span className="text-gray-500">Comparando:</span>{' '}
+                <span className="text-white">
+                  {comparingGen.input_data?.templateName || 'Plantilla'}
+                </span>
               </div>
-              {comparingGen.input_data?.templateThumbnail ? (
-                <img
-                  src={comparingGen.input_data.templateThumbnail}
-                  alt="Plantilla original"
-                  className="max-w-full h-auto rounded-lg border border-white/10"
-                />
-              ) : (
-                <div className="flex items-center justify-center w-full aspect-[3/4] rounded-lg border border-white/10 text-gray-500 text-sm">
-                  Sin plantilla original disponible
-                </div>
-              )}
+              <button
+                onClick={() => setComparingGen(null)}
+                className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm"
+                aria-label="Cerrar comparación"
+              >
+                <X className="h-4 w-4" />
+                Cerrar
+              </button>
             </div>
-            <div className="flex flex-col items-center gap-3">
-              <div className="text-xs uppercase tracking-wider text-[#07A498]">
-                Resultado generado
+
+            <div className="flex-1 grid grid-cols-2 gap-3 p-4 overflow-auto">
+              <div className="flex flex-col items-center gap-2">
+                <div className="text-[10px] uppercase tracking-wider text-gray-400">
+                  Plantilla original
+                </div>
+                {comparingGen.input_data?.templateThumbnail ? (
+                  <img
+                    src={comparingGen.input_data.templateThumbnail}
+                    alt="Plantilla original"
+                    className="max-w-full max-h-[60vh] w-auto h-auto rounded-lg border border-white/10 object-contain"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full aspect-[3/4] rounded-lg border border-white/10 text-gray-500 text-xs">
+                    Sin plantilla original
+                  </div>
+                )}
               </div>
-              <img
-                src={comparingGen.result_url}
-                alt="Resultado generado"
-                className="max-w-full h-auto rounded-lg border border-white/10"
-              />
+              <div className="flex flex-col items-center gap-2">
+                <div className="text-[10px] uppercase tracking-wider text-[#07A498]">
+                  Resultado generado
+                </div>
+                <img
+                  src={comparingGen.result_url}
+                  alt="Resultado generado"
+                  className="max-w-full max-h-[60vh] w-auto h-auto rounded-lg border border-white/10 object-contain"
+                />
+              </div>
             </div>
           </div>
         </div>
