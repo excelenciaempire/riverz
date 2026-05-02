@@ -6,7 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { ArrowLeft, Sparkles, Plus, Upload, X, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, Upload, X, FileText, Loader2, BookOpen } from 'lucide-react';
 import { ResearchProgress } from '@/components/products/research-progress';
 import { KnowledgeBaseSection } from '@/components/products/knowledge-base-section';
 import type { Product } from '@/types';
@@ -212,9 +212,17 @@ export default function ProductClient({ product }: { product: ProductWithResearc
         <Button variant="ghost" onClick={() => router.push('/marcas')} className="text-gray-400 hover:text-white">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver
         </Button>
-        
-        <Button onClick={() => router.push('/marcas')} variant="outline" className="border-brand-accent text-brand-accent hover:bg-brand-accent/10">
-          <Plus className="mr-2 h-4 w-4" /> Agregar otro producto
+
+        <Button
+          onClick={() => {
+            document
+              .getElementById('knowledge-base')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          variant="outline"
+          className="border-brand-accent text-brand-accent hover:bg-brand-accent/10"
+        >
+          <BookOpen className="mr-2 h-4 w-4" /> Ver Knowledge Base
         </Button>
       </div>
 
@@ -462,8 +470,11 @@ export default function ProductClient({ product }: { product: ProductWithResearc
           </div>
 
           {/* Knowledge Base — additional context (briefs, docs, links) the
-              ideation pipeline reads alongside the deep research above. */}
-          <KnowledgeBaseSection productId={product.id} />
+              ideation pipeline reads alongside the deep research above.
+              The header "Ver Knowledge Base" button scrolls to this id. */}
+          <div id="knowledge-base" className="scroll-mt-24">
+            <KnowledgeBaseSection productId={product.id} />
+          </div>
 
         </div>
       </div>
