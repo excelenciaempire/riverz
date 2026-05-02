@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Modal } from '@/components/ui/modal';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import { prettyName } from '@/lib/pretty-name';
 
 export function TemplatesManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -165,7 +166,7 @@ export function TemplatesManager() {
               <img src={template.thumbnail_url} alt={template.name} className="h-full w-full object-cover" />
             </div>
             <div className="p-4">
-              <h3 className="font-semibold text-white">{template.name}</h3>
+              <h3 className="font-semibold text-white">{prettyName(template.name)}</h3>
               <p className="mt-1 text-xs text-gray-400">{template.category}</p>
               <div className="mt-3 flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => handleEdit(template)}>

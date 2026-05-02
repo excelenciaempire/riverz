@@ -9,6 +9,7 @@ import { Loader2, ArrowLeft, Folder, Calendar, Trash2, X, CheckSquare, Square, C
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { prettyName } from '@/lib/pretty-name';
 
 interface Project {
   id: string;
@@ -257,7 +258,7 @@ export default function HistorialPage() {
               </div>
               <div className="p-4">
                 <h3 className="mb-1 truncate text-lg font-semibold text-white group-hover:text-[#07A498]">
-                  {project.name}
+                  {prettyName(project.name)}
                 </h3>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs text-gray-400">

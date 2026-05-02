@@ -8,6 +8,7 @@ import { ArrowLeft, Loader2, User, Image as ImageIcon, Trash2, Play, Sparkles, A
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { prettyName } from '@/lib/pretty-name';
 
 interface Scene {
   id: string;
@@ -156,7 +157,7 @@ export default function StealerProjectPage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold">{project.name || `Proyecto ${project.id.slice(0, 6)}`}</h1>
+              <h1 className="text-2xl font-bold">{prettyName(project.name) !== 'Sin título' ? prettyName(project.name) : `Proyecto ${project.id.slice(0, 6)}`}</h1>
               <p className="text-xs text-gray-500">{STATUS_HINT[project.status] || project.status}</p>
             </div>
           </div>

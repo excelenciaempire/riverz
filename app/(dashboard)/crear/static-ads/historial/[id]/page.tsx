@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { prettyName } from '@/lib/pretty-name';
 
 interface Generation {
   id: string;
@@ -224,12 +225,14 @@ function VariationSlide({
   onToggleSelect,
   onEdit,
   onCompare,
+  onDownload,
 }: {
   gen: Generation;
   isSelected: boolean;
   onToggleSelect: () => void;
   onEdit: () => void;
   onCompare: () => void;
+  onDownload: () => void;
 }) {
   const isCompleted = gen.status === 'completed';
   const isFailed = gen.status === 'failed';
@@ -287,6 +290,14 @@ function VariationSlide({
             <Columns2 className="h-3.5 w-3.5" />
             Comparar
           </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDownload(); }}
+            aria-label="Descargar"
+            title="Descargar"
+            className="flex items-center justify-center h-[30px] w-[30px] rounded-md bg-black/70 hover:bg-black/90 text-white transition border border-white/10"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     );
@@ -319,12 +330,14 @@ function TemplateCard({
   onToggleSelect,
   onEdit,
   onCompare,
+  onDownload,
 }: {
   group: TemplateGroup;
   selectedImages: string[];
   onToggleSelect: (id: string) => void;
   onEdit: (gen: Generation) => void;
   onCompare: (gen: Generation) => void;
+  onDownload: (gen: Generation) => void;
 }) {
   const [slideIndex, setSlideIndex] = useState(0);
   const variations = group.variations;
@@ -347,6 +360,7 @@ function TemplateCard({
           onToggleSelect={() => onToggleSelect(current.id)}
           onEdit={() => onEdit(current)}
           onCompare={() => onCompare(current)}
+          onDownload={() => onDownload(current)}
         />
 
         {total > 1 && (
@@ -493,6 +507,28 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     }
   };
 
+  // Pull the image bytes through fetch + Blob so the browser respects the
+  // `download` attribute. Loading the URL directly opens it in a new tab on
+  // most browsers (Supabase Storage serves with inline disposition).
+  const downloadGeneration = async (gen: Generation) => {
+    if (!gen.result_url) return;
+    try {
+      const res = await fetch(gen.result_url);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `riverz_${gen.id.slice(0, 8)}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err: any) {
+      console.error('Download failed for', gen.id, err);
+      toast.error('Error al descargar la imagen');
+    }
+  };
+
   const handleDownload = async () => {
     if (selectedImages.length === 0) return;
     const targets = selectedImages
@@ -501,25 +537,13 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     if (targets.length === 0) return;
 
     toast.success(`Descargando ${targets.length} imagen${targets.length === 1 ? '' : 'es'}...`);
-    // Fetch each as a Blob and trigger an actual download via an anchor
-    // with the `download` attribute. This bypasses the browser opening the
-    // image in a new tab (the previous behaviour that prompted this fix).
-    for (const gen of targets) {
-      try {
-        const res = await fetch(gen.result_url);
-        const blob = await res.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = objectUrl;
-        a.download = `riverz_${gen.id.slice(0, 8)}.png`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(objectUrl);
-      } catch (err: any) {
-        console.error('Download failed for', gen.id, err);
-      }
-    }
+    for (const gen of targets) await downloadGeneration(gen);
+  };
+
+  const handleDownloadOne = async (gen: Generation) => {
+    if (!gen.result_url) return;
+    toast.success('Descargando imagen…');
+    await downloadGeneration(gen);
   };
 
   // Edit Mutation - Uses new static-ads edit endpoint
@@ -693,7 +717,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm">Volver</span>
             </button>
-            <h1 className="text-2xl font-bold">{project?.name}</h1>
+            <h1 className="text-2xl font-bold">{prettyName(project?.name)}</h1>
           </div>
           
           <div className="flex gap-3">
@@ -777,6 +801,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 setGeneratedEditUrl(null);
               }}
               onCompare={(gen) => setComparingGen(gen)}
+              onDownload={(gen) => handleDownloadOne(gen)}
             />
           ))}
         </div>
@@ -796,22 +821,16 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             className="relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl border border-gray-800 bg-[#141414] shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800">
-              <div className="text-sm text-gray-300 truncate">
-                <span className="text-gray-500">Comparando:</span>{' '}
-                <span className="text-white">
-                  {comparingGen.input_data?.templateName || 'Plantilla'}
-                </span>
-              </div>
-              <button
-                onClick={() => setComparingGen(null)}
-                className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm"
-                aria-label="Cerrar comparación"
-              >
-                <X className="h-4 w-4" />
-                Cerrar
-              </button>
-            </div>
+            {/* Floating close button — the named header was removed because
+                template names are often raw filenames that look ugly to the
+                customer. The modal stands on its own without a title. */}
+            <button
+              onClick={() => setComparingGen(null)}
+              className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white/80 hover:text-white hover:bg-black/80 transition"
+              aria-label="Cerrar comparación"
+            >
+              <X className="h-4 w-4" />
+            </button>
 
             <div className="flex-1 grid grid-cols-2 gap-3 p-4 overflow-auto">
               <div className="flex flex-col items-center gap-2">
