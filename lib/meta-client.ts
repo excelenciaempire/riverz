@@ -1122,6 +1122,54 @@ export async function createAdSet(
   return { id: String(json.id) };
 }
 
+export interface CreativeFeatureToggles {
+  // Master toggle — opting into Advantage+ Creative globally
+  advantage_creative_overall?: boolean;
+  // Image
+  standard_enhancements?: boolean;
+  image_touchups?: boolean;
+  image_animation?: boolean;
+  // Text
+  text_improvements?: boolean;
+  description_visibility?: boolean;
+  // Video
+  music?: boolean;
+  video_auto_crop?: boolean;
+  // Layout / extensions
+  site_extensions?: boolean;
+  cta_optimization?: boolean;
+}
+
+/**
+ * Map our high-level toggles to Meta's `creative_features_spec` shape.
+ * Each feature gets `{ enroll_status: 'OPT_IN' | 'OPT_OUT' }`.
+ * Reference: Meta Marketing API → adcreative → degrees_of_freedom_spec.
+ */
+function buildCreativeFeaturesSpec(features?: CreativeFeatureToggles): any | null {
+  if (!features) return null;
+  const map: Record<keyof CreativeFeatureToggles, string> = {
+    advantage_creative_overall: 'advantage_plus_creative',
+    standard_enhancements: 'standard_enhancements',
+    image_touchups: 'image_touchups',
+    image_animation: 'image_animation',
+    text_improvements: 'text_optimizations',
+    description_visibility: 'description_automation',
+    music: 'music',
+    video_auto_crop: 'video_auto_crop',
+    site_extensions: 'site_extensions',
+    cta_optimization: 'cta_optimization',
+  };
+  const spec: Record<string, { enroll_status: 'OPT_IN' | 'OPT_OUT' }> = {};
+  let anyTouched = false;
+  for (const key of Object.keys(map) as Array<keyof CreativeFeatureToggles>) {
+    const v = features[key];
+    if (typeof v !== 'boolean') continue;
+    spec[map[key]] = { enroll_status: v ? 'OPT_IN' : 'OPT_OUT' };
+    anyTouched = true;
+  }
+  return anyTouched ? spec : null;
+}
+
 export interface CreateAdCreativePayload {
   name: string;
   page_id: string;
@@ -1134,6 +1182,15 @@ export interface CreateAdCreativePayload {
   image_hash?: string;
   video_id?: string;
   thumbnail_url?: string;
+  // Tracking & display extras
+  display_url?: string;
+  url_params?: string;          // raw query string, sin "?" inicial
+  // Multi-variante (asset_feed_spec). Si hay >1, se usa asset_feed_spec en vez de link_data/video_data.
+  primary_texts?: string[];
+  headlines?: string[];
+  descriptions?: string[];
+  // Advantage+ creative toggles
+  ai_features?: CreativeFeatureToggles;
 }
 
 export async function createAdCreative(
@@ -1143,38 +1200,101 @@ export async function createAdCreative(
 ): Promise<{ id: string }> {
   const acct = ensureActPrefix(adAccountId);
   const cta = payload.cta || 'SHOP_NOW';
-  const linkData: any = {
-    link: payload.link,
-    message: payload.message,
-    call_to_action: { type: cta, value: { link: payload.link } },
-  };
-  if (payload.headline) linkData.name = payload.headline;
-  if (payload.description) linkData.description = payload.description;
+
+  const headlines = (payload.headlines || []).filter((s) => !!s && s.trim());
+  const primaryTexts = (payload.primary_texts || []).filter((s) => !!s && s.trim());
+  const descriptions = (payload.descriptions || []).filter((s) => !!s && s.trim());
+  const useAssetFeedSpec =
+    headlines.length > 1 || primaryTexts.length > 1 || descriptions.length > 1;
 
   const objectStorySpec: any = { page_id: payload.page_id };
   if (payload.instagram_actor_id) objectStorySpec.instagram_actor_id = payload.instagram_actor_id;
 
-  if (payload.video_id) {
-    const videoData: any = {
-      video_id: payload.video_id,
-      message: payload.message,
-      call_to_action: { type: cta, value: { link: payload.link } },
-    };
-    if (payload.headline) videoData.title = payload.headline;
-    if (payload.thumbnail_url) videoData.image_url = payload.thumbnail_url;
-    objectStorySpec.video_data = videoData;
-  } else if (payload.image_hash) {
-    linkData.image_hash = payload.image_hash;
-    objectStorySpec.link_data = linkData;
-  } else {
-    throw new MetaApiError('Necesitas image_hash o video_id para crear creative');
-  }
-
   const body = new URLSearchParams({
     name: payload.name,
-    object_story_spec: JSON.stringify(objectStorySpec),
     access_token: token,
   });
+
+  if (useAssetFeedSpec) {
+    // Advantage+ Creative multi-variant via asset_feed_spec.
+    if (!payload.image_hash && !payload.video_id) {
+      throw new MetaApiError('Necesitas image_hash o video_id para crear creative');
+    }
+    const assetFeedSpec: any = {
+      ad_formats: [payload.video_id ? 'SINGLE_VIDEO' : 'SINGLE_IMAGE'],
+      bodies: (primaryTexts.length ? primaryTexts : [payload.message]).map((text) => ({ text })),
+      titles: (headlines.length ? headlines : payload.headline ? [payload.headline] : []).map(
+        (text) => ({ text }),
+      ),
+      descriptions: (descriptions.length
+        ? descriptions
+        : payload.description
+          ? [payload.description]
+          : []
+      ).map((text) => ({ text })),
+      link_urls: [
+        {
+          website_url: payload.link,
+          ...(payload.display_url ? { display_url: payload.display_url } : {}),
+        },
+      ],
+      call_to_action_types: [cta],
+    };
+    if (payload.video_id) {
+      assetFeedSpec.videos = [
+        {
+          video_id: payload.video_id,
+          ...(payload.thumbnail_url ? { thumbnail_url: payload.thumbnail_url } : {}),
+        },
+      ];
+    } else if (payload.image_hash) {
+      assetFeedSpec.images = [{ hash: payload.image_hash }];
+    }
+    body.set('object_story_spec', JSON.stringify(objectStorySpec));
+    body.set('asset_feed_spec', JSON.stringify(assetFeedSpec));
+  } else {
+    // Single-variant: classic link_data / video_data path.
+    const linkData: any = {
+      link: payload.link,
+      message: primaryTexts[0] || payload.message,
+      call_to_action: { type: cta, value: { link: payload.link } },
+    };
+    const headline = headlines[0] || payload.headline;
+    const description = descriptions[0] || payload.description;
+    if (headline) linkData.name = headline;
+    if (description) linkData.description = description;
+    if (payload.display_url) linkData.caption = payload.display_url;
+    if (payload.url_params) linkData.url_tags = payload.url_params;
+
+    if (payload.video_id) {
+      const videoData: any = {
+        video_id: payload.video_id,
+        message: linkData.message,
+        call_to_action: { type: cta, value: { link: payload.link } },
+      };
+      if (headline) videoData.title = headline;
+      if (payload.thumbnail_url) videoData.image_url = payload.thumbnail_url;
+      if (payload.url_params) videoData.url_tags = payload.url_params;
+      objectStorySpec.video_data = videoData;
+    } else if (payload.image_hash) {
+      linkData.image_hash = payload.image_hash;
+      objectStorySpec.link_data = linkData;
+    } else {
+      throw new MetaApiError('Necesitas image_hash o video_id para crear creative');
+    }
+    body.set('object_story_spec', JSON.stringify(objectStorySpec));
+  }
+
+  if (payload.url_params) body.set('url_tags', payload.url_params);
+
+  const featuresSpec = buildCreativeFeaturesSpec(payload.ai_features);
+  if (featuresSpec) {
+    body.set(
+      'degrees_of_freedom_spec',
+      JSON.stringify({ creative_features_spec: featuresSpec }),
+    );
+  }
+
   const json = await metaFetch(`${BASE}/${acct}/adcreatives`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1209,4 +1329,95 @@ export async function createAd(
   });
   if (!json?.id) throw new MetaApiError('Meta no devolvió ad id');
   return { id: String(json.id) };
+}
+
+// ============================================================================
+// Listing campaigns + ad sets (para los dropdowns de la grilla)
+// ============================================================================
+
+export interface ListedCampaign {
+  id: string;
+  name: string;
+  status?: string;
+  effective_status?: string;
+  objective?: string;
+}
+
+export async function listCampaignsForAccount(
+  token: string,
+  adAccountId: string,
+  opts: { limit?: number; effectiveStatus?: string[] } = {},
+): Promise<ListedCampaign[]> {
+  const acct = ensureActPrefix(adAccountId);
+  const params = new URLSearchParams({
+    fields: 'id,name,status,effective_status,objective',
+    limit: String(opts.limit ?? 200),
+    access_token: token,
+  });
+  if (opts.effectiveStatus && opts.effectiveStatus.length > 0) {
+    params.set('effective_status', JSON.stringify(opts.effectiveStatus));
+  }
+  const json = await metaFetch(`${BASE}/${acct}/campaigns?${params.toString()}`);
+  const data = (json?.data ?? []) as any[];
+  return data.map((c) => ({
+    id: String(c.id),
+    name: String(c.name ?? ''),
+    status: c.status ?? undefined,
+    effective_status: c.effective_status ?? undefined,
+    objective: c.objective ?? undefined,
+  }));
+}
+
+export interface ListedAdSet {
+  id: string;
+  name: string;
+  status?: string;
+  effective_status?: string;
+  campaign_id?: string;
+  daily_budget?: string;
+}
+
+export async function listAdSetsForCampaign(
+  token: string,
+  campaignId: string,
+  opts: { limit?: number } = {},
+): Promise<ListedAdSet[]> {
+  const params = new URLSearchParams({
+    fields: 'id,name,status,effective_status,campaign_id,daily_budget',
+    limit: String(opts.limit ?? 200),
+    access_token: token,
+  });
+  const json = await metaFetch(`${BASE}/${campaignId}/adsets?${params.toString()}`);
+  const data = (json?.data ?? []) as any[];
+  return data.map((a) => ({
+    id: String(a.id),
+    name: String(a.name ?? ''),
+    status: a.status ?? undefined,
+    effective_status: a.effective_status ?? undefined,
+    campaign_id: a.campaign_id ?? undefined,
+    daily_budget: a.daily_budget ?? undefined,
+  }));
+}
+
+export async function listAdSetsForAccount(
+  token: string,
+  adAccountId: string,
+  opts: { limit?: number } = {},
+): Promise<ListedAdSet[]> {
+  const acct = ensureActPrefix(adAccountId);
+  const params = new URLSearchParams({
+    fields: 'id,name,status,effective_status,campaign_id,daily_budget',
+    limit: String(opts.limit ?? 500),
+    access_token: token,
+  });
+  const json = await metaFetch(`${BASE}/${acct}/adsets?${params.toString()}`);
+  const data = (json?.data ?? []) as any[];
+  return data.map((a) => ({
+    id: String(a.id),
+    name: String(a.name ?? ''),
+    status: a.status ?? undefined,
+    effective_status: a.effective_status ?? undefined,
+    campaign_id: a.campaign_id ?? undefined,
+    daily_budget: a.daily_budget ?? undefined,
+  }));
 }

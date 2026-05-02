@@ -43,6 +43,24 @@ export interface MetaInstagramAccount {
 export type MetaUploadStatus = 'pending' | 'uploading' | 'processing' | 'ready' | 'failed';
 export type MetaAssetType = 'image' | 'video';
 
+export interface MetaAiFeatures {
+  // Master toggle — opting into Advantage+ Creative globally for the ad
+  advantage_creative_overall?: boolean;
+  // Image
+  standard_enhancements?: boolean;     // brillo / contraste auto
+  image_touchups?: boolean;            // retoque automático
+  image_animation?: boolean;           // anima imágenes estáticas
+  // Text
+  text_improvements?: boolean;         // re-escribe primary text
+  description_visibility?: boolean;    // muestra descripciones automáticamente
+  // Video
+  music?: boolean;                     // agrega música a videos sin audio
+  video_auto_crop?: boolean;
+  // Layout / extensions
+  site_extensions?: boolean;           // sitelinks
+  cta_optimization?: boolean;          // rota el CTA dinámicamente
+}
+
 export interface MetaAdMetadata {
   name?: string;
   primary_text?: string;
@@ -50,6 +68,23 @@ export interface MetaAdMetadata {
   description?: string;
   link_url?: string;
   cta?: string;
+  thumbnail_url?: string;
+
+  // Multi-variante (Meta acepta hasta 5 de cada) — overrides los singulares cuando hay >0
+  primary_texts?: string[];
+  headlines?: string[];
+  descriptions?: string[];
+
+  // Tracking & display
+  display_url?: string;
+  url_params?: string;                 // "utm_source=meta&utm_campaign={{campaign.name}}"
+
+  // Identity overrides (default: la cuenta)
+  page_id_override?: string;
+  instagram_actor_id_override?: string;
+
+  // Advantage+ creative toggles
+  ai_features?: MetaAiFeatures;
 }
 
 export interface MetaUpload {
@@ -301,4 +336,131 @@ export interface CreateCampaignResponse {
   adset_id: string;
   ad_ids: string[];
   warnings: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Multi-campaign launch (Kitchn-style grid)
+// ---------------------------------------------------------------------------
+
+export type CampaignObjective =
+  | 'OUTCOME_SALES'
+  | 'OUTCOME_TRAFFIC'
+  | 'OUTCOME_ENGAGEMENT'
+  | 'OUTCOME_LEADS'
+  | 'OUTCOME_AWARENESS';
+
+export interface NewCampaignSpec {
+  name: string;
+  objective: CampaignObjective;
+}
+
+export interface NewAdSetSpec {
+  name: string;
+  daily_budget_cents: number;
+  countries: string[];
+  age_min: number;
+  age_max: number;
+  publisher_platforms?: string[];
+}
+
+export type CampaignTarget =
+  | { kind: 'existing'; id: string; name?: string }
+  | { kind: 'new'; spec: NewCampaignSpec };
+
+export type AdSetTarget =
+  | { kind: 'existing'; id: string; name?: string }
+  | { kind: 'new'; spec: NewAdSetSpec };
+
+export interface AdRowIdentity {
+  page_id?: string;
+  instagram_actor_id?: string;
+}
+
+export interface LaunchAdRow {
+  rowId: string;                   // client-side id for response mapping
+  uploadId: string;
+  metadata: MetaAdMetadata;
+  campaign: CampaignTarget;
+  adset: AdSetTarget;
+  identity?: AdRowIdentity;
+}
+
+export interface LaunchRequest {
+  adAccountId: string;
+  rows: LaunchAdRow[];
+}
+
+export interface LaunchRowResult {
+  rowId: string;
+  uploadId: string;
+  campaignId?: string;
+  adsetId?: string;
+  adId?: string;
+  error?: string;
+}
+
+export interface LaunchResponse {
+  rows: LaunchRowResult[];
+  // Resumen de creación: lo nuevo creado en este request (para que la UI lo refleje sin re-fetch)
+  created: {
+    campaigns: Array<{ id: string; name: string }>;
+    adsets: Array<{ id: string; name: string; campaign_id: string }>;
+  };
+  warnings: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Existing campaigns / adsets listing (for the grid dropdowns)
+// ---------------------------------------------------------------------------
+
+export interface MetaCampaignSummary {
+  id: string;
+  name: string;
+  status?: string;
+  objective?: string;
+}
+
+export interface MetaAdSetSummary {
+  id: string;
+  name: string;
+  status?: string;
+  campaign_id?: string;
+  daily_budget?: string;
+}
+
+export interface ListCampaignsResponse {
+  campaigns: MetaCampaignSummary[];
+}
+
+export interface ListAdSetsResponse {
+  adsets: MetaAdSetSummary[];
+}
+
+// ---------------------------------------------------------------------------
+// Drafts (persistencia de la grilla)
+// ---------------------------------------------------------------------------
+
+export type AdDraftStatus = 'draft' | 'launching' | 'launched' | 'failed';
+
+export interface AdDraftRow {
+  rowId: string;
+  uploadId: string;
+  generationId: string;
+  metadata: MetaAdMetadata;
+  campaign: CampaignTarget;
+  adset: AdSetTarget;
+  identity?: AdRowIdentity;
+}
+
+export interface AdDraft {
+  id: string;
+  clerk_user_id: string;
+  ad_account_id: string;
+  name: string;
+  rows: AdDraftRow[];
+  status: AdDraftStatus;
+  launched_at: string | null;
+  result: LaunchResponse | null;
+  created_at: string;
+  updated_at: string;
 }
