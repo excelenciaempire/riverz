@@ -2,16 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  ChevronDown,
-  Copy,
-  Plus,
-  Settings,
-  Sparkles,
-  Trash2,
-  Wand2,
-  X,
-} from 'lucide-react';
+import { ChevronDown, Copy, Plus, Settings, Trash2, Wand2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -25,43 +16,28 @@ import { Modal } from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
 import type {
   AdDraftRow,
-  AdRowIdentity,
   AdSetTarget,
   CampaignTarget,
   ListAdSetsResponse,
   ListCampaignsResponse,
   ListPagesResponse,
   MetaAdMetadata,
-  MetaAiFeatures,
 } from '@/types/meta';
 
 const VIDEO_TYPES = new Set(['ugc', 'face_swap', 'clips', 'mejorar_calidad_video']);
 
-const CTA_OPTIONS = [
-  'SHOP_NOW',
-  'LEARN_MORE',
-  'SIGN_UP',
-  'GET_OFFER',
-  'BOOK_TRAVEL',
-  'DOWNLOAD',
-  'CONTACT_US',
-  'SUBSCRIBE',
-  'WATCH_MORE',
-  'APPLY_NOW',
-  'ORDER_NOW',
-] as const;
-
-const AI_FEATURE_LABELS: Array<{ key: keyof MetaAiFeatures; label: string; hint: string }> = [
-  { key: 'advantage_creative_overall', label: 'Advantage+ Creative', hint: 'Master toggle de IA creativa' },
-  { key: 'standard_enhancements', label: 'Standard Enhancements', hint: 'Brillo / contraste auto' },
-  { key: 'image_touchups', label: 'Image touch-ups', hint: 'Retoque automático de imagen' },
-  { key: 'image_animation', label: 'Image animation', hint: 'Anima imágenes estáticas' },
-  { key: 'text_improvements', label: 'Text optimizations', hint: 'Re-escribe primary text' },
-  { key: 'description_visibility', label: 'Description visibility', hint: 'Mostrar descripciones' },
-  { key: 'music', label: 'Music', hint: 'Agrega música a videos sin audio' },
-  { key: 'video_auto_crop', label: 'Video auto-crop', hint: 'Recorte automático para placements' },
-  { key: 'site_extensions', label: 'Site extensions', hint: 'Sitelinks debajo del anuncio' },
-  { key: 'cta_optimization', label: 'CTA optimization', hint: 'Rota el CTA dinámicamente' },
+const CTA_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'SHOP_NOW', label: 'Comprar ahora' },
+  { value: 'LEARN_MORE', label: 'Más información' },
+  { value: 'SIGN_UP', label: 'Registrarse' },
+  { value: 'GET_OFFER', label: 'Obtener oferta' },
+  { value: 'BOOK_TRAVEL', label: 'Reservar' },
+  { value: 'DOWNLOAD', label: 'Descargar' },
+  { value: 'CONTACT_US', label: 'Contactar' },
+  { value: 'SUBSCRIBE', label: 'Suscribirse' },
+  { value: 'WATCH_MORE', label: 'Ver más' },
+  { value: 'APPLY_NOW', label: 'Aplicar ahora' },
+  { value: 'ORDER_NOW', label: 'Ordenar ahora' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -78,11 +54,9 @@ interface AdGridEditorProps {
   onChange: (next: AdGridRow[]) => void;
   adAccountId: string;
   onImportAssets: () => void;
+  /** Cuando true, todas las celdas se renderizan en modo lectura. */
+  readOnly?: boolean;
 }
-
-// ---------------------------------------------------------------------------
-// Defaults
-// ---------------------------------------------------------------------------
 
 export function makeEmptyRow(generationId: string, extras?: Partial<AdGridRow>): AdGridRow {
   return {
@@ -104,6 +78,7 @@ export function AdGridEditor({
   onChange,
   adAccountId,
   onImportAssets,
+  readOnly = false,
 }: AdGridEditorProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [multiBulkOpen, setMultiBulkOpen] = useState(false);
@@ -134,7 +109,7 @@ export function AdGridEditor({
     queryKey: ['meta-pages-list'],
     queryFn: async () => {
       const res = await fetch('/api/meta/pages');
-      if (!res.ok) throw new Error('No se pudieron cargar las pages');
+      if (!res.ok) throw new Error('No se pudieron cargar las páginas');
       return res.json();
     },
     staleTime: 60_000,
@@ -145,10 +120,9 @@ export function AdGridEditor({
   const pages = pagesQuery.data?.pages ?? [];
   const defaultPageId = pagesQuery.data?.default_page_id ?? null;
 
-  // Si las filas vienen sin campaña asignada (recién importadas), auto-rellenar
-  // con la primera campaña existente y su primer ad set para que el usuario no
-  // tenga que tocarlas. Sólo lo hacemos cuando ya cargaron las listas.
+  // Auto-rellenar fila vacía con primera campaña + primer ad set existente.
   useEffect(() => {
+    if (readOnly) return;
     if (!campaignsQuery.isSuccess || !adsetsQuery.isSuccess) return;
     if (allCampaigns.length === 0) return;
     let mutated = false;
@@ -158,8 +132,7 @@ export function AdGridEditor({
         ? allCampaigns.find((c) => c.id === r.campaign.id)
         : allCampaigns[0];
       if (!camp) return r;
-      const validAdsetForCamp = allAdsets.filter((a) => a.campaign_id === camp.id);
-      const adset = validAdsetForCamp[0];
+      const adset = allAdsets.filter((a) => a.campaign_id === camp.id)[0];
       if (!adset) {
         mutated = true;
         return { ...r, campaign: { id: camp.id, name: camp.name } };
@@ -173,9 +146,15 @@ export function AdGridEditor({
     });
     if (mutated) onChange(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignsQuery.isSuccess, adsetsQuery.isSuccess, allCampaigns.length, allAdsets.length, rows.length]);
+  }, [
+    readOnly,
+    campaignsQuery.isSuccess,
+    adsetsQuery.isSuccess,
+    allCampaigns.length,
+    allAdsets.length,
+    rows.length,
+  ]);
 
-  // Limpia selecciones que ya no están en filas
   useEffect(() => {
     setSelected((prev) => {
       const valid = new Set(rows.map((r) => r.rowId));
@@ -211,7 +190,7 @@ export function AdGridEditor({
     const copy: AdGridRow = {
       ...original,
       rowId: crypto.randomUUID(),
-      metadata: { ...original.metadata, name: `${original.metadata.name || 'Anuncio'} (copy)` },
+      metadata: { ...original.metadata, name: `${original.metadata.name || 'Anuncio'} (copia)` },
     };
     const next = [...rows];
     next.splice(idx + 1, 0, copy);
@@ -254,7 +233,7 @@ export function AdGridEditor({
         copies.push({
           ...r,
           rowId: crypto.randomUUID(),
-          metadata: { ...r.metadata, name: `${r.metadata.name || 'Anuncio'} (copy)` },
+          metadata: { ...r.metadata, name: `${r.metadata.name || 'Anuncio'} (copia)` },
         });
       }
       onChange([...rows, ...copies]);
@@ -266,71 +245,69 @@ export function AdGridEditor({
 
   const errorsByRow = useMemo(() => {
     const map = new Map<string, string[]>();
+    if (readOnly) return map;
     for (const r of rows) {
       const errs: string[] = [];
-      if (!r.metadata.link_url) errs.push('Falta destination URL');
-      if (
-        !r.metadata.headline &&
-        !(r.metadata.headlines && r.metadata.headlines.length)
-      )
-        errs.push('Falta headline');
+      if (!r.metadata.link_url) errs.push('Falta URL destino');
+      if (!r.metadata.headline && !(r.metadata.headlines && r.metadata.headlines.length))
+        errs.push('Falta título');
       if (!r.campaign.id) errs.push('Falta campaña');
-      if (!r.adset.id) errs.push('Falta ad set');
+      if (!r.adset.id) errs.push('Falta conjunto');
       if (errs.length) map.set(r.rowId, errs);
     }
     return map;
-  }, [rows]);
+  }, [rows, readOnly]);
 
-  const noCampaigns = campaignsQuery.isSuccess && allCampaigns.length === 0;
-  const noAdSets = adsetsQuery.isSuccess && allAdsets.length === 0;
+  const noCampaigns = !readOnly && campaignsQuery.isSuccess && allCampaigns.length === 0;
+  const noAdSets = !readOnly && adsetsQuery.isSuccess && allAdsets.length === 0;
 
   return (
     <div className="space-y-3">
-      {/* Top toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-800 bg-[#0a0a0a] p-3">
-        <div className="flex items-center gap-2">
-          <Button size="sm" onClick={onImportAssets}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" /> Importar assets
-          </Button>
-          <span className="text-xs text-gray-500">
-            <span className="text-white">{rows.length}</span> ads ·{' '}
-            <span className="text-white">{selected.size}</span> seleccionados
-          </span>
-        </div>
+      {!readOnly && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-800 bg-[#0a0a0a] p-3">
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={onImportAssets}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" /> Importar assets
+            </Button>
+            <span className="text-xs text-gray-500">
+              <span className="text-white">{rows.length}</span> anuncios ·{' '}
+              <span className="text-white">{selected.size}</span> seleccionados
+            </span>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <BulkEditMenu
-            disabled={selected.size === 0}
-            onApply={applyToSelected}
-            onApplyTarget={applyTargetToSelected}
-            campaigns={allCampaigns}
-            adsets={allAdsets}
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setMultiBulkOpen(true)}
-            disabled={selected.size === 0}
-          >
-            <Wand2 className="mr-1.5 h-3.5 w-3.5" /> Multi Bulk Edit
-          </Button>
-          <BulkActionsMenu
-            disabled={selected.size === 0}
-            onDuplicate={() => bulkAction('duplicate')}
-            onDelete={() => bulkAction('delete')}
-          />
+          <div className="flex items-center gap-2">
+            <BulkEditMenu
+              disabled={selected.size === 0}
+              onApply={applyToSelected}
+              onApplyTarget={applyTargetToSelected}
+              campaigns={allCampaigns}
+              adsets={allAdsets}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setMultiBulkOpen(true)}
+              disabled={selected.size === 0}
+            >
+              <Wand2 className="mr-1.5 h-3.5 w-3.5" /> Edición masiva
+            </Button>
+            <BulkActionsMenu
+              disabled={selected.size === 0}
+              onDuplicate={() => bulkAction('duplicate')}
+              onDelete={() => bulkAction('delete')}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {(noCampaigns || noAdSets) && rows.length > 0 && (
         <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">
           {noCampaigns
             ? 'No tienes campañas en esta cuenta — créalas primero en Ads Manager y vuelve.'
-            : 'Las campañas no tienen ad sets — crea uno primero en Ads Manager y vuelve.'}
+            : 'Las campañas no tienen conjuntos — crea uno primero en Ads Manager y vuelve.'}
         </div>
       )}
 
-      {/* Grid */}
       <div className="rvz-grid-scroll overflow-x-auto rounded-lg border border-gray-800 bg-[#0a0a0a]">
         {rows.length === 0 ? (
           <div className="flex min-h-[280px] items-center justify-center p-12 text-center">
@@ -348,31 +325,32 @@ export function AdGridEditor({
             </div>
           </div>
         ) : (
-          <table className="min-w-[2200px] w-full text-xs">
+          <table className="min-w-[2000px] w-full text-xs">
             <thead className="sticky top-0 z-10 bg-[#141414] text-[10px] uppercase tracking-wide text-gray-400">
               <tr>
                 <Th className="w-10">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleSelectAll}
-                    className="h-3.5 w-3.5"
-                  />
+                  {!readOnly && (
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      className="h-3.5 w-3.5"
+                    />
+                  )}
                 </Th>
                 <Th className="w-16">Asset</Th>
-                <Th className="w-44">Ad name</Th>
+                <Th className="w-44">Nombre del anuncio</Th>
                 <Th className="w-56">Campaña</Th>
-                <Th className="w-56">Ad set</Th>
-                <Th className="w-72">Primary text</Th>
-                <Th className="w-56">Headlines</Th>
-                <Th className="w-56">Descriptions</Th>
-                <Th className="w-72">Destination URL</Th>
-                <Th className="w-44">Display URL</Th>
-                <Th className="w-72">URL params</Th>
-                <Th className="w-40">CTA</Th>
+                <Th className="w-56">Conjunto</Th>
+                <Th className="w-80">Texto principal</Th>
+                <Th className="w-64">Títulos</Th>
+                <Th className="w-64">Descripciones</Th>
+                <Th className="w-72">URL destino</Th>
+                <Th className="w-44">URL visible</Th>
+                <Th className="w-72">Parámetros URL</Th>
+                <Th className="w-44">CTA</Th>
                 <Th className="w-32">Identidad</Th>
-                <Th className="w-32">IA features</Th>
-                <Th className="w-20">Acciones</Th>
+                {!readOnly && <Th className="w-20">Acciones</Th>}
               </tr>
             </thead>
             <tbody>
@@ -392,6 +370,7 @@ export function AdGridEditor({
                   pages={pages}
                   defaultPageId={defaultPageId}
                   errors={errorsByRow.get(row.rowId) || []}
+                  readOnly={readOnly}
                 />
               ))}
             </tbody>
@@ -437,6 +416,7 @@ interface RowEditorProps {
   pages: ListPagesResponse['pages'];
   defaultPageId: string | null;
   errors: string[];
+  readOnly: boolean;
 }
 
 function RowEditor({
@@ -453,12 +433,42 @@ function RowEditor({
   pages,
   defaultPageId,
   errors,
+  readOnly,
 }: RowEditorProps) {
   const isVideo = row.generationType
     ? VIDEO_TYPES.has(row.generationType) || row.generationType.includes('video')
     : false;
   const meta = row.metadata;
   const hasError = errors.length > 0;
+
+  // Para multi-variante: lista canónica desde array si existe, fallback al campo singular.
+  const primaryTexts = useMemo(
+    () =>
+      meta.primary_texts && meta.primary_texts.length > 0
+        ? meta.primary_texts
+        : meta.primary_text
+          ? [meta.primary_text]
+          : [],
+    [meta.primary_text, meta.primary_texts],
+  );
+  const headlines = useMemo(
+    () =>
+      meta.headlines && meta.headlines.length > 0
+        ? meta.headlines
+        : meta.headline
+          ? [meta.headline]
+          : [],
+    [meta.headline, meta.headlines],
+  );
+  const descriptions = useMemo(
+    () =>
+      meta.descriptions && meta.descriptions.length > 0
+        ? meta.descriptions
+        : meta.description
+          ? [meta.description]
+          : [],
+    [meta.description, meta.descriptions],
+  );
 
   return (
     <tr
@@ -469,12 +479,14 @@ function RowEditor({
       )}
     >
       <Td>
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={onToggleSelect}
-          className="h-3.5 w-3.5"
-        />
+        {!readOnly && (
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={onToggleSelect}
+            className="h-3.5 w-3.5"
+          />
+        )}
       </Td>
       <Td>
         <div className="h-12 w-12 overflow-hidden rounded bg-gray-900">
@@ -492,16 +504,21 @@ function RowEditor({
           value={meta.name || ''}
           onChange={(v) => onUpdateMetadata({ name: v })}
           placeholder={`Anuncio ${String(index + 1).padStart(2, '0')}`}
+          readOnly={readOnly}
         />
       </Td>
       <Td>
         <CampaignCell
           value={row.campaign}
           campaigns={campaigns}
+          readOnly={readOnly}
           onChange={(c) => {
-            // Si el ad set actual no pertenece a esta campaña, lo reseteamos.
-            const adsetParent = adsets.find((a) => a.id === row.adset.id)?.campaign_id;
-            const shouldReset = !!row.adset.id && adsetParent !== c.id;
+            const currentAdset = row.adset;
+            let adsetParent: string | undefined;
+            if (currentAdset.id) {
+              adsetParent = adsets.find((a) => a.id === currentAdset.id)?.campaign_id;
+            }
+            const shouldReset = !!currentAdset.id && adsetParent !== c.id;
             onUpdateRow({
               campaign: c,
               ...(shouldReset ? { adset: { id: '' } } : {}),
@@ -514,28 +531,13 @@ function RowEditor({
           value={row.adset}
           campaign={row.campaign}
           allAdsets={adsets}
+          readOnly={readOnly}
           onChange={(a) => onUpdateRow({ adset: a })}
         />
       </Td>
       <Td>
-        <CellTextarea
-          value={meta.primary_text || ''}
-          onChange={(v) => onUpdateMetadata({ primary_text: v })}
-          placeholder="Copy del cuerpo del anuncio"
-        />
-        {meta.primary_texts && meta.primary_texts.length > 1 && (
-          <p className="mt-1 text-[10px] text-brand-accent">
-            +{meta.primary_texts.length - 1} variantes
-          </p>
-        )}
-        <MultiVariantToggle
-          values={
-            meta.primary_texts && meta.primary_texts.length > 0
-              ? meta.primary_texts
-              : meta.primary_text
-                ? [meta.primary_text]
-                : []
-          }
+        <MultiTextCell
+          values={primaryTexts}
           onChange={(vs) =>
             onUpdateMetadata({
               primary_texts: vs.length > 1 ? vs : undefined,
@@ -543,18 +545,15 @@ function RowEditor({
             })
           }
           max={5}
-          label="primary text"
+          multiline
+          placeholder="Texto principal del anuncio"
+          variantLabel="texto"
+          readOnly={readOnly}
         />
       </Td>
       <Td>
-        <MultiValueCell
-          values={
-            meta.headlines && meta.headlines.length > 0
-              ? meta.headlines
-              : meta.headline
-                ? [meta.headline]
-                : []
-          }
+        <MultiTextCell
+          values={headlines}
           onChange={(vs) =>
             onUpdateMetadata({
               headlines: vs.length > 1 ? vs : undefined,
@@ -563,18 +562,14 @@ function RowEditor({
           }
           max={5}
           maxLen={40}
-          placeholder="Headline (≤40)"
+          placeholder="Título (≤40)"
+          variantLabel="título"
+          readOnly={readOnly}
         />
       </Td>
       <Td>
-        <MultiValueCell
-          values={
-            meta.descriptions && meta.descriptions.length > 0
-              ? meta.descriptions
-              : meta.description
-                ? [meta.description]
-                : []
-          }
+        <MultiTextCell
+          values={descriptions}
           onChange={(vs) =>
             onUpdateMetadata({
               descriptions: vs.length > 1 ? vs : undefined,
@@ -583,6 +578,8 @@ function RowEditor({
           }
           max={5}
           placeholder="Descripción"
+          variantLabel="descripción"
+          readOnly={readOnly}
         />
       </Td>
       <Td>
@@ -590,7 +587,8 @@ function RowEditor({
           value={meta.link_url || ''}
           onChange={(v) => onUpdateMetadata({ link_url: v })}
           placeholder="https://shop.example.com/producto"
-          invalid={!meta.link_url}
+          invalid={!readOnly && !meta.link_url}
+          readOnly={readOnly}
         />
       </Td>
       <Td>
@@ -598,6 +596,7 @@ function RowEditor({
           value={meta.display_url || ''}
           onChange={(v) => onUpdateMetadata({ display_url: v })}
           placeholder="shop.example.com"
+          readOnly={readOnly}
         />
       </Td>
       <Td>
@@ -606,65 +605,72 @@ function RowEditor({
           onChange={(v) => onUpdateMetadata({ url_params: v })}
           placeholder="utm_source=meta&utm_campaign={{campaign.name}}"
           mono
+          readOnly={readOnly}
         />
       </Td>
       <Td>
-        <Select value={meta.cta || 'SHOP_NOW'} onValueChange={(v) => onUpdateMetadata({ cta: v })}>
-          <SelectTrigger className="h-8 border-gray-800 bg-[#0a0a0a] text-xs text-white">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="border-gray-800 bg-[#141414] text-white">
-            {CTA_OPTIONS.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c.replace(/_/g, ' ')}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {readOnly ? (
+          <div className="rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-gray-300">
+            {CTA_OPTIONS.find((c) => c.value === (meta.cta || 'SHOP_NOW'))?.label || meta.cta}
+          </div>
+        ) : (
+          <Select
+            value={meta.cta || 'SHOP_NOW'}
+            onValueChange={(v) => onUpdateMetadata({ cta: v })}
+          >
+            <SelectTrigger className="h-8 border-gray-800 bg-[#0a0a0a] text-xs text-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-gray-800 bg-[#141414] text-white">
+              {CTA_OPTIONS.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </Td>
       <Td>
         <IdentityCell
           metadata={meta}
           pages={pages}
           defaultPageId={defaultPageId}
+          readOnly={readOnly}
           onChange={(p) => onUpdateMetadata(p)}
         />
       </Td>
-      <Td>
-        <AiFeaturesPopover
-          features={meta.ai_features}
-          onChange={(f) => onUpdateMetadata({ ai_features: f })}
-        />
-      </Td>
-      <Td>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onDuplicate}
-            className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
-            title="Duplicar"
-          >
-            <Copy className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={onDelete}
-            className="rounded p-1 text-gray-400 hover:bg-red-500/20 hover:text-red-400"
-            title="Eliminar"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </div>
-        {hasError && (
-          <p className="mt-1 text-[10px] text-amber-400" title={errors.join('\n')}>
-            {errors.length} error{errors.length === 1 ? '' : 'es'}
-          </p>
-        )}
-      </Td>
+      {!readOnly && (
+        <Td>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onDuplicate}
+              className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
+              title="Duplicar"
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={onDelete}
+              className="rounded p-1 text-gray-400 hover:bg-red-500/20 hover:text-red-400"
+              title="Eliminar"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {hasError && (
+            <p className="mt-1 text-[10px] text-amber-400" title={errors.join('\n')}>
+              {errors.length} error{errors.length === 1 ? '' : 'es'}
+            </p>
+          )}
+        </Td>
+      )}
     </tr>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Helper cells
+// Generic helper cells
 // ---------------------------------------------------------------------------
 
 function Th({ children, className }: { children?: React.ReactNode; className?: string }) {
@@ -680,119 +686,130 @@ function CellInput({
   placeholder,
   invalid,
   mono,
+  readOnly,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   invalid?: boolean;
   mono?: boolean;
+  readOnly?: boolean;
 }) {
   return (
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      readOnly={readOnly}
       placeholder={placeholder}
       className={cn(
         'w-full rounded border bg-[#0a0a0a] px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none',
-        invalid ? 'border-red-500/40 focus:border-red-500' : 'border-gray-800 focus:border-brand-accent',
+        invalid
+          ? 'border-red-500/40 focus:border-red-500'
+          : 'border-gray-800 focus:border-brand-accent',
         mono && 'font-mono text-[11px]',
+        readOnly && 'cursor-default opacity-90',
       )}
     />
   );
 }
 
-function CellTextarea({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      rows={2}
-      className="w-full resize-y rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none"
-    />
-  );
-}
-
-function MultiValueCell({
+/**
+ * Celda multi-variante unificada para texto principal / títulos / descripciones.
+ * Apila las variantes con índice numerado, soporta multilinea opcional, y el
+ * botón "+ variante (n/max)" sólo aparece debajo (no doble).
+ */
+function MultiTextCell({
   values,
   onChange,
   max,
   maxLen,
   placeholder,
+  multiline,
+  variantLabel,
+  readOnly,
 }: {
   values: string[];
   onChange: (next: string[]) => void;
   max: number;
   maxLen?: number;
   placeholder?: string;
+  multiline?: boolean;
+  variantLabel: string;
+  readOnly?: boolean;
 }) {
   const safeValues = values.length === 0 ? [''] : values;
+
   const updateAt = (idx: number, v: string) => {
     const next = [...safeValues];
     next[idx] = maxLen ? v.slice(0, maxLen) : v;
-    onChange(next.filter((s, i) => i === 0 || s !== ''));
+    // No filtramos vacíos: respetamos lo que el usuario teclea.
+    onChange(next);
   };
-  const remove = (idx: number) => onChange(safeValues.filter((_, i) => i !== idx));
+  const remove = (idx: number) => {
+    if (safeValues.length === 1) {
+      onChange([]);
+      return;
+    }
+    onChange(safeValues.filter((_, i) => i !== idx));
+  };
   const add = () => {
     if (safeValues.length >= max) return;
     onChange([...safeValues, '']);
   };
+
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       {safeValues.map((v, i) => (
-        <div key={i} className="flex items-center gap-1">
-          <input
-            value={v}
-            onChange={(e) => updateAt(i, e.target.value)}
-            placeholder={i === 0 ? placeholder : `Variante ${i + 1}`}
-            className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none"
-            maxLength={maxLen}
-          />
-          {safeValues.length > 1 && (
-            <button onClick={() => remove(i)} className="text-gray-500 hover:text-red-400">
+        <div key={i} className="flex items-start gap-1.5">
+          <span className="mt-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-gray-800 text-[9px] font-medium text-gray-400">
+            {i + 1}
+          </span>
+          {multiline ? (
+            <textarea
+              value={v}
+              onChange={(e) => updateAt(i, e.target.value)}
+              readOnly={readOnly}
+              placeholder={placeholder}
+              rows={2}
+              maxLength={maxLen}
+              className={cn(
+                'flex-1 resize-y rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none',
+                readOnly && 'cursor-default opacity-90',
+              )}
+            />
+          ) : (
+            <input
+              value={v}
+              onChange={(e) => updateAt(i, e.target.value)}
+              readOnly={readOnly}
+              placeholder={placeholder}
+              maxLength={maxLen}
+              className={cn(
+                'flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none',
+                readOnly && 'cursor-default opacity-90',
+              )}
+            />
+          )}
+          {!readOnly && safeValues.length > 1 && (
+            <button
+              onClick={() => remove(i)}
+              className="mt-1.5 text-gray-500 hover:text-red-400"
+              title="Quitar variante"
+            >
               <X className="h-3 w-3" />
             </button>
           )}
         </div>
       ))}
-      {safeValues.length < max && (
-        <button onClick={add} className="text-[10px] text-brand-accent hover:underline">
-          + variante ({safeValues.length}/{max})
+      {!readOnly && safeValues.length < max && (
+        <button
+          onClick={add}
+          className="ml-5 text-[10px] text-brand-accent hover:underline"
+        >
+          + variante de {variantLabel} ({safeValues.length}/{max})
         </button>
       )}
     </div>
-  );
-}
-
-function MultiVariantToggle({
-  values,
-  onChange,
-  max,
-  label,
-}: {
-  values: string[];
-  onChange: (next: string[]) => void;
-  max: number;
-  label: string;
-}) {
-  const count = values.length;
-  if (count >= max) return null;
-  const add = () => onChange([...values, '']);
-  return (
-    <button
-      onClick={add}
-      className="mt-1 text-[10px] text-brand-accent hover:underline"
-    >
-      + variante de {label} ({count}/{max})
-    </button>
   );
 }
 
@@ -804,11 +821,20 @@ function CampaignCell({
   value,
   campaigns,
   onChange,
+  readOnly,
 }: {
   value: CampaignTarget;
   campaigns: ListCampaignsResponse['campaigns'];
   onChange: (c: CampaignTarget) => void;
+  readOnly?: boolean;
 }) {
+  if (readOnly) {
+    return (
+      <div className="rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-gray-300">
+        {value.name || `#${value.id?.slice(-6) || '—'}`}
+      </div>
+    );
+  }
   if (campaigns.length === 0) {
     return (
       <div className="rounded border border-amber-500/30 bg-amber-500/5 px-2 py-1.5 text-[11px] text-amber-300">
@@ -846,12 +872,21 @@ function AdSetCell({
   campaign,
   allAdsets,
   onChange,
+  readOnly,
 }: {
   value: AdSetTarget;
   campaign: CampaignTarget;
   allAdsets: ListAdSetsResponse['adsets'];
   onChange: (a: AdSetTarget) => void;
+  readOnly?: boolean;
 }) {
+  if (readOnly) {
+    return (
+      <div className="rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-gray-300">
+        {value.name || `#${value.id?.slice(-6) || '—'}`}
+      </div>
+    );
+  }
   const adsetsForCampaign = useMemo(
     () => (campaign.id ? allAdsets.filter((a) => a.campaign_id === campaign.id) : []),
     [allAdsets, campaign.id],
@@ -867,7 +902,7 @@ function AdSetCell({
   if (adsetsForCampaign.length === 0) {
     return (
       <div className="rounded border border-amber-500/30 bg-amber-500/5 px-2 py-1.5 text-[11px] text-amber-300">
-        Esta campaña no tiene ad sets
+        Esta campaña no tiene conjuntos
       </div>
     );
   }
@@ -897,7 +932,7 @@ function AdSetCell({
 }
 
 // ---------------------------------------------------------------------------
-// Identity cell — dropdown of pages with their IG accounts
+// Identity cell
 // ---------------------------------------------------------------------------
 
 function IdentityCell({
@@ -905,16 +940,26 @@ function IdentityCell({
   pages,
   defaultPageId,
   onChange,
+  readOnly,
 }: {
   metadata: MetaAdMetadata;
   pages: ListPagesResponse['pages'];
   defaultPageId: string | null;
   onChange: (p: Partial<MetaAdMetadata>) => void;
+  readOnly?: boolean;
 }) {
   const overridePageId = metadata.page_id_override;
   const effectivePageId = overridePageId || defaultPageId;
   const effectivePage = pages.find((p) => p.id === effectivePageId);
   const isOverride = !!overridePageId;
+
+  if (readOnly) {
+    return (
+      <div className="rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-gray-300">
+        {effectivePage ? effectivePage.name : 'Default'}
+      </div>
+    );
+  }
 
   const handleSelect = (pageId: string) => {
     if (pageId === '__default__') {
@@ -939,16 +984,14 @@ function IdentityCell({
               ? 'border-brand-accent/40 text-brand-accent'
               : 'border-gray-800 text-gray-300',
           )}
-          title={effectivePage ? effectivePage.name : 'Sin page'}
+          title={effectivePage ? effectivePage.name : 'Sin página'}
         >
-          <span className="truncate">
-            {effectivePage ? effectivePage.name : 'Default'}
-          </span>
+          <span className="truncate">{effectivePage ? effectivePage.name : 'Default'}</span>
           <Settings className="h-3 w-3 shrink-0 text-gray-500" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-72 border-gray-800 bg-[#141414] text-white">
-        <p className="mb-2 text-[10px] uppercase text-gray-500">Identidad</p>
+        <p className="mb-2 text-[10px] uppercase text-gray-500">Identidad del anuncio</p>
         <div className="max-h-64 overflow-y-auto rounded border border-gray-800">
           <button
             onClick={() => handleSelect('__default__')}
@@ -961,9 +1004,7 @@ function IdentityCell({
             <span className="text-[10px] text-gray-500">cuenta</span>
           </button>
           {pages.length === 0 ? (
-            <p className="p-3 text-center text-xs text-gray-500">
-              Cargando pages…
-            </p>
+            <p className="p-3 text-center text-xs text-gray-500">Cargando páginas…</p>
           ) : (
             pages.map((p) => (
               <button
@@ -981,98 +1022,13 @@ function IdentityCell({
                   <span className="truncate">{p.name}</span>
                 </span>
                 {p.instagram ? (
-                  <span className="text-[10px] text-brand-accent">
-                    @{p.instagram.username}
-                  </span>
+                  <span className="text-[10px] text-brand-accent">@{p.instagram.username}</span>
                 ) : (
                   <span className="text-[10px] text-gray-600">solo FB</span>
                 )}
               </button>
             ))
           )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// AI features popover
-// ---------------------------------------------------------------------------
-
-function AiFeaturesPopover({
-  features,
-  onChange,
-}: {
-  features?: MetaAiFeatures;
-  onChange: (f: MetaAiFeatures) => void;
-}) {
-  const enabled = AI_FEATURE_LABELS.filter(({ key }) => features?.[key]).length;
-  const total = AI_FEATURE_LABELS.length;
-  const setAll = (val: boolean) => {
-    const next: MetaAiFeatures = {};
-    for (const { key } of AI_FEATURE_LABELS) next[key] = val;
-    onChange(next);
-  };
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          className={cn(
-            'flex w-full items-center justify-between rounded border bg-[#0a0a0a] px-2 py-1.5 text-xs',
-            enabled > 0
-              ? 'border-brand-accent/40 text-brand-accent'
-              : 'border-gray-800 text-gray-300',
-          )}
-        >
-          <span>
-            <Sparkles className="mr-1 inline h-3 w-3" /> {enabled}/{total}
-          </span>
-          <ChevronDown className="h-3 w-3 text-gray-500" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 border-gray-800 bg-[#141414] text-white">
-        <div className="mb-2 flex items-center justify-between text-xs">
-          <p className="text-[10px] uppercase text-gray-500">Advantage+ Creative</p>
-          <div className="flex gap-1">
-            <button
-              onClick={() => setAll(true)}
-              className="rounded border border-brand-accent/40 px-1.5 py-0.5 text-[10px] text-brand-accent hover:bg-brand-accent/10"
-            >
-              Activar todo
-            </button>
-            <button
-              onClick={() => setAll(false)}
-              className="rounded border border-gray-700 px-1.5 py-0.5 text-[10px] text-gray-400 hover:bg-gray-800"
-            >
-              Apagar todo
-            </button>
-          </div>
-        </div>
-        <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-          {AI_FEATURE_LABELS.map(({ key, label, hint }) => {
-            const isOn = !!features?.[key];
-            return (
-              <label
-                key={key}
-                className="flex cursor-pointer items-start gap-2 rounded p-1 hover:bg-[#0a0a0a]"
-              >
-                <input
-                  type="checkbox"
-                  checked={isOn}
-                  onChange={(e) =>
-                    onChange({ ...(features || {}), [key]: e.target.checked })
-                  }
-                  className="mt-0.5 h-3.5 w-3.5"
-                />
-                <div className="text-xs">
-                  <div className="text-white">{label}</div>
-                  <div className="text-[10px] text-gray-500">{hint}</div>
-                </div>
-              </label>
-            );
-          })}
         </div>
       </PopoverContent>
     </Popover>
@@ -1100,27 +1056,52 @@ function BulkEditMenu({
     <Popover>
       <PopoverTrigger asChild>
         <Button size="sm" variant="outline" disabled={disabled}>
-          <Wand2 className="mr-1.5 h-3.5 w-3.5" /> Bulk Edit
+          <Wand2 className="mr-1.5 h-3.5 w-3.5" /> Aplicar a seleccionados
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 border-gray-800 bg-[#141414] text-white">
-        <p className="mb-2 text-[10px] uppercase text-gray-500">Aplicar campo a seleccionados</p>
-        <div className="space-y-2">
-          <BulkField label="Primary text" onApply={(v) => onApply({ primary_text: v })} multiline />
-          <BulkField
-            label="Headline"
-            onApply={(v) => onApply({ headline: v, headlines: undefined })}
+      <PopoverContent className="w-80 border-gray-800 bg-[#141414] text-white">
+        <p className="mb-2 text-[10px] uppercase text-gray-500">
+          Aplicar campo a las filas seleccionadas
+        </p>
+        <div className="space-y-3">
+          <BulkMultiTextField
+            label="Texto principal"
+            multiline
+            variantLabel="texto"
+            onApply={(vs) =>
+              onApply({
+                primary_texts: vs.length > 1 ? vs : undefined,
+                primary_text: vs[0] || undefined,
+              })
+            }
           />
-          <BulkField
-            label="Description"
-            onApply={(v) => onApply({ description: v, descriptions: undefined })}
+          <BulkMultiTextField
+            label="Títulos"
+            maxLen={40}
+            variantLabel="título"
+            onApply={(vs) =>
+              onApply({
+                headlines: vs.length > 1 ? vs : undefined,
+                headline: vs[0] || undefined,
+              })
+            }
           />
-          <BulkField label="Destination URL" onApply={(v) => onApply({ link_url: v })} />
-          <BulkField label="Display URL" onApply={(v) => onApply({ display_url: v })} />
-          <BulkField label="URL params" onApply={(v) => onApply({ url_params: v })} />
+          <BulkMultiTextField
+            label="Descripciones"
+            variantLabel="descripción"
+            onApply={(vs) =>
+              onApply({
+                descriptions: vs.length > 1 ? vs : undefined,
+                description: vs[0] || undefined,
+              })
+            }
+          />
+          <BulkField label="URL destino" onApply={(v) => onApply({ link_url: v })} />
+          <BulkField label="URL visible" onApply={(v) => onApply({ display_url: v })} />
+          <BulkField label="Parámetros URL" onApply={(v) => onApply({ url_params: v })} />
           <BulkSelect
             label="CTA"
-            options={CTA_OPTIONS as readonly string[]}
+            options={CTA_OPTIONS}
             onApply={(v) => onApply({ cta: v })}
           />
           <BulkCampaignTarget
@@ -1131,6 +1112,101 @@ function BulkEditMenu({
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function BulkMultiTextField({
+  label,
+  onApply,
+  maxLen,
+  multiline,
+  variantLabel,
+}: {
+  label: string;
+  onApply: (vs: string[]) => void;
+  maxLen?: number;
+  multiline?: boolean;
+  variantLabel: string;
+}) {
+  const [vals, setVals] = useState<string[]>(['']);
+
+  const update = (i: number, v: string) => {
+    const next = [...vals];
+    next[i] = maxLen ? v.slice(0, maxLen) : v;
+    setVals(next);
+  };
+  const add = () => {
+    if (vals.length >= 5) return;
+    setVals([...vals, '']);
+  };
+  const remove = (i: number) => {
+    if (vals.length === 1) {
+      setVals(['']);
+      return;
+    }
+    setVals(vals.filter((_, idx) => idx !== i));
+  };
+  const handleApply = () => {
+    const cleaned = vals.map((v) => v.trim()).filter(Boolean);
+    if (cleaned.length === 0) return;
+    onApply(cleaned);
+    setVals(['']);
+  };
+  const hasContent = vals.some((v) => v.trim());
+
+  return (
+    <div className="rounded border border-gray-800 bg-black/30 p-2">
+      <div className="mb-1 flex items-center justify-between">
+        <label className="text-[10px] uppercase text-gray-500">{label}</label>
+        <button
+          onClick={handleApply}
+          disabled={!hasContent}
+          className="rounded border border-brand-accent/40 bg-brand-accent/10 px-2 py-0.5 text-[10px] text-brand-accent hover:bg-brand-accent/20 disabled:opacity-40"
+        >
+          Aplicar
+        </button>
+      </div>
+      <div className="space-y-1.5">
+        {vals.map((v, i) => (
+          <div key={i} className="flex items-start gap-1.5">
+            <span className="mt-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-gray-800 text-[9px] text-gray-400">
+              {i + 1}
+            </span>
+            {multiline ? (
+              <textarea
+                value={v}
+                onChange={(e) => update(i, e.target.value)}
+                rows={2}
+                className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1 text-xs text-white"
+              />
+            ) : (
+              <input
+                value={v}
+                onChange={(e) => update(i, e.target.value)}
+                maxLength={maxLen}
+                className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1 text-xs text-white"
+              />
+            )}
+            {vals.length > 1 && (
+              <button
+                onClick={() => remove(i)}
+                className="mt-1.5 text-gray-500 hover:text-red-400"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      {vals.length < 5 && (
+        <button
+          onClick={add}
+          className="ml-5 mt-1 text-[10px] text-brand-accent hover:underline"
+        >
+          + variante de {variantLabel} ({vals.length}/5)
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -1183,10 +1259,10 @@ function BulkSelect({
   onApply,
 }: {
   label: string;
-  options: readonly string[];
+  options: Array<{ value: string; label: string }>;
   onApply: (v: string) => void;
 }) {
-  const [val, setVal] = useState(options[0]);
+  const [val, setVal] = useState(options[0].value);
   return (
     <div>
       <label className="block text-[10px] text-gray-500">{label}</label>
@@ -1197,8 +1273,8 @@ function BulkSelect({
           </SelectTrigger>
           <SelectContent className="border-gray-800 bg-[#141414] text-white">
             {options.map((o) => (
-              <SelectItem key={o} value={o}>
-                {o.replace(/_/g, ' ')}
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -1264,7 +1340,7 @@ function BulkAdSetTarget({
   if (adsets.length === 0) return null;
   return (
     <div>
-      <label className="block text-[10px] text-gray-500">Mover a ad set</label>
+      <label className="block text-[10px] text-gray-500">Mover a conjunto</label>
       <div className="flex gap-1">
         <Select value={val} onValueChange={setVal}>
           <SelectTrigger className="h-8 flex-1 border-gray-800 bg-[#0a0a0a] text-xs text-white">
@@ -1353,28 +1429,38 @@ function MultiBulkEditModal({
   pages,
 }: MultiBulkProps) {
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
-  const [primaryText, setPrimaryText] = useState('');
-  const [headline, setHeadline] = useState('');
-  const [description, setDescription] = useState('');
+  const [primaryTexts, setPrimaryTexts] = useState<string[]>(['']);
+  const [headlines, setHeadlines] = useState<string[]>(['']);
+  const [descriptions, setDescriptions] = useState<string[]>(['']);
   const [linkUrl, setLinkUrl] = useState('');
   const [displayUrl, setDisplayUrl] = useState('');
   const [urlParams, setUrlParams] = useState('');
   const [cta, setCta] = useState<string>('SHOP_NOW');
-  const [aiFeatures, setAiFeatures] = useState<MetaAiFeatures>({});
   const [campaignId, setCampaignId] = useState<string>('');
   const [adsetId, setAdsetId] = useState<string>('');
   const [pageId, setPageId] = useState<string>('');
 
   const apply = () => {
     const patch: Partial<MetaAdMetadata> = {};
-    if (enabled.primary_text) patch.primary_text = primaryText;
-    if (enabled.headline) patch.headline = headline;
-    if (enabled.description) patch.description = description;
+    if (enabled.primary_texts) {
+      const cleaned = primaryTexts.map((s) => s.trim()).filter(Boolean);
+      patch.primary_texts = cleaned.length > 1 ? cleaned : undefined;
+      patch.primary_text = cleaned[0] || undefined;
+    }
+    if (enabled.headlines) {
+      const cleaned = headlines.map((s) => s.trim()).filter(Boolean);
+      patch.headlines = cleaned.length > 1 ? cleaned : undefined;
+      patch.headline = cleaned[0] || undefined;
+    }
+    if (enabled.descriptions) {
+      const cleaned = descriptions.map((s) => s.trim()).filter(Boolean);
+      patch.descriptions = cleaned.length > 1 ? cleaned : undefined;
+      patch.description = cleaned[0] || undefined;
+    }
     if (enabled.link_url) patch.link_url = linkUrl;
     if (enabled.display_url) patch.display_url = displayUrl;
     if (enabled.url_params) patch.url_params = urlParams;
     if (enabled.cta) patch.cta = cta;
-    if (enabled.ai_features) patch.ai_features = aiFeatures;
     if (enabled.identity && pageId) {
       const page = pages.find((p) => p.id === pageId);
       patch.page_id_override = page?.id;
@@ -1396,7 +1482,7 @@ function MultiBulkEditModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-white">Multi Bulk Edit</h3>
+        <h3 className="text-lg font-semibold text-white">Edición masiva</h3>
         <p className="text-xs text-gray-400">
           Marca los campos a aplicar y rellénalos. Se aplicarán a {selectedCount} fila
           {selectedCount === 1 ? '' : 's'} seleccionada{selectedCount === 1 ? '' : 's'}.
@@ -1404,44 +1490,44 @@ function MultiBulkEditModal({
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <MBField
-          enabled={!!enabled.primary_text}
-          onToggle={(v) => setEnabled({ ...enabled, primary_text: v })}
-          label="Primary text"
+          enabled={!!enabled.primary_texts}
+          onToggle={(v) => setEnabled({ ...enabled, primary_texts: v })}
+          label="Texto principal (hasta 5 variantes)"
         >
-          <textarea
-            value={primaryText}
-            onChange={(e) => setPrimaryText(e.target.value)}
-            rows={2}
-            className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white"
+          <ModalMultiText
+            values={primaryTexts}
+            onChange={setPrimaryTexts}
+            multiline
+            variantLabel="texto"
           />
         </MBField>
         <MBField
-          enabled={!!enabled.headline}
-          onToggle={(v) => setEnabled({ ...enabled, headline: v })}
-          label="Headline"
+          enabled={!!enabled.headlines}
+          onToggle={(v) => setEnabled({ ...enabled, headlines: v })}
+          label="Títulos (hasta 5 variantes)"
         >
-          <input
-            value={headline}
-            onChange={(e) => setHeadline(e.target.value)}
-            maxLength={40}
-            className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white"
+          <ModalMultiText
+            values={headlines}
+            onChange={setHeadlines}
+            maxLen={40}
+            variantLabel="título"
           />
         </MBField>
         <MBField
-          enabled={!!enabled.description}
-          onToggle={(v) => setEnabled({ ...enabled, description: v })}
-          label="Description"
+          enabled={!!enabled.descriptions}
+          onToggle={(v) => setEnabled({ ...enabled, descriptions: v })}
+          label="Descripciones (hasta 5 variantes)"
         >
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white"
+          <ModalMultiText
+            values={descriptions}
+            onChange={setDescriptions}
+            variantLabel="descripción"
           />
         </MBField>
         <MBField
           enabled={!!enabled.link_url}
           onToggle={(v) => setEnabled({ ...enabled, link_url: v })}
-          label="Destination URL"
+          label="URL destino"
         >
           <input
             value={linkUrl}
@@ -1452,7 +1538,7 @@ function MultiBulkEditModal({
         <MBField
           enabled={!!enabled.display_url}
           onToggle={(v) => setEnabled({ ...enabled, display_url: v })}
-          label="Display URL"
+          label="URL visible"
         >
           <input
             value={displayUrl}
@@ -1463,7 +1549,7 @@ function MultiBulkEditModal({
         <MBField
           enabled={!!enabled.url_params}
           onToggle={(v) => setEnabled({ ...enabled, url_params: v })}
-          label="URL params"
+          label="Parámetros URL"
         >
           <input
             value={urlParams}
@@ -1482,8 +1568,8 @@ function MultiBulkEditModal({
             </SelectTrigger>
             <SelectContent className="border-gray-800 bg-[#141414] text-white">
               {CTA_OPTIONS.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c.replace(/_/g, ' ')}
+                <SelectItem key={c.value} value={c.value}>
+                  {c.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1493,7 +1579,7 @@ function MultiBulkEditModal({
           <MBField
             enabled={!!enabled.identity}
             onToggle={(v) => setEnabled({ ...enabled, identity: v })}
-            label="Identidad (Page + IG)"
+            label="Identidad (Página + IG)"
           >
             <Select value={pageId} onValueChange={setPageId}>
               <SelectTrigger className="border-gray-800 bg-[#0a0a0a] text-sm text-white">
@@ -1534,7 +1620,7 @@ function MultiBulkEditModal({
           <MBField
             enabled={!!enabled.adset}
             onToggle={(v) => setEnabled({ ...enabled, adset: v })}
-            label="Mover a ad set"
+            label="Mover a conjunto"
           >
             <Select value={adsetId} onValueChange={setAdsetId}>
               <SelectTrigger className="border-gray-800 bg-[#0a0a0a] text-sm text-white">
@@ -1550,25 +1636,6 @@ function MultiBulkEditModal({
             </Select>
           </MBField>
         )}
-        <MBField
-          enabled={!!enabled.ai_features}
-          onToggle={(v) => setEnabled({ ...enabled, ai_features: v })}
-          label="IA features (Advantage+ Creative)"
-        >
-          <div className="grid grid-cols-2 gap-1 rounded border border-gray-800 bg-[#0a0a0a] p-2">
-            {AI_FEATURE_LABELS.map(({ key, label }) => (
-              <label key={key} className="flex items-center gap-2 text-xs text-white">
-                <input
-                  type="checkbox"
-                  checked={!!aiFeatures[key]}
-                  onChange={(e) => setAiFeatures({ ...aiFeatures, [key]: e.target.checked })}
-                  className="h-3 w-3"
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-        </MBField>
       </div>
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="ghost" onClick={onClose}>
@@ -1577,6 +1644,75 @@ function MultiBulkEditModal({
         <Button onClick={apply}>Aplicar a {selectedCount}</Button>
       </div>
     </Modal>
+  );
+}
+
+function ModalMultiText({
+  values,
+  onChange,
+  maxLen,
+  multiline,
+  variantLabel,
+}: {
+  values: string[];
+  onChange: (vs: string[]) => void;
+  maxLen?: number;
+  multiline?: boolean;
+  variantLabel: string;
+}) {
+  const update = (i: number, v: string) => {
+    const next = [...values];
+    next[i] = maxLen ? v.slice(0, maxLen) : v;
+    onChange(next);
+  };
+  const remove = (i: number) =>
+    onChange(values.length === 1 ? [''] : values.filter((_, idx) => idx !== i));
+  const add = () => {
+    if (values.length >= 5) return;
+    onChange([...values, '']);
+  };
+  return (
+    <div className="space-y-1.5">
+      {values.map((v, i) => (
+        <div key={i} className="flex items-start gap-1.5">
+          <span className="mt-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-gray-800 text-[9px] text-gray-400">
+            {i + 1}
+          </span>
+          {multiline ? (
+            <textarea
+              value={v}
+              onChange={(e) => update(i, e.target.value)}
+              rows={2}
+              maxLength={maxLen}
+              className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white"
+            />
+          ) : (
+            <input
+              value={v}
+              onChange={(e) => update(i, e.target.value)}
+              maxLength={maxLen}
+              className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white"
+            />
+          )}
+          {values.length > 1 && (
+            <button
+              onClick={() => remove(i)}
+              className="mt-1.5 text-gray-500 hover:text-red-400"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      ))}
+      {values.length < 5 && (
+        <button
+          onClick={add}
+          className="ml-5 mt-1 text-[10px] text-brand-accent hover:underline"
+        >
+          + variante de {variantLabel} ({values.length}/5)
+        </button>
+      )}
+    </div>
   );
 }
 

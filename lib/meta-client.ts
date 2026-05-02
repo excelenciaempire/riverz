@@ -1123,48 +1123,72 @@ export async function createAdSet(
 }
 
 export interface CreativeFeatureToggles {
-  // Master toggle — opting into Advantage+ Creative globally
+  // Top-level (NO va en creative_features_spec — campo aparte del creative)
+  multi_advertiser_ads?: boolean;
+
+  // Master toggle Advantage+ Creative
   advantage_creative_overall?: boolean;
+
   // Image
-  standard_enhancements?: boolean;
+  image_overlays?: boolean;
   image_touchups?: boolean;
   image_animation?: boolean;
-  // Text
+  standard_enhancements?: boolean;
+  music?: boolean;
+  site_extensions?: boolean;
+  store_locations?: boolean;
+  flex_media?: boolean;
+
+  // Video
+  video_touch_ups?: boolean;
+  video_filters?: boolean;
+  video_auto_crop?: boolean;
+
+  // Cross-format
   text_improvements?: boolean;
   description_visibility?: boolean;
-  // Video
-  music?: boolean;
-  video_auto_crop?: boolean;
-  // Layout / extensions
-  site_extensions?: boolean;
+  relevant_comments?: boolean;
   cta_optimization?: boolean;
+  translate_text?: boolean;
+  optimize_destination?: boolean;
 }
 
 /**
- * Map our high-level toggles to Meta's `creative_features_spec` shape.
- * Each feature gets `{ enroll_status: 'OPT_IN' | 'OPT_OUT' }`.
- * Reference: Meta Marketing API → adcreative → degrees_of_freedom_spec.
+ * Map de nuestras claves a las de Meta `creative_features_spec`.
+ * Las que aún no tienen mapping conocido en la API pública quedan fuera del
+ * envío — siguen apareciendo en la UI para que el usuario vea que están OFF,
+ * pero no las mandamos a Meta hasta confirmar el nombre exacto.
  */
+const FEATURE_KEY_MAP: Partial<Record<keyof CreativeFeatureToggles, string>> = {
+  advantage_creative_overall: 'advantage_plus_creative',
+  image_overlays: 'image_templates',
+  image_touchups: 'image_touchups',
+  image_animation: 'image_animation',
+  standard_enhancements: 'standard_enhancements',
+  music: 'music',
+  site_extensions: 'site_extensions',
+  store_locations: 'product_extensions',
+  flex_media: 'flex_media',
+  video_touch_ups: 'video_touch_ups',
+  video_filters: 'video_filters',
+  video_auto_crop: 'video_auto_crop',
+  text_improvements: 'text_optimizations',
+  description_visibility: 'description_automation',
+  relevant_comments: 'relevant_comments_filter',
+  cta_optimization: 'cta_optimization',
+  translate_text: 'translations',
+  optimize_destination: 'destination_optimization',
+};
+
 function buildCreativeFeaturesSpec(features?: CreativeFeatureToggles): any | null {
   if (!features) return null;
-  const map: Record<keyof CreativeFeatureToggles, string> = {
-    advantage_creative_overall: 'advantage_plus_creative',
-    standard_enhancements: 'standard_enhancements',
-    image_touchups: 'image_touchups',
-    image_animation: 'image_animation',
-    text_improvements: 'text_optimizations',
-    description_visibility: 'description_automation',
-    music: 'music',
-    video_auto_crop: 'video_auto_crop',
-    site_extensions: 'site_extensions',
-    cta_optimization: 'cta_optimization',
-  };
   const spec: Record<string, { enroll_status: 'OPT_IN' | 'OPT_OUT' }> = {};
   let anyTouched = false;
-  for (const key of Object.keys(map) as Array<keyof CreativeFeatureToggles>) {
-    const v = features[key];
+  for (const [key, metaKey] of Object.entries(FEATURE_KEY_MAP)) {
+    if (!metaKey) continue;
+    const v = features[key as keyof CreativeFeatureToggles];
     if (typeof v !== 'boolean') continue;
-    spec[map[key]] = { enroll_status: v ? 'OPT_IN' : 'OPT_OUT' };
+    spec[metaKey] = { enroll_status: v ? 'OPT_IN' : 'OPT_OUT' };
     anyTouched = true;
   }
   return anyTouched ? spec : null;
@@ -1292,6 +1316,16 @@ export async function createAdCreative(
     body.set(
       'degrees_of_freedom_spec',
       JSON.stringify({ creative_features_spec: featuresSpec }),
+    );
+  }
+
+  // Multi-Advertiser Ads va como flag aparte del creative spec.
+  if (typeof payload.ai_features?.multi_advertiser_ads === 'boolean') {
+    body.set(
+      'contextual_multi_ads',
+      JSON.stringify({
+        enroll_status: payload.ai_features.multi_advertiser_ads ? 'OPT_IN' : 'OPT_OUT',
+      }),
     );
   }
 

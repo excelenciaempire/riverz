@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
   }
-  const { adAccountId, rows } = body || ({} as LaunchRequest);
+  const { adAccountId, rows, creativeDefaults } = body || ({} as LaunchRequest);
   if (!adAccountId) return NextResponse.json({ error: 'adAccountId requerido' }, { status: 400 });
   if (!Array.isArray(rows) || rows.length === 0) {
     return NextResponse.json({ error: 'rows vacío' }, { status: 400 });
@@ -161,7 +161,11 @@ export async function POST(req: Request) {
           primary_texts: meta.primary_texts,
           headlines: meta.headlines,
           descriptions: meta.descriptions,
-          ai_features: meta.ai_features as CreativeFeatureToggles | undefined,
+          // Merge: defaults globales primero, override por fila después
+          ai_features: {
+            ...(creativeDefaults || {}),
+            ...(meta.ai_features || {}),
+          } as CreativeFeatureToggles,
         });
         const ad = await createAd(ctx.token, adAccountId, {
           name: adName,

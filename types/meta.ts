@@ -43,22 +43,41 @@ export interface MetaInstagramAccount {
 export type MetaUploadStatus = 'pending' | 'uploading' | 'processing' | 'ready' | 'failed';
 export type MetaAssetType = 'image' | 'video';
 
+/**
+ * Cubre toda la lista de "Advantage+ Creative" + "Multi-Advertiser Ads" que
+ * Meta presenta en su panel de Creative Setup. Por defecto el wizard de
+ * Riverz manda TODO en OPT_OUT — el usuario activa explícitamente lo que
+ * quiera en el panel "Creative Setup" o por fila.
+ */
 export interface MetaAiFeatures {
-  // Master toggle — opting into Advantage+ Creative globally for the ad
+  // Top-level (no va en creative_features_spec)
+  multi_advertiser_ads?: boolean;
+
+  // Master toggle Advantage+ Creative
   advantage_creative_overall?: boolean;
+
   // Image
-  standard_enhancements?: boolean;     // brillo / contraste auto
-  image_touchups?: boolean;            // retoque automático
-  image_animation?: boolean;           // anima imágenes estáticas
-  // Text
-  text_improvements?: boolean;         // re-escribe primary text
-  description_visibility?: boolean;    // muestra descripciones automáticamente
-  // Video
-  music?: boolean;                     // agrega música a videos sin audio
+  image_overlays?: boolean;            // "Add overlays"
+  image_touchups?: boolean;            // "Visual touch-ups"
+  image_animation?: boolean;           // "3D animation"
+  standard_enhancements?: boolean;     // "Adjust brightness and contrast"
+  music?: boolean;                     // "Music" (también aplica a video)
+  site_extensions?: boolean;           // "Add details to ad layout"
+  store_locations?: boolean;           // "Store locations"
+  flex_media?: boolean;                // "Flex media"
+
+  // Video-only
+  video_touch_ups?: boolean;           // "Visual touch-ups" (video)
+  video_filters?: boolean;             // "Add Video Filters"
   video_auto_crop?: boolean;
-  // Layout / extensions
-  site_extensions?: boolean;           // sitelinks
-  cta_optimization?: boolean;          // rota el CTA dinámicamente
+
+  // Cross-format
+  text_improvements?: boolean;         // "Text improvements"
+  description_visibility?: boolean;    // muestra descripciones
+  relevant_comments?: boolean;         // "Relevant comments"
+  cta_optimization?: boolean;          // "Enhance CTA"
+  translate_text?: boolean;            // "Translate text"
+  optimize_destination?: boolean;      // "Optimize Website Destination"
 }
 
 export interface MetaAdMetadata {
@@ -380,6 +399,11 @@ export interface LaunchAdRow {
 export interface LaunchRequest {
   adAccountId: string;
   rows: LaunchAdRow[];
+  /**
+   * Defaults globales del panel "Creative Setup". Se aplican a cada fila;
+   * los valores por fila en metadata.ai_features pisan estos.
+   */
+  creativeDefaults?: MetaAiFeatures;
 }
 
 export interface LaunchRowResult {
