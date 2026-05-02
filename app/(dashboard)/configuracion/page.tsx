@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Check, Crown, CreditCard, User, Globe, Bell, Plug } from 'lucide-react';
 import { SUBSCRIPTION_PLANS } from '@/types';
 import { ShopifyConnectionPanel } from '@/components/settings/shopify-connection';
+import { AiProviderPanel } from '@/components/settings/ai-provider-panel';
 
 type TabType = 'billing' | 'account' | 'notifications' | 'integrations';
 
@@ -203,6 +204,9 @@ function ConfiguracionContent() {
       {/* Integrations Tab */}
       {activeTab === 'integrations' && (
         <div className="space-y-6">
+          <div className="rounded-xl border border-gray-800 bg-black/20 p-6">
+            <AiProviderPanel />
+          </div>
           <div className="rounded-xl border border-gray-800 bg-black/20 p-6">
             <ShopifyConnectionPanel />
           </div>

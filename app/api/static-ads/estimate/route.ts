@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { estimateBulkTime } from '@/lib/rate-limiter';
+import { getUserAiSettings } from '@/lib/ai-providers/router';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,8 +23,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid template count' }, { status: 400 });
     }
 
-    // Pricing: 14 credits per Nano Banana image × 5 variations per template.
-    const COST_PER_IMAGE = 14;
+    // Pricing: 14 credits per Nano Banana image × 5 variations per template
+    // when using kie.ai. Gemini direct (BYOK) is 0 credits — the user pays
+    // Google directly so the quote must reflect that, otherwise the pre-clone
+    // estimate and the actual clone deduction won't match.
+    const aiSettings = await getUserAiSettings(userId);
+    const useGemini = aiSettings.ai_provider_primary === 'gemini' && aiSettings.has_gemini_key;
+    const COST_PER_IMAGE = useGemini ? 0 : 14;
     const VARIATIONS_PER_TEMPLATE = 5;
     const totalImages = templateCount * VARIATIONS_PER_TEMPLATE;
     const totalCredits = totalImages * COST_PER_IMAGE;
@@ -53,6 +59,7 @@ export async function POST(req: Request) {
       hasEnough,
       estimatedMinutes,
       batches,
+      provider: useGemini ? 'gemini' : 'kie',
       message: !hasEnough
         ? `Créditos insuficientes (tienes ${currentBalance}, necesitas ${totalCredits} para ${totalImages} imágenes)`
         : totalImages <= 25

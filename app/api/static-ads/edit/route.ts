@@ -5,14 +5,13 @@ import {
   createKieTask,
   getKieTaskResult,
   getKieModelConfig,
-  analyzeWithFallback,
-  imageUrlToBase64,
   downloadImage,
-  GeminiMessage,
   NanoBananaInput,
 } from '@/lib/kie-client';
-import { getPromptWithVariables } from '@/lib/get-ai-prompt';
 import { rateLimit, RATE_LIMITS } from '@/lib/security';
+import { getUserAiSettings, getDecryptedGeminiKey } from '@/lib/ai-providers/router';
+import { GeminiProvider } from '@/lib/ai-providers/gemini-provider';
+import { ProviderError } from '@/lib/ai-providers/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -71,7 +70,12 @@ export async function POST(req: Request) {
     }
 
     const { input_data, result_url, project_id } = generation;
-    const { productName, generatedPrompt, productImages, productImage } = input_data || {};
+
+    // Provider routing: if user picked Gemini and has a validated key, edit
+    // through Gemini directly (sync, 0 credits). Otherwise the existing kie
+    // flow is preserved untouched.
+    const aiSettings = await getUserAiSettings(userId);
+    const useGemini = aiSettings.ai_provider_primary === 'gemini' && aiSettings.has_gemini_key;
 
     // Check credits
     const { data: userCredits } = await supabaseAdmin
@@ -80,84 +84,131 @@ export async function POST(req: Request) {
       .eq('clerk_user_id', userId)
       .single();
 
-    const editCost = 14; // Same cost as a new generation
+    const editCost = useGemini ? 0 : 14;
     if (!userCredits || userCredits.credits < editCost) {
       return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
     }
 
-    // Deduct credits
-    await supabaseAdmin
-      .from('user_credits')
-      .update({ credits: userCredits.credits - editCost })
-      .eq('clerk_user_id', userId);
-
-    console.log(`[EDIT] Generating new prompt with edit instructions...`);
-
-    // Get edit prompt template
-    const editPromptTemplate = await getPromptWithVariables('static_ads_edit_instructions', {
-      ORIGINAL_PROMPT: generatedPrompt || 'Professional product photography',
-      USER_EDIT_INSTRUCTIONS: editInstructions,
-      PRODUCT_NAME: productName || 'Product'
-    });
-
-    // Convert current image to base64 for reference
-    let currentImageBase64 = '';
-    try {
-      currentImageBase64 = await imageUrlToBase64(result_url);
-    } catch (e) {
-      console.log(`[EDIT] Could not convert current image: ${e}`);
+    // Deduct credits (no-op when 0)
+    if (editCost > 0) {
+      await supabaseAdmin
+        .from('user_credits')
+        .update({ credits: userCredits.credits - editCost })
+        .eq('clerk_user_id', userId);
     }
 
-    // Build messages for Gemini
-    const imageContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [
-      { type: 'text', text: 'Generate the edited prompt based on the user instructions.' }
-    ];
-
-    if (currentImageBase64) {
-      imageContent.push({ type: 'image_url', image_url: { url: currentImageBase64 } });
+    // Direct image-edit pipeline:
+    //   prompt      = the user's raw edit instructions (Spanish OK — Nano
+    //                 Banana Pro handles multilingual edit instructions)
+    //   image_input = ONLY the current generated result. We deliberately do
+    //                 NOT pass the original product photos here — that used
+    //                 to contaminate edits ("change background to black"
+    //                 would sometimes regenerate the product instead). For a
+    //                 targeted edit, the model only needs the canvas it is
+    //                 editing.
+    //
+    // We also dropped the previous Gemini "rewrite the prompt" step. It
+    // added 30–60s per edit and frequently lost the user's intent
+    // (paraphrased "fondo negro" into a long English brief). Nano Banana
+    // Pro is itself an image-editing model; passing the literal user
+    // instruction in Spanish is what it expects.
+    if (!result_url?.startsWith('http')) {
+      return NextResponse.json({ error: 'Generation has no editable result image' }, { status: 400 });
     }
 
-    const messages: GeminiMessage[] = [
-      { role: 'developer', content: editPromptTemplate },
-      { role: 'user', content: imageContent }
-    ];
+    const editAspect = (input_data?.templateAspectRatio || '1:1') as NanoBananaInput['aspect_ratio'];
 
-    // Generate new prompt using whatever analysis model the admin has configured.
-    // Default is Gemini 3 Pro; falls back to Gemini Flash 2.0 on transient errors.
-    const { analysisModel } = await getKieModelConfig();
-    const { text: newPrompt, modelUsed } = await analyzeWithFallback(analysisModel, messages, {
-      temperature: 0.5,
-      maxTokens: 64000,
-    });
+    // ---- Gemini direct edit path -----------------------------------------
+    // Sync call: build the row up front, call Gemini, save the inline base64
+    // to Storage, return result. No polling.
+    if (useGemini) {
+      const apiKey = await getDecryptedGeminiKey(userId);
+      if (!apiKey) {
+        return NextResponse.json({ error: 'No Gemini API key on file' }, { status: 400 });
+      }
+      const provider = new GeminiProvider(apiKey);
 
-    console.log(`[EDIT] New prompt generated by ${modelUsed}: ${newPrompt.substring(0, 80)}...`);
+      const currentVersion = generation.version || 1;
+      const nextVersion = currentVersion + 1;
 
-    // Prepare product images (max 8)
-    const allImages: string[] = productImages || (productImage ? [productImage] : []);
-    const imageInputs = allImages.slice(0, 7).filter(url => url?.startsWith('http'));
-    
-    // Add the current generated image as reference (if we have space)
-    if (imageInputs.length < 8 && result_url?.startsWith('http')) {
-      imageInputs.push(result_url);
+      const { data: newGen, error: insertErr } = await supabaseAdmin
+        .from('generations')
+        .insert({
+          clerk_user_id: userId,
+          type: 'static_ad_generation',
+          status: 'generating',
+          ai_provider: 'gemini',
+          project_id: project_id,
+          cost: editCost,
+          version: nextVersion,
+          parent_id: generationId,
+          input_data: {
+            ...input_data,
+            generatedPrompt: editInstructions,
+            editedFrom: generationId,
+            editInstructions,
+          },
+        })
+        .select()
+        .single();
+      if (insertErr || !newGen) {
+        console.error('[EDIT-GEMINI] insert failed:', insertErr);
+        return NextResponse.json({ error: 'Failed to create edit record' }, { status: 500 });
+      }
+
+      try {
+        const result = await provider.editImage({
+          sourceImageUrl: result_url,
+          editInstructions,
+          aspectRatio: editAspect as any,
+        });
+        const buf = Buffer.from(result.imageBase64, 'base64');
+        const ext = result.mimeType === 'image/jpeg' ? 'jpg' : 'png';
+        const fileName = `${project_id}/${newGen.id}_${Date.now()}.${ext}`;
+        const { error: upErr } = await supabaseAdmin.storage
+          .from('generations')
+          .upload(fileName, buf, { contentType: result.mimeType, upsert: true });
+        if (upErr) throw upErr;
+        const { data: pub } = supabaseAdmin.storage.from('generations').getPublicUrl(fileName);
+
+        await supabaseAdmin.from('generations').update({
+          status: 'completed',
+          result_url: pub.publicUrl,
+          updated_at: new Date().toISOString(),
+        }).eq('id', newGen.id);
+
+        return NextResponse.json({
+          success: true,
+          newGenerationId: newGen.id,
+          resultUrl: pub.publicUrl,
+          version: nextVersion,
+          prompt: editInstructions,
+          provider: 'gemini',
+        });
+      } catch (err: any) {
+        const isProvider = err instanceof ProviderError;
+        const userMsg = isProvider ? err.userMessage : (err?.message || 'Gemini edit failed');
+        await supabaseAdmin.from('generations').update({
+          status: 'failed',
+          error_message: userMsg.slice(0, 500),
+          updated_at: new Date().toISOString(),
+        }).eq('id', newGen.id);
+        // editCost=0 on Gemini path, no refund needed
+        return NextResponse.json({ error: userMsg }, { status: 500 });
+      }
     }
-
-    console.log(`[EDIT] Creating Nano Banana task with ${imageInputs.length} images...`);
 
     const { generationModel } = await getKieModelConfig();
 
-    // Preserve the template's aspect ratio across edits — each row from the
-    // pipeline carries the detected ratio under input_data.templateAspectRatio.
-    // Falls back to '1:1' for legacy rows that pre-date aspect detection.
-    const editAspect = (input_data?.templateAspectRatio || '1:1') as NanoBananaInput['aspect_ratio'];
-
-    // Create new generation task
     const nanoBananaInput: NanoBananaInput = {
-      prompt: newPrompt,
-      image_input: imageInputs,
+      prompt: editInstructions,
+      image_input: [result_url],
       aspect_ratio: editAspect,
       resolution: '2K',
-      output_format: 'png'
+      output_format: 'png',
     };
+
+    console.log(`[EDIT] Sending direct edit to ${generationModel} (aspect=${editAspect}): "${editInstructions.slice(0, 80)}"`);
 
     const taskId = await createKieTask(generationModel, nanoBananaInput);
     console.log(`[EDIT] Task created: ${taskId}`);
@@ -173,17 +224,18 @@ export async function POST(req: Request) {
         clerk_user_id: userId,
         type: 'static_ad_generation',
         status: 'generating',
+        ai_provider: 'kie',
         project_id: project_id,
         cost: editCost,
         version: nextVersion,
         parent_id: generationId,
         input_data: {
           ...input_data,
-          generatedPrompt: newPrompt,
+          generatedPrompt: editInstructions,
           generationTaskId: taskId,
           editedFrom: generationId,
-          editInstructions: editInstructions
-        }
+          editInstructions: editInstructions,
+        },
       })
       .select()
       .single();
@@ -255,7 +307,7 @@ export async function POST(req: Request) {
               newGenerationId: newGeneration.id,
               resultUrl,
               version: nextVersion,
-              prompt: newPrompt
+              prompt: editInstructions,
             });
           }
         } else if (result.status === 'FAILED') {

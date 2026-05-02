@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit, RATE_LIMITS } from '@/lib/security';
+import { getUserAiSettings } from '@/lib/ai-providers/router';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -116,10 +117,18 @@ export async function POST(req: Request) {
       templates = data || [];
     }
 
-    // Pricing model: each Nano Banana Pro image ≈ $0.134 ≈ 14 credits.
-    // One image per selected template — the user picks the templates, we
-    // generate exactly that many ads. Set to >1 to bring back fan-out.
-    const COST_PER_IMAGE = 14;
+    // Resolve which AI channel the user has selected. Gemini (BYOK) bypasses
+    // kie.ai entirely and the user pays Google directly — Riverz waives
+    // credit cost while pricing strategy is being defined. kie.ai stays at
+    // the canonical 14 credits/image.
+    const aiSettings = await getUserAiSettings(userId);
+    const useGemini = aiSettings.ai_provider_primary === 'gemini' && aiSettings.has_gemini_key;
+    const providerForRow: 'kie' | 'gemini' = useGemini ? 'gemini' : 'kie';
+
+    // Pricing model: each Nano Banana Pro image ≈ $0.134 ≈ 14 credits via kie.
+    // Gemini direct is 0 credits (user pays Google) — temporary until pricing
+    // strategy is defined. One image per selected template.
+    const COST_PER_IMAGE = useGemini ? 0 : 14;
     const VARIATIONS_PER_TEMPLATE = 1;
     const COST_PER_TEMPLATE = COST_PER_IMAGE * VARIATIONS_PER_TEMPLATE;
     const totalCost = templates.length * COST_PER_TEMPLATE;
@@ -127,8 +136,20 @@ export async function POST(req: Request) {
     // Atomic deduction: read → update with current-balance guard, retry on contention.
     // Without this two concurrent /clone calls could both pass the balance check and
     // overdraw the user's credits.
+    // Skip the loop entirely when cost=0 (Gemini path) — the read/update cycle
+    // would be a no-op but still hits the DB twice for nothing.
     let newBalance: number | null = null;
     let lastSeenBalance = 0;
+    if (totalCost === 0) {
+      const { data: userData } = await supabaseAdmin
+        .from('user_credits')
+        .select('credits')
+        .eq('clerk_user_id', userId)
+        .single();
+      if (!userData) return new NextResponse('User not found', { status: 404 });
+      newBalance = userData.credits;
+      lastSeenBalance = userData.credits;
+    }
     for (let attempt = 0; attempt < 3 && newBalance === null; attempt++) {
       const { data: userData, error: userError } = await supabaseAdmin
         .from('user_credits')
@@ -225,12 +246,20 @@ export async function POST(req: Request) {
       const variationRows = await Promise.all(
         Array.from({ length: VARIATIONS_PER_TEMPLATE }, (_, i) => i + 1).map(async (variationIndex) => {
           const isLeader = variationIndex === 1;
+          // Gemini path skips the analyze→adapt→prompt steps entirely; the
+          // model takes template + product images + prompt in one multimodal
+          // call. Rows go straight to pending_generation and the queue
+          // routes them to the GeminiProvider on the next tick.
+          const initialStatus = useGemini
+            ? 'pending_generation'
+            : (isLeader ? 'pending_analysis' : 'pending_variation');
           const { data: generation, error: genError } = await supabaseAdmin
             .from('generations')
             .insert({
               clerk_user_id: userId,
               type: 'static_ad_generation',
-              status: isLeader ? 'pending_analysis' : 'pending_variation',
+              status: initialStatus,
+              ai_provider: providerForRow,
               cost: COST_PER_IMAGE,
               project_id: project.id,
               input_data: {

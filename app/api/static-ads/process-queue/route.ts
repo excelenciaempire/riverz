@@ -14,6 +14,9 @@ import {
 } from '@/lib/kie-client';
 import { getPromptText, getPromptWithVariables } from '@/lib/get-ai-prompt';
 import { getImageDimensions, pickClosestNanoBananaAspect } from '@/lib/image-dims';
+import { GeminiProvider } from '@/lib/ai-providers/gemini-provider';
+import { getDecryptedGeminiKey } from '@/lib/ai-providers/router';
+import { ProviderError } from '@/lib/ai-providers/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -781,6 +784,144 @@ async function processVariationGeneration(gen: any, generationModel: string, pro
   }
 }
 
+// --- Gemini direct path -----------------------------------------------
+//
+// Rows with ai_provider='gemini' bypass the kie pipeline entirely. Gemini
+// 3 Pro Image (Nano Banana Pro) accepts template + product images + a
+// single multimodal prompt and returns the final ad inline as base64 in
+// one synchronous call — no analyze/adapt/prompt steps, no async job to
+// poll. The row goes straight from pending_generation → completed.
+
+async function processGeminiGeneration(
+  gen: any,
+  geminiProvider: GeminiProvider,
+  projectId: string,
+): Promise<void> {
+  const id = gen.id;
+  const log = (m: string) => console.log(`[GEN-GEMINI ${id.slice(0, 8)}] ${m}`);
+  let inputData = { ...gen.input_data };
+
+  // Atomic claim — only the tick that flips pending_generation → generating
+  // proceeds. Same pattern as the kie steps.
+  const { data: claim } = await supabaseAdmin
+    .from('generations')
+    .update({ status: 'generating', updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('status', 'pending_generation')
+    .select('id')
+    .maybeSingle();
+  if (!claim) {
+    log('skipped — already in flight on another tick');
+    return;
+  }
+  log('claimed → calling Gemini directly');
+
+  // Resolve aspect ratio. clone wrote templateThumbnail but no templateDims
+  // on Gemini rows (we skipped analyze step where dims get probed). Default
+  // to 1:1 unless we have explicit hints.
+  let aspectRatio = (inputData.templateAspectRatio || '1:1') as any;
+  if (!inputData.templateAspectRatio && inputData.templateDims?.width && inputData.templateDims?.height) {
+    aspectRatio = pickClosestNanoBananaAspect(inputData.templateDims.width, inputData.templateDims.height);
+  }
+
+  const productImages: string[] = (inputData.productImages || (inputData.productImage ? [inputData.productImage] : []))
+    .filter((u: any) => typeof u === 'string' && u.startsWith('http'))
+    .slice(0, 6);
+  const templateImages: string[] = inputData.templateThumbnail ? [inputData.templateThumbnail] : [];
+
+  const startedAt = new Date().toISOString();
+  try {
+    const result = await geminiProvider.generateStaticAd({
+      templateImageUrls: templateImages,
+      productImageUrls: productImages,
+      productContext: {
+        name: inputData.productName || 'Product',
+        benefits: inputData.productBenefits || '',
+        description: inputData.productDescription || '',
+        category: inputData.productCategory || '',
+        researchData: inputData.researchData || null,
+        language: 'es',
+      },
+      aspectRatio,
+    });
+
+    // Save the inline base64 to Supabase Storage and update the row.
+    const buf = Buffer.from(result.imageBase64, 'base64');
+    const ext = result.mimeType === 'image/jpeg' ? 'jpg' : 'png';
+    const fileName = `${projectId}/${id}_${Date.now()}.${ext}`;
+    let publicUrl = '';
+    try {
+      const { error: upErr } = await supabaseAdmin.storage
+        .from('generations')
+        .upload(fileName, buf, { contentType: result.mimeType, upsert: true });
+      if (upErr) throw upErr;
+      const { data } = supabaseAdmin.storage.from('generations').getPublicUrl(fileName);
+      publicUrl = data.publicUrl;
+    } catch (storageErr: any) {
+      log(`storage upload failed: ${storageErr?.message || storageErr}`);
+      // No URL fallback exists for inline base64 — fail the row so the user
+      // can retry. This is rare (Supabase Storage outage).
+      await failGeneration(id, `Gemini storage upload failed: ${storageErr?.message || storageErr}`);
+      return;
+    }
+
+    await appendStepLog(id, inputData, {
+      step: 4,
+      status: 'ok',
+      startedAt,
+      completedAt: new Date().toISOString(),
+      model: result.modelId,
+      promptSent: '(see Gemini prompt — composed in gemini-provider.ts)',
+      imagesSent: [
+        ...templateImages.map((url) => ({ url })),
+        ...productImages.map((url) => ({ url })),
+      ],
+      outputPreview: `provider=gemini model=${result.modelId} aspect=${aspectRatio} bytes=${buf.length}`,
+    });
+
+    await updateGeneration(id, {
+      status: 'completed',
+      result_url: publicUrl,
+    });
+    log(`completed → ${publicUrl}`);
+  } catch (err: any) {
+    const isProvider = err instanceof ProviderError;
+    const code = isProvider ? err.code : 'unknown';
+    const userMsg = isProvider ? err.userMessage : (err?.message || 'Gemini error');
+    log(`failed (${code}): ${userMsg}`);
+
+    await appendStepLog(id, inputData, {
+      step: 4,
+      status: 'error',
+      startedAt,
+      completedAt: new Date().toISOString(),
+      model: process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview',
+      promptSent: '(see Gemini prompt — composed in gemini-provider.ts)',
+      imagesSent: [
+        ...templateImages.map((url) => ({ url })),
+        ...productImages.map((url) => ({ url })),
+      ],
+      errorMessage: userMsg,
+    });
+
+    // Soft-retry only for transient errors (rate limit, network, timeout).
+    // Auth/safety/no_image are terminal — no point reattempting.
+    const retriable = isProvider ? err.retriable : false;
+    if (retriable) {
+      await softRetryOrFail({
+        rowId: id,
+        currentInputData: inputData,
+        retryKey: 'step4Retries',
+        retryStatus: 'pending_generation',
+        errorMessage: userMsg,
+        log,
+      });
+    } else {
+      await failGeneration(id, userMsg);
+    }
+  }
+}
+
 // --- Orchestrator ------------------------------------------------------
 
 export async function POST(req: Request) {
@@ -858,12 +999,43 @@ export async function POST(req: Request) {
 
     console.log(`[PROCESS-QUEUE] ${generations.length} active rows, statuses=${[...new Set(generations.map((g: any) => g.status))].join(',')}`);
 
+    // Partition rows by ai_provider. Gemini rows skip the kie pipeline
+    // entirely — they go to a single multimodal Gemini call. kie rows (and
+    // legacy rows with NULL ai_provider, treated as kie) go through the
+    // existing analyze/adapt/prompt/generate pipeline.
+    const geminiRows = (generations as any[]).filter((g) => g.ai_provider === 'gemini');
+    const kieRows = (generations as any[]).filter((g) => g.ai_provider !== 'gemini');
+
+    // Phase G — Gemini direct. One key per project (rows in this project all
+    // share the same clerk_user_id), so decrypt once and reuse.
+    if (geminiRows.length > 0) {
+      const ownerId: string | undefined = geminiRows[0]?.clerk_user_id;
+      const apiKey = ownerId ? await getDecryptedGeminiKey(ownerId) : null;
+      if (!apiKey) {
+        console.error(`[PROCESS-QUEUE] Gemini rows present but no decrypted key for user ${ownerId} — failing rows`);
+        for (const row of geminiRows) {
+          await failGeneration(row.id, 'No Gemini API key on file (puede haber sido eliminada)');
+        }
+      } else {
+        const provider = new GeminiProvider(apiKey);
+        const MAX_PARALLEL = 5;
+        for (let i = 0; i < geminiRows.length; i += MAX_PARALLEL) {
+          const batch = geminiRows.slice(i, i + MAX_PARALLEL);
+          await Promise.allSettled(batch.map((g: any) => processGeminiGeneration(g, provider, projectId)));
+        }
+      }
+    }
+
+    if (kieRows.length === 0) {
+      return await returnProgress(projectId);
+    }
+
     const { analysisModel, generationModel } = await getKieModelConfig();
     console.log(`[PROCESS-QUEUE] models: analysis=${analysisModel}, generation=${generationModel}`);
 
     // Group by templateId so the leader can run the shared analysis steps.
     const byTemplate = new Map<string, any[]>();
-    for (const gen of generations as any[]) {
+    for (const gen of kieRows) {
       const tid = gen.input_data?.templateId || 'unknown';
       if (!byTemplate.has(tid)) byTemplate.set(tid, []);
       byTemplate.get(tid)!.push(gen);
@@ -895,13 +1067,17 @@ export async function POST(req: Request) {
       await Promise.allSettled(sharedTasks);
     }
 
-    // Phase B — every row that is pending_generation or generating proceeds independently.
-    // Refetch after Phase A so we pick up newly-distributed prompts.
+    // Phase B — every kie row that is pending_generation or generating proceeds independently.
+    // Refetch after Phase A so we pick up newly-distributed prompts. Filter
+    // out Gemini rows (they were already handled in Phase G) by checking
+    // ai_provider explicitly — `or` covers legacy rows where ai_provider is
+    // NULL (treated as kie).
     const { data: refreshed } = await supabaseAdmin
       .from('generations')
       .select('*')
       .eq('project_id', projectId)
-      .in('status', ['pending_generation', 'generating']);
+      .in('status', ['pending_generation', 'generating'])
+      .or('ai_provider.is.null,ai_provider.eq.kie');
 
     if (refreshed && refreshed.length > 0) {
       // Concurrency-limited fan-out: max 10 parallel tasks against kie.ai per tick.
