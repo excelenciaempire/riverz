@@ -68,7 +68,7 @@ export function BulkMetadataEditor({ generations, metadata, onChange, defaults }
 
   const applyBulkToAll = (field: keyof MetaAdMetadata) => {
     const value = bulk[field];
-    if (!value && value !== 0) return;
+    if (!value) return;
     const next = { ...metadata };
     for (const g of generations) {
       next[g.id] = { ...(next[g.id] || {}), [field]: value };
