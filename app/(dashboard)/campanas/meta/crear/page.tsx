@@ -87,11 +87,10 @@ function CrearContent() {
   const generationsQuery = useQuery({
     queryKey: ['generations-for-campaign', user?.id, filter],
     queryFn: async () => {
-      if (!user?.id) return [] as Generation[];
       let q = supabase
         .from('generations')
         .select('*')
-        .eq('clerk_user_id', user.id)
+        .eq('clerk_user_id', user!.id)
         .eq('status', 'completed')
         .order('created_at', { ascending: false })
         .limit(60);
@@ -111,7 +110,7 @@ function CrearContent() {
       if (error) throw error;
       return data as Generation[];
     },
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 
   const selectedGenerations = useMemo(() => {
@@ -272,7 +271,7 @@ function CrearContent() {
             </p>
           </div>
 
-          {generationsQuery.isLoading ? (
+          {!user || generationsQuery.isLoading || generationsQuery.isPending ? (
             <Loading />
           ) : (generationsQuery.data || []).length === 0 ? (
             <div className="rounded-xl border border-gray-800 bg-[#141414] p-8 text-center">
