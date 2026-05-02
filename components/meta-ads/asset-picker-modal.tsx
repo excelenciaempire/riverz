@@ -43,20 +43,25 @@ export function AssetPickerModal({
   const generationsQuery = useQuery({
     queryKey: ['asset-picker-generations', user?.id, filter],
     queryFn: async () => {
+      if (!user?.id) return [] as Generation[];
       let q = supabase
         .from('generations')
         .select('*')
-        .eq('clerk_user_id', user!.id)
+        .eq('clerk_user_id', user.id)
         .eq('status', 'completed')
         .order('created_at', { ascending: false })
         .limit(100);
       if (filter === 'videos') q = q.in('type', Array.from(VIDEO_TYPES));
       else if (filter === 'images') q = q.in('type', IMAGE_TYPES);
       const { data, error } = await q;
-      if (error) throw error;
+      if (error) {
+        console.error('[asset-picker] supabase error', error);
+        throw error;
+      }
+      console.debug('[asset-picker] fetched', data?.length, 'rows for', user.id);
       return data as Generation[];
     },
-    enabled: !!user?.id && isOpen,
+    enabled: !!user && isOpen,
   });
 
   const items = useMemo(() => {
@@ -124,11 +129,31 @@ export function AssetPickerModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          {!user || generationsQuery.isPending ? (
+          {!user || generationsQuery.isLoading ? (
             <Loading />
+          ) : generationsQuery.isError ? (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-12 text-center">
+              <p className="text-red-400">
+                Error cargando generaciones:{' '}
+                {(generationsQuery.error as Error)?.message ?? 'desconocido'}
+              </p>
+              <button
+                onClick={() => generationsQuery.refetch()}
+                className="mt-2 text-xs text-brand-accent hover:underline"
+              >
+                Reintentar
+              </button>
+            </div>
           ) : items.length === 0 ? (
             <div className="rounded-xl border border-gray-800 bg-[#0a0a0a] p-12 text-center">
-              <p className="text-gray-400">No hay generaciones disponibles para añadir.</p>
+              <p className="text-gray-400">
+                {(generationsQuery.data || []).length === 0
+                  ? 'No hay generaciones completadas para esta cuenta.'
+                  : 'Todas las generaciones ya están en la grilla.'}
+              </p>
+              <a href="/historial" className="mt-2 inline-block text-xs text-brand-accent hover:underline">
+                Ver historial →
+              </a>
             </div>
           ) : (
             <div className="grid gap-3 grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
