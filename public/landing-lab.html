@@ -1016,10 +1016,13 @@ function mkProj(name,angle,url){return{id:uid(),name:name||'Nueva Landing',angle
 function getActive(){return projects.find(function(p){return p.id===activeId;});}
 
 function openNewModal(){
-  var l=String.fromCharCode(65+projects.length%26);
-  g('nm-name').value='Landing '+l; g('nm-angle').value='';
-  g('nm-url').value='https://vitaluoficial.store/products/kit-vitalu';
-  g('new-modal').classList.add('on'); setTimeout(function(){g('nm-name').focus();},60);
+  // Crear una landing nueva ahora pasa por el dashboard de templates en
+  // /landing-lab — donde el usuario elige plantilla antes de empezar a
+  // editar. El modal viejo (createManual / generateWithAI) sigue en el
+  // archivo como fallback si lo invocan vía DevTools, pero los botones
+  // "+Nueva Landing" del editor ya no lo abren.
+  try { (window.top || window.parent || window).location.href = '/landing-lab'; }
+  catch(e) { window.location.href = '/landing-lab'; }
 }
 function closeNewModal(){g('new-modal').classList.remove('on');}
 function setAngle(el){
