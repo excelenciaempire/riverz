@@ -229,13 +229,20 @@ function isShopifyCdnUrl(url: string): boolean {
 }
 
 // CSS that nukes the active Shopify theme's chrome around a Page render and
-// forces the body wrapper to full viewport width. We can't use a custom
-// layout/template (would require write_themes scope + per-merchant theme edits),
-// so we go scorched-earth via !important rules. Selectors cover Dawn and
-// every Dawn-derived theme we've tested (Sense, Refresh, Studio, Origin,
-// Crave, Powernax, plus older Debut/Brooklyn fallbacks).
+// forces the wrapper to full viewport width. We can't use a custom layout
+// (would require write_themes scope), so we go scorched-earth via !important.
+// Selectors target Dawn and every Dawn-derived theme (Sense, Refresh, Studio,
+// Origin, Crave, Debut, Brooklyn) PLUS Horizon and the new agentic-themes
+// architecture (rte-formatter, .section-content-wrapper, .shopify-block,
+// .text-block--heading) which Powernax and most fresh stores ship with.
+//
+// The :has() rule is the load-bearing one for new themes: themes wrap each
+// page block (title, content, etc.) in a generic .shopify-block, so we can't
+// hard-code "hide the title block" by class. Instead we hide every block
+// inside the section content-wrapper that does NOT contain our riverz-landing
+// div. :has() is supported in every browser shipped after late 2023.
 const FULL_WIDTH_RESET_CSS = `
-/* Hide announcement bar, header, footer, breadcrumbs */
+/* ── 1. Hide store chrome (announcement bar, header, footer, breadcrumbs) ── */
 #shopify-section-announcement-bar,
 #shopify-section-header, #shopify-section-footer,
 .shopify-section-header, .shopify-section-footer,
@@ -251,22 +258,40 @@ footer.site-footer, footer.footer, footer[role="contentinfo"],
   display: none !important;
 }
 
-/* Hide auto-rendered page title — landing has its own hero */
+/* ── 2. Hide auto-rendered page title across theme generations ── */
+/* Dawn / older themes — title has a known class */
 .template-page .main-page-title,
 .template-page .page__title,
 .template-page .page-title,
 .template-page main h1:first-of-type,
 main .page-width > .main-page-title,
 main .page-width > .page__title,
-.page__header, .main-page-header, .section-header__title {
+.page__header, .main-page-header, .section-header__title,
+/* Horizon / new themes — title sits in a .text-block--heading sibling of the rte block */
+.section-content-wrapper > .text-block,
+.section-content-wrapper > .text-block--heading,
+.section-content-wrapper > div.text-block,
+.layout-panel-flex > .text-block {
   display: none !important;
 }
 
-/* Force every wrapper between <body> and our content to full width, no padding */
-html, body { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; background: #fff !important; }
+/* Catch-all for Horizon-style block layouts: hide every direct child of the
+   section content wrapper that does NOT contain our landing wrapper. */
+.section-content-wrapper > *:not(:has([id^="riverz-landing-"])) {
+  display: none !important;
+}
+.section-content-wrapper > :has([id^="riverz-landing-"]) {
+  display: block !important;
+}
+
+/* ── 3. Force every wrapper from <body> down to riverz-landing to full width ── */
+html, body { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; background: #fff !important; max-width: 100vw !important; }
 main, #MainContent, [role="main"], .content-for-layout, .main-content,
 .template-page main, .template-page .main-content,
-.shopify-section, .shopify-section--main-page,
+.shopify-section, .shopify-section--main-page, .section-wrapper,
+.section, .layout-panel-flex, .layout-panel-flex--column,
+.section-content-wrapper,
+.shopify-block, .shopify-block.rte,
 .page, .page-width, .page__content, .main-page,
 .rte, .container, .grid, .grid__item, .layout {
   max-width: 100% !important;
@@ -274,6 +299,44 @@ main, #MainContent, [role="main"], .content-for-layout, .main-content,
   margin: 0 !important;
   padding: 0 !important;
   background: transparent !important;
+}
+
+/* Horizon's page section is a CSS grid — width: 100% on a grid item is sized
+   by the parent's grid track, not the parent's box, so we have to neutralise
+   the grid (display: block) to give the child the full row to itself. */
+.section.page-width-content,
+.page-width-content,
+.section.page-width,
+.section.full-width {
+  display: block !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  gap: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.section-content-wrapper {
+  display: block !important;
+  grid-column: 1 / -1 !important;
+}
+
+/* The Horizon Web Component that renders rich-text blocks */
+rte-formatter {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Our own landing wrapper — force fluid width, the inner sections handle their own layout */
+[id^="riverz-landing-"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* Some themes drop a min-height/padding on main; flatten it */

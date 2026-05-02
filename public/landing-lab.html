@@ -1275,10 +1275,20 @@ function buildPublishPayload(proj){
   // theme (e.g. the merchant's body{} rules vs ours).
   var wrapId='riverz-landing-'+(proj.id||'x').replace(/[^a-z0-9]/gi,'').slice(0,12);
   var fontsLink='<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">';
+  // Same scroll-driven script as buildHTML(): toggles the sticky CTA after
+  // the user scrolls past 22%, plays the .rv reveal animations via
+  // IntersectionObserver, and dismisses the sticky on close. Without this
+  // the sticky button never appears on the published page (it has display:
+  // none until .show is added). Shopify Pages accept <script> through the
+  // GraphQL API; the admin UI strips it on manual edit but our publish flow
+  // never round-trips through the admin editor.
+  var SO='<'+'scri'+'pt>',SC='<'+'/scri'+'pt>';
+  var stickyCode='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh=0.22;function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
   var body_html =
     fontsLink +
     '<style>'+allCSS+'</style>' +
-    '<div id="'+wrapId+'">'+clone.outerHTML+'</div>';
+    '<div id="'+wrapId+'">'+clone.outerHTML+'</div>' +
+    SO+stickyCode+SC;
 
   return {
     project_id: proj.id || 'default',
