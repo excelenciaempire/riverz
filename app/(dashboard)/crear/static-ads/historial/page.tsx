@@ -235,7 +235,7 @@ export default function HistorialPage() {
   // Mirror the download logic from /historial/[id]: fetch the image as a
   // blob and trigger a real save dialog via an anchor with `download`.
   // Otherwise the browser tends to navigate to the image instead of saving.
-  const downloadFlat = async (gen: FlatGeneration) => {
+  const downloadOne = async (gen: FlatGeneration) => {
     if (!gen.result_url) return;
     try {
       const res = await fetch(gen.result_url);
@@ -251,6 +251,60 @@ export default function HistorialPage() {
     } catch (err: any) {
       toast.error(`No se pudo descargar: ${err.message || err}`);
     }
+  };
+  const downloadFlat = downloadOne;
+
+  const [isBulkFlatBusy, setIsBulkFlatBusy] = useState<null | 'download' | 'delete'>(null);
+  const [bulkFlatDeleteOpen, setBulkFlatDeleteOpen] = useState(false);
+
+  // Multi-download: serializes through downloadOne for the selected generations
+  // that actually have a result_url. Pending/failed tiles in the selection are
+  // skipped silently — they have nothing to download.
+  const bulkDownloadFlat = async () => {
+    if (!flatGens) return;
+    const targets = flatGens.filter((g) => flatSelectedIds.has(g.id) && g.result_url);
+    if (targets.length === 0) {
+      toast.error('Las imágenes seleccionadas todavía no tienen resultado');
+      return;
+    }
+    setIsBulkFlatBusy('download');
+    try {
+      for (const g of targets) {
+        await downloadOne(g);
+      }
+      toast.success(`Descargadas ${targets.length}`);
+    } finally {
+      setIsBulkFlatBusy(null);
+    }
+  };
+
+  // Multi-delete: hits /api/generations/<id> for each selected generation
+  // with bounded fan-out so a 25-image nuke doesn't open 25 sockets at once.
+  // Refetches the list at the end so removed tiles disappear immediately.
+  const bulkDeleteFlat = async () => {
+    const ids = Array.from(flatSelectedIds);
+    if (ids.length === 0) return;
+    setIsBulkFlatBusy('delete');
+    const MAX_PARALLEL = 5;
+    let ok = 0;
+    let failed = 0;
+    for (let i = 0; i < ids.length; i += MAX_PARALLEL) {
+      const batch = ids.slice(i, i + MAX_PARALLEL);
+      const results = await Promise.allSettled(
+        batch.map((id) =>
+          fetch(`/api/generations/${id}`, { method: 'DELETE' }).then((r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          })
+        )
+      );
+      results.forEach((r) => (r.status === 'fulfilled' ? ok++ : failed++));
+    }
+    setIsBulkFlatBusy(null);
+    setBulkFlatDeleteOpen(false);
+    if (ok > 0) toast.success(`${ok} imagen(es) eliminada(s)`);
+    if (failed > 0) toast.error(`${failed} no se pudieron eliminar`);
+    queryClient.invalidateQueries({ queryKey: ['static-ads-all-generations'] });
+    setFlatSelectedIds(new Set());
   };
 
   // Fetch the flat generations only when the toggle is on. Refetches every
@@ -708,29 +762,122 @@ export default function HistorialPage() {
             className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 overflow-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-3 min-h-0">
               <div className="text-xs uppercase tracking-wider text-gray-400">Plantilla original</div>
               {comparingGen.input_data?.templateThumbnail ? (
                 <img
                   src={comparingGen.input_data.templateThumbnail}
                   alt="Plantilla original"
-                  className="max-w-full h-auto rounded-lg border border-white/10"
+                  className="max-h-[60vh] max-w-full w-auto h-auto object-contain rounded-lg border border-white/10"
                 />
               ) : (
-                <div className="flex items-center justify-center w-full aspect-[3/4] rounded-lg border border-white/10 text-gray-500 text-sm">
+                <div className="flex items-center justify-center w-full max-w-md aspect-[3/4] rounded-lg border border-white/10 text-gray-500 text-sm">
                   Sin plantilla original disponible
                 </div>
               )}
             </div>
-            <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-3 min-h-0">
               <div className="text-xs uppercase tracking-wider text-[#07A498]">Resultado generado</div>
               {comparingGen.result_url && (
                 <img
                   src={comparingGen.result_url}
                   alt="Resultado generado"
-                  className="max-w-full h-auto rounded-lg border border-white/10"
+                  className="max-h-[60vh] max-w-full w-auto h-auto object-contain rounded-lg border border-white/10"
                 />
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Flat-view bulk action bar — visible whenever ≥1 generation is
+          selected in flat mode. Mirrors the project-grid bulk bar UX so the
+          mental model stays the same: pick, then act. Download skips
+          tiles that don't have a result yet; delete hits the per-id endpoint. */}
+      {flatView && flatSelectMode && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-800 bg-[#0a0a0a]/95 backdrop-blur-lg p-4">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#07A498]/20 text-[#07A498] font-bold">
+                {flatSelectedIds.size}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">imagen(es) seleccionada(s)</p>
+                <p className="text-xs text-gray-400">Descarga en lote o elimina las elegidas</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setFlatSelectedIds(new Set())} className="border-gray-700">
+                Cancelar
+              </Button>
+              <Button
+                onClick={bulkDownloadFlat}
+                disabled={isBulkFlatBusy !== null}
+                className="bg-[#07A498] text-white hover:bg-[#068f84]"
+              >
+                {isBulkFlatBusy === 'download' ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Descargar {flatSelectedIds.size}
+              </Button>
+              <Button
+                onClick={() => setBulkFlatDeleteOpen(true)}
+                disabled={isBulkFlatBusy !== null}
+                className="bg-red-500 hover:bg-red-600 text-white"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar {flatSelectedIds.size}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm modal for the flat-view multi-delete. Same shape as the
+          project-grid bulk confirm so the user sees a familiar dialog. */}
+      {bulkFlatDeleteOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => isBulkFlatBusy !== 'delete' && setBulkFlatDeleteOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-gray-800 bg-[#141414] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="mb-2 text-lg font-bold text-white">
+              ¿Eliminar {flatSelectedIds.size} imagen(es)?
+            </h2>
+            <p className="mb-6 text-sm text-gray-400">
+              Las imágenes se borrarán de su proyecto. La acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 border-gray-700"
+                onClick={() => setBulkFlatDeleteOpen(false)}
+                disabled={isBulkFlatBusy === 'delete'}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={bulkDeleteFlat}
+                disabled={isBulkFlatBusy === 'delete'}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+              >
+                {isBulkFlatBusy === 'delete' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Eliminando…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Sí, eliminar
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>
