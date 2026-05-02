@@ -349,27 +349,19 @@ export type CampaignObjective =
   | 'OUTCOME_LEADS'
   | 'OUTCOME_AWARENESS';
 
-export interface NewCampaignSpec {
-  name: string;
-  objective: CampaignObjective;
+/**
+ * Solo se trabaja sobre campañas/ad sets que YA existen en la cuenta de Meta.
+ * No creamos nuevos desde el wizard — eso se hace en Ads Manager.
+ */
+export interface CampaignTarget {
+  id: string;
+  name?: string;
 }
 
-export interface NewAdSetSpec {
-  name: string;
-  daily_budget_cents: number;
-  countries: string[];
-  age_min: number;
-  age_max: number;
-  publisher_platforms?: string[];
+export interface AdSetTarget {
+  id: string;
+  name?: string;
 }
-
-export type CampaignTarget =
-  | { kind: 'existing'; id: string; name?: string }
-  | { kind: 'new'; spec: NewCampaignSpec };
-
-export type AdSetTarget =
-  | { kind: 'existing'; id: string; name?: string }
-  | { kind: 'new'; spec: NewAdSetSpec };
 
 export interface AdRowIdentity {
   page_id?: string;
@@ -378,7 +370,7 @@ export interface AdRowIdentity {
 
 export interface LaunchAdRow {
   rowId: string;                   // client-side id for response mapping
-  uploadId: string;
+  uploadId: string;                // meta_uploads.id (resuelto antes del launch)
   metadata: MetaAdMetadata;
   campaign: CampaignTarget;
   adset: AdSetTarget;
@@ -401,12 +393,24 @@ export interface LaunchRowResult {
 
 export interface LaunchResponse {
   rows: LaunchRowResult[];
-  // Resumen de creación: lo nuevo creado en este request (para que la UI lo refleje sin re-fetch)
-  created: {
-    campaigns: Array<{ id: string; name: string }>;
-    adsets: Array<{ id: string; name: string; campaign_id: string }>;
-  };
   warnings: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Pages + IG accounts (identidad por anuncio)
+// ---------------------------------------------------------------------------
+
+export interface MetaPageSummary {
+  id: string;
+  name: string;
+  picture_url: string | null;
+  instagram?: { id: string; username: string } | null;
+}
+
+export interface ListPagesResponse {
+  pages: MetaPageSummary[];
+  default_page_id: string | null;
+  default_instagram_id: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -444,7 +448,6 @@ export type AdDraftStatus = 'draft' | 'launching' | 'launched' | 'failed';
 
 export interface AdDraftRow {
   rowId: string;
-  uploadId: string;
   generationId: string;
   metadata: MetaAdMetadata;
   campaign: CampaignTarget;

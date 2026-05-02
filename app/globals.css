@@ -352,3 +352,27 @@ input[type="file"],
     animation: none !important;
   }
 }
+
+/* ---- Kitchn-style subtle scrollbar para la grilla de Meta Ads ---- */
+.rvz-grid-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+}
+.rvz-grid-scroll::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.rvz-grid-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rvz-grid-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.20);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.rvz-grid-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ChevronDown,
@@ -27,14 +27,12 @@ import type {
   AdDraftRow,
   AdRowIdentity,
   AdSetTarget,
-  CampaignObjective,
   CampaignTarget,
   ListAdSetsResponse,
   ListCampaignsResponse,
+  ListPagesResponse,
   MetaAdMetadata,
   MetaAiFeatures,
-  NewAdSetSpec,
-  NewCampaignSpec,
 } from '@/types/meta';
 
 const VIDEO_TYPES = new Set(['ugc', 'face_swap', 'clips', 'mejorar_calidad_video']);
@@ -52,25 +50,6 @@ const CTA_OPTIONS = [
   'APPLY_NOW',
   'ORDER_NOW',
 ] as const;
-
-const OBJECTIVES: Array<{ value: CampaignObjective; label: string }> = [
-  { value: 'OUTCOME_SALES', label: 'Ventas' },
-  { value: 'OUTCOME_TRAFFIC', label: 'Tráfico' },
-  { value: 'OUTCOME_ENGAGEMENT', label: 'Interacción' },
-  { value: 'OUTCOME_LEADS', label: 'Leads' },
-  { value: 'OUTCOME_AWARENESS', label: 'Awareness' },
-];
-
-const COUNTRY_OPTIONS = [
-  { code: 'US', label: 'Estados Unidos' },
-  { code: 'MX', label: 'México' },
-  { code: 'CO', label: 'Colombia' },
-  { code: 'AR', label: 'Argentina' },
-  { code: 'ES', label: 'España' },
-  { code: 'CL', label: 'Chile' },
-  { code: 'PE', label: 'Perú' },
-  { code: 'BR', label: 'Brasil' },
-];
 
 const AI_FEATURE_LABELS: Array<{ key: keyof MetaAiFeatures; label: string; hint: string }> = [
   { key: 'advantage_creative_overall', label: 'Advantage+ Creative', hint: 'Master toggle de IA creativa' },
@@ -90,7 +69,6 @@ const AI_FEATURE_LABELS: Array<{ key: keyof MetaAiFeatures; label: string; hint:
 // ---------------------------------------------------------------------------
 
 export interface AdGridRow extends AdDraftRow {
-  // UI-only
   resultUrl?: string;
   generationType?: string;
 }
@@ -99,8 +77,22 @@ interface AdGridEditorProps {
   rows: AdGridRow[];
   onChange: (next: AdGridRow[]) => void;
   adAccountId: string;
-  defaultIdentity: AdRowIdentity;
   onImportAssets: () => void;
+}
+
+// ---------------------------------------------------------------------------
+// Defaults
+// ---------------------------------------------------------------------------
+
+export function makeEmptyRow(generationId: string, extras?: Partial<AdGridRow>): AdGridRow {
+  return {
+    rowId: crypto.randomUUID(),
+    generationId,
+    metadata: { cta: 'SHOP_NOW' },
+    campaign: { id: '' },
+    adset: { id: '' },
+    ...extras,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +103,6 @@ export function AdGridEditor({
   rows,
   onChange,
   adAccountId,
-  defaultIdentity,
   onImportAssets,
 }: AdGridEditorProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -139,8 +130,50 @@ export function AdGridEditor({
     staleTime: 60_000,
   });
 
+  const pagesQuery = useQuery<ListPagesResponse>({
+    queryKey: ['meta-pages-list'],
+    queryFn: async () => {
+      const res = await fetch('/api/meta/pages');
+      if (!res.ok) throw new Error('No se pudieron cargar las pages');
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
   const allCampaigns = campaignsQuery.data?.campaigns ?? [];
   const allAdsets = adsetsQuery.data?.adsets ?? [];
+  const pages = pagesQuery.data?.pages ?? [];
+  const defaultPageId = pagesQuery.data?.default_page_id ?? null;
+
+  // Si las filas vienen sin campaña asignada (recién importadas), auto-rellenar
+  // con la primera campaña existente y su primer ad set para que el usuario no
+  // tenga que tocarlas. Sólo lo hacemos cuando ya cargaron las listas.
+  useEffect(() => {
+    if (!campaignsQuery.isSuccess || !adsetsQuery.isSuccess) return;
+    if (allCampaigns.length === 0) return;
+    let mutated = false;
+    const next = rows.map((r) => {
+      if (r.campaign.id && r.adset.id) return r;
+      const camp = r.campaign.id
+        ? allCampaigns.find((c) => c.id === r.campaign.id)
+        : allCampaigns[0];
+      if (!camp) return r;
+      const validAdsetForCamp = allAdsets.filter((a) => a.campaign_id === camp.id);
+      const adset = validAdsetForCamp[0];
+      if (!adset) {
+        mutated = true;
+        return { ...r, campaign: { id: camp.id, name: camp.name } };
+      }
+      mutated = true;
+      return {
+        ...r,
+        campaign: { id: camp.id, name: camp.name },
+        adset: { id: adset.id, name: adset.name },
+      };
+    });
+    if (mutated) onChange(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignsQuery.isSuccess, adsetsQuery.isSuccess, allCampaigns.length, allAdsets.length, rows.length]);
 
   // Limpia selecciones que ya no están en filas
   useEffect(() => {
@@ -188,7 +221,6 @@ export function AdGridEditor({
     onChange(rows.filter((r) => r.rowId !== rowId));
   };
 
-  // Bulk edit helpers
   const applyToSelected = (patch: Partial<MetaAdMetadata>) => {
     if (selected.size === 0) return;
     onChange(
@@ -232,32 +264,32 @@ export function AdGridEditor({
     }
   };
 
-  // Validación pre-launch
   const errorsByRow = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const r of rows) {
       const errs: string[] = [];
       if (!r.metadata.link_url) errs.push('Falta destination URL');
-      if (!r.metadata.headline && !(r.metadata.headlines && r.metadata.headlines.length))
+      if (
+        !r.metadata.headline &&
+        !(r.metadata.headlines && r.metadata.headlines.length)
+      )
         errs.push('Falta headline');
-      if (r.campaign.kind === 'new' && !r.campaign.spec.name.trim())
-        errs.push('Nueva campaña sin nombre');
-      if (r.adset.kind === 'new') {
-        if (!r.adset.spec.name.trim()) errs.push('Nuevo ad set sin nombre');
-        if (!r.adset.spec.daily_budget_cents || r.adset.spec.daily_budget_cents < 100)
-          errs.push('Budget inválido');
-      }
+      if (!r.campaign.id) errs.push('Falta campaña');
+      if (!r.adset.id) errs.push('Falta ad set');
       if (errs.length) map.set(r.rowId, errs);
     }
     return map;
   }, [rows]);
+
+  const noCampaigns = campaignsQuery.isSuccess && allCampaigns.length === 0;
+  const noAdSets = adsetsQuery.isSuccess && allAdsets.length === 0;
 
   return (
     <div className="space-y-3">
       {/* Top toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-800 bg-[#0a0a0a] p-3">
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={onImportAssets}>
+          <Button size="sm" onClick={onImportAssets}>
             <Plus className="mr-1.5 h-3.5 w-3.5" /> Importar assets
           </Button>
           <span className="text-xs text-gray-500">
@@ -274,7 +306,12 @@ export function AdGridEditor({
             campaigns={allCampaigns}
             adsets={allAdsets}
           />
-          <Button size="sm" variant="outline" onClick={() => setMultiBulkOpen(true)} disabled={selected.size === 0}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setMultiBulkOpen(true)}
+            disabled={selected.size === 0}
+          >
             <Wand2 className="mr-1.5 h-3.5 w-3.5" /> Multi Bulk Edit
           </Button>
           <BulkActionsMenu
@@ -285,48 +322,61 @@ export function AdGridEditor({
         </div>
       </div>
 
+      {(noCampaigns || noAdSets) && rows.length > 0 && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">
+          {noCampaigns
+            ? 'No tienes campañas en esta cuenta — créalas primero en Ads Manager y vuelve.'
+            : 'Las campañas no tienen ad sets — crea uno primero en Ads Manager y vuelve.'}
+        </div>
+      )}
+
       {/* Grid */}
-      <div className="overflow-x-auto rounded-lg border border-gray-800 bg-[#0a0a0a]">
-        <table className="min-w-[2200px] w-full text-xs">
-          <thead className="sticky top-0 z-10 bg-[#141414] text-[10px] uppercase tracking-wide text-gray-400">
-            <tr>
-              <Th className="w-10">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleSelectAll}
-                  className="h-3.5 w-3.5"
-                />
-              </Th>
-              <Th className="w-16">Asset</Th>
-              <Th className="w-44">Ad name</Th>
-              <Th className="w-56">Campaña</Th>
-              <Th className="w-56">Ad set</Th>
-              <Th className="w-72">Primary text</Th>
-              <Th className="w-56">Headlines</Th>
-              <Th className="w-56">Descriptions</Th>
-              <Th className="w-72">Destination URL</Th>
-              <Th className="w-44">Display URL</Th>
-              <Th className="w-72">URL params</Th>
-              <Th className="w-40">CTA</Th>
-              <Th className="w-32">Identidad</Th>
-              <Th className="w-32">IA features</Th>
-              <Th className="w-20">Acciones</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
+      <div className="rvz-grid-scroll overflow-x-auto rounded-lg border border-gray-800 bg-[#0a0a0a]">
+        {rows.length === 0 ? (
+          <div className="flex min-h-[280px] items-center justify-center p-12 text-center">
+            <div>
+              <p className="text-sm text-gray-400">
+                Aún no hay anuncios. Haz clic en{' '}
+                <button
+                  onClick={onImportAssets}
+                  className="text-brand-accent hover:underline"
+                >
+                  Importar assets
+                </button>{' '}
+                para empezar.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <table className="min-w-[2200px] w-full text-xs">
+            <thead className="sticky top-0 z-10 bg-[#141414] text-[10px] uppercase tracking-wide text-gray-400">
               <tr>
-                <td colSpan={15} className="p-12 text-center text-gray-500">
-                  Aún no hay anuncios. Haz clic en{' '}
-                  <button onClick={onImportAssets} className="text-brand-accent hover:underline">
-                    Importar assets
-                  </button>{' '}
-                  para empezar.
-                </td>
+                <Th className="w-10">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    className="h-3.5 w-3.5"
+                  />
+                </Th>
+                <Th className="w-16">Asset</Th>
+                <Th className="w-44">Ad name</Th>
+                <Th className="w-56">Campaña</Th>
+                <Th className="w-56">Ad set</Th>
+                <Th className="w-72">Primary text</Th>
+                <Th className="w-56">Headlines</Th>
+                <Th className="w-56">Descriptions</Th>
+                <Th className="w-72">Destination URL</Th>
+                <Th className="w-44">Display URL</Th>
+                <Th className="w-72">URL params</Th>
+                <Th className="w-40">CTA</Th>
+                <Th className="w-32">Identidad</Th>
+                <Th className="w-32">IA features</Th>
+                <Th className="w-20">Acciones</Th>
               </tr>
-            ) : (
-              rows.map((row, i) => (
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
                 <RowEditor
                   key={row.rowId}
                   row={row}
@@ -337,15 +387,16 @@ export function AdGridEditor({
                   onUpdateRow={(patch) => updateRow(row.rowId, patch)}
                   onDuplicate={() => duplicateRow(row.rowId)}
                   onDelete={() => deleteRow(row.rowId)}
-                  defaultIdentity={defaultIdentity}
                   campaigns={allCampaigns}
                   adsets={allAdsets}
+                  pages={pages}
+                  defaultPageId={defaultPageId}
                   errors={errorsByRow.get(row.rowId) || []}
                 />
-              ))
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {errorsByRow.size > 0 && (
@@ -362,6 +413,7 @@ export function AdGridEditor({
         onApplyTarget={applyTargetToSelected}
         campaigns={allCampaigns}
         adsets={allAdsets}
+        pages={pages}
       />
     </div>
   );
@@ -380,9 +432,10 @@ interface RowEditorProps {
   onUpdateRow: (patch: Partial<AdGridRow>) => void;
   onDuplicate: () => void;
   onDelete: () => void;
-  defaultIdentity: AdRowIdentity;
   campaigns: ListCampaignsResponse['campaigns'];
   adsets: ListAdSetsResponse['adsets'];
+  pages: ListPagesResponse['pages'];
+  defaultPageId: string | null;
   errors: string[];
 }
 
@@ -395,9 +448,10 @@ function RowEditor({
   onUpdateRow,
   onDuplicate,
   onDelete,
-  defaultIdentity,
   campaigns,
   adsets,
+  pages,
+  defaultPageId,
   errors,
 }: RowEditorProps) {
   const isVideo = row.generationType
@@ -443,29 +497,16 @@ function RowEditor({
       <Td>
         <CampaignCell
           value={row.campaign}
+          campaigns={campaigns}
           onChange={(c) => {
-            // Reset ad set if campaign changes (ya no aplica)
-            const currentAdset = row.adset;
-            let adsetParent: string | undefined;
-            if (currentAdset.kind === 'existing') {
-              adsetParent = adsets.find((a) => a.id === currentAdset.id)?.campaign_id;
-            }
-            const newCampaignId = c.kind === 'existing' ? c.id : undefined;
-            const shouldReset =
-              currentAdset.kind === 'existing' && adsetParent && adsetParent !== newCampaignId;
+            // Si el ad set actual no pertenece a esta campaña, lo reseteamos.
+            const adsetParent = adsets.find((a) => a.id === row.adset.id)?.campaign_id;
+            const shouldReset = !!row.adset.id && adsetParent !== c.id;
             onUpdateRow({
               campaign: c,
-              ...(shouldReset
-                ? {
-                    adset: {
-                      kind: 'new',
-                      spec: defaultNewAdSetSpec(),
-                    } as AdSetTarget,
-                  }
-                : {}),
+              ...(shouldReset ? { adset: { id: '' } } : {}),
             });
           }}
-          campaigns={campaigns}
         />
       </Td>
       <Td>
@@ -482,15 +523,38 @@ function RowEditor({
           onChange={(v) => onUpdateMetadata({ primary_text: v })}
           placeholder="Copy del cuerpo del anuncio"
         />
-        {meta.primary_texts && meta.primary_texts.length > 0 && (
+        {meta.primary_texts && meta.primary_texts.length > 1 && (
           <p className="mt-1 text-[10px] text-brand-accent">
-            +{meta.primary_texts.length} variantes
+            +{meta.primary_texts.length - 1} variantes
           </p>
         )}
+        <MultiVariantToggle
+          values={
+            meta.primary_texts && meta.primary_texts.length > 0
+              ? meta.primary_texts
+              : meta.primary_text
+                ? [meta.primary_text]
+                : []
+          }
+          onChange={(vs) =>
+            onUpdateMetadata({
+              primary_texts: vs.length > 1 ? vs : undefined,
+              primary_text: vs[0] || undefined,
+            })
+          }
+          max={5}
+          label="primary text"
+        />
       </Td>
       <Td>
         <MultiValueCell
-          values={meta.headlines && meta.headlines.length > 0 ? meta.headlines : meta.headline ? [meta.headline] : []}
+          values={
+            meta.headlines && meta.headlines.length > 0
+              ? meta.headlines
+              : meta.headline
+                ? [meta.headline]
+                : []
+          }
           onChange={(vs) =>
             onUpdateMetadata({
               headlines: vs.length > 1 ? vs : undefined,
@@ -504,7 +568,13 @@ function RowEditor({
       </Td>
       <Td>
         <MultiValueCell
-          values={meta.descriptions && meta.descriptions.length > 0 ? meta.descriptions : meta.description ? [meta.description] : []}
+          values={
+            meta.descriptions && meta.descriptions.length > 0
+              ? meta.descriptions
+              : meta.description
+                ? [meta.description]
+                : []
+          }
           onChange={(vs) =>
             onUpdateMetadata({
               descriptions: vs.length > 1 ? vs : undefined,
@@ -553,9 +623,10 @@ function RowEditor({
         </Select>
       </Td>
       <Td>
-        <IdentityPopover
+        <IdentityCell
           metadata={meta}
-          defaultIdentity={defaultIdentity}
+          pages={pages}
+          defaultPageId={defaultPageId}
           onChange={(p) => onUpdateMetadata(p)}
         />
       </Td>
@@ -681,7 +752,7 @@ function MultiValueCell({
           <input
             value={v}
             onChange={(e) => updateAt(i, e.target.value)}
-            placeholder={placeholder}
+            placeholder={i === 0 ? placeholder : `Variante ${i + 1}`}
             className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none"
             maxLength={maxLen}
           />
@@ -693,143 +764,80 @@ function MultiValueCell({
         </div>
       ))}
       {safeValues.length < max && (
-        <button
-          onClick={add}
-          className="text-[10px] text-brand-accent hover:underline"
-        >
-          + variante
+        <button onClick={add} className="text-[10px] text-brand-accent hover:underline">
+          + variante ({safeValues.length}/{max})
         </button>
       )}
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Campaign / AdSet cells
-// ---------------------------------------------------------------------------
-
-function defaultNewCampaignSpec(): NewCampaignSpec {
-  return { name: '', objective: 'OUTCOME_SALES' };
-}
-function defaultNewAdSetSpec(): NewAdSetSpec {
-  return {
-    name: '',
-    daily_budget_cents: 2000,
-    countries: ['US'],
-    age_min: 18,
-    age_max: 65,
-  };
-}
-
-function CampaignCell({
-  value,
+function MultiVariantToggle({
+  values,
   onChange,
-  campaigns,
+  max,
+  label,
 }: {
-  value: CampaignTarget;
-  onChange: (c: CampaignTarget) => void;
-  campaigns: ListCampaignsResponse['campaigns'];
+  values: string[];
+  onChange: (next: string[]) => void;
+  max: number;
+  label: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const label =
-    value.kind === 'existing'
-      ? campaigns.find((c) => c.id === value.id)?.name || value.name || `#${value.id.slice(-6)}`
-      : value.spec.name || 'Nueva campaña…';
-  const isNew = value.kind === 'new';
-
+  const count = values.length;
+  if (count >= max) return null;
+  const add = () => onChange([...values, '']);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          className={cn(
-            'flex w-full items-center justify-between rounded border bg-[#0a0a0a] px-2 py-1.5 text-left text-xs',
-            isNew ? 'border-brand-accent/40 text-brand-accent' : 'border-gray-800 text-white',
-            'hover:border-brand-accent/60',
-          )}
-        >
-          <span className="truncate">
-            {isNew && <Sparkles className="mr-1 inline h-3 w-3" />}
-            {label}
-          </span>
-          <ChevronDown className="h-3 w-3 shrink-0 text-gray-500" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 border-gray-800 bg-[#141414] p-2 text-white">
-        <div className="space-y-2">
-          <div className="text-[10px] uppercase text-gray-500">Existentes</div>
-          <div className="max-h-48 overflow-y-auto rounded border border-gray-800">
-            {campaigns.length === 0 ? (
-              <p className="p-3 text-center text-xs text-gray-500">No hay campañas en la cuenta.</p>
-            ) : (
-              campaigns.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => {
-                    onChange({ kind: 'existing', id: c.id, name: c.name });
-                    setOpen(false);
-                  }}
-                  className={cn(
-                    'flex w-full items-center justify-between border-b border-gray-800 px-2 py-1.5 text-xs last:border-b-0 hover:bg-[#0a0a0a]',
-                    value.kind === 'existing' && value.id === c.id && 'bg-brand-accent/10',
-                  )}
-                >
-                  <span className="truncate">{c.name}</span>
-                  <span className="ml-2 shrink-0 text-[10px] text-gray-500">{c.status}</span>
-                </button>
-              ))
-            )}
-          </div>
-          <div className="border-t border-gray-800 pt-2">
-            <NewCampaignForm
-              initial={value.kind === 'new' ? value.spec : defaultNewCampaignSpec()}
-              onApply={(spec) => {
-                onChange({ kind: 'new', spec });
-                setOpen(false);
-              }}
-            />
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+    <button
+      onClick={add}
+      className="mt-1 text-[10px] text-brand-accent hover:underline"
+    >
+      + variante de {label} ({count}/{max})
+    </button>
   );
 }
 
-function NewCampaignForm({
-  initial,
-  onApply,
+// ---------------------------------------------------------------------------
+// Campaign / AdSet cells (only existing)
+// ---------------------------------------------------------------------------
+
+function CampaignCell({
+  value,
+  campaigns,
+  onChange,
 }: {
-  initial: NewCampaignSpec;
-  onApply: (spec: NewCampaignSpec) => void;
+  value: CampaignTarget;
+  campaigns: ListCampaignsResponse['campaigns'];
+  onChange: (c: CampaignTarget) => void;
 }) {
-  const [spec, setSpec] = useState<NewCampaignSpec>(initial);
+  if (campaigns.length === 0) {
+    return (
+      <div className="rounded border border-amber-500/30 bg-amber-500/5 px-2 py-1.5 text-[11px] text-amber-300">
+        Sin campañas — créalas en Ads Manager
+      </div>
+    );
+  }
   return (
-    <div className="space-y-2">
-      <div className="text-[10px] uppercase text-gray-500">Nueva campaña</div>
-      <input
-        value={spec.name}
-        onChange={(e) => setSpec({ ...spec, name: e.target.value })}
-        placeholder="Nombre"
-        className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white"
-      />
-      <Select
-        value={spec.objective}
-        onValueChange={(v) => setSpec({ ...spec, objective: v as CampaignObjective })}
-      >
-        <SelectTrigger className="h-8 border-gray-800 bg-[#0a0a0a] text-xs text-white">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent className="border-gray-800 bg-[#141414] text-white">
-          {OBJECTIVES.map((o) => (
-            <SelectItem key={o.value} value={o.value}>
-              {o.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button size="sm" className="w-full" onClick={() => onApply(spec)} disabled={!spec.name.trim()}>
-        Usar nueva campaña
-      </Button>
-    </div>
+    <Select
+      value={value.id || ''}
+      onValueChange={(v) => {
+        const c = campaigns.find((x) => x.id === v);
+        if (c) onChange({ id: c.id, name: c.name });
+      }}
+    >
+      <SelectTrigger className="h-8 border-gray-800 bg-[#0a0a0a] text-xs text-white">
+        <SelectValue placeholder="Selecciona…" />
+      </SelectTrigger>
+      <SelectContent className="border-gray-800 bg-[#141414] text-white">
+        {campaigns.map((c) => (
+          <SelectItem key={c.id} value={c.id}>
+            <div className="flex items-center gap-2">
+              <span className="truncate">{c.name}</span>
+              {c.status && <span className="text-[10px] text-gray-500">{c.status}</span>}
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -844,223 +852,153 @@ function AdSetCell({
   allAdsets: ListAdSetsResponse['adsets'];
   onChange: (a: AdSetTarget) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const adsetsForCampaign = useMemo(() => {
-    if (campaign.kind !== 'existing') return [];
-    return allAdsets.filter((a) => a.campaign_id === campaign.id);
-  }, [allAdsets, campaign]);
-
-  const label =
-    value.kind === 'existing'
-      ? allAdsets.find((a) => a.id === value.id)?.name || value.name || `#${value.id.slice(-6)}`
-      : value.spec.name || 'Nuevo ad set…';
-  const isNew = value.kind === 'new';
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          className={cn(
-            'flex w-full items-center justify-between rounded border bg-[#0a0a0a] px-2 py-1.5 text-left text-xs',
-            isNew ? 'border-brand-accent/40 text-brand-accent' : 'border-gray-800 text-white',
-            'hover:border-brand-accent/60',
-          )}
-        >
-          <span className="truncate">
-            {isNew && <Sparkles className="mr-1 inline h-3 w-3" />}
-            {label}
-          </span>
-          <ChevronDown className="h-3 w-3 shrink-0 text-gray-500" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-96 border-gray-800 bg-[#141414] p-2 text-white">
-        <div className="space-y-2">
-          <div className="text-[10px] uppercase text-gray-500">
-            Existentes
-            {campaign.kind === 'new' && (
-              <span className="ml-2 text-amber-400">
-                · La campaña es nueva, sólo puedes crear un ad set nuevo.
-              </span>
-            )}
-          </div>
-          {campaign.kind === 'existing' && (
-            <div className="max-h-40 overflow-y-auto rounded border border-gray-800">
-              {adsetsForCampaign.length === 0 ? (
-                <p className="p-3 text-center text-xs text-gray-500">
-                  Esta campaña no tiene ad sets, crea uno nuevo abajo.
-                </p>
-              ) : (
-                adsetsForCampaign.map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => {
-                      onChange({ kind: 'existing', id: a.id, name: a.name });
-                      setOpen(false);
-                    }}
-                    className={cn(
-                      'flex w-full items-center justify-between border-b border-gray-800 px-2 py-1.5 text-xs last:border-b-0 hover:bg-[#0a0a0a]',
-                      value.kind === 'existing' && value.id === a.id && 'bg-brand-accent/10',
-                    )}
-                  >
-                    <span className="truncate">{a.name}</span>
-                    <span className="ml-2 shrink-0 text-[10px] text-gray-500">{a.status}</span>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-          <div className="border-t border-gray-800 pt-2">
-            <NewAdSetForm
-              initial={value.kind === 'new' ? value.spec : defaultNewAdSetSpec()}
-              onApply={(spec) => {
-                onChange({ kind: 'new', spec });
-                setOpen(false);
-              }}
-            />
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+  const adsetsForCampaign = useMemo(
+    () => (campaign.id ? allAdsets.filter((a) => a.campaign_id === campaign.id) : []),
+    [allAdsets, campaign.id],
   );
-}
 
-function NewAdSetForm({
-  initial,
-  onApply,
-}: {
-  initial: NewAdSetSpec;
-  onApply: (spec: NewAdSetSpec) => void;
-}) {
-  const [spec, setSpec] = useState<NewAdSetSpec>(initial);
-  return (
-    <div className="space-y-2">
-      <div className="text-[10px] uppercase text-gray-500">Nuevo ad set</div>
-      <input
-        value={spec.name}
-        onChange={(e) => setSpec({ ...spec, name: e.target.value })}
-        placeholder="Nombre"
-        className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white"
-      />
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="block text-[10px] text-gray-500">Budget/día (USD)</label>
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={(spec.daily_budget_cents / 100).toFixed(0)}
-            onChange={(e) =>
-              setSpec({ ...spec, daily_budget_cents: Math.round(Number(e.target.value) * 100) })
-            }
-            className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white"
-          />
-        </div>
-        <div>
-          <label className="block text-[10px] text-gray-500">País</label>
-          <Select
-            value={spec.countries[0] || 'US'}
-            onValueChange={(v) => setSpec({ ...spec, countries: [v] })}
-          >
-            <SelectTrigger className="h-8 border-gray-800 bg-[#0a0a0a] text-xs text-white">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="border-gray-800 bg-[#141414] text-white">
-              {COUNTRY_OPTIONS.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label className="block text-[10px] text-gray-500">Edad min</label>
-          <input
-            type="number"
-            min={13}
-            max={65}
-            value={spec.age_min}
-            onChange={(e) => setSpec({ ...spec, age_min: Number(e.target.value) })}
-            className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white"
-          />
-        </div>
-        <div>
-          <label className="block text-[10px] text-gray-500">Edad max</label>
-          <input
-            type="number"
-            min={13}
-            max={65}
-            value={spec.age_max}
-            onChange={(e) => setSpec({ ...spec, age_max: Number(e.target.value) })}
-            className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white"
-          />
-        </div>
+  if (!campaign.id) {
+    return (
+      <div className="rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-[11px] text-gray-500">
+        Selecciona una campaña
       </div>
-      <Button size="sm" className="w-full" onClick={() => onApply(spec)} disabled={!spec.name.trim()}>
-        Usar nuevo ad set
-      </Button>
-    </div>
+    );
+  }
+  if (adsetsForCampaign.length === 0) {
+    return (
+      <div className="rounded border border-amber-500/30 bg-amber-500/5 px-2 py-1.5 text-[11px] text-amber-300">
+        Esta campaña no tiene ad sets
+      </div>
+    );
+  }
+  return (
+    <Select
+      value={value.id || ''}
+      onValueChange={(v) => {
+        const a = adsetsForCampaign.find((x) => x.id === v);
+        if (a) onChange({ id: a.id, name: a.name });
+      }}
+    >
+      <SelectTrigger className="h-8 border-gray-800 bg-[#0a0a0a] text-xs text-white">
+        <SelectValue placeholder="Selecciona…" />
+      </SelectTrigger>
+      <SelectContent className="border-gray-800 bg-[#141414] text-white">
+        {adsetsForCampaign.map((a) => (
+          <SelectItem key={a.id} value={a.id}>
+            <div className="flex items-center gap-2">
+              <span className="truncate">{a.name}</span>
+              {a.status && <span className="text-[10px] text-gray-500">{a.status}</span>}
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Identity + AI features popovers
+// Identity cell — dropdown of pages with their IG accounts
 // ---------------------------------------------------------------------------
 
-function IdentityPopover({
+function IdentityCell({
   metadata,
-  defaultIdentity,
+  pages,
+  defaultPageId,
   onChange,
 }: {
   metadata: MetaAdMetadata;
-  defaultIdentity: AdRowIdentity;
+  pages: ListPagesResponse['pages'];
+  defaultPageId: string | null;
   onChange: (p: Partial<MetaAdMetadata>) => void;
 }) {
-  const overridden = !!(metadata.page_id_override || metadata.instagram_actor_id_override);
+  const overridePageId = metadata.page_id_override;
+  const effectivePageId = overridePageId || defaultPageId;
+  const effectivePage = pages.find((p) => p.id === effectivePageId);
+  const isOverride = !!overridePageId;
+
+  const handleSelect = (pageId: string) => {
+    if (pageId === '__default__') {
+      onChange({ page_id_override: undefined, instagram_actor_id_override: undefined });
+      return;
+    }
+    const page = pages.find((p) => p.id === pageId);
+    if (!page) return;
+    onChange({
+      page_id_override: page.id,
+      instagram_actor_id_override: page.instagram?.id,
+    });
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           className={cn(
             'flex w-full items-center justify-between rounded border bg-[#0a0a0a] px-2 py-1.5 text-xs',
-            overridden ? 'border-brand-accent/40 text-brand-accent' : 'border-gray-800 text-gray-300',
+            isOverride
+              ? 'border-brand-accent/40 text-brand-accent'
+              : 'border-gray-800 text-gray-300',
           )}
+          title={effectivePage ? effectivePage.name : 'Sin page'}
         >
-          {overridden ? 'Custom' : 'Default'}
-          <Settings className="h-3 w-3 text-gray-500" />
+          <span className="truncate">
+            {effectivePage ? effectivePage.name : 'Default'}
+          </span>
+          <Settings className="h-3 w-3 shrink-0 text-gray-500" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-72 border-gray-800 bg-[#141414] text-white">
-        <div className="space-y-2 text-xs">
-          <p className="text-[10px] uppercase text-gray-500">Identidad por anuncio</p>
-          <p className="text-[11px] text-gray-400">
-            Por defecto se usa la página + IG conectados a la cuenta. Override para usar otra.
-          </p>
-          <div>
-            <label className="block text-[10px] text-gray-500">Page ID</label>
-            <input
-              value={metadata.page_id_override || ''}
-              onChange={(e) => onChange({ page_id_override: e.target.value || undefined })}
-              placeholder={defaultIdentity.page_id || '—'}
-              className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] text-gray-500">Instagram Actor ID</label>
-            <input
-              value={metadata.instagram_actor_id_override || ''}
-              onChange={(e) =>
-                onChange({ instagram_actor_id_override: e.target.value || undefined })
-              }
-              placeholder={defaultIdentity.instagram_actor_id || '— (sólo Facebook)'}
-              className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white"
-            />
-          </div>
+        <p className="mb-2 text-[10px] uppercase text-gray-500">Identidad</p>
+        <div className="max-h-64 overflow-y-auto rounded border border-gray-800">
+          <button
+            onClick={() => handleSelect('__default__')}
+            className={cn(
+              'flex w-full items-center justify-between border-b border-gray-800 px-2 py-2 text-xs hover:bg-[#0a0a0a]',
+              !isOverride && 'bg-brand-accent/10',
+            )}
+          >
+            <span>Default ({pages.find((p) => p.id === defaultPageId)?.name || '—'})</span>
+            <span className="text-[10px] text-gray-500">cuenta</span>
+          </button>
+          {pages.length === 0 ? (
+            <p className="p-3 text-center text-xs text-gray-500">
+              Cargando pages…
+            </p>
+          ) : (
+            pages.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => handleSelect(p.id)}
+                className={cn(
+                  'flex w-full items-center justify-between border-b border-gray-800 px-2 py-2 text-xs last:border-b-0 hover:bg-[#0a0a0a]',
+                  overridePageId === p.id && 'bg-brand-accent/10',
+                )}
+              >
+                <span className="flex items-center gap-2 truncate">
+                  {p.picture_url && (
+                    <img src={p.picture_url} alt="" className="h-5 w-5 rounded-full" />
+                  )}
+                  <span className="truncate">{p.name}</span>
+                </span>
+                {p.instagram ? (
+                  <span className="text-[10px] text-brand-accent">
+                    @{p.instagram.username}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-gray-600">solo FB</span>
+                )}
+              </button>
+            ))
+          )}
         </div>
       </PopoverContent>
     </Popover>
   );
 }
+
+// ---------------------------------------------------------------------------
+// AI features popover
+// ---------------------------------------------------------------------------
 
 function AiFeaturesPopover({
   features,
@@ -1083,7 +1021,9 @@ function AiFeaturesPopover({
         <button
           className={cn(
             'flex w-full items-center justify-between rounded border bg-[#0a0a0a] px-2 py-1.5 text-xs',
-            enabled > 0 ? 'border-brand-accent/40 text-brand-accent' : 'border-gray-800 text-gray-300',
+            enabled > 0
+              ? 'border-brand-accent/40 text-brand-accent'
+              : 'border-gray-800 text-gray-300',
           )}
         >
           <span>
@@ -1167,8 +1107,14 @@ function BulkEditMenu({
         <p className="mb-2 text-[10px] uppercase text-gray-500">Aplicar campo a seleccionados</p>
         <div className="space-y-2">
           <BulkField label="Primary text" onApply={(v) => onApply({ primary_text: v })} multiline />
-          <BulkField label="Headline" onApply={(v) => onApply({ headline: v, headlines: undefined })} />
-          <BulkField label="Description" onApply={(v) => onApply({ description: v, descriptions: undefined })} />
+          <BulkField
+            label="Headline"
+            onApply={(v) => onApply({ headline: v, headlines: undefined })}
+          />
+          <BulkField
+            label="Description"
+            onApply={(v) => onApply({ description: v, descriptions: undefined })}
+          />
           <BulkField label="Destination URL" onApply={(v) => onApply({ link_url: v })} />
           <BulkField label="Display URL" onApply={(v) => onApply({ display_url: v })} />
           <BulkField label="URL params" onApply={(v) => onApply({ url_params: v })} />
@@ -1181,10 +1127,7 @@ function BulkEditMenu({
             campaigns={campaigns}
             onApply={(c) => onApplyTarget({ campaign: c })}
           />
-          <BulkAdSetTarget
-            adsets={adsets}
-            onApply={(a) => onApplyTarget({ adset: a })}
-          />
+          <BulkAdSetTarget adsets={adsets} onApply={(a) => onApplyTarget({ adset: a })} />
         </div>
       </PopoverContent>
     </Popover>
@@ -1282,7 +1225,7 @@ function BulkCampaignTarget({
   if (campaigns.length === 0) return null;
   return (
     <div>
-      <label className="block text-[10px] text-gray-500">Mover a campaña existente</label>
+      <label className="block text-[10px] text-gray-500">Mover a campaña</label>
       <div className="flex gap-1">
         <Select value={val} onValueChange={setVal}>
           <SelectTrigger className="h-8 flex-1 border-gray-800 bg-[#0a0a0a] text-xs text-white">
@@ -1299,7 +1242,7 @@ function BulkCampaignTarget({
         <button
           onClick={() => {
             const c = campaigns.find((x) => x.id === val);
-            if (c) onApply({ kind: 'existing', id: c.id, name: c.name });
+            if (c) onApply({ id: c.id, name: c.name });
           }}
           className="rounded border border-brand-accent/40 bg-brand-accent/10 px-2 text-[10px] text-brand-accent hover:bg-brand-accent/20"
         >
@@ -1321,7 +1264,7 @@ function BulkAdSetTarget({
   if (adsets.length === 0) return null;
   return (
     <div>
-      <label className="block text-[10px] text-gray-500">Mover a ad set existente</label>
+      <label className="block text-[10px] text-gray-500">Mover a ad set</label>
       <div className="flex gap-1">
         <Select value={val} onValueChange={setVal}>
           <SelectTrigger className="h-8 flex-1 border-gray-800 bg-[#0a0a0a] text-xs text-white">
@@ -1338,7 +1281,7 @@ function BulkAdSetTarget({
         <button
           onClick={() => {
             const a = adsets.find((x) => x.id === val);
-            if (a) onApply({ kind: 'existing', id: a.id, name: a.name });
+            if (a) onApply({ id: a.id, name: a.name });
           }}
           className="rounded border border-brand-accent/40 bg-brand-accent/10 px-2 text-[10px] text-brand-accent hover:bg-brand-accent/20"
         >
@@ -1396,6 +1339,7 @@ interface MultiBulkProps {
   onApplyTarget: (t: { campaign?: CampaignTarget; adset?: AdSetTarget }) => void;
   campaigns: ListCampaignsResponse['campaigns'];
   adsets: ListAdSetsResponse['adsets'];
+  pages: ListPagesResponse['pages'];
 }
 
 function MultiBulkEditModal({
@@ -1406,6 +1350,7 @@ function MultiBulkEditModal({
   onApplyTarget,
   campaigns,
   adsets,
+  pages,
 }: MultiBulkProps) {
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
   const [primaryText, setPrimaryText] = useState('');
@@ -1418,6 +1363,7 @@ function MultiBulkEditModal({
   const [aiFeatures, setAiFeatures] = useState<MetaAiFeatures>({});
   const [campaignId, setCampaignId] = useState<string>('');
   const [adsetId, setAdsetId] = useState<string>('');
+  const [pageId, setPageId] = useState<string>('');
 
   const apply = () => {
     const patch: Partial<MetaAdMetadata> = {};
@@ -1429,21 +1375,26 @@ function MultiBulkEditModal({
     if (enabled.url_params) patch.url_params = urlParams;
     if (enabled.cta) patch.cta = cta;
     if (enabled.ai_features) patch.ai_features = aiFeatures;
+    if (enabled.identity && pageId) {
+      const page = pages.find((p) => p.id === pageId);
+      patch.page_id_override = page?.id;
+      patch.instagram_actor_id_override = page?.instagram?.id;
+    }
     if (Object.keys(patch).length > 0) onApply(patch);
 
     if (enabled.campaign && campaignId) {
       const c = campaigns.find((x) => x.id === campaignId);
-      if (c) onApplyTarget({ campaign: { kind: 'existing', id: c.id, name: c.name } });
+      if (c) onApplyTarget({ campaign: { id: c.id, name: c.name } });
     }
     if (enabled.adset && adsetId) {
       const a = adsets.find((x) => x.id === adsetId);
-      if (a) onApplyTarget({ adset: { kind: 'existing', id: a.id, name: a.name } });
+      if (a) onApplyTarget({ adset: { id: a.id, name: a.name } });
     }
     onClose();
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Multi Bulk Edit">
+    <Modal isOpen={isOpen} onClose={onClose}>
       <div className="space-y-1">
         <h3 className="text-lg font-semibold text-white">Multi Bulk Edit</h3>
         <p className="text-xs text-gray-400">
@@ -1538,6 +1489,27 @@ function MultiBulkEditModal({
             </SelectContent>
           </Select>
         </MBField>
+        {pages.length > 0 && (
+          <MBField
+            enabled={!!enabled.identity}
+            onToggle={(v) => setEnabled({ ...enabled, identity: v })}
+            label="Identidad (Page + IG)"
+          >
+            <Select value={pageId} onValueChange={setPageId}>
+              <SelectTrigger className="border-gray-800 bg-[#0a0a0a] text-sm text-white">
+                <SelectValue placeholder="Selecciona…" />
+              </SelectTrigger>
+              <SelectContent className="border-gray-800 bg-[#141414] text-white">
+                {pages.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                    {p.instagram ? ` · @${p.instagram.username}` : ' · solo FB'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </MBField>
+        )}
         {campaigns.length > 0 && (
           <MBField
             enabled={!!enabled.campaign}
@@ -1620,7 +1592,12 @@ function MBField({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn('rounded border border-gray-800 bg-black/30 p-2', enabled && 'border-brand-accent/40')}>
+    <div
+      className={cn(
+        'rounded border border-gray-800 bg-black/30 p-2',
+        enabled && 'border-brand-accent/40',
+      )}
+    >
       <label className="mb-1 flex items-center gap-2 text-xs text-white">
         <input
           type="checkbox"

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Sidebar } from './sidebar';
 import { cn } from '@/lib/utils';
 
@@ -10,25 +11,41 @@ interface DashboardLayoutProps {
 
 const STORAGE_KEY = 'rvz_sidebar_collapsed';
 
+// Rutas donde la sidebar arranca colapsada por defecto (pantallas que necesitan
+// más ancho horizontal, como la grilla tipo Kitchn).
+const FORCE_COLLAPSED_PREFIXES = ['/campanas/meta/crear'];
+
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
+  const forcedCollapse = FORCE_COLLAPSED_PREFIXES.some((p) =>
+    pathname?.startsWith(p),
+  );
+
   useEffect(() => {
+    if (forcedCollapse) {
+      setCollapsed(true);
+      setHydrated(true);
+      return;
+    }
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved === '1') setCollapsed(true);
+      else setCollapsed(false);
     } catch {
       /* ignore */
     }
     setHydrated(true);
-  }, []);
+  }, [forcedCollapse]);
 
   const toggle = () => {
     setCollapsed((c) => {
       const next = !c;
       try {
-        localStorage.setItem(STORAGE_KEY, next ? '1' : '0');
+        // Sólo persistimos si no estamos en una ruta que fuerza el estado.
+        if (!forcedCollapse) localStorage.setItem(STORAGE_KEY, next ? '1' : '0');
       } catch {
         /* ignore */
       }
@@ -43,7 +60,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         className={cn(
           'flex-1 min-w-0 transition-[margin] duration-200 ease-out',
           collapsed ? 'ml-0' : 'ml-56',
-          !hydrated && 'ml-56',
+          !hydrated && (forcedCollapse ? 'ml-0' : 'ml-56'),
         )}
       >
         <div className="mx-auto max-w-[1800px] p-8">{children}</div>
