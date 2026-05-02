@@ -69,23 +69,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'No se pudo leer la tienda: ' + e.message }, { status: 502 });
   }
 
-  // 1) Upload every image referenced by the editor and replace placeholders.
+  // 1) Replace each placeholder with a Shopify CDN URL. Images uploaded
+  //    through the editor's "Imagenes" modal already live on the merchant's
+  //    cdn.shopify.com — those we substitute directly. Anything else (legacy
+  //    data: URLs, kie.ai temp URLs, externally-pasted URLs) gets fetched +
+  //    re-uploaded to Shopify Files so the published page never depends on a
+  //    third-party host that could expire or rate-limit.
   const imageMap: Record<string, string> = {};
   let bodyHtml = payload.body_html;
   if (payload.images?.length) {
     for (const img of payload.images) {
       try {
-        const bytes = await fetchAsBuffer(img.source);
-        const mimeType = guessMimeFromSource(img.source) || 'image/png';
-        const filename = sanitizeFilename(`${payload.project_id}__${img.slot}`) + '.' + extFromMime(mimeType);
-        const uploaded = await uploadImageToShopify(client, {
-          bytes: bytes.buffer,
-          filename,
-          mimeType: bytes.mime || mimeType,
-          altText: img.alt || `${payload.title} — ${img.slot}`,
-        });
-        imageMap[img.slot] = uploaded.cdnUrl;
-        bodyHtml = bodyHtml.split(img.placeholder).join(uploaded.cdnUrl);
+        let finalUrl: string;
+        if (isShopifyCdnUrl(img.source)) {
+          finalUrl = img.source;
+        } else {
+          const bytes = await fetchAsBuffer(img.source);
+          const mimeType = guessMimeFromSource(img.source) || 'image/png';
+          const filename = sanitizeFilename(`${payload.project_id}__${img.slot}`) + '.' + extFromMime(mimeType);
+          const uploaded = await uploadImageToShopify(client, {
+            bytes: bytes.buffer,
+            filename,
+            mimeType: bytes.mime || mimeType,
+            altText: img.alt || `${payload.title} — ${img.slot}`,
+          });
+          finalUrl = uploaded.cdnUrl;
+        }
+        imageMap[img.slot] = finalUrl;
+        bodyHtml = bodyHtml.split(img.placeholder).join(finalUrl);
       } catch (e: any) {
         return NextResponse.json(
           { error: `Falla al subir imagen ${img.slot}: ${e.message}` },
@@ -211,6 +222,10 @@ function extFromMime(mime: string): string {
 
 function sanitizeFilename(s: string): string {
   return s.replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 80) || 'image';
+}
+
+function isShopifyCdnUrl(url: string): boolean {
+  return /^https:\/\/(cdn\.shopify\.com|[\w-]+\.myshopify\.com\/cdn\/)/i.test(url);
 }
 
 // CSS that nukes the active Shopify theme's chrome around a Page render and

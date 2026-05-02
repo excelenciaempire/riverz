@@ -1098,11 +1098,15 @@ function collapseSlot(k){var el=imgEl(k);if(!el)return;el.src='';var ph=el.close
 function pickImg(key){ if(typeof openImgGen==='function'){openImgGen(key);return;} curImgKey=key; var m=g('img-modal');if(m)m.classList.add('on'); }
 function closeImgModal(){var m=g('img-modal');if(m)m.classList.remove('on');curImgKey=null;}
 function applyUrl(){var inp=g('im-url-in');if(!inp)return;var v=inp.value.trim();if(!v){toast('Pega una URL primero',1);return;}setSlot(curImgKey,v);var proj=getActive();if(proj)proj.images[curImgKey]=v;snapshot();saveAll();closeImgModal();toast('Imagen aplicada');}
-// Compress + upload to Supabase Storage. We do NOT store the raw data URL in
-// localStorage — a single 9 MB photo blows past Chrome's 5–10 MB localStorage
-// quota, the silent quota error wipes the project, and on the next refresh the
-// image is gone. Instead we re-encode to JPEG ≤1920px @ 0.85 quality (~300KB
-// typical), upload to Supabase, and persist only the public URL (~120 chars).
+// Upload images straight to the merchant's own Shopify Files. Each user
+// stores their landing assets in their connected store from day one — no
+// intermediate Supabase hop, no re-upload at publish time. The flow:
+//   raw File → canvas re-encode to JPEG ≤1920px @ 0.85 (≈300KB typical)
+//            → POST multipart to /api/landing-lab/upload-image
+//            → Shopify staged upload + fileCreate + poll READY (5–15s)
+//            → cdn.shopify.com URL returned to the editor.
+// localStorage only stores those ~120-char URLs, so the 5–10MB quota stops
+// being an issue.
 async function compressImageFile(file, maxDim, quality){
   if(!/^image\//.test(file.type)) return file;
   var url=URL.createObjectURL(file);
@@ -1117,15 +1121,24 @@ async function compressImageFile(file, maxDim, quality){
     return await new Promise(function(resolve,reject){canvas.toBlob(function(b){b?resolve(b):reject(new Error('No se pudo recodificar la imagen'));},'image/jpeg',quality);});
   } finally { URL.revokeObjectURL(url); }
 }
-async function uploadImageToStorage(blob, originalName){
+async function uploadImageToShopifyFiles(blob, originalName, slotKey){
+  var proj=getActive();
+  var fd=new FormData();
   var clean=(originalName||'image').replace(/[^a-zA-Z0-9._-]+/g,'_').replace(/\.\w+$/,'')+'.jpg';
-  var r1=await fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:clean,contentType:'image/jpeg',kind:'landing_image'})});
-  if(!r1.ok){var t=await r1.text().catch(function(){return '';});throw new Error('No se pudo iniciar la subida ('+r1.status+(t?': '+t.slice(0,120):'')+')');}
-  var data=await r1.json();
-  if(!data.signedUrl||!data.publicUrl) throw new Error('Respuesta de upload incompleta');
-  var r2=await fetch(data.signedUrl,{method:'PUT',headers:{'Content-Type':'image/jpeg'},body:blob});
-  if(!r2.ok) throw new Error('Subida a Storage fallida ('+r2.status+')');
-  return data.publicUrl;
+  fd.append('file', blob, clean);
+  if(proj){
+    fd.append('project_id', proj.id || 'landing');
+    if(proj.name) fd.append('alt', proj.name + ' — ' + (slotKey||'image'));
+  }
+  if(slotKey) fd.append('slot', slotKey);
+  var res=await fetch('/api/landing-lab/upload-image',{method:'POST',body:fd});
+  var data=null;try{data=await res.json();}catch(_){}
+  if(!res.ok){
+    if(data && data.requiresReconnect) throw new Error((data.error||'Conecta tu Shopify primero')+' — ve a Configuración → Integraciones');
+    throw new Error((data && data.error) || ('Subida fallida ('+res.status+')'));
+  }
+  if(!data || !data.url) throw new Error('Respuesta sin URL');
+  return data.url;
 }
 async function onFilePick(e){
   var file=e.target.files[0];
@@ -1133,9 +1146,9 @@ async function onFilePick(e){
     if(!file||!curImgKey)return;
     if(!file.type.startsWith('image/'))return toast('Solo imagenes',1);
     if(file.size>30*1024*1024)return toast('Imagen muy grande (max 30MB)',1);
-    toast('Subiendo imagen...',0);
+    toast('Subiendo a Shopify...',0);
     var blob=await compressImageFile(file,1920,0.85);
-    var url=await uploadImageToStorage(blob,file.name);
+    var url=await uploadImageToShopifyFiles(blob,file.name,curImgKey);
     setSlot(curImgKey,url);
     var proj=getActive();if(proj)proj.images[curImgKey]=url;
     snapshot();saveAll();closeImgModal();toast('Imagen cargada');
@@ -1697,10 +1710,10 @@ function igpFileChange(e) {
 
 async function igpFileApply() {
   if (!igpPendingFileObj || !igpSlot) { igpToast('Elige una imagen', 1); return; }
-  igpToast('Subiendo imagen...', 0);
+  igpToast('Subiendo a Shopify...', 0);
   try {
     var blob = await compressImageFile(igpPendingFileObj, 1920, 0.85);
-    var url  = await uploadImageToStorage(blob, igpPendingFileObj.name);
+    var url  = await uploadImageToShopifyFiles(blob, igpPendingFileObj.name, igpSlot);
     window.setSlot(igpSlot, url);
     var proj = window.getActive();
     if (proj) proj.images[igpSlot] = url;
