@@ -45,7 +45,7 @@ export function getShopifyEnv(): ShopifyEnv {
   //   write_content → Online Store Pages (pageCreate / pageUpdate)
   // read_* counterparts are implied by the write ones for these resources.
   const scopes = process.env.SHOPIFY_SCOPES || 'write_files,write_content';
-  const apiVersion = process.env.SHOPIFY_API_VERSION || '2025-01';
+  const apiVersion = process.env.SHOPIFY_API_VERSION || '2025-10';
   return { apiKey, apiSecret, redirectUri, scopes, apiVersion };
 }
 

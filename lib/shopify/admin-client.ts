@@ -6,7 +6,7 @@
  * the Shopify API version.
  */
 
-const DEFAULT_API_VERSION = process.env.SHOPIFY_API_VERSION || '2025-01';
+const DEFAULT_API_VERSION = process.env.SHOPIFY_API_VERSION || '2025-10';
 
 export class ShopifyAdminClient {
   constructor(

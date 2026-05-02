@@ -59,7 +59,7 @@ SHOPIFY_API_SECRET=<the client secret from the Partner dashboard>
 SHOPIFY_OAUTH_REDIRECT_URI=https://riverzai.com/api/shopify/callback
 
 # Optional (defaults shown)
-SHOPIFY_API_VERSION=2025-01
+SHOPIFY_API_VERSION=2025-10
 SHOPIFY_SCOPES=write_files,write_content
 
 # Already present for the Meta integration — Shopify reuses the same

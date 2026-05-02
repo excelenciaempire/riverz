@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   // if this 4xx/5xx — the row already says "uninstalled" once we update it.
   try {
     const token = decryptShopifyToken(row);
-    const apiVersion = process.env.SHOPIFY_API_VERSION || '2025-01';
+    const apiVersion = process.env.SHOPIFY_API_VERSION || '2025-10';
     await fetch(`https://${shopDomain}/admin/api/${apiVersion}/api_permissions/current.json`, {
       method: 'DELETE',
       headers: { 'X-Shopify-Access-Token': token },
