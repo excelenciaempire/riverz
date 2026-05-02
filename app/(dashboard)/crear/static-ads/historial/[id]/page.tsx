@@ -223,11 +223,13 @@ function VariationSlide({
   isSelected,
   onToggleSelect,
   onEdit,
+  onCompare,
 }: {
   gen: Generation;
   isSelected: boolean;
   onToggleSelect: () => void;
   onEdit: () => void;
+  onCompare: () => void;
 }) {
   const isCompleted = gen.status === 'completed';
   const isFailed = gen.status === 'failed';
@@ -239,29 +241,33 @@ function VariationSlide({
     <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0a0a0a]">
       {isCompleted && gen.result_url ? (
         <>
+          {/* Click on the image opens the comparison modal (template ↔ result).
+              Selection moved to the dedicated top-right circle so a single
+              click can't both open the modal AND toggle selection. */}
           <img
             src={gen.result_url}
             alt={title || `Variation ${gen.input_data?.variationIndex || ''}`}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-            onClick={onToggleSelect}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] cursor-zoom-in"
+            onClick={onCompare}
           />
-          {/* Subtle ring + small check when selected — no big overlay */}
           <div
             className={cn(
               'absolute inset-0 transition-all pointer-events-none rounded-xl',
               isSelected ? 'ring-2 ring-[#07A498] bg-[#07A498]/5' : '',
             )}
           />
-          <div
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+            aria-label={isSelected ? 'Deseleccionar' : 'Seleccionar'}
             className={cn(
-              'absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full transition-all',
+              'absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full transition-all cursor-pointer',
               isSelected
                 ? 'bg-[#07A498] text-white'
-                : 'bg-black/40 text-white/0 group-hover:text-white/80 group-hover:bg-black/60',
+                : 'bg-black/40 text-white/40 hover:text-white hover:bg-black/70 group-hover:text-white/80 group-hover:bg-black/60',
             )}
           >
             <Check className="h-3.5 w-3.5" />
-          </div>
+          </button>
         </>
       ) : isPending ? (
         <LoadingTile
@@ -297,11 +303,13 @@ function TemplateCard({
   selectedImages,
   onToggleSelect,
   onEdit,
+  onCompare,
 }: {
   group: TemplateGroup;
   selectedImages: string[];
   onToggleSelect: (id: string) => void;
   onEdit: (gen: Generation) => void;
+  onCompare: (gen: Generation) => void;
 }) {
   const [slideIndex, setSlideIndex] = useState(0);
   const variations = group.variations;
@@ -323,6 +331,7 @@ function TemplateCard({
           isSelected={selectedImages.includes(current.id)}
           onToggleSelect={() => onToggleSelect(current.id)}
           onEdit={() => onEdit(current)}
+          onCompare={() => onCompare(current)}
         />
 
         {total > 1 && (
@@ -380,6 +389,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const queryClient = useQueryClient();
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [editingImage, setEditingImage] = useState<Generation | null>(null);
+  const [comparingGen, setComparingGen] = useState<Generation | null>(null);
   const [editPrompt, setEditPrompt] = useState('');
   const [generatedEditUrl, setGeneratedEditUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -405,25 +415,36 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     }
   });
   
-  // Throttle process-queue triggers. The query refetches every 2s while
-  // generations are pending, which used to fire process-queue every 2s and
-  // overlapping ticks each created their own Gemini calls. Now we only
-  // POST process-queue at most once every 8s — the backend has its own
-  // atomic claim per step so even concurrent calls are safe, but throttling
-  // here removes the wasted HTTP roundtrips entirely.
+  // Adaptive throttle for process-queue triggers.
+  //
+  // Two regimes:
+  //   - SLOW (8s) while any row is in a Gemini step (analyzing/adapting/...).
+  //     Each tick that "claims" Step 1 or 2 burns 60–120s of LLM time, and
+  //     the atomic CAS on status already serializes them, so spamming the
+  //     endpoint just adds wasted HTTP roundtrips with no UX gain.
+  //   - FAST (3s) when every active row has reached Nano Banana phase
+  //     (pending_generation / generating). Step 5 is just a single cheap
+  //     GET to kie.ai's /jobs/recordInfo + (on SUCCESS) a download+upload
+  //     to Supabase Storage. Polling faster here directly shortens the
+  //     "98% Generando stuck after kie.ai already finished" window — that
+  //     used to be up to 8s of pure waiting on the throttle alone.
   const lastProcessQueueAtRef = useRef<number>(0);
-  const PROCESS_QUEUE_MIN_INTERVAL_MS = 8_000;
+  const PROCESS_QUEUE_SLOW_MS = 8_000;
+  const PROCESS_QUEUE_FAST_MS = 3_000;
 
   useEffect(() => {
     const processQueue = async () => {
-        // Trigger processing for any non-terminal status
-        const needsProcessing = project?.generations?.some(
-            (g: any) => ['pending_analysis', 'analyzing', 'adapting', 'generating_prompt', 'pending_generation', 'generating'].includes(g.status)
-        );
-        if (!needsProcessing) return;
+        const earlyPhaseStatuses = ['pending_analysis', 'analyzing', 'adapting', 'generating_prompt'];
+        const latePhaseStatuses  = ['pending_generation', 'generating'];
 
+        const inEarlyPhase = project?.generations?.some((g: any) => earlyPhaseStatuses.includes(g.status)) ?? false;
+        const inLatePhase  = project?.generations?.some((g: any) => latePhaseStatuses.includes(g.status))  ?? false;
+
+        if (!inEarlyPhase && !inLatePhase) return;
+
+        const interval = inEarlyPhase ? PROCESS_QUEUE_SLOW_MS : PROCESS_QUEUE_FAST_MS;
         const now = Date.now();
-        if (now - lastProcessQueueAtRef.current < PROCESS_QUEUE_MIN_INTERVAL_MS) return;
+        if (now - lastProcessQueueAtRef.current < interval) return;
         lastProcessQueueAtRef.current = now;
 
         try {
@@ -645,7 +666,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   return (
     <div className="flex h-screen overflow-hidden bg-black text-white">
       {/* Main Content */}
-      <div className={cn("flex-1 overflow-y-auto p-6 transition-all", editingImage ? "mr-[400px]" : "")}>
+      <div className={cn("flex-1 overflow-y-auto p-6 transition-all", editingImage ? "mr-[560px]" : "")}>
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -706,7 +727,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             a single LoadingTile placeholder so the user sees the same
             liquid-glass loading animation as a real tile. The query keeps
             polling, so the placeholder is replaced as soon as the row lands. */}
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {templateGroups.length === 0 && (
             <div className="rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/60">
@@ -741,15 +762,76 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 setEditPrompt('');
                 setGeneratedEditUrl(null);
               }}
+              onCompare={(gen) => setComparingGen(gen)}
             />
           ))}
         </div>
       </div>
 
+      {/* Comparison modal — opens when clicking a completed image.
+          Shows the original template thumbnail next to the generated result
+          at FULL natural size (object-contain, never cropped). The user can
+          scroll independently if either image overflows the viewport. */}
+      {comparingGen && (
+        <div
+          className="fixed inset-0 z-[60] flex flex-col bg-black/95 backdrop-blur-sm"
+          onClick={() => setComparingGen(null)}
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+            <div className="text-sm text-gray-300">
+              <span className="text-gray-500">Comparando:</span>{' '}
+              <span className="text-white">
+                {comparingGen.input_data?.templateName || 'Plantilla'}
+              </span>
+            </div>
+            <button
+              onClick={() => setComparingGen(null)}
+              className="flex items-center gap-2 text-gray-300 hover:text-white text-sm"
+              aria-label="Cerrar comparación"
+            >
+              <X className="h-5 w-5" />
+              Cerrar
+            </button>
+          </div>
+
+          <div
+            className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div className="text-xs uppercase tracking-wider text-gray-400">
+                Plantilla original
+              </div>
+              {comparingGen.input_data?.templateThumbnail ? (
+                <img
+                  src={comparingGen.input_data.templateThumbnail}
+                  alt="Plantilla original"
+                  className="max-w-full h-auto rounded-lg border border-white/10"
+                />
+              ) : (
+                <div className="flex items-center justify-center w-full aspect-[3/4] rounded-lg border border-white/10 text-gray-500 text-sm">
+                  Sin plantilla original disponible
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <div className="text-xs uppercase tracking-wider text-[#07A498]">
+                Resultado generado
+              </div>
+              <img
+                src={comparingGen.result_url}
+                alt="Resultado generado"
+                className="max-w-full h-auto rounded-lg border border-white/10"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Drawer */}
-      <div 
+      <div
         className={cn(
-          "fixed right-0 top-0 h-screen w-[400px] bg-[#141414] border-l border-gray-800 shadow-2xl transition-transform duration-300 transform p-6 flex flex-col z-50",
+          "fixed right-0 top-0 h-screen w-[560px] bg-[#141414] border-l border-gray-800 shadow-2xl transition-transform duration-300 transform p-6 flex flex-col z-50",
           editingImage ? "translate-x-0" : "translate-x-full"
         )}
       >
@@ -768,12 +850,16 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
         {editingImage && (
           <div className="flex-1 flex flex-col gap-6 overflow-y-auto">
-            {/* Image Preview */}
-            <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-700">
+            {/* Image Preview — uses object-contain so the full generation is
+                always visible regardless of its aspect ratio (3:4, 1:1, 9:16
+                all show un-cropped). The container caps height to roughly
+                two-thirds of the viewport so the Instrucciones panel below
+                stays reachable without scrolling on most screens. */}
+            <div className="relative rounded-lg overflow-hidden border border-gray-700 bg-[#0a0a0a] flex items-center justify-center max-h-[65vh]">
               <img
                 src={generatedEditUrl || editingImage.result_url}
                 alt="Editing"
-                className="h-full w-full object-cover"
+                className="max-h-[65vh] w-auto max-w-full object-contain"
               />
               {isGenerating && (
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
