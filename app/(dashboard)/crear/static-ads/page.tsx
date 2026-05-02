@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -348,23 +348,81 @@ export default function StaticAdsPage() {
     }
   });
 
-  // Fetch ad concepts (generated from products)
-  const { data: adConcepts } = useQuery({
+  // Fetch ad concepts. READ-ONLY — never generates. Empty state in the UI
+  // shows the "Generar ideas" button which calls /ideate/generate to trigger
+  // the heavy pipeline.
+  const queryClient = useQueryClient();
+  const { data: adConcepts, isFetching: isFetchingConcepts } = useQuery({
     queryKey: ['ad-concepts', selectedProduct],
     queryFn: async () => {
       if (!selectedProduct) return null;
-
       const response = await fetch('/api/static-ads/ideate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId: selectedProduct }),
       });
-
       if (!response.ok) throw new Error('Failed to fetch concepts');
       return response.json();
     },
     enabled: !!selectedProduct && activeTab === 'ideacion',
   });
+
+  // Multi-select state for the Ideación tab. Click on a card = toggle
+  // selection. The bottom action bar shows the credit cost and dispatches a
+  // single batch call to /generate-from-ideas.
+  const [selectedIdeaIds, setSelectedIdeaIds] = useState<string[]>([]);
+  const [confirmIdeasOpen, setConfirmIdeasOpen] = useState(false);
+
+  // Trigger the heavy ideation pipeline (concept generation + per-concept
+  // image_prompt generation). Wall-clock 30–90s; UI shows spinner.
+  const generateIdeas = useMutation({
+    mutationFn: async () => {
+      if (!selectedProduct) throw new Error('Selecciona un producto');
+      const response = await fetch('/api/static-ads/ideate/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: selectedProduct }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'No se pudieron generar ideas');
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`${data.inserted} ideas generadas`);
+      queryClient.invalidateQueries({ queryKey: ['ad-concepts', selectedProduct] });
+    },
+    onError: (err: any) => toast.error(err.message || 'Error generando ideas'),
+  });
+
+  // Multi-image dispatch. Cobra al click (validated server-side).
+  const generateFromIdeas = useMutation({
+    mutationFn: async ({ ideaIds }: { ideaIds: string[] }) => {
+      const response = await fetch('/api/static-ads/generate-from-ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ideaIds, productId: selectedProduct }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'No se pudo iniciar la generación');
+      return data as { projectId: string; inserted: number };
+    },
+    onSuccess: (data) => {
+      toast.success(`Generando ${data.inserted} imagen${data.inserted === 1 ? '' : 'es'}...`);
+      setSelectedIdeaIds([]);
+      setConfirmIdeasOpen(false);
+      router.push(`/crear/static-ads/historial/${data.projectId}`);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Error al generar');
+      setConfirmIdeasOpen(false);
+    },
+  });
+
+  const toggleIdeaSelection = (ideaId: string) => {
+    setSelectedIdeaIds((prev) =>
+      prev.includes(ideaId) ? prev.filter((id) => id !== ideaId) : [...prev, ideaId]
+    );
+  };
 
   const canEditTemplate = (index: number) => {
     if (userData?.plan_type !== 'free') return true;
@@ -811,55 +869,284 @@ export default function StaticAdsPage() {
               />
           </div>
 
-          {selectedProduct || adConcepts ? (
-            <div className="space-y-8">
-              {awarenessLevels.map((level, levelIndex) => (
-                <div key={levelIndex}>
-                  {/* Level Header */}
-                  <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#07A498] text-sm font-bold text-white">
-                      {levelIndex === 0 ? '💡' : levelIndex === 1 ? '⚠️' : '✨'}
+          {selectedProduct ? (
+            (() => {
+              const levelKeys = ['unaware', 'problem_aware', 'solution_aware'] as const;
+              type Concept = {
+                id: string;
+                product_id: string;
+                awareness_level: string;
+                headline: string;
+                description: string;
+                hook?: string;
+                cta?: string;
+                image_prompt?: string | null;
+              };
+              const conceptsByLevel: Record<string, Concept[]> =
+                adConcepts?.concepts || { unaware: [], problem_aware: [], solution_aware: [] };
+              const totalConcepts =
+                (conceptsByLevel.unaware?.length || 0) +
+                (conceptsByLevel.problem_aware?.length || 0) +
+                (conceptsByLevel.solution_aware?.length || 0);
+
+              // Initial fetch in flight — show a quiet placeholder. This is
+              // distinct from "generating" which goes through generateIdeas.
+              if (isFetchingConcepts && !adConcepts) {
+                return (
+                  <div className="flex items-center justify-center py-16">
+                    <Loader2 className="h-6 w-6 animate-spin text-[#07A498]" />
+                  </div>
+                );
+              }
+
+              // Empty state — no concepts yet for this product.
+              if (totalConcepts === 0) {
+                return (
+                  <div className="rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332] p-12 text-center">
+                    <Sparkles className="mx-auto h-10 w-10 text-[#07A498]" />
+                    <h3 className="mt-4 text-lg font-semibold text-white">
+                      Aún no hay ideas para este producto
+                    </h3>
+                    <p className="mx-auto mt-1 max-w-md text-sm text-gray-400">
+                      El sistema interno generará ideas creativas basadas en el research y la knowledge base
+                      del producto, listas para convertirse en imágenes.
+                    </p>
+                    <Button
+                      onClick={() => generateIdeas.mutate()}
+                      disabled={generateIdeas.isPending}
+                      className="mt-6 bg-[#07A498] text-white hover:bg-[#068f84]"
+                    >
+                      {generateIdeas.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generando ideas...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Generar ideas
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-8 pb-32">
+                  {/* Toolbar: total + Generar más */}
+                  <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0f1620] px-4 py-3">
+                    <div className="text-sm text-gray-300">
+                      <span className="font-medium text-white">{totalConcepts}</span> ideas disponibles
                     </div>
-                    <h3 className="text-lg font-semibold text-white">{level}</h3>
+                    <Button
+                      variant="outline"
+                      onClick={() => generateIdeas.mutate()}
+                      disabled={generateIdeas.isPending}
+                      className="border-gray-700 text-gray-300 hover:text-white"
+                    >
+                      {generateIdeas.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generando...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Generar más ideas
+                        </>
+                      )}
+                    </Button>
                   </div>
 
-                  {/* Concepts Grid */}
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {[...Array(5)].map((_, index) => (
-                      <div
-                        key={index}
-                        className="group rounded-lg border border-gray-700 bg-[#1a2332] p-4 transition hover:border-[#07A498]"
-                      >
-                        <div className="mb-3 flex items-start justify-between">
-                          <h4 className="text-sm font-medium text-[#07A498]">
-                            ¿Sabías que el {levelIndex * 20 + index * 5}% de las personas tienen déficit de vitamina?
-                          </h4>
-                          <button className="text-gray-400 hover:text-yellow-400">
-                            <Star className="h-4 w-4" />
-                          </button>
-                        </div>
-                        
-                        <p className="mb-3 text-xs text-gray-400">
-                          La mayoría ignora su cansancio, dolores y bajo humor pueden deberse a un déficit silencioso que impacta tu bienestar. Descubre cómo una pequeña cápsula puede transformar tu energía.
-                        </p>
+                  {awarenessLevels.map((level, levelIndex) => {
+                    const concepts = conceptsByLevel[levelKeys[levelIndex]] || [];
 
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-[#07A498]">CTA: Descubre Más</span>
-                          <button className="rounded bg-gray-800 px-2 py-1 text-gray-300 hover:bg-gray-700">
-                            Copiar Idea
-                          </button>
+                    return (
+                      <div key={levelIndex}>
+                        <div className="mb-4 flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#07A498] text-sm font-bold text-white">
+                            {levelIndex === 0 ? '💡' : levelIndex === 1 ? '⚠️' : '✨'}
+                          </div>
+                          <h3 className="text-lg font-semibold text-white">{level}</h3>
+                          <span className="text-xs text-gray-500">{concepts.length} ideas</span>
                         </div>
+
+                        {concepts.length === 0 ? (
+                          <div className="rounded-lg border border-dashed border-gray-700 bg-[#0f1620] p-6 text-center text-sm text-gray-500">
+                            No hay ideas en este nivel todavía
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {concepts.map((concept) => {
+                              const hasPrompt = !!concept.image_prompt?.trim();
+                              const isSelected = selectedIdeaIds.includes(concept.id);
+
+                              return (
+                                <div
+                                  key={concept.id}
+                                  onClick={() => hasPrompt && toggleIdeaSelection(concept.id)}
+                                  className={cn(
+                                    'group flex cursor-pointer flex-col rounded-lg border-2 bg-[#1a2332] p-4 transition',
+                                    !hasPrompt && 'cursor-not-allowed opacity-60',
+                                    isSelected
+                                      ? 'border-[#07A498] ring-2 ring-[#07A498]/30'
+                                      : 'border-gray-700 hover:border-[#07A498]/60'
+                                  )}
+                                >
+                                  <div className="mb-3 flex items-start justify-between gap-2">
+                                    <h4 className="text-sm font-medium text-[#07A498]">
+                                      {concept.headline}
+                                    </h4>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      {!hasPrompt && (
+                                        <span
+                                          className="text-[10px] uppercase tracking-wide text-amber-400"
+                                          title="El sistema aún no generó el prompt para esta idea"
+                                        >
+                                          sin prompt
+                                        </span>
+                                      )}
+                                      <div
+                                        className={cn(
+                                          'flex h-5 w-5 items-center justify-center rounded-full border transition',
+                                          isSelected
+                                            ? 'border-[#07A498] bg-[#07A498] text-white'
+                                            : 'border-gray-600 bg-transparent'
+                                        )}
+                                      >
+                                        {isSelected && <Check className="h-3 w-3" />}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <p className="mb-3 text-xs text-gray-400 line-clamp-4">
+                                    {concept.description}
+                                  </p>
+
+                                  <div
+                                    className="mt-auto flex items-center justify-between gap-2 text-xs"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {concept.cta && (
+                                      <span className="text-[#07A498]">CTA: {concept.cta}</span>
+                                    )}
+                                    <button
+                                      className="rounded bg-gray-800 px-2 py-1 text-gray-300 hover:bg-gray-700"
+                                      onClick={() => {
+                                        const block = [
+                                          concept.headline,
+                                          '',
+                                          concept.description,
+                                          concept.cta ? `\nCTA: ${concept.cta}` : '',
+                                        ].join('\n');
+                                        navigator.clipboard.writeText(block.trim());
+                                        toast.success('Idea copiada');
+                                      }}
+                                    >
+                                      Copiar
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              );
+            })()
           ) : (
             <div className="rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332] p-12 text-center">
               <p className="text-gray-400">
                 Selecciona un producto para generar ideas de anuncios
               </p>
+            </div>
+          )}
+
+          {/* Bottom action bar — appears when at least 1 idea is selected.
+              Mirrors the Plantillas tab UX so the user has the same mental
+              model. Cost is computed client-side for display; the server
+              re-validates and cobra atomically. */}
+          {selectedIdeaIds.length > 0 && (
+            <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-800 bg-[#0a0f1a]/95 px-6 py-4 backdrop-blur">
+              <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+                <div className="text-sm text-gray-300">
+                  <span className="font-semibold text-white">{selectedIdeaIds.length}</span> idea
+                  {selectedIdeaIds.length === 1 ? '' : 's'} seleccionada
+                  {selectedIdeaIds.length === 1 ? '' : 's'} ·{' '}
+                  <span className="text-[#07A498]">{selectedIdeaIds.length * 14} créditos</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedIdeaIds([])}
+                    className="border-gray-700 text-gray-300"
+                  >
+                    Limpiar
+                  </Button>
+                  <Button
+                    onClick={() => setConfirmIdeasOpen(true)}
+                    disabled={generateFromIdeas.isPending}
+                    className="bg-[#07A498] text-white hover:bg-[#068f84]"
+                  >
+                    {generateFromIdeas.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-2 h-4 w-4" />
+                    )}
+                    Generar {selectedIdeaIds.length} imagen
+                    {selectedIdeaIds.length === 1 ? '' : 'es'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Confirmation modal before charging credits. */}
+          {confirmIdeasOpen && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+              onClick={() => !generateFromIdeas.isPending && setConfirmIdeasOpen(false)}
+            >
+              <div
+                className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#0f1620] p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-lg font-semibold text-white">Confirmar generación</h3>
+                <p className="mt-2 text-sm text-gray-400">
+                  Vas a generar <span className="text-white">{selectedIdeaIds.length}</span> imagen
+                  {selectedIdeaIds.length === 1 ? '' : 'es'} a partir de las ideas seleccionadas. Se
+                  descontarán <span className="text-[#07A498]">{selectedIdeaIds.length * 14} créditos</span>{' '}
+                  de tu cuenta.
+                </p>
+                <div className="mt-6 flex items-center justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setConfirmIdeasOpen(false)}
+                    disabled={generateFromIdeas.isPending}
+                    className="border-gray-700 text-gray-300"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={() => generateFromIdeas.mutate({ ideaIds: selectedIdeaIds })}
+                    disabled={generateFromIdeas.isPending}
+                    className="bg-[#07A498] text-white hover:bg-[#068f84]"
+                  >
+                    {generateFromIdeas.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generando...
+                      </>
+                    ) : (
+                      'Confirmar y generar'
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>

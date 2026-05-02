@@ -24,28 +24,47 @@ interface AIPrompt {
   updated_at: string;
 }
 
-// Categories grouped by APP FUNCTION. Each value matches what's stored in
-// the `category` column on `ai_prompts`. Order here = display order in the UI.
+// Categories grouped by PROCESS. Each value matches what's stored in the
+// `category` column on `ai_prompts`. Order here = display order in the UI.
+//
+// "Static Ads · Clonación y Agregar" bundles the prompts shared by BOTH the
+// curated-gallery clone flow AND the user-uploaded ("Agregar") flow — they
+// run the exact same pipeline (template_analysis_json → template_adaptation
+// → direct JSON handoff to Nano Banana), so a single category prevents the
+// admin from having to maintain two parallel sets that must stay in sync.
+// The edit prompt lives in the same bucket because it's part of the same
+// "image manipulation on a single canvas" surface area.
+//
+// "Static Ads · Ideación" is its own bucket: it powers a different pipeline
+// (text-only ideas → direct-to-Nano-Banana, no template, no Gemini analysis
+// at runtime). The internal system that POPULATES the ideas + their image
+// prompts also lives here.
 const CATEGORIES = [
-  { value: 'static_ads', label: '🎨 Static Ads · Clonación', description: 'Pipeline de clonación de templates con producto. Paso 1 (análisis JSON del template) y Paso 2 (adaptación al producto). El paso 3 es enviar el JSON adaptado directamente a Nano Banana — no usa prompt, no aparece aquí.' },
-  { value: 'image_edit', label: '✏️ Edición con IA', description: 'Workflow independiente. Genera un nuevo prompt para Nano Banana cuando el usuario pide cambios sobre una imagen ya generada. No forma parte de la clonación.' },
-  { value: 'product_research', label: '🔬 Research de Producto', description: 'Análisis profundo del producto y buyer persona — alimenta a la clonación.' },
+  { value: 'static_ads_clone_agregar', label: '🎨 Static Ads · Clonación y Agregar', description: 'Pipeline compartida por la galería de plantillas y por las plantillas que sube el usuario en la pestaña Agregar. Incluye análisis del template (Paso 1), adaptación al producto (Paso 2) y la edición posterior de imágenes ya generadas. El paso 3 (envío del JSON a Nano Banana) no usa prompt y no aparece aquí.' },
+  { value: 'static_ads_ideacion', label: '💡 Static Ads · Ideación', description: 'Sistema interno que genera ideas de ads por nivel de awareness y produce el prompt directo para Nano Banana Pro de cada idea. No usa plantilla — la imagen se genera desde texto + las fotos del producto.' },
+  { value: 'product_research', label: '🔬 Research de Producto', description: 'Análisis profundo del producto y buyer persona — alimenta a la clonación y a la ideación.' },
   { value: 'stealer', label: '🎬 Stealer (Video clones)', description: 'Pipeline para clonar videos UGC con Veo 3.1' },
   { value: 'ugc', label: '🎤 UGC Chat', description: 'Generación de videos talking-head con Veo 3.1' },
   { value: 'landing_lab', label: '📄 Landing Lab', description: 'Copy y prompts visuales para landings' },
   { value: 'other', label: '📁 Otros / Legacy', description: 'Prompts antiguos o de uso general' }
 ];
 
-// Pipeline ordering for the Static Ads clone flow ONLY. Edit is a separate
-// workflow with its own category — don't list it here or it gets a "PASO N"
-// badge that implies it's a step in the clone pipeline, which it isn't.
+// Pipeline step ordering inside each Static Ads category. The badge
+// "PASO N" only renders for keys with order < 90 — anything ≥ 90 is treated
+// as legacy and gets the "Legacy" badge instead.
 const STATIC_ADS_ORDER: Record<string, number> = {
+  // Clonación y Agregar
   template_analysis_json: 1,
   template_adaptation: 2,
-  static_ads_5_variations_prompts: 90, // legacy
-  static_ads_prompt_generation: 91,    // legacy
-  static_ads_clone: 92,                 // legacy (one-shot Nano Banana prompt builder, replaced by direct-JSON handoff)
-  template_analysis: 93,                // legacy
+  static_ads_edit_instructions: 3,
+  // Ideación
+  ideation_concept_generation: 1,
+  ideation_image_prompt: 2,
+  // Legacy
+  static_ads_5_variations_prompts: 90,
+  static_ads_prompt_generation: 91,
+  static_ads_clone: 92,
+  template_analysis: 93,
 };
 
 export function PromptsManager() {
@@ -55,7 +74,7 @@ export function PromptsManager() {
   const [formData, setFormData] = useState({
     key: '',
     name: '',
-    category: 'static_ads',
+    category: 'static_ads_clone_agregar',
     prompt_text: '',
     description: '',
     variables: '',
@@ -181,7 +200,7 @@ export function PromptsManager() {
     setFormData({
       key: '',
       name: '',
-      category: 'static_ads',
+      category: 'static_ads_clone_agregar',
       prompt_text: '',
       description: '',
       variables: '',
