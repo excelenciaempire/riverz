@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title data-v-text="page-title">5 Razones — Sérum Pilar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;800&display=swap" rel="stylesheet">
+<style>
+/* ─── RESET / TOKENS ─────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+:root{
+  --ink:#0f1115;
+  --ink-2:#1c1f24;
+  --muted:#5a6068;
+  --rule:#e6e8eb;
+  --bg:#ffffff;
+  --navy:#1f3045;
+  --sage:#dff4e6;
+  --sage-deep:#16704c;
+  --sage-line:#3da776;
+  --rose:#e44e3a;
+  --gold:#d8b059;
+  --max:760px;
+  --gap:20px;
+  --r-md:10px;
+  --r-lg:16px;
+  --shadow:0 2px 12px rgba(15,17,21,.06);
+}
+body{font-family:'Inter',system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:var(--bg);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+img{max-width:100%;display:block;height:auto}
+a{color:inherit}
+p{margin:0 0 1em}
+h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:800;color:var(--ink)}
+
+/* ─── PAGE CONTAINER ─────────────────────────────────────────── */
+.adv{max-width:var(--max);margin:0 auto;padding:0 22px 80px}
+@media (min-width:760px){ .adv{padding:0 32px 120px} }
+
+/* ─── 1. TOP BAR + HERO ──────────────────────────────────────── */
+.adv-top-bar{background:var(--navy);height:56px;width:100%}
+.adv-hero{padding-top:36px}
+.adv-hero h1{font-size:34px;line-height:1.1;letter-spacing:-0.02em;font-weight:900}
+@media (min-width:760px){ .adv-hero h1{font-size:46px} }
+.adv-hero hr{border:0;border-top:1px solid var(--rule);margin:28px 0}
+
+/* byline */
+.byline{display:flex;align-items:center;gap:14px;margin-bottom:32px}
+.byline-avatar{width:60px;height:60px;border-radius:50%;flex:0 0 60px;background:#eee;overflow:hidden}
+.byline-avatar img{width:100%;height:100%;object-fit:cover}
+.byline-text{font-size:15px;line-height:1.4}
+.byline-text strong{font-weight:700}
+.byline-text .updated{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+
+/* ─── 2. INTRO ───────────────────────────────────────────────── */
+.adv-intro{margin-bottom:40px}
+.adv-intro p{font-size:18px}
+
+/* ─── 3-8. REASON BLOCKS ─────────────────────────────────────── */
+.reason{margin:48px 0}
+.reason-img{margin-bottom:20px;border-radius:8px;overflow:hidden;background:#f3f4f5}
+.reason-img img{width:100%}
+.reason h2{font-size:26px;font-weight:800;margin-bottom:14px}
+@media (min-width:760px){ .reason h2{font-size:30px} }
+.reason p{margin:0 0 1em}
+
+/* quote callout */
+.quote{font-style:italic;color:var(--ink-2);border-left:3px solid var(--ink);padding:8px 0 8px 16px;margin:18px 0;font-size:18px}
+.quote .attr{display:block;font-style:normal;margin-top:8px;font-size:14px;color:var(--muted)}
+
+/* timeline image variant (3-panel cuello) — already a single image; keep simple */
+
+/* check / cross lists */
+.checks{list-style:none;padding:0;margin:18px 0}
+.checks li{display:flex;align-items:flex-start;gap:10px;margin:10px 0;font-size:16px;line-height:1.45}
+.checks li::before{content:"";flex:0 0 22px;width:22px;height:22px;border-radius:5px;background:#1ca25a center/14px no-repeat;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>");margin-top:2px}
+.crosses{list-style:none;padding:0;margin:14px 0}
+.crosses li{display:flex;align-items:flex-start;gap:10px;margin:10px 0;font-size:16px;line-height:1.45}
+.crosses li::before{content:"";flex:0 0 22px;width:22px;height:22px;border-radius:5px;background:var(--rose) center/12px no-repeat;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>");margin-top:2px}
+
+/* small image inside reason (like "efecto bioregenerador") */
+.inline-img{margin:24px 0;border-radius:8px;overflow:hidden}
+.inline-img img{width:100%}
+
+/* ─── 9. OFFER BOX ───────────────────────────────────────────── */
+.offer{margin:56px 0;padding:22px;background:var(--sage);border:2px dashed var(--sage-line);border-radius:var(--r-lg);text-align:center;position:relative}
+.offer-tag{font-weight:700;font-size:18px;color:var(--ink);margin-bottom:14px}
+.offer-img-wrap{position:relative;border-radius:10px;overflow:hidden;margin:0 auto 0;background:#fff}
+.offer-img-wrap img{width:100%;display:block}
+.offer-badge{position:absolute;top:18px;right:18px;width:78px;height:78px;border-radius:50%;background:#1f6857;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;letter-spacing:-0.01em;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.offer-installments{background:var(--ink);color:#fff;padding:14px;font-weight:700;font-size:14px;letter-spacing:0.02em;margin:0;text-transform:uppercase}
+.offer-bullets{list-style:none;padding:18px 6px 6px;margin:0;text-align:left}
+.offer-bullets li{display:flex;align-items:flex-start;gap:10px;margin:10px 0;font-size:15px;line-height:1.45}
+.offer-bullets li::before{content:"";flex:0 0 20px;width:20px;height:20px;border-radius:50%;background:#1ca25a center/12px no-repeat;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>");margin-top:2px}
+.offer-cta{display:block;width:100%;background:var(--ink);color:#fff;font-weight:700;font-size:16px;letter-spacing:0.04em;text-transform:uppercase;text-align:center;padding:16px;border-radius:6px;text-decoration:none;margin-top:18px;border:0;cursor:pointer}
+.offer-cta:hover{background:#000}
+
+/* ─── 10. REVIEWS ────────────────────────────────────────────── */
+.reviews{margin:56px 0}
+.review{display:flex;gap:12px;margin:18px 0;align-items:flex-start}
+.review-avatar{width:48px;height:48px;border-radius:50%;flex:0 0 48px;background:#eee;overflow:hidden}
+.review-avatar img{width:100%;height:100%;object-fit:cover}
+.review-bubble{flex:1;background:#f0f2f5;border-radius:18px;padding:12px 14px;position:relative;font-size:15px;line-height:1.4}
+.review-bubble strong{display:block;font-weight:700;margin-bottom:4px}
+.review-react{display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #e4e6eb;border-radius:14px;padding:2px 8px 2px 6px;font-size:13px;color:#65676b;margin-top:8px;font-weight:600}
+.review-react::before{content:"😮 ❤️ 👍";font-size:11px;letter-spacing:-2px}
+
+/* ─── 11. FAQ ────────────────────────────────────────────────── */
+.faq{margin:56px 0}
+.faq-heading{text-align:center;font-size:20px;font-weight:800;letter-spacing:0.08em;margin-bottom:22px}
+.faq-item{border:1px solid #d9dde3;border-radius:10px;margin:12px 0;overflow:hidden;background:#fff}
+.faq-item summary{padding:18px 20px;font-weight:700;font-size:16px;list-style:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;color:var(--navy)}
+.faq-item summary::after{content:"";width:22px;height:22px;border:1.5px solid var(--rose);border-radius:50%;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e44e3a' stroke-width='2' stroke-linecap='round'><line x1='12' y1='5' x2='12' y2='19'/><line x1='5' y1='12' x2='19' y2='12'/></svg>") center/14px no-repeat;flex:0 0 22px;transition:transform .2s ease}
+.faq-item[open] summary::after{transform:rotate(45deg)}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-body{padding:0 20px 18px;font-size:15px;color:var(--ink-2);line-height:1.55}
+
+/* ─── 12. FINAL CTA ──────────────────────────────────────────── */
+.final{margin:64px 0 24px;text-align:center}
+.final-logo{font-family:'Inter',sans-serif;font-weight:300;font-size:74px;letter-spacing:-0.04em;line-height:1;margin-bottom:8px}
+.final-logo .reg{font-size:30px;vertical-align:top;margin-left:4px;font-weight:400}
+@media (min-width:760px){ .final-logo{font-size:96px} }
+.final-q{font-size:24px;font-weight:300;color:var(--ink);margin-bottom:28px}
+.final-cta{display:inline-block;width:100%;max-width:420px;background:var(--ink);color:#fff;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:0.04em;text-transform:uppercase;padding:16px 24px;border-radius:4px;margin:0 auto}
+
+/* ─── 13. STICKY BAR ─────────────────────────────────────────── */
+.sticky-bar{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:50;transform:translateY(100%);transition:transform .25s ease;box-shadow:0 -4px 18px rgba(0,0,0,.15)}
+.sticky-bar.show{transform:translateY(0)}
+.sticky-text{font-size:13px;line-height:1.3;flex:1;min-width:0}
+.sticky-text strong{display:block;font-weight:700;font-size:14px}
+.sticky-bar .sticky-cta{flex:0 0 auto;background:#fff;color:var(--ink);font-weight:700;font-size:13px;padding:10px 14px;border-radius:4px;text-decoration:none;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap}
+.sticky-close{position:absolute;top:-12px;right:8px;width:24px;height:24px;background:#fff;color:var(--ink);border-radius:50%;border:0;font-size:14px;line-height:24px;text-align:center;cursor:pointer;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+
+/* ─── REVEAL ON SCROLL ───────────────────────────────────────── */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease}
+.rv.on{opacity:1;transform:none}
+
+/* ─── PROGRESS BAR ───────────────────────────────────────────── */
+.prog-wrap{position:fixed;top:0;left:0;right:0;height:3px;background:transparent;z-index:60}
+.prog{height:100%;background:var(--rose);width:0;transition:width .12s linear}
+</style>
+</head>
+<body>
+
+<div class="prog-wrap"><div id="prog" class="prog"></div></div>
+
+<div id="page-wrap">
+
+  <!-- 1. TOP BAR -->
+  <div class="adv-top-bar"></div>
+
+  <article class="adv">
+
+    <!-- HERO -->
+    <header class="adv-hero">
+      <h1 data-v-text="headline">5 Razones por las que este Sérum Devuelve Firmeza al Cuello en 4 semanas (aunque tengas Flacidez, Líneas y Arrugas marcados)</h1>
+      <hr>
+
+      <div class="byline">
+        <div class="byline-avatar" data-v-img="author-avatar"><img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&q=80&auto=format&fit=crop" alt="Avatar autor"></div>
+        <div class="byline-text">
+          Dra. <strong data-v-text="author-name">Claudia</strong>, <span data-v-text="author-role">especialista en cirugía estética</span>
+          <span class="updated">Última actualización: <strong data-v-text="updated-date">24 de Abril de 2026</strong></span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 2. INTRO -->
+    <section class="adv-intro rv">
+      <p data-v-text="intro-1">Si alguna vez viste tu cuello en una videollamada o en la vidriera de una tienda y te dio esa vergüenza, no sos la única.</p>
+      <p data-v-text="intro-2">¿Qué hace que este Serúm sea tan diferente de todas las que no funcionaron? Estas son las 5 razones por las que se está convirtiendo en la solución preferida de las mujeres que quieren amar lo que ven en el espejo.</p>
+    </section>
+
+    <!-- 3. REASON 1 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r1-img"><img src="https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=900&q=80&auto=format&fit=crop" alt="Antes y después cuello"></div>
+      <h2 data-v-text="r1-title">1. Reafirma y tensa visiblemente la piel del cuello cuando nada más funciona.</h2>
+      <p data-v-text="r1-p1">Gasté una fortuna en cremas caras que no funcionaron. Productos llenos de químicos me irritaron la piel.</p>
+      <p data-v-text="r1-p2">Este serum me devolvió la firmeza del cuello en 4 semanas.</p>
+      <p data-v-text="r1-p3">Los cambios fueron tan obvios que ahora uso escote sin vergüenza y mis amigas me preguntan '¿cuál es mi secreto?'</p>
+      <div class="quote">
+        <span data-v-text="r1-quote">No lo cambio por nada!</span>
+        <span class="attr" data-v-text="r1-quote-attr">— Dice Marta, una de nuestras clientas</span>
+      </div>
+    </section>
+
+    <!-- 4. REASON 2 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r2-img"><img src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=900&q=80&auto=format&fit=crop" alt="Progresión cuello 5 oct / 23 nov / dec"></div>
+      <h2 data-v-text="r2-title">2. Vas a ver resultados en 4 semanas</h2>
+      <p data-v-text="r2-p1">"Casi me di por vencida con mi cuello", admite Claudia, de 57 años, de Córdoba.</p>
+      <p data-v-text="r2-p2">"Usaba bufandas incluso con 35 grados. Estiraba el cuello como jirafa en cada foto. Entonces mi amiga me insistió: 'Probá Sérum Pilar'.</p>
+      <p data-v-text="r2-p3">Para la tercera semana mi cuello se veía diferente. Más firme. Para la cuarta semana, ¡hasta mi esposo comentó la diferencia!"</p>
+      <p data-v-text="r2-p4">La diferencia con todo lo que probaste antes es que esto funciona rápido. Las cremas comunes prometen resultados "en meses" que nunca llegan.</p>
+      <p><strong data-v-text="r2-study-intro">Estudios clínicos del Sérum Pilar demostraron:</strong></p>
+      <ul class="checks">
+        <li data-v-text="r2-stat-1">94% mostraron una piel visiblemente más tensa.</li>
+        <li data-v-text="r2-stat-2">Reducción notable en la apariencia de las arrugas y líneas profundas en cuestión de semanas.</li>
+        <li data-v-text="r2-stat-3">Ninguna participante (0%) tuvo irritación, a diferencia del retinol que quema.</li>
+      </ul>
+    </section>
+
+    <!-- 5. REASON 3 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r3-img"><img src="https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=900&q=80&auto=format&fit=crop" alt="Antes y después rostro"></div>
+      <h2 data-v-text="r3-title">3. No solo mejora tu cuello, sino que transforma cómo te sentís vos misma</h2>
+      <p data-v-text="r3-p1">El efecto más potente del Sérum Pilar va más allá del cuello firme. Sí, las mejoras físicas son impresionantes.</p>
+      <p data-v-text="r3-p2">Pero lo que más comentan las clientas es la transformación emocional. Muchas nos cuentan que redescubrieron ropa que habían abandonado, volvieron a usar joyas y se sintieron cómodas en las fotos.</p>
+      <div class="quote">
+        <span data-v-text="r3-quote-1">"Dejé de sentirme vieja. Volví a sentirme yo."</span>
+        <span class="attr" data-v-text="r3-quote-1-attr">— Patricia, 54 años</span>
+      </div>
+      <div class="quote">
+        <span data-v-text="r3-quote-2">"Recuperé la libertad de vestirme sin pensar. Eso no tiene precio."</span>
+        <span class="attr" data-v-text="r3-quote-2-attr">— Claudia, 51 años</span>
+      </div>
+    </section>
+
+    <!-- 6. REASON 4 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r4-img-1"><img src="https://images.unsplash.com/photo-1556228720-195a672e8a03?w=900&q=80&auto=format&fit=crop" alt="Ingredientes y beneficios"></div>
+      <h2 data-v-text="r4-title">4. Es la solución que regenera el colágeno.</h2>
+      <p data-v-text="r4-p1">Tu edad debería celebrarse, no ocultarse con bufandas y polerones de cuello alto.</p>
+      <p data-v-text="r4-p2">No importa por qué tu cuello perdió firmeza (edad, sol, genética). Lo que importa es que podés regenerarlo.</p>
+      <p data-v-text="r4-p3">Sérum Pilar estimula colágeno profundo para devolver firmeza al cuello caído, reduce visiblemente las líneas profundas y las arrugas, en semanas.</p>
+      <div class="inline-img" data-v-img="r4-img-2"><img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=900&q=80&auto=format&fit=crop" alt="Efecto bioregenerador"></div>
+    </section>
+
+    <!-- 7. STOCK SCARCITY -->
+    <section class="reason rv">
+      <h2 data-v-text="stock-title">Esta fórmula se agota cada semana y laboratorios nos contactan para replicarla</h2>
+      <p data-v-text="stock-p1">Miles de mujeres lo están usando. Y todas hablan de lo mismo: <em>"¿Cuándo vuelve a haber stock?"</em></p>
+      <p data-v-text="stock-p2">La demanda nos superó. Nos quedamos sin stock cada 7-10 días. Nuestra producción está retrasada porque no esperábamos esta respuesta.</p>
+      <p data-v-text="stock-p3">A diferencia de otros productos que solo prometen, el Sérum Pilar tiene resultados comprobados en estudios clínicos.</p>
+      <div class="quote">
+        <span data-v-text="stock-quote">"Sérum Pilar es una excelente opción para recuperar firmeza y reducir arrugas del cuello sin químicos agresivos. Los aceites orgánicos bioestimulantes penetran profundo para regenerar colágeno."</span>
+        <span class="attr" data-v-text="stock-quote-attr">— Dra. Laura Martínez, dermatóloga especialista en piel sensible</span>
+      </div>
+      <p><strong>Los ingredientes potentes incluyen:</strong></p>
+      <ul class="checks">
+        <li><strong data-v-text="stock-ingr-1-name">Rosa mosqueta orgánica</strong> — <span data-v-text="stock-ingr-1-desc">estimula producción de colágeno profundo</span></li>
+        <li><strong data-v-text="stock-ingr-2-name">Jojoba orgánico</strong> — <span data-v-text="stock-ingr-2-desc">refuerza elasticidad y reduce papada</span></li>
+        <li><strong data-v-text="stock-ingr-3-name">Argán</strong> — <span data-v-text="stock-ingr-3-desc">suaviza líneas profundas y unifica tono</span></li>
+      </ul>
+      <ul class="crosses">
+        <li><strong data-v-text="stock-anti-1-name">Sin parabenos</strong> — <span data-v-text="stock-anti-1-desc">alteran hormonas y causan irritación</span></li>
+        <li><strong data-v-text="stock-anti-2-name">Sin siliconas</strong> — <span data-v-text="stock-anti-2-desc">tapan poros, no dejan respirar la piel</span></li>
+        <li><strong data-v-text="stock-anti-3-name">Sin retinol ni ácidos</strong> — <span data-v-text="stock-anti-3-desc">queman la piel delicada del cuello</span></li>
+      </ul>
+      <div class="inline-img" data-v-img="stock-doctor-img"><img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=900&q=80&auto=format&fit=crop" alt="Dermatóloga"></div>
+    </section>
+
+    <!-- 8. REASON 5 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r5-img"><img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=900&q=80&auto=format&fit=crop" alt="Doctora con producto"></div>
+      <h2 data-v-text="r5-title">5. Ofrece resultados notables para mujeres de todas las edades.</h2>
+      <p data-v-text="r5-p1">Cada día que pasa, el cuello <strong>se ve más arrugado</strong>, la piel flácida <strong>cae más</strong> y la vergüenza <strong>se siente en cada blusa, foto o selfie</strong>.</p>
+      <p data-v-text="r5-p2">El verano se acerca, hace calor, <strong>no hay bufandas ni trucos que oculten lo que ves en el espejo</strong>.</p>
+      <p data-v-text="r5-p3">Si no hacés algo HOY, tu cuello va a lucir igual (o peor) en 4 semanas.</p>
+      <p data-v-text="r5-p4">Solo 60 segundos al día. Aplicás 3-4 gotas antes de dormir y listo.</p>
+      <p><strong data-v-text="r5-bullets-head">En 28 días:</strong></p>
+      <ul class="checks">
+        <li data-v-text="r5-bullet-1">Tu cuello luce firme y reafirmado</li>
+        <li data-v-text="r5-bullet-2">Suaviza arrugas profundas</li>
+        <li data-v-text="r5-bullet-3">Devuelve luminosidad natural</li>
+        <li data-v-text="r5-bullet-4">La papada se redefine</li>
+        <li data-v-text="r5-bullet-5">Atenúa líneas en escote</li>
+        <li data-v-text="r5-bullet-6">Hidratación profunda y duradera</li>
+        <li data-v-text="r5-bullet-7">Volvés a sentir confianza en cada foto</li>
+      </ul>
+      <p data-v-text="r5-summary">Este verano podés usar esa blusa escotada sin pensarlo. Sacarte fotos sin esconderte. Sentirte hermosa y segura.</p>
+      <p><strong data-v-text="r5-or">O podés seguir esperando… mientras tu cuello sigue envejeciendo.</strong></p>
+    </section>
+
+    <!-- 9. OFFER BOX -->
+    <section class="offer rv">
+      <div class="offer-tag" data-v-text="offer-tag">✨ HASTA 75% MES DEL VERANO ✨</div>
+      <div class="offer-img-wrap" data-v-img="offer-img">
+        <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=900&q=80&auto=format&fit=crop" alt="Producto en oferta">
+        <div class="offer-badge" data-v-text="offer-badge">75% OFF</div>
+      </div>
+      <div class="offer-installments" data-v-text="offer-installments">3 cuotas sin interés + envío gratis</div>
+      <ul class="offer-bullets">
+        <li data-v-text="offer-bullet-1">Reafirma la piel del cuello</li>
+        <li data-v-text="offer-bullet-2">Estimula la producción natural de colágeno y elastina</li>
+        <li data-v-text="offer-bullet-3">Reduce líneas de expresión y arrugas</li>
+        <li data-v-text="offer-bullet-4">Ilumina el rostro</li>
+        <li data-v-text="offer-bullet-5">Hidrata en profundidad sin dejar sensación grasosa</li>
+        <li data-v-text="offer-bullet-6">Mejora la textura: piel más lisa, suave y uniforme</li>
+      </ul>
+      <a href="#" class="offer-cta cta-btn" data-v-text="offer-cta">Ver si está disponible</a>
+    </section>
+
+    <!-- 10. REVIEWS -->
+    <section class="reviews rv">
+      <div class="review">
+        <div class="review-avatar" data-v-img="review-1-avatar"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=80&auto=format&fit=crop" alt="Avatar review"></div>
+        <div class="review-bubble">
+          <strong data-v-text="review-1-name">Rocío Benítez</strong>
+          <span data-v-text="review-1-text">Excelente producto, lo estoy usando hace una semana y ya me está haciendo efecto. Lo amé.</span>
+          <div class="review-react" data-v-text="review-1-react">5</div>
+        </div>
+      </div>
+      <div class="review">
+        <div class="review-avatar" data-v-img="review-2-avatar"><img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&q=80&auto=format&fit=crop" alt="Avatar review"></div>
+        <div class="review-bubble">
+          <strong data-v-text="review-2-name">Belén Fernández</strong>
+          <span data-v-text="review-2-text">Llevo 7 días y ya se siente la diferencia, en la primera pasada sentí el efecto. Me encanta!!!</span>
+          <div class="review-react" data-v-text="review-2-react">5</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. FAQ -->
+    <section class="faq rv">
+      <h3 class="faq-heading" data-v-text="faq-heading">PREGUNTAS FRECUENTES</h3>
+      <details class="faq-item">
+        <summary data-v-text="faq-1-q">¿Cuándo voy a empezar a ver resultados?</summary>
+        <div class="faq-body" data-v-text="faq-1-a">La mayoría de nuestras clientas notan piel más firme e hidratada desde la primera semana. Los cambios visibles en arrugas y firmeza aparecen entre la 3.ª y 4.ª semana de uso constante.</div>
+      </details>
+      <details class="faq-item">
+        <summary data-v-text="faq-2-q">¿Es apto para pieles sensibles?</summary>
+        <div class="faq-body" data-v-text="faq-2-a">Sí. La fórmula no contiene parabenos, siliconas ni retinol. Está formulada con aceites orgánicos bioestimulantes y fue probada en pieles sensibles.</div>
+      </details>
+      <details class="faq-item">
+        <summary data-v-text="faq-3-q">¿Puedo usarlo con mi rutina actual?</summary>
+        <div class="faq-body" data-v-text="faq-3-a">Sí. Se aplica como último paso antes de dormir, después de tu hidratante o sérum facial habitual. 3-4 gotas son suficientes para cuello y escote.</div>
+      </details>
+    </section>
+
+    <!-- 12. FINAL CTA -->
+    <section class="final rv">
+      <div class="final-logo"><span data-v-text="brand-name">PILAR</span><span class="reg">®</span></div>
+      <div class="final-q" data-v-text="final-q">¿Lista para comenzar?</div>
+      <a href="#" class="final-cta cta-btn" data-v-text="final-cta">Ver si está disponible</a>
+    </section>
+
+  </article>
+
+  <!-- 13. STICKY -->
+  <aside id="sticky" class="sticky-bar">
+    <button id="sticky-close" class="sticky-close" aria-label="Cerrar">×</button>
+    <div class="sticky-text">
+      <strong data-v-text="sticky-h">Sérum Pilar — 75% OFF</strong>
+      <span data-v-text="sticky-sub">3 cuotas sin interés · Envío gratis</span>
+    </div>
+    <a href="#" class="sticky-cta cta-btn" data-v-text="sticky-cta">Probar ahora</a>
+  </aside>
+
+</div>
+
+<script>
+(function(){
+  // Reveal-on-scroll
+  var rv = document.querySelectorAll('.rv');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); }
+      });
+    }, {threshold:.07, rootMargin:'0px 0px -20px 0px'});
+    rv.forEach(function(el){ io.observe(el); });
+  } else {
+    rv.forEach(function(el){ el.classList.add('on'); });
+  }
+
+  // Progress bar + sticky bar (after 22% scroll)
+  var prog = document.getElementById('prog');
+  var sticky = document.getElementById('sticky');
+  var stickyClose = document.getElementById('sticky-close');
+  var dismissed = false;
+  function onScroll(){
+    var doc = document.documentElement;
+    var ratio = doc.scrollTop / Math.max(1, (doc.scrollHeight - doc.clientHeight));
+    if (prog) prog.style.width = (ratio * 100) + '%';
+    if (sticky && !dismissed) sticky.classList.toggle('show', ratio >= 0.22);
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  if (stickyClose) stickyClose.addEventListener('click', function(){
+    dismissed = true; sticky.classList.remove('show');
+  });
+})();
+</script>
+
+</body>
+</html>
