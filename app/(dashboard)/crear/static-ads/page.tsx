@@ -10,9 +10,13 @@ import { Dropdown } from '@/components/ui/dropdown';
 import { toast } from 'sonner';
 import { Star, Check, Loader2, Zap, Clock, AlertCircle, X, Image as ImageIcon, Sparkles, Package } from 'lucide-react';
 import { subscribeToGenerations, ProgressState } from '@/lib/realtime-helper';
+import { isAdminEmail } from '@/lib/admin-emails';
 
 // Maximum templates per generation - now supports parallel processing
 const MAX_TEMPLATES_PER_GENERATION = 25;
+// Server clone API hard cap. Admin batched flow chunks at this size and lets
+// process-queue (10 parallel kie.ai tasks) drain them.
+const CLONE_API_BATCH_SIZE = 50;
 import { cn } from '@/lib/utils';
 import type { Template, Product } from '@/types';
 
@@ -27,6 +31,7 @@ const awarenessLevels = [
 export default function StaticAdsPage() {
   const { user } = useUser();
   const router = useRouter();
+  const isAdmin = isAdminEmail(user?.emailAddresses?.[0]?.emailAddress);
   const [activeTab, setActiveTab] = useState<TabType>('plantillas');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [awarenessFilter, setAwarenessFilter] = useState('all');
@@ -125,7 +130,11 @@ export default function StaticAdsPage() {
     enabled: !!user,
   });
 
-  // Fetch templates
+  // Fetch templates. Templates rarely change — keep them fresh for 5 min so
+  // tab swaps and filter changes don't refire the query and trigger a
+  // "Cargando…" flash. `placeholderData: keepPreviousData` keeps the previous
+  // grid visible while a new filter result is in-flight, so the masonry
+  // doesn't collapse to an empty state between filter clicks.
   const { data: templates, isLoading } = useQuery({
     queryKey: ['templates', awarenessFilter, nicheFilter, typeFilter],
     queryFn: async () => {
@@ -139,6 +148,8 @@ export default function StaticAdsPage() {
       if (error) throw error;
       return data as Template[];
     },
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 
   // Fetch user products for ideation and cloning (using API with service role)
@@ -264,21 +275,22 @@ export default function StaticAdsPage() {
     };
   }, []);
 
-  // Clone Mutation — N selected templates fan out to N independent
-  // /api/static-ads/clone calls. Each call is its own backend pipeline
-  // (its own process-queue kickoff, its own kie.ai requests for analysis +
-  // adaptation + Nano Banana). The first call creates the project; the
-  // remaining N-1 reuse the projectId so all rows land in the same
-  // historial entry. Same isolation contract as the Agregar tab — no
-  // template-to-template cross-contamination.
+  // Clone Mutation — sends template IDs to /api/static-ads/clone in chunks
+  // of CLONE_API_BATCH_SIZE (matches the server's hard cap). The first chunk
+  // creates the project; remaining chunks pass `projectId` so every row
+  // lands in the same historial entry. The backend already creates one
+  // generation row per template inside a chunk, and process-queue runs at
+  // most 10 parallel kie.ai tasks per tick — so admin "select all" stays
+  // safely under both the per-user clone rate limit (10/min) and the kie.ai
+  // concurrency cap.
   const cloneMutation = useMutation({
     mutationFn: async ({ templateIds, productId, projectName }: { templateIds: string[], productId: string, projectName: string }) => {
-      const callClone = async (templateId: string, sharedProjectId?: string) => {
+      const callClone = async (ids: string[], sharedProjectId?: string) => {
         const r = await fetch('/api/static-ads/clone', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            templateIds: [templateId],
+            templateIds: ids,
             productId,
             projectName,
             ...(sharedProjectId ? { projectId: sharedProjectId } : {}),
@@ -294,22 +306,28 @@ export default function StaticAdsPage() {
         return r.json();
       };
 
-      // First template: creates the project, returns id.
-      const first = await callClone(templateIds[0]);
-      const sharedProjectId: string = first.project.id;
+      const chunks: string[][] = [];
+      for (let i = 0; i < templateIds.length; i += CLONE_API_BATCH_SIZE) {
+        chunks.push(templateIds.slice(i, i + CLONE_API_BATCH_SIZE));
+      }
 
-      // Remaining templates: parallel, all sharing that projectId.
-      let okCount = 1;
+      // First chunk: creates the project, returns id.
+      const first = await callClone(chunks[0]);
+      const sharedProjectId: string = first.project.id;
+      let okCount = chunks[0].length;
       let failedCount = 0;
       let firstErr: string | undefined;
-      if (templateIds.length > 1) {
+
+      // Remaining chunks: parallel, all sharing that projectId.
+      if (chunks.length > 1) {
         const rest = await Promise.allSettled(
-          templateIds.slice(1).map((id) => callClone(id, sharedProjectId)),
+          chunks.slice(1).map((ids) => callClone(ids, sharedProjectId).then((res) => ({ res, count: ids.length }))),
         );
-        for (const r of rest) {
-          if (r.status === 'fulfilled') okCount += 1;
+        for (let i = 0; i < rest.length; i++) {
+          const r = rest[i];
+          if (r.status === 'fulfilled') okCount += r.value.count;
           else {
-            failedCount += 1;
+            failedCount += chunks[i + 1].length;
             firstErr = firstErr || (r.reason as Error)?.message;
           }
         }
@@ -361,8 +379,8 @@ export default function StaticAdsPage() {
     if (isSelected) {
       newSelected = selectedTemplateIds.filter(id => id !== template.id);
     } else {
-      // Check if we've reached the maximum
-      if (selectedTemplateIds.length >= MAX_TEMPLATES_PER_GENERATION) {
+      // Admins bypass the per-batch cap — backend chunks the call.
+      if (!isAdmin && selectedTemplateIds.length >= MAX_TEMPLATES_PER_GENERATION) {
         toast.error(`Máximo ${MAX_TEMPLATES_PER_GENERATION} plantillas por generación`);
         return;
       }
@@ -652,8 +670,32 @@ export default function StaticAdsPage() {
             </div>
             {/* Selection info */}
             <div className="text-sm text-gray-400 whitespace-nowrap">
-              {selectedTemplateIds.length}/{MAX_TEMPLATES_PER_GENERATION} seleccionadas
+              {isAdmin
+                ? `${selectedTemplateIds.length} seleccionadas`
+                : `${selectedTemplateIds.length}/${MAX_TEMPLATES_PER_GENERATION} seleccionadas`}
             </div>
+            {isAdmin && templates && templates.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const allIds = templates.map((t) => t.id);
+                  const allSelected = allIds.every((id) => selectedTemplateIds.includes(id));
+                  if (allSelected) {
+                    setSelectedTemplateIds([]);
+                    setIsCloneBarVisible(false);
+                  } else {
+                    setSelectedTemplateIds(allIds);
+                    setIsCloneBarVisible(true);
+                  }
+                }}
+                className="border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200 whitespace-nowrap"
+                title="Solo admins: selecciona todas las plantillas filtradas e inicia la clonación masiva"
+              >
+                {templates.every((t) => selectedTemplateIds.includes(t.id))
+                  ? 'Quitar todo'
+                  : `Admin · Seleccionar todas (${templates.length})`}
+              </Button>
+            )}
             {selectedTemplateIds.length > 0 && (
               <Button
                 variant="outline"
@@ -670,7 +712,18 @@ export default function StaticAdsPage() {
 
           {/* Templates Grid */}
           {isLoading ? (
-            <div className="text-center text-gray-400">Cargando plantillas...</div>
+            // Skeleton masonry — same column layout as the real grid so the
+            // page doesn't reflow when templates land. Mixed aspect ratios
+            // approximate the real distribution to minimise visual jank.
+            <div className="columns-2 lg:columns-3 xl:columns-4 gap-4">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="mb-4 break-inside-avoid rounded-lg border border-gray-800 bg-[#1a2332] animate-pulse"
+                  style={{ aspectRatio: i % 3 === 0 ? '4 / 5' : i % 3 === 1 ? '1 / 1' : '3 / 4' }}
+                />
+              ))}
+            </div>
           ) : (
             // CSS columns = masonry layout. Each card flows into the shortest
             // column, so there's no dead vertical space between rows when
@@ -680,6 +733,14 @@ export default function StaticAdsPage() {
               {templates?.map((template, index) => {
                 const isSelected = selectedTemplateIds.includes(template.id);
                 const canEdit = canEditTemplate(index);
+                // Reserve geometry up-front when we know the dimensions so
+                // the masonry settles instantly instead of relayouting as
+                // each thumbnail loads — this is what made the tab feel
+                // glitchy on first paint.
+                const hasDims = !!(template.width && template.height);
+                const aspectStyle = hasDims
+                  ? { aspectRatio: `${template.width} / ${template.height}` }
+                  : undefined;
 
                 return (
                   <div
@@ -692,8 +753,19 @@ export default function StaticAdsPage() {
                     <img
                       src={template.thumbnail_url}
                       alt={template.name}
-                      className={cn("block w-full h-auto transition-transform duration-300", isSelected && "scale-105")}
+                      loading="lazy"
+                      decoding="async"
+                      style={aspectStyle}
+                      className={cn(
+                        "block w-full h-auto transition-transform duration-300",
+                        !hasDims && "min-h-[120px]",
+                        isSelected && "scale-105",
+                      )}
                     />
+                    {/* Width/height columns are populated by the admin folder
+                        importer; legacy rows without them fall back to
+                        runtime layout, which is the only case where the old
+                        glitch can still happen. */}
                     
                     {/* Direct Selection Area / Overlay */}
                     <div 
