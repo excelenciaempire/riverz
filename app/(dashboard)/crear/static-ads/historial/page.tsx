@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Loader2, ArrowLeft, Folder, Calendar, Trash2, X, CheckSquare, Square, Check } from 'lucide-react';
+import { Loader2, ArrowLeft, Folder, Calendar, Trash2, X, CheckSquare, Square, Check, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,101 @@ interface Project {
   created_at: string;
 }
 
+interface FlatGeneration {
+  id: string;
+  status: string;
+  result_url: string | null;
+  project_id: string;
+  input_data: any;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const PENDING_STATUSES = new Set([
+  'pending_analysis',
+  'pending_variation',
+  'analyzing',
+  'adapting',
+  'generating_prompt',
+  'pending_generation',
+  'generating',
+]);
+
+const STATUS_LABEL: Record<string, string> = {
+  pending_analysis: 'En cola',
+  pending_variation: 'En cola',
+  analyzing: 'Analizando',
+  adapting: 'Adaptando',
+  generating_prompt: 'Procesando',
+  pending_generation: 'Procesando',
+  generating: 'Generando',
+};
+
+/**
+ * Single tile in the flat (sin-carpetas) view.
+ *
+ * Three states map to three visuals so the grid reads at a glance:
+ *   - completed → the rendered image, click navigates to the parent project
+ *   - pending  → a quiet loader card with the human label of the current
+ *                step. We don't replicate the per-status progress ring from
+ *                the per-project page — at this density, a small spinner +
+ *                step name is plenty of signal without visual noise.
+ *   - failed   → red-bordered card with the truncated error.
+ */
+function FlatGenerationTile({ gen, onOpen }: { gen: FlatGeneration; onOpen: () => void }) {
+  const isCompleted = gen.status === 'completed' && !!gen.result_url;
+  const isFailed = gen.status === 'failed';
+  const isPending = !isCompleted && !isFailed;
+  const label =
+    gen.input_data?.ideaHeadline ||
+    gen.input_data?.templateName ||
+    gen.input_data?.productName ||
+    'Imagen';
+
+  return (
+    <button
+      onClick={onOpen}
+      className={cn(
+        'group relative aspect-[3/4] overflow-hidden rounded-xl border bg-[#0f0f0f] text-left transition',
+        isCompleted ? 'border-gray-800 hover:border-[#07A498]' : 'border-gray-800',
+      )}
+      title={label}
+    >
+      {isCompleted ? (
+        <>
+          <img
+            src={gen.result_url!}
+            alt={label}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+          {/* Bottom gradient with the source label so the user remembers which
+              project / idea this image came from when scrolling fast. */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
+            <p className="truncate text-[11px] text-white">{label}</p>
+          </div>
+        </>
+      ) : isPending ? (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-3 text-center">
+          <Loader2 className="h-5 w-5 animate-spin text-[#07A498]" />
+          <p className="text-[11px] text-gray-400">{STATUS_LABEL[gen.status] || 'Procesando'}</p>
+          <p className="line-clamp-2 text-[10px] text-gray-600">{label}</p>
+        </div>
+      ) : (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-2 border border-red-500/20 bg-red-950/30 px-3 text-center">
+          <AlertCircle className="h-5 w-5 text-red-400" />
+          <p className="text-[11px] font-medium text-red-400">Error</p>
+          <p className="line-clamp-2 text-[10px] text-red-400/70">
+            {gen.error_message || 'Generación fallida'}
+          </p>
+        </div>
+      )}
+    </button>
+  );
+}
+
 export default function HistorialPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -30,6 +125,18 @@ export default function HistorialPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  // "Sin carpetas" toggle. When ON, the project-folder grid is replaced by
+  // a flat tile-per-image view across ALL of the user's static-ad projects.
+  // Persisted in localStorage so the preference survives reloads — users
+  // who like the flat view shouldn't have to reach for the toggle every time.
+  const [flatView, setFlatView] = useState(false);
+  // Hydrate from localStorage on mount. Effect (not initializer) so the
+  // first render matches SSR markup and React doesn't yell about hydration.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem('riverz.historial.flatView');
+    if (stored === '1') setFlatView(true);
+  }, []);
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects', 'static_ads'],
@@ -37,6 +144,25 @@ export default function HistorialPage() {
       const response = await fetch('/api/projects?type=static_ads');
       if (!response.ok) throw new Error('Failed to fetch projects');
       return response.json() as Promise<Project[]>;
+    },
+  });
+
+  // Fetch the flat generations only when the toggle is on. Refetches every
+  // 4s while there's at least one pending tile so the loaders advance to
+  // images without a manual refresh — same cadence the per-project page uses.
+  const { data: flatGens, isLoading: isLoadingFlat } = useQuery({
+    queryKey: ['static-ads-all-generations'],
+    queryFn: async () => {
+      const r = await fetch('/api/static-ads/all-generations');
+      if (!r.ok) throw new Error('Failed to fetch generations');
+      const data = await r.json();
+      return data.generations as FlatGeneration[];
+    },
+    enabled: flatView,
+    refetchInterval: (query) => {
+      const data = query.state.data as FlatGeneration[] | undefined;
+      if (!data || data.length === 0) return false;
+      return data.some((g) => PENDING_STATUSES.has(g.status)) ? 4000 : false;
     },
   });
 
@@ -133,7 +259,43 @@ export default function HistorialPage() {
           <h1 className="text-2xl font-bold text-white">Historial de Proyectos</h1>
         </div>
         {projects && projects.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
+            {/* Sin-carpetas toggle. Hidden while in select mode — multi-select
+                operates on projects, not individual generations, so mixing
+                the two would be confusing. */}
+            {!selectMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !flatView;
+                  setFlatView(next);
+                  if (typeof window !== 'undefined') {
+                    window.localStorage.setItem('riverz.historial.flatView', next ? '1' : '0');
+                  }
+                }}
+                className="flex items-center gap-2 rounded-lg border border-gray-700 bg-[#141414] px-3 py-2 text-sm text-gray-300 transition hover:border-[#07A498] hover:text-white"
+                aria-pressed={flatView}
+                title={flatView ? 'Volver a ver carpetas' : 'Ver todas las imágenes sin carpetas'}
+              >
+                <ImageIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Sin carpetas</span>
+                <span
+                  className={cn(
+                    'relative inline-flex h-5 w-9 items-center rounded-full transition',
+                    flatView ? 'bg-[#07A498]' : 'bg-gray-700',
+                  )}
+                  aria-hidden="true"
+                >
+                  <span
+                    className={cn(
+                      'inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition',
+                      flatView ? 'translate-x-[1.25rem]' : 'translate-x-[0.25rem]',
+                    )}
+                  />
+                </span>
+              </button>
+            )}
+
             {selectMode ? (
               <>
                 <Button variant="outline" onClick={selectAll} className="border-gray-700 text-gray-300">
@@ -144,10 +306,12 @@ export default function HistorialPage() {
                 </Button>
               </>
             ) : (
-              <Button variant="outline" onClick={() => setSelectMode(true)} className="border-gray-700 text-gray-300 hover:text-white">
-                <CheckSquare className="mr-2 h-4 w-4" />
-                Seleccionar
-              </Button>
+              !flatView && (
+                <Button variant="outline" onClick={() => setSelectMode(true)} className="border-gray-700 text-gray-300 hover:text-white">
+                  <CheckSquare className="mr-2 h-4 w-4" />
+                  Seleccionar
+                </Button>
+              )
             )}
           </div>
         )}
@@ -165,6 +329,33 @@ export default function HistorialPage() {
             Crea tu primer proyecto de Static Ads para verlo aquí.
           </p>
         </div>
+      ) : flatView ? (
+        // Flat view — every generation across every project as its own tile.
+        // Tiles preserve provenance (click navigates to the parent project's
+        // historial) so the user can still drill in for editing/comparison.
+        isLoadingFlat && !flatGens ? (
+          <div className="flex h-64 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-[#07A498]" />
+          </div>
+        ) : !flatGens || flatGens.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-800 bg-[#141414] py-20 text-center">
+            <ImageIcon className="mb-4 h-16 w-16 text-gray-700" />
+            <h3 className="text-lg font-medium text-white">No hay generaciones aún</h3>
+            <p className="mt-2 text-gray-400">
+              Las imágenes aparecerán aquí en cuanto los proyectos terminen de procesar.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            {flatGens.map((gen) => (
+              <FlatGenerationTile
+                key={gen.id}
+                gen={gen}
+                onOpen={() => router.push(`/crear/static-ads/historial/${gen.project_id}`)}
+              />
+            ))}
+          </div>
+        )
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {projects?.map((project) => {
