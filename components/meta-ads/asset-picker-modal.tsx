@@ -2,23 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useUser } from '@clerk/nextjs';
 import { Check, Image as ImageIcon, Video, X } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/ui/loading';
 import { cn } from '@/lib/utils';
 import type { Generation } from '@/types';
 
 const VIDEO_TYPES = new Set(['ugc', 'face_swap', 'clips', 'mejorar_calidad_video']);
-const IMAGE_TYPES = [
-  'editar_foto_crear',
-  'editar_foto_editar',
-  'editar_foto_combinar',
-  'editar_foto_clonar',
-  'mejorar_calidad_imagen',
-  'static_ad_generation',
-];
 
 type Filter = 'all' | 'videos' | 'images';
 
@@ -35,33 +25,21 @@ export function AssetPickerModal({
   onSelect,
   alreadyPickedIds = [],
 }: AssetPickerModalProps) {
-  const { user } = useUser();
-  const supabase = createClient();
   const [filter, setFilter] = useState<Filter>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const generationsQuery = useQuery({
-    queryKey: ['asset-picker-generations', user?.id, filter],
+    queryKey: ['asset-picker-generations', filter],
     queryFn: async () => {
-      if (!user?.id) return [] as Generation[];
-      let q = supabase
-        .from('generations')
-        .select('*')
-        .eq('clerk_user_id', user.id)
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(100);
-      if (filter === 'videos') q = q.in('type', Array.from(VIDEO_TYPES));
-      else if (filter === 'images') q = q.in('type', IMAGE_TYPES);
-      const { data, error } = await q;
-      if (error) {
-        console.error('[asset-picker] supabase error', error);
-        throw error;
+      const res = await fetch(`/api/generations?filter=${filter}&limit=200`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || `HTTP ${res.status}`);
       }
-      console.debug('[asset-picker] fetched', data?.length, 'rows for', user.id);
-      return data as Generation[];
+      const body = (await res.json()) as { generations: Generation[] };
+      return body.generations ?? [];
     },
-    enabled: !!user && isOpen,
+    enabled: isOpen,
   });
 
   const items = useMemo(() => {
@@ -129,7 +107,7 @@ export function AssetPickerModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          {!user || generationsQuery.isLoading ? (
+          {generationsQuery.isLoading ? (
             <Loading />
           ) : generationsQuery.isError ? (
             <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-12 text-center">
