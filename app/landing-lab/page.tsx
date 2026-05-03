@@ -9,6 +9,7 @@ import {
   type LandingTemplateKind,
 } from '@/lib/landing-templates/registry';
 import { SideNav } from './_side-nav';
+import { V2Composer } from './_v2-composer';
 
 type Product = {
   id: string;
@@ -193,6 +194,11 @@ export default function LandingLabDashboard() {
             Lanzá 10x más páginas.<br />
             <span className="text-white/90">Escalá 90% más rápido.</span>
           </h1>
+
+          {/* V2 composer (nuevo editor React) */}
+          <div className="mt-10">
+            <V2Composer products={products ?? []} />
+          </div>
 
           {/* Composer (chat) */}
           <form

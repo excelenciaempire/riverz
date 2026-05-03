@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { UserButton } from '@clerk/nextjs';
-import { ArrowLeft, Home, FileText, Store } from 'lucide-react';
+import { ArrowLeft, Home, FileText, Store, Sparkles, Key, PlayCircle, Gift } from 'lucide-react';
 import { useCredits } from '@/hooks/useCredits';
 import { cn } from '@/lib/utils';
 
@@ -20,7 +20,16 @@ import { cn } from '@/lib/utils';
  * Footer carries the UserButton + credits counter, same as the main
  * sidebar, so the user always knows their plan state.
  */
-export function SideNav({ active }: { active?: 'inicio' | 'mis-paginas' | 'tienda' }) {
+export function SideNav({ active }: {
+  active?:
+    | 'inicio'
+    | 'mis-paginas'
+    | 'tienda'
+    | 'creative-studio'
+    | 'api-keys'
+    | 'tutorial'
+    | 'refer';
+}) {
   const { credits } = useCredits();
 
   return (
@@ -47,17 +56,14 @@ export function SideNav({ active }: { active?: 'inicio' | 'mis-paginas' | 'tiend
             Landing Lab
           </h3>
           <div className="space-y-0.5">
+            <NavItem href="/landing-lab" icon={Home} label="Inicio" active={active === 'inicio'} />
+            <NavItem href="/landing-lab/mis-paginas" icon={FileText} label="Mis Páginas" active={active === 'mis-paginas'} />
             <NavItem
-              href="/landing-lab"
-              icon={Home}
-              label="Inicio"
-              active={active === 'inicio'}
-            />
-            <NavItem
-              href="/landing-lab/mis-paginas"
-              icon={FileText}
-              label="Mis Páginas"
-              active={active === 'mis-paginas'}
+              href="/landing-lab/creative-studio"
+              icon={Sparkles}
+              label="Creative Studio"
+              active={active === 'creative-studio'}
+              badge="New"
             />
           </div>
         </div>
@@ -67,11 +73,29 @@ export function SideNav({ active }: { active?: 'inicio' | 'mis-paginas' | 'tiend
             Conexión
           </h3>
           <div className="space-y-0.5">
+            <NavItem href="/landing-lab/stores" icon={Store} label="Tiendas" active={active === 'tienda'} />
             <NavItem
-              href="/configuracion?tab=integrations"
-              icon={Store}
-              label="Tienda"
-              active={active === 'tienda'}
+              href="/landing-lab/api-keys"
+              icon={Key}
+              label="API Keys"
+              active={active === 'api-keys'}
+              badge="Beta"
+            />
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <h3 className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-wider text-gray-500">
+            Más
+          </h3>
+          <div className="space-y-0.5">
+            <NavItem href="/landing-lab/tutorial" icon={PlayCircle} label="Tutorial" active={active === 'tutorial'} />
+            <NavItem
+              href="/landing-lab/refer"
+              icon={Gift}
+              label="Invita y gana"
+              active={active === 'refer'}
+              badge="+Créditos"
             />
           </div>
         </div>
@@ -98,11 +122,13 @@ function NavItem({
   icon: Icon,
   label,
   active,
+  badge,
 }: {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   active?: boolean;
+  badge?: string;
 }) {
   return (
     <Link
@@ -115,7 +141,12 @@ function NavItem({
       )}
     >
       <Icon className="h-3 w-3 shrink-0" />
-      <span>{label}</span>
+      <span className="flex-1">{label}</span>
+      {badge && (
+        <span className="rounded-full bg-[#07A498]/20 px-1.5 py-[1px] text-[8px] font-semibold uppercase tracking-wider text-[#07A498]">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
