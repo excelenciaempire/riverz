@@ -1204,6 +1204,8 @@ function applyTemplateContent(tpl){
   decorateImageSlots();
   // initEdit re-attaches contentEditable to the new [data-v-text] nodes.
   if (typeof initEdit === 'function') initEdit();
+  // Tag + wire drag-and-drop on the new sections.
+  if (typeof makeSectionsDraggable === 'function') makeSectionsDraggable();
 }
 
 // Restore the inline Vitalu HTML when switching from a dynamic template
@@ -1295,6 +1297,182 @@ function rebuildSlotTables(){
     DEFAULT_TEXTS[slot] = el.innerHTML;
   });
 }
+
+// ── DRAG-AND-DROP REORDER ──────────────────────────────────
+// Make the top-level sections of the active template draggable so the
+// user can shuffle the order without touching HTML. We pick a single
+// "section parent" per template (the element whose direct children are
+// the visible sections), tag each child with data-section-id, and wire
+// HTML5 drag events to swap their order. The new order is persisted on
+// the project as proj.sectionOrder = ['s2','s0','s1',...] which we
+// replay after applyTemplateContent on the next load.
+function findSectionParent(){
+  var pw = g('page-wrap'); if (!pw) return null;
+  // Candidates that typically hold the visible sections in our templates.
+  var probes = ['article.adv', '.pp', 'main', 'article', '#page-wrap'];
+  var best = null, bestN = 0;
+  for (var i = 0; i < probes.length; i++) {
+    var els = pw.querySelectorAll(probes[i]);
+    for (var j = 0; j < els.length; j++) {
+      var n = els[j].querySelectorAll(':scope > section, :scope > header, :scope > aside').length;
+      if (n > bestN) { bestN = n; best = els[j]; }
+    }
+  }
+  return best || pw;
+}
+function tagSections(){
+  var parent = findSectionParent();
+  if (!parent) return null;
+  Array.from(parent.children).forEach(function(child, i){
+    if (!child.matches('section, header, aside, article, div')) return;
+    if (!child.dataset.sectionId) child.dataset.sectionId = 's' + i;
+  });
+  return parent;
+}
+var _dragSrc = null;
+function makeSectionsDraggable(){
+  var parent = tagSections();
+  if (!parent) return;
+  Array.from(parent.children).forEach(function(child){
+    if (!child.dataset.sectionId) return;
+    if (child.dataset.dragWired) return;
+    child.dataset.dragWired = '1';
+    child.setAttribute('draggable', 'true');
+    // Visible drag handle in the top-left of every section so the user
+    // knows the block is draggable. Inline-styled so it survives any
+    // template's CSS without a class collision.
+    if (!child.querySelector(':scope > .riverz-section-handle')) {
+      var handle = document.createElement('div');
+      handle.className = 'riverz-section-handle';
+      handle.contentEditable = 'false';
+      handle.title = 'Arrastrá para reordenar';
+      handle.innerHTML = '⋮⋮';
+      handle.style.cssText = 'position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:25;background:rgba(0,0,0,.7);color:#fff;width:36px;height:22px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:grab;pointer-events:none;letter-spacing:1px;opacity:0;transition:opacity .15s';
+      // Anchor the section so absolute children align to it
+      if (getComputedStyle(child).position === 'static') child.style.position = 'relative';
+      child.appendChild(handle);
+      child.addEventListener('mouseenter', function(){ handle.style.opacity = '.85'; });
+      child.addEventListener('mouseleave', function(){ handle.style.opacity = '0'; });
+    }
+    child.addEventListener('dragstart', _onSecDragStart);
+    child.addEventListener('dragover', _onSecDragOver);
+    child.addEventListener('dragleave', _onSecDragLeave);
+    child.addEventListener('drop', _onSecDrop);
+    child.addEventListener('dragend', _onSecDragEnd);
+  });
+}
+function _onSecDragStart(e){
+  // Don't hijack drags from inside a contenteditable / interactive child
+  if (e.target !== this && e.target.closest && e.target.closest('[contenteditable="true"], input, textarea, button, a')) {
+    e.preventDefault(); return;
+  }
+  _dragSrc = this;
+  this.style.opacity = '.5';
+  try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', this.dataset.sectionId || ''); } catch(err){}
+}
+function _onSecDragOver(e){
+  if (!_dragSrc || _dragSrc === this) return;
+  e.preventDefault();
+  try { e.dataTransfer.dropEffect = 'move'; } catch(err){}
+  this.style.outline = '2px dashed #4A90E2';
+  this.style.outlineOffset = '2px';
+}
+function _onSecDragLeave(){
+  this.style.outline = '';
+}
+function _onSecDrop(e){
+  e.preventDefault();
+  this.style.outline = '';
+  if (!_dragSrc || _dragSrc === this) return;
+  var parent = this.parentNode;
+  // Insert source before or after target depending on cursor Y
+  var rect = this.getBoundingClientRect();
+  var before = (e.clientY - rect.top) < rect.height / 2;
+  parent.insertBefore(_dragSrc, before ? this : this.nextSibling);
+  saveSectionOrder();
+}
+function _onSecDragEnd(){
+  this.style.opacity = '';
+  this.style.outline = '';
+  _dragSrc = null;
+}
+function saveSectionOrder(){
+  var proj = getActive(); if (!proj) return;
+  var parent = findSectionParent(); if (!parent) return;
+  var order = Array.from(parent.children)
+    .map(function(c){ return c.dataset.sectionId; })
+    .filter(Boolean);
+  proj.sectionOrder = order;
+  saveAll();
+  toast('Orden guardado');
+}
+function applySectionOrder(proj){
+  if (!proj || !Array.isArray(proj.sectionOrder) || proj.sectionOrder.length === 0) return;
+  var parent = findSectionParent(); if (!parent) return;
+  // Make sure ids exist — tag if first call hasn't run yet
+  Array.from(parent.children).forEach(function(child, i){
+    if (!child.dataset.sectionId) child.dataset.sectionId = 's' + i;
+  });
+  var byId = {};
+  Array.from(parent.children).forEach(function(c){ byId[c.dataset.sectionId] = c; });
+  // Append in the saved order; anything not in saved order goes last in original order
+  var seen = {};
+  proj.sectionOrder.forEach(function(id){
+    if (byId[id]) { parent.appendChild(byId[id]); seen[id] = true; }
+  });
+  Array.from(parent.children).forEach(function(c){
+    if (!seen[c.dataset.sectionId]) parent.appendChild(c);
+  });
+}
+window.saveSectionOrder = saveSectionOrder;
+
+// ── PER-ELEMENT TYPOGRAPHY ─────────────────────────────────
+// Floating font picker — appears next to the size control when a text
+// slot is focused. User picks a family from the dropdown and we stamp
+// font-family inline on the element. Persisted as part of proj.texts
+// because innerHTML carries the inline style attribute through.
+var FONT_OPTIONS = [
+  { v: '', label: 'Por defecto' },
+  { v: 'Inter, system-ui, sans-serif', label: 'Inter (sans)' },
+  { v: '"Cormorant Garamond", Georgia, serif', label: 'Cormorant (serif)' },
+  { v: '"Playfair Display", Georgia, serif', label: 'Playfair (serif)' },
+  { v: '"Instrument Sans", sans-serif', label: 'Instrument Sans' },
+  { v: 'Georgia, serif', label: 'Georgia' },
+  { v: '"Helvetica Neue", Arial, sans-serif', label: 'Helvetica' },
+  { v: '"Times New Roman", serif', label: 'Times New Roman' },
+  { v: '"Courier New", monospace', label: 'Courier' },
+];
+function buildFontPicker(){
+  var ctrl = document.getElementById('font-ctrl'); if (!ctrl) return;
+  if (ctrl.querySelector('.font-fam-sel')) return; // already built
+  var wrap = document.createElement('div');
+  wrap.className = 'font-fam-wrap';
+  wrap.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-left:6px;border-left:1px solid rgba(255,255,255,.12);padding-left:8px';
+  var sel = document.createElement('select');
+  sel.className = 'font-fam-sel';
+  sel.style.cssText = 'background:transparent;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:5px;padding:2px 6px;font-size:11px;font-family:inherit;cursor:pointer;max-width:130px';
+  FONT_OPTIONS.forEach(function(opt){
+    var o = document.createElement('option');
+    o.value = opt.v; o.textContent = opt.label; o.style.background = '#1a1d24';
+    sel.appendChild(o);
+  });
+  sel.onchange = function(){ changeFontFamily(this.value); };
+  var label = document.createElement('span');
+  label.textContent = 'Aa';
+  label.style.cssText = 'font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.05em';
+  wrap.appendChild(label);
+  wrap.appendChild(sel);
+  ctrl.appendChild(wrap);
+}
+function changeFontFamily(value){
+  if (typeof curEditEl === 'undefined' || !curEditEl) return;
+  if (value) curEditEl.style.fontFamily = value;
+  else curEditEl.style.removeProperty('font-family');
+  // Trigger save flow
+  if (typeof collectTexts === 'function') collectTexts();
+  if (typeof qSave === 'function') qSave();
+}
+window.changeFontFamily = changeFontFamily;
 
 // Wraps every [data-v-img] with always-visible "Cambiar imagen" + delete
 // buttons so the user never has to guess where to click to swap an image.
@@ -1476,6 +1654,10 @@ function activateProject(id){
   activeId=id; var proj=getActive(); if(!proj){showEmpty();return;}
   if(!histMap[id]){histMap[id]=[];histIdx[id]=-1;}
   isRestoring=true;
+  // Replay the saved section order (drag-and-drop) before applyTexts so
+  // the [data-v-text] / [data-v-img] queries hit elements in their final
+  // positions.
+  if (typeof applySectionOrder === 'function') applySectionOrder(proj);
   var texts=Object.keys(proj.texts).length>0?proj.texts:DEFAULT_TEXTS;
   applyTexts(texts);
   // For each slot, prefer the user's saved image; fall back to the
@@ -1592,9 +1774,23 @@ function updateUR(){var id=activeId;var u=g('btn-undo'),r=g('btn-redo');if(u)u.d
 function showFontCtrl(el){
   curEditEl=el;
   var fc=g('font-ctrl'); if(!fc)return;
+  if (typeof buildFontPicker === 'function') buildFontPicker();
   var cs=window.getComputedStyle(el).fontSize;
   var sz=Math.round(parseFloat(cs));
   g('font-size-val').textContent=sz+'px';
+  // Sync the font-family dropdown to the element's current font
+  var sel = fc.querySelector('.font-fam-sel');
+  if (sel) {
+    var fam = (el.style.fontFamily || window.getComputedStyle(el).fontFamily || '').trim();
+    var matched = false;
+    for (var i = 0; i < sel.options.length; i++) {
+      // Loose match — first family token comparison
+      var optFirst = (sel.options[i].value.split(',')[0] || '').replace(/^["']|["']$/g, '').toLowerCase().trim();
+      var elFirst = (fam.split(',')[0] || '').replace(/^["']|["']$/g, '').toLowerCase().trim();
+      if (optFirst && optFirst === elFirst) { sel.selectedIndex = i; matched = true; break; }
+    }
+    if (!matched) sel.selectedIndex = 0;
+  }
   // Position near element
   var r=el.getBoundingClientRect();
   fc.style.top=(r.top-44+window.scrollY)+'px';
@@ -1647,7 +1843,9 @@ function goToDashboard(){
 // ── EXPORT ────────────────────────────────────────────────────
 function buildHTML(proj){
   collectTexts();var pw=g('page-wrap'),clone=pw.cloneNode(true);
-  clone.querySelectorAll('.iov,.idel,#font-ctrl').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('.iov,.idel,#font-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
+  clone.querySelectorAll('[data-section-id],[data-section-handle]').forEach(function(el){ el.removeAttribute('data-section-id'); el.removeAttribute('data-section-handle'); });
   clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
   clone.querySelectorAll('[data-v-text],[data-v-img]').forEach(function(el){el.removeAttribute('data-v-text');el.removeAttribute('data-v-img');});
   clone.classList.remove('edit-mode');clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
@@ -1671,7 +1869,9 @@ function buildPublishPayload(proj){
   if(!proj) return null;
   collectTexts();
   var pw=g('page-wrap'),clone=pw.cloneNode(true);
-  clone.querySelectorAll('.iov,.idel,#font-ctrl').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('.iov,.idel,#font-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
+  clone.querySelectorAll('[data-section-id],[data-section-handle]').forEach(function(el){ el.removeAttribute('data-section-id'); el.removeAttribute('data-section-handle'); });
   clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
   clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
   clone.classList.remove('edit-mode');
@@ -2030,7 +2230,10 @@ function openImgGen(slot) {
   if (editImg) editImg.src = editable ? current : '';
   var editPrompt = document.getElementById('igp-edit-prompt');
   if (editPrompt) editPrompt.value = '';
-  igpSetMode('ai');
+  // Default to "Archivo" so a click on an image slot lands directly on
+  // the file picker — that's the path the user reaches for first.
+  // Generar con IA + URL stay one tab away.
+  igpSetMode('file');
   if (typeof igpFileReset === 'function') igpFileReset();
   modal.classList.add('on');
   setTimeout(function(){ igpAutoPrompt(); }, 80);
