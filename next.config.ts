@@ -97,9 +97,19 @@ const nextConfig: NextConfig = {
         headers: LANDING_LAB_HEADERS,
       },
       {
-        // Catch-all that excludes /landing-lab.html so we don't emit duplicate
-        // X-Frame-Options / CSP headers for the iframe's static document.
-        source: '/:path((?!landing-lab\\.html$).*)',
+        // Static templates served from /public/templates/ are iframed by
+        // both the landing-lab editor (in #page-area) AND the dashboard's
+        // template gallery + preview screen. Without SAMEORIGIN + a
+        // permissive frame-ancestors, X-Frame-Options DENY blocks the
+        // iframe load and the user sees "riverzai.com refused to connect".
+        source: '/templates/:path*',
+        headers: LANDING_LAB_HEADERS,
+      },
+      {
+        // Catch-all that excludes /landing-lab.html and /templates/* so we
+        // don't emit duplicate X-Frame-Options / CSP headers for the
+        // iframe documents above.
+        source: '/:path((?!landing-lab\\.html$|templates/).*)',
         headers: SECURITY_HEADERS,
       },
     ];

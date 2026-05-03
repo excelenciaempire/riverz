@@ -21,9 +21,9 @@ body{background:var(--ink);color:var(--cream);font-family:'Instrument Sans',sans
 .img-ph.loaded::after{display:none}
 .ar-land{aspect-ratio:16/9}.ar-wide{aspect-ratio:21/9}
 @media(max-width:768px){.ar-wide{aspect-ratio:4/3}}
-section{padding:80px 24px;position:relative}
+body:not(.riverz-tpl-active) section{padding:80px 24px;position:relative}
 .wrap{max-width:760px;margin:0 auto;width:100%}
-@media(max-width:600px){section{padding:60px 20px}}
+@media(max-width:600px){body:not(.riverz-tpl-active) section{padding:60px 20px}}
 .tag{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;display:block}.tag.t{color:var(--terra)}
 .disp{font-family:'Cormorant Garamond',serif;font-size:clamp(38px,7vw,88px);font-weight:300;line-height:1.05;letter-spacing:-.5px}.disp em{font-style:italic;color:var(--terra)}
 .hl{font-family:'Cormorant Garamond',serif;font-size:clamp(30px,5vw,56px);font-weight:400;line-height:1.15;letter-spacing:-.3px}.hl em{font-style:italic}
@@ -190,7 +190,7 @@ body.mob-mode .ing-grid{grid-template-columns:repeat(2,1fr)!important}
 body.mob-mode .testi-grid{grid-template-columns:1fr!important}
 body.mob-mode .stat-row{grid-template-columns:1fr!important}
 body.mob-mode .v-grid{grid-template-columns:1fr!important}
-body.mob-mode section{padding:44px 20px!important}
+body.mob-mode:not(.riverz-tpl-active) section{padding:44px 20px!important}
 body.mob-mode .wrap{max-width:100%}
 body.mob-mode #sticky,body.mob-mode #prog{display:none}
 body.mob-mode .hero-dn{display:none}
@@ -1167,6 +1167,10 @@ function applyTemplateContent(tpl){
   if (inlinePageWrapHtml === null) inlinePageWrapHtml = pw.innerHTML;
   pw.innerHTML = tpl.bodyHtml;
   currentTemplateId = tpl.id;
+  // Mark the body so editor-chrome rules that target generic `section`,
+  // `.adv-intro` etc. (originally written for the Vitalu inline layout)
+  // stop applying. The template's own CSS owns spacing now.
+  document.body.classList.add('riverz-tpl-active');
 
   // 4b) The editor frame paints #page-area and #page-wrap with the dark
   //     Vitalu palette (#0E0A06) by default. Worse, #page-wrap is
@@ -1247,6 +1251,7 @@ function restoreInlineLayout(){
   pw.innerHTML = inlinePageWrapHtml;
   pw.style.removeProperty('background');
   pw.style.removeProperty('color');
+  document.body.classList.remove('riverz-tpl-active');
   currentTemplateId = null;
   // Vitalu's hardcoded slot tables — restore the original values so
   // legacy code that walks IMG_KEYS keeps working.
@@ -1352,18 +1357,31 @@ function tagAllReorderable(){
     });
   }
   // 2) Any flex/grid container with 2+ children → its kids reorder within
-  //    that container. Skip system containers (the editor's own buttons,
-  //    the qty stepper input, etc.) and the section parent we just tagged.
+  //    that container. Plus sections / .reason / .adv-intro / etc. whose
+  //    direct children are block-level content (p, h*, blockquote, lists,
+  //    image wrappers) — so the user can shuffle paragraphs, headings,
+  //    images, quotes within a section. Skip system widgets.
   var counter = 1;
+  var BLOCK_CHILD_SEL = 'p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, [data-v-img], details, .quote, .inline-img, .reason-img, .checks, .crosses, .offer-bullets, .gallery-main';
+  var SKIP_SEL = 'button, input, textarea, label, .qty, .opts-row, .gallery-thumbs, .review-author, .rev-meta, .review-react, .trust-item, .prod-rating, .prod-price-row, .trust, .byline, .qty-row';
   pw.querySelectorAll('*').forEach(function(el){
     if (el.dataset.reorderContainer) return;
     if (el === top) return;
     if (el.children.length < 2) return;
-    var cs = getComputedStyle(el);
-    if (cs.display !== 'flex' && cs.display !== 'grid') return;
-    // Skip very small / non-content containers
-    if (el.matches('button, input, textarea, label, .qty, .opts-row, .gallery-thumbs, .review-author, .rev-meta, .review-react, .trust-item, .prod-rating, .prod-price-row, .trust, .byline, .qty-row')) return;
+    if (el.matches(SKIP_SEL)) return;
     if (el.closest('.riverz-img-edit, .riverz-img-del, .riverz-section-handle')) return;
+
+    var cs = getComputedStyle(el);
+    var isContainer = false;
+    if (cs.display === 'flex' || cs.display === 'grid') {
+      isContainer = true;
+    } else {
+      // Block-level container: count children that look like reorderable
+      // content blocks. If at least 2, the user can rearrange them.
+      var blocks = Array.from(el.children).filter(function(c){ return c.matches(BLOCK_CHILD_SEL); });
+      if (blocks.length >= 2) isContainer = true;
+    }
+    if (!isContainer) return;
     var key = 'rc-' + (counter++);
     el.dataset.reorderContainer = key;
     Array.from(el.children).forEach(function(c, i){
@@ -1798,6 +1816,17 @@ async function compressImageFile(file, maxDim, quality){
     ctx.drawImage(img,0,0,w,h);
     return await new Promise(function(resolve,reject){canvas.toBlob(function(b){b?resolve(b):reject(new Error('No se pudo recodificar la imagen'));},'image/jpeg',quality);});
   } finally { URL.revokeObjectURL(url); }
+}
+// Reads a Blob as a data URL. Used so we can keep an uploaded image on
+// the page (and persisted in localStorage as part of proj.images) without
+// hitting Shopify until the user explicitly clicks Publicar.
+function blobToDataUrl(blob){
+  return new Promise(function(resolve, reject){
+    var r = new FileReader();
+    r.onload = function(){ resolve(r.result); };
+    r.onerror = function(){ reject(new Error('No se pudo leer el archivo')); };
+    r.readAsDataURL(blob);
+  });
 }
 async function uploadImageToShopifyFiles(blob, originalName, slotKey){
   var proj=getActive();
