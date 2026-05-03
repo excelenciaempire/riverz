@@ -1060,14 +1060,22 @@ function applyTemplateContent(tpl){
   // 4b) The editor frame paints #page-area and #page-wrap with the dark
   //     Vitalu palette (#0E0A06) by default. Worse, #page-wrap is
   //     `background: var(--ink, #0E0A06)` — and Pilar's :root defines
-  //     --ink as #0f1115 (also dark) for its body text colour, so the
-  //     CSS-var resolution lands on Pilar's --ink and the canvas STAYS
-  //     dark even after my template CSS injects `body { background: #fff }`.
-  //     We force the canvas colour with !important + default to white for
-  //     any dynamic template (almost every advertorial / landing uses a
-  //     light canvas; templates that genuinely want dark can author CSS
-  //     that overrides the inline style).
+  //     --ink as #0f1115 (its dark body text colour), so the CSS-var
+  //     resolution lands on Pilar's --ink and the canvas STAYS dark even
+  //     after we inject `body { background: #fff }`.
+  //     Force the canvas colour two ways: an inline !important style AND
+  //     a #id-targeted CSS rule with !important, so neither cascade order
+  //     nor specificity can leave us painting dark text on a dark canvas.
+  //     Default to white because virtually every advertorial / landing
+  //     template ships a light canvas.
   var bodyBg = extractBodyBg(tpl.css) || '#ffffff';
+  document.querySelectorAll('style[data-tpl-bg]').forEach(function(s){ s.remove(); });
+  var bgStyle = document.createElement('style');
+  bgStyle.setAttribute('data-tpl-bg', tpl.id);
+  bgStyle.textContent =
+    '#page-area, #page-wrap { background: ' + bodyBg + ' !important; }\n' +
+    'body.mob-mode #page-area { background: ' + bodyBg + ' !important; }';
+  document.head.appendChild(bgStyle);
   var pa = document.getElementById('page-area');
   if (pa) pa.style.setProperty('background', bodyBg, 'important');
   if (pw) pw.style.setProperty('background', bodyBg, 'important');
@@ -1099,6 +1107,7 @@ function applyTemplateContent(tpl){
 // back to a Vitalu project (without a page reload).
 function restoreInlineLayout(){
   document.querySelectorAll('style[data-tpl]').forEach(function(s){ s.remove(); });
+  document.querySelectorAll('style[data-tpl-bg]').forEach(function(s){ s.remove(); });
   document.querySelectorAll('link[data-tpl]').forEach(function(l){ l.remove(); });
   // Clear the per-template bg overrides so #page-area falls back to the
   // dark Vitalu palette (#0E0A06) defined in this file's CSS. Use
