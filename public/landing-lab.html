@@ -1299,16 +1299,19 @@ function rebuildSlotTables(){
 }
 
 // ── DRAG-AND-DROP REORDER ──────────────────────────────────
-// Make the top-level sections of the active template draggable so the
-// user can shuffle the order without touching HTML. We pick a single
-// "section parent" per template (the element whose direct children are
-// the visible sections), tag each child with data-section-id, and wire
-// HTML5 drag events to swap their order. The new order is persisted on
-// the project as proj.sectionOrder = ['s2','s0','s1',...] which we
-// replay after applyTemplateContent on the next load.
+// Two layers of reorder:
+//   1) Top-level sections (article > section, .pp > section, etc.)
+//      get a visible "⋮⋮" handle on hover and can be reordered by drag.
+//   2) Direct children of any flex/grid container with 2+ children
+//      (benefits cards, steps, reviews, gallery thumbs, bullets…)
+//      get a smaller drag handle on hover so columns/rows can be
+//      shuffled within their parent.
+//
+// Both layers persist on proj.layoutOrder = { '<containerKey>': ['id', ...] }
+// where containerKey is "__top__" for the section parent or a stable
+// data-reorder-container attribute we tag on each container.
 function findSectionParent(){
   var pw = g('page-wrap'); if (!pw) return null;
-  // Candidates that typically hold the visible sections in our templates.
   var probes = ['article.adv', '.pp', 'main', 'article', '#page-wrap'];
   var best = null, bestN = 0;
   for (var i = 0; i < probes.length; i++) {
@@ -1320,58 +1323,88 @@ function findSectionParent(){
   }
   return best || pw;
 }
-function tagSections(){
-  var parent = findSectionParent();
-  if (!parent) return null;
-  Array.from(parent.children).forEach(function(child, i){
-    if (!child.matches('section, header, aside, article, div')) return;
-    if (!child.dataset.sectionId) child.dataset.sectionId = 's' + i;
+function tagAllReorderable(){
+  var pw = g('page-wrap'); if (!pw) return;
+  // 1) Top-level sections under the section parent
+  var top = findSectionParent();
+  if (top) {
+    if (!top.dataset.reorderContainer) top.dataset.reorderContainer = '__top__';
+    Array.from(top.children).forEach(function(child, i){
+      if (!child.dataset.sectionId) child.dataset.sectionId = 'top-' + i;
+    });
+  }
+  // 2) Any flex/grid container with 2+ children → its kids reorder within
+  //    that container. Skip system containers (the editor's own buttons,
+  //    the qty stepper input, etc.) and the section parent we just tagged.
+  var counter = 1;
+  pw.querySelectorAll('*').forEach(function(el){
+    if (el.dataset.reorderContainer) return;
+    if (el === top) return;
+    if (el.children.length < 2) return;
+    var cs = getComputedStyle(el);
+    if (cs.display !== 'flex' && cs.display !== 'grid') return;
+    // Skip very small / non-content containers
+    if (el.matches('button, input, textarea, label, .qty, .opts-row, .gallery-thumbs, .review-author, .rev-meta, .review-react, .trust-item, .prod-rating, .prod-price-row, .trust, .byline, .qty-row')) return;
+    if (el.closest('.riverz-img-edit, .riverz-img-del, .riverz-section-handle')) return;
+    var key = 'rc-' + (counter++);
+    el.dataset.reorderContainer = key;
+    Array.from(el.children).forEach(function(c, i){
+      if (!c.dataset.sectionId) c.dataset.sectionId = key + '-' + i;
+    });
   });
-  return parent;
 }
 var _dragSrc = null;
 function makeSectionsDraggable(){
-  var parent = tagSections();
-  if (!parent) return;
-  Array.from(parent.children).forEach(function(child){
-    if (!child.dataset.sectionId) return;
-    if (child.dataset.dragWired) return;
-    child.dataset.dragWired = '1';
-    child.setAttribute('draggable', 'true');
-    // Visible drag handle in the top-left of every section so the user
-    // knows the block is draggable. Inline-styled so it survives any
-    // template's CSS without a class collision.
-    if (!child.querySelector(':scope > .riverz-section-handle')) {
-      var handle = document.createElement('div');
-      handle.className = 'riverz-section-handle';
-      handle.contentEditable = 'false';
-      handle.title = 'Arrastrá para reordenar';
-      handle.innerHTML = '⋮⋮';
-      handle.style.cssText = 'position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:25;background:rgba(0,0,0,.7);color:#fff;width:36px;height:22px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:grab;pointer-events:none;letter-spacing:1px;opacity:0;transition:opacity .15s';
-      // Anchor the section so absolute children align to it
-      if (getComputedStyle(child).position === 'static') child.style.position = 'relative';
-      child.appendChild(handle);
-      child.addEventListener('mouseenter', function(){ handle.style.opacity = '.85'; });
-      child.addEventListener('mouseleave', function(){ handle.style.opacity = '0'; });
-    }
-    child.addEventListener('dragstart', _onSecDragStart);
-    child.addEventListener('dragover', _onSecDragOver);
-    child.addEventListener('dragleave', _onSecDragLeave);
-    child.addEventListener('drop', _onSecDrop);
-    child.addEventListener('dragend', _onSecDragEnd);
+  tagAllReorderable();
+  var pw = g('page-wrap'); if (!pw) return;
+  // Wire every element under a [data-reorder-container]
+  pw.querySelectorAll('[data-reorder-container]').forEach(function(parent){
+    var isTop = parent.dataset.reorderContainer === '__top__';
+    Array.from(parent.children).forEach(function(child){
+      if (!child.dataset.sectionId) return;
+      if (child.dataset.dragWired) return;
+      child.dataset.dragWired = '1';
+      child.setAttribute('draggable', 'true');
+      // Show a drag handle on hover. Bigger + center-top for top-level
+      // sections, smaller + corner for nested cards.
+      if (!child.querySelector(':scope > .riverz-section-handle')) {
+        var handle = document.createElement('div');
+        handle.className = 'riverz-section-handle';
+        handle.contentEditable = 'false';
+        handle.title = 'Arrastrá para reordenar';
+        handle.innerHTML = '⋮⋮';
+        if (isTop) {
+          handle.style.cssText = 'position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:25;background:rgba(0,0,0,.7);color:#fff;width:36px;height:22px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:grab;pointer-events:none;letter-spacing:1px;opacity:0;transition:opacity .15s';
+        } else {
+          handle.style.cssText = 'position:absolute;top:6px;left:6px;z-index:25;background:rgba(0,0,0,.6);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;cursor:grab;pointer-events:none;letter-spacing:0;opacity:0;transition:opacity .15s';
+        }
+        if (getComputedStyle(child).position === 'static') child.style.position = 'relative';
+        child.appendChild(handle);
+        child.addEventListener('mouseenter', function(){ handle.style.opacity = '.85'; });
+        child.addEventListener('mouseleave', function(){ handle.style.opacity = '0'; });
+      }
+      child.addEventListener('dragstart', _onSecDragStart);
+      child.addEventListener('dragover', _onSecDragOver);
+      child.addEventListener('dragleave', _onSecDragLeave);
+      child.addEventListener('drop', _onSecDrop);
+      child.addEventListener('dragend', _onSecDragEnd);
+    });
   });
 }
 function _onSecDragStart(e){
-  // Don't hijack drags from inside a contenteditable / interactive child
-  if (e.target !== this && e.target.closest && e.target.closest('[contenteditable="true"], input, textarea, button, a')) {
+  if (e.target !== this && e.target.closest && e.target.closest('[contenteditable="true"], input, textarea, button, a, .riverz-img-edit, .riverz-img-del')) {
     e.preventDefault(); return;
   }
   _dragSrc = this;
   this.style.opacity = '.5';
   try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', this.dataset.sectionId || ''); } catch(err){}
+  e.stopPropagation(); // don't let parent containers also see this drag
 }
 function _onSecDragOver(e){
   if (!_dragSrc || _dragSrc === this) return;
+  // Only accept drops between siblings in the SAME container — moving a
+  // benefits card into the reviews row would break the layout.
+  if (_dragSrc.parentNode !== this.parentNode) return;
   e.preventDefault();
   try { e.dataTransfer.dropEffect = 'move'; } catch(err){}
   this.style.outline = '2px dashed #4A90E2';
@@ -1384,47 +1417,67 @@ function _onSecDrop(e){
   e.preventDefault();
   this.style.outline = '';
   if (!_dragSrc || _dragSrc === this) return;
-  var parent = this.parentNode;
-  // Insert source before or after target depending on cursor Y
+  if (_dragSrc.parentNode !== this.parentNode) return;
+  // Insert before or after based on cursor position. Use horizontal axis
+  // for row containers, vertical for columns — auto-detected from the
+  // parent's flex-direction / grid layout.
   var rect = this.getBoundingClientRect();
-  var before = (e.clientY - rect.top) < rect.height / 2;
-  parent.insertBefore(_dragSrc, before ? this : this.nextSibling);
-  saveSectionOrder();
+  var parentCs = getComputedStyle(this.parentNode);
+  var horizontal = false;
+  if (parentCs.display === 'flex') horizontal = (parentCs.flexDirection || 'row').indexOf('row') === 0;
+  else if (parentCs.display === 'grid') horizontal = parseFloat(parentCs.gridTemplateColumns) > 0 && rect.height < rect.width * 2;
+  var before = horizontal
+    ? (e.clientX - rect.left) < rect.width / 2
+    : (e.clientY - rect.top) < rect.height / 2;
+  this.parentNode.insertBefore(_dragSrc, before ? this : this.nextSibling);
+  saveLayoutOrder();
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  e.stopPropagation();
 }
 function _onSecDragEnd(){
   this.style.opacity = '';
   this.style.outline = '';
   _dragSrc = null;
 }
-function saveSectionOrder(){
+function saveLayoutOrder(){
   var proj = getActive(); if (!proj) return;
-  var parent = findSectionParent(); if (!parent) return;
-  var order = Array.from(parent.children)
-    .map(function(c){ return c.dataset.sectionId; })
-    .filter(Boolean);
-  proj.sectionOrder = order;
+  var pw = g('page-wrap'); if (!pw) return;
+  var orderMap = {};
+  pw.querySelectorAll('[data-reorder-container]').forEach(function(parent){
+    var key = parent.dataset.reorderContainer;
+    var ids = Array.from(parent.children).map(function(c){ return c.dataset.sectionId; }).filter(Boolean);
+    if (ids.length) orderMap[key] = ids;
+  });
+  proj.layoutOrder = orderMap;
+  // back-compat: keep old sectionOrder field reflecting just the top
+  if (orderMap.__top__) proj.sectionOrder = orderMap.__top__;
   saveAll();
-  toast('Orden guardado');
 }
-function applySectionOrder(proj){
-  if (!proj || !Array.isArray(proj.sectionOrder) || proj.sectionOrder.length === 0) return;
-  var parent = findSectionParent(); if (!parent) return;
-  // Make sure ids exist — tag if first call hasn't run yet
-  Array.from(parent.children).forEach(function(child, i){
-    if (!child.dataset.sectionId) child.dataset.sectionId = 's' + i;
-  });
-  var byId = {};
-  Array.from(parent.children).forEach(function(c){ byId[c.dataset.sectionId] = c; });
-  // Append in the saved order; anything not in saved order goes last in original order
-  var seen = {};
-  proj.sectionOrder.forEach(function(id){
-    if (byId[id]) { parent.appendChild(byId[id]); seen[id] = true; }
-  });
-  Array.from(parent.children).forEach(function(c){
-    if (!seen[c.dataset.sectionId]) parent.appendChild(c);
+function applyLayoutOrder(proj){
+  if (!proj) return;
+  var pw = g('page-wrap'); if (!pw) return;
+  // Tag containers + ids first so we have something to match against
+  tagAllReorderable();
+  var map = proj.layoutOrder;
+  // Back-compat: if only the older sectionOrder array is present, treat it as __top__
+  if (!map && Array.isArray(proj.sectionOrder)) map = { __top__: proj.sectionOrder };
+  if (!map) return;
+  Object.keys(map).forEach(function(key){
+    var parent = pw.querySelector('[data-reorder-container="' + key + '"]');
+    if (!parent) return;
+    var saved = map[key];
+    var byId = {};
+    Array.from(parent.children).forEach(function(c){ if (c.dataset.sectionId) byId[c.dataset.sectionId] = c; });
+    var seen = {};
+    saved.forEach(function(id){
+      if (byId[id]) { parent.appendChild(byId[id]); seen[id] = true; }
+    });
+    Array.from(parent.children).forEach(function(c){
+      if (c.dataset.sectionId && !seen[c.dataset.sectionId]) parent.appendChild(c);
+    });
   });
 }
-window.saveSectionOrder = saveSectionOrder;
+window.saveLayoutOrder = saveLayoutOrder;
 
 // ── PER-ELEMENT TYPOGRAPHY ─────────────────────────────────
 // Floating font picker — appears next to the size control when a text
@@ -1654,10 +1707,11 @@ function activateProject(id){
   activeId=id; var proj=getActive(); if(!proj){showEmpty();return;}
   if(!histMap[id]){histMap[id]=[];histIdx[id]=-1;}
   isRestoring=true;
-  // Replay the saved section order (drag-and-drop) before applyTexts so
-  // the [data-v-text] / [data-v-img] queries hit elements in their final
+  // Replay the saved layout order (drag-and-drop reorders for both top-
+  // level sections AND nested rows/columns) before applyTexts so the
+  // [data-v-text] / [data-v-img] queries hit elements in their final
   // positions.
-  if (typeof applySectionOrder === 'function') applySectionOrder(proj);
+  if (typeof applyLayoutOrder === 'function') applyLayoutOrder(proj);
   var texts=Object.keys(proj.texts).length>0?proj.texts:DEFAULT_TEXTS;
   applyTexts(texts);
   // For each slot, prefer the user's saved image; fall back to the
@@ -1764,10 +1818,10 @@ async function onFilePick(e){
 function delImg(e,key){e.stopPropagation();e.preventDefault();var proj=getActive();if(proj)proj.images[key]=null;collapseSlot(key);snapshot();saveAll();toast('Imagen eliminada');}
 
 // ── UNDO/REDO ─────────────────────────────────────────────────
-function snapshot(){if(isRestoring||!activeId)return;collectTexts();var proj=getActive();if(!proj)return;var snap={texts:JSON.parse(JSON.stringify(proj.texts)),images:JSON.parse(JSON.stringify(proj.images))};if(!histMap[activeId]){histMap[activeId]=[];histIdx[activeId]=-1;}histMap[activeId].splice(histIdx[activeId]+1);histMap[activeId].push(snap);if(histMap[activeId].length>60)histMap[activeId].shift();histIdx[activeId]=histMap[activeId].length-1;updateUR();}
+function snapshot(){if(isRestoring||!activeId)return;collectTexts();var proj=getActive();if(!proj)return;var snap={texts:JSON.parse(JSON.stringify(proj.texts)),images:JSON.parse(JSON.stringify(proj.images)),layoutOrder:proj.layoutOrder?JSON.parse(JSON.stringify(proj.layoutOrder)):null};if(!histMap[activeId]){histMap[activeId]=[];histIdx[activeId]=-1;}histMap[activeId].splice(histIdx[activeId]+1);histMap[activeId].push(snap);if(histMap[activeId].length>60)histMap[activeId].shift();histIdx[activeId]=histMap[activeId].length-1;updateUR();}
 function doUndo(){if(!activeId||(histIdx[activeId]||0)<=0)return;histIdx[activeId]--;applySnap(histMap[activeId][histIdx[activeId]]);updateUR();toast('Deshecho');}
 function doRedo(){var h=histMap[activeId]||[];if(!activeId||(histIdx[activeId]||0)>=h.length-1)return;histIdx[activeId]++;applySnap(h[histIdx[activeId]]);updateUR();toast('Rehecho');}
-function applySnap(snap){isRestoring=true;var proj=getActive();if(!proj){isRestoring=false;return;}proj.texts=JSON.parse(JSON.stringify(snap.texts));proj.images=JSON.parse(JSON.stringify(snap.images));IMG_KEYS.forEach(function(k){resetSlot(k);});applyTexts(proj.texts);IMG_KEYS.forEach(function(k){var v=proj.images[k];if(v===null)collapseSlot(k);else if(typeof v==='string'&&v)setSlot(k,v);});saveAll();isRestoring=false;}
+function applySnap(snap){isRestoring=true;var proj=getActive();if(!proj){isRestoring=false;return;}proj.texts=JSON.parse(JSON.stringify(snap.texts));proj.images=JSON.parse(JSON.stringify(snap.images));if(snap.layoutOrder){proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));if(typeof applyLayoutOrder==='function')applyLayoutOrder(proj);}IMG_KEYS.forEach(function(k){resetSlot(k);});applyTexts(proj.texts);IMG_KEYS.forEach(function(k){var v=proj.images[k];if(v===null)collapseSlot(k);else if(typeof v==='string'&&v)setSlot(k,v);});saveAll();isRestoring=false;}
 function updateUR(){var id=activeId;var u=g('btn-undo'),r=g('btn-redo');if(u)u.disabled=!id||(histIdx[id]||0)<=0;if(r)r.disabled=!id||(histIdx[id]||0)>=((histMap[id]||[]).length-1);}
 
 // ── FONT SIZE CONTROLS ────────────────────────────────────────
@@ -1992,6 +2046,11 @@ async function publishToShopify(){
   }
 }
 window.publishToShopify = publishToShopify;
+// Helpers for igpFileApply (defined outside this IIFE) — without these,
+// the file-upload path inside the image modal blows up with
+// `compressImageFile is not defined` since the IIFE scope is hidden.
+window.compressImageFile = compressImageFile;
+window.uploadImageToShopifyFiles = uploadImageToShopifyFiles;
 
 // ── SETTINGS MODAL ────────────────────────────────────────────
 // Single panel for everything that's NOT inline editable: page title,
@@ -2512,8 +2571,8 @@ async function igpFileApply() {
   if (!igpPendingFileObj || !igpSlot) { igpToast('Elige una imagen', 1); return; }
   igpToast('Subiendo a Shopify...', 0);
   try {
-    var blob = await compressImageFile(igpPendingFileObj, 1920, 0.85);
-    var url  = await uploadImageToShopifyFiles(blob, igpPendingFileObj.name, igpSlot);
+    var blob = await window.compressImageFile(igpPendingFileObj, 1920, 0.85);
+    var url  = await window.uploadImageToShopifyFiles(blob, igpPendingFileObj.name, igpSlot);
     window.setSlot(igpSlot, url);
     var proj = window.getActive();
     if (proj) proj.images[igpSlot] = url;
