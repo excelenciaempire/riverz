@@ -10,6 +10,14 @@ import {
 } from '@/lib/landing-templates/registry';
 
 type Project = { id: string; name: string; angle?: string; templateId?: string };
+type Product = {
+  id: string;
+  name: string;
+  description?: string | null;
+  category?: string | null;
+  benefits?: string | null;
+  research_status?: string | null;
+};
 
 const PROJECTS_KEY = 'lab_v5';
 
@@ -20,6 +28,15 @@ export default function LandingLabDashboard() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
   const carouselRef = useRef<HTMLDivElement | null>(null);
+
+  // Product-picker modal state — opens when user clicks a non-inline template card
+  const [picker, setPicker] = useState<{ template: LandingTemplate } | null>(null);
+  const [products, setProducts] = useState<Product[] | null>(null);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productId, setProductId] = useState<string>('');
+  const [angle, setAngle] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
 
   // Load existing projects from localStorage so the user can keep editing.
   useEffect(() => {
@@ -42,6 +59,20 @@ export default function LandingLabDashboard() {
     }
   }, []);
 
+  // Lazy-load products only when the picker opens.
+  useEffect(() => {
+    if (!picker || products !== null) return;
+    setProductsLoading(true);
+    fetch('/api/products')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: Product[]) => {
+        setProducts(Array.isArray(data) ? data : []);
+        if (Array.isArray(data) && data.length > 0) setProductId(data[0].id);
+      })
+      .catch(() => setProducts([]))
+      .finally(() => setProductsLoading(false));
+  }, [picker, products]);
+
   const visibleTemplates = useMemo(
     () =>
       filter === 'all'
@@ -52,17 +83,88 @@ export default function LandingLabDashboard() {
 
   function openTemplate(t: LandingTemplate) {
     if (t.comingSoon) return;
-    // For Vitalu inline templates, the editor's existing "create new from
-    // starter project" flow handles the load; we just send a hint param.
+    // Vitalu inline templates open the seed projects directly — no AI needed,
+    // they're starter templates with hand-written copy already.
     if (t.inlineSource) {
       router.push(`/landing-lab/edit?template=${encodeURIComponent(t.inlineSource)}`);
       return;
     }
-    router.push(`/landing-lab/edit?template=${encodeURIComponent(t.id)}`);
+    // Everything else (Pilar listicle, future product pages) goes through
+    // the AI-generation modal so the copy lands in the editor adapted to
+    // the user's product instead of showing the example content.
+    setPicker({ template: t });
+    setGenError(null);
+    setAngle('');
   }
 
   function openProject(id: string) {
     router.push(`/landing-lab/edit?p=${encodeURIComponent(id)}`);
+  }
+
+  function closePicker() {
+    if (generating) return; // Don't let the user dismiss mid-generation
+    setPicker(null);
+    setGenError(null);
+  }
+
+  async function handleGenerate() {
+    if (!picker) return;
+    const product = (products || []).find((p) => p.id === productId);
+    // Allow ad-hoc fallback: if user has zero products, they still get a
+    // free-form "describe your product" textarea (in the angle field). We
+    // build a thin product_info from what they typed.
+    if (!product && !angle.trim()) {
+      setGenError('Elegí un producto o describilo en el campo de abajo.');
+      return;
+    }
+
+    setGenerating(true);
+    setGenError(null);
+
+    try {
+      const reqBody: any = { template_id: picker.template.id };
+      if (product) reqBody.product_id = product.id;
+      else reqBody.product_info = { name: 'Mi producto', description: angle, angle };
+      if (angle.trim() && product) reqBody.product_info = { name: product.name, angle };
+
+      const res = await fetch('/api/landing-lab/generate-from-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reqBody),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
+
+      // Drop the new project straight into the same lab_v5 storage the
+      // editor reads on boot. The editor's bootProject() will then notice
+      // the templateId, fetch the template HTML, and applyTexts() with
+      // what we just generated. No extra round trip.
+      const newId = makeProjectId();
+      const projectName = `${picker.template.name} — ${data.product_name || 'Sin producto'}`;
+      const newProject = {
+        id: newId,
+        name: projectName,
+        angle: angle || (product?.name || ''),
+        ctaUrl: 'https://',
+        texts: data.texts || {},
+        images: {},
+        templateId: picker.template.id,
+      };
+
+      const raw = localStorage.getItem(PROJECTS_KEY);
+      const stored = raw ? JSON.parse(raw) : { projects: [], activeId: null };
+      const list = Array.isArray(stored.projects) ? stored.projects : [];
+      list.push(newProject);
+      stored.projects = list;
+      stored.activeId = newId;
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(stored));
+
+      setPicker(null);
+      router.push(`/landing-lab/edit?p=${encodeURIComponent(newId)}`);
+    } catch (err: any) {
+      setGenError(err?.message || 'No se pudo generar el copy');
+      setGenerating(false);
+    }
   }
 
   function scrollCarousel(dir: 1 | -1) {
@@ -73,11 +175,8 @@ export default function LandingLabDashboard() {
 
   function onPromptSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // AI generation path is not wired yet — the dashboard ships UI-only.
-    // Until /api/landing-lab/ai-generate exists, route the user to the
-    // template gallery so they pick a starter manually.
     if (!prompt.trim()) return;
-    alert('La generación con IA llega en el próximo release. Por ahora elegí un template abajo y editalo.');
+    alert('La generación por prompt libre llega en el próximo release. Por ahora elegí un template abajo y se adapta a tu producto.');
   }
 
   return (
@@ -102,8 +201,8 @@ export default function LandingLabDashboard() {
 
         {/* Hero headline */}
         <h1 className="text-center text-[44px] font-bold leading-[1.05] tracking-tight sm:text-[60px]">
-          Lanza 10x más páginas.<br />
-          <span className="text-white/90">Escala 90% más rápido.</span>
+          Lanzá 10x más páginas.<br />
+          <span className="text-white/90">Escalá 90% más rápido.</span>
         </h1>
 
         {/* Prompt input */}
@@ -258,6 +357,23 @@ export default function LandingLabDashboard() {
         </section>
 
       </main>
+
+      {/* Product picker modal — only opens for non-inline templates */}
+      {picker && (
+        <PickerModal
+          template={picker.template}
+          products={products}
+          loading={productsLoading}
+          productId={productId}
+          setProductId={setProductId}
+          angle={angle}
+          setAngle={setAngle}
+          generating={generating}
+          error={genError}
+          onClose={closePicker}
+          onGenerate={handleGenerate}
+        />
+      )}
     </div>
   );
 }
@@ -306,8 +422,6 @@ function TemplateCard({ template, onClick }: { template: LandingTemplate; onClic
       className="group relative w-[300px] shrink-0 snap-start overflow-hidden rounded-xl border border-white/10 bg-[#15181f] text-left transition hover:border-white/25"
       disabled={template.comingSoon}
     >
-      {/* Thumbnail — live iframe scaled down. Pointer-events disabled so the
-          whole card stays clickable. */}
       <div className="relative h-[210px] overflow-hidden bg-white">
         <iframe
           src={template.htmlUrl}
@@ -340,4 +454,144 @@ function kindLabel(k: LandingTemplateKind): string {
   if (k === 'listicle') return 'Listicle';
   if (k === 'product_page') return 'Product page';
   return 'Landing page';
+}
+
+function PickerModal(props: {
+  template: LandingTemplate;
+  products: Product[] | null;
+  loading: boolean;
+  productId: string;
+  setProductId: (v: string) => void;
+  angle: string;
+  setAngle: (v: string) => void;
+  generating: boolean;
+  error: string | null;
+  onClose: () => void;
+  onGenerate: () => void;
+}) {
+  const hasProducts = !!props.products && props.products.length > 0;
+  return (
+    <div
+      className="fixed inset-0 z-[10000] grid place-items-center bg-black/70 px-4 backdrop-blur-sm"
+      onClick={props.onClose}
+    >
+      <div
+        className="relative w-full max-w-[520px] overflow-hidden rounded-2xl border border-white/10 bg-[#15181f] text-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-white/5 px-6 py-5">
+          <h3 className="text-lg font-semibold">{props.template.name}</h3>
+          <p className="mt-1 text-sm text-white/55">
+            Elegí el producto y Riverz adapta todo el copy del template a tu producto.
+          </p>
+        </div>
+
+        <div className="space-y-4 px-6 py-5">
+          {props.loading && (
+            <div className="text-sm text-white/50">Cargando tus productos…</div>
+          )}
+
+          {!props.loading && !hasProducts && (
+            <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-4 text-sm text-white/60">
+              Todavía no tenés productos en Riverz.{' '}
+              <a href="/marcas" className="font-semibold text-purple-300 hover:text-purple-200">
+                Agregá uno acá
+              </a>{' '}
+              (con su Deep Research) para que el AI tenga material para escribir.
+            </div>
+          )}
+
+          {!props.loading && hasProducts && (
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
+                Producto
+              </label>
+              <select
+                value={props.productId}
+                onChange={(e) => props.setProductId(e.target.value)}
+                disabled={props.generating}
+                className="w-full appearance-none rounded-lg border border-white/10 bg-[#0e1015] px-3 py-2.5 text-sm text-white focus:border-white/30 focus:outline-none"
+              >
+                {props.products!.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-[#0e1015]">
+                    {p.name}
+                    {p.research_status === 'completed' ? ' ✓ con research' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
+              Ángulo de venta (opcional)
+            </label>
+            <textarea
+              value={props.angle}
+              onChange={(e) => props.setAngle(e.target.value)}
+              disabled={props.generating}
+              rows={3}
+              placeholder="Ej: para mujeres 35-50 que ya probaron todo y siguen sin resultados, enfoque en ingrediente ancestral..."
+              className="w-full resize-none rounded-lg border border-white/10 bg-[#0e1015] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+            />
+            <p className="mt-1.5 text-xs text-white/40">
+              Si lo dejás vacío, Riverz usa el research del producto para definir el ángulo.
+            </p>
+          </div>
+
+          {props.error && (
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+              {props.error}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-white/5 bg-white/[0.02] px-6 py-4">
+          <button
+            onClick={props.onClose}
+            disabled={props.generating}
+            className="rounded-lg px-3 py-2 text-sm text-white/60 hover:text-white disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={props.onGenerate}
+            disabled={props.generating || (!hasProducts && !props.angle.trim())}
+            className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white/30"
+          >
+            {props.generating ? (
+              <>
+                <Spinner /> Generando copy…
+              </>
+            ) : (
+              <>Generar y editar →</>
+            )}
+          </button>
+        </div>
+
+        {props.generating && (
+          <div className="absolute inset-0 grid place-items-center bg-[#15181f]/85 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3 text-sm text-white/70">
+              <Spinner />
+              <div className="font-medium">Adaptando el template a tu producto…</div>
+              <div className="text-xs text-white/45">Esto tarda 15–40 segundos.</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <span
+      aria-hidden
+      className="inline-block size-4 animate-spin rounded-full border-2 border-current border-r-transparent"
+    />
+  );
+}
+
+function makeProjectId(): string {
+  return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
