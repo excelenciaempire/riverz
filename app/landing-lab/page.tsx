@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   LANDING_TEMPLATES,
   TEMPLATE_CATEGORIES,
@@ -43,7 +43,16 @@ const TYPE_LABEL: Record<LandingTemplateKind, string> = {
 };
 
 export default function LandingLabDashboard() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardInner />
+    </Suspense>
+  );
+}
+
+function DashboardInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [filter, setFilter] = useState<'all' | LandingTemplateKind>('all');
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
@@ -88,15 +97,35 @@ export default function LandingLabDashboard() {
 
   function pickTemplateFromCard(t: LandingTemplate) {
     if (t.comingSoon) return;
+    // Vitalu inline templates open straight in the editor (legacy seed
+    // projects); everything else routes to the preview screen where the
+    // user picks "Usar esta plantilla" or "Personalizar con IA".
     if (t.inlineSource) {
       router.push(`/landing-lab/edit?template=${encodeURIComponent(t.inlineSource)}`);
       return;
     }
-    setChosenTemplate(t);
-    setPageType(t.kind);
-    if (!prompt.trim()) setPrompt(TYPE_STARTER_PROMPT[t.kind]);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    router.push(`/landing-lab/template/${encodeURIComponent(t.id)}`);
   }
+
+  // When the preview screen sends the user back here with a ?template=<id>
+  // query param ("Personalizar con IA" path), pre-load the chip + starter
+  // prompt so the user just has to pick a product and submit. Cleared from
+  // the URL afterwards so a refresh doesn't re-trigger.
+  useEffect(() => {
+    const tplId = searchParams.get('template');
+    if (!tplId) return;
+    const t = LANDING_TEMPLATES.find((x) => x.id === tplId);
+    if (t && !t.inlineSource && !t.comingSoon) {
+      setChosenTemplate(t);
+      setPageType(t.kind);
+      setPrompt((p) => p.trim() ? p : TYPE_STARTER_PROMPT[t.kind]);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    // Drop the query param so a refresh doesn't re-fire.
+    if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+      try { window.history.replaceState(null, '', '/landing-lab'); } catch {/* ignore */}
+    }
+  }, [searchParams]);
 
   function onAttachClick() { fileInputRef.current?.click(); }
   function onFilesPicked(files: FileList | null) {
