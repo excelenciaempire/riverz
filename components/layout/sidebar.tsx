@@ -17,11 +17,6 @@ import {
   Wand2,
   PanelLeftClose,
   PanelLeftOpen,
-  Sparkles,
-  Store,
-  Key,
-  PlayCircle,
-  Gift,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCredits } from '@/hooks/useCredits';
@@ -54,9 +49,6 @@ const navigationGroups = [
     title: 'Landings',
     items: [
       { name: 'Landing Lab', href: '/landing-lab', icon: FlaskConical },
-      { name: 'Creative Studio', href: '/landing-lab/creative-studio', icon: Sparkles, badge: 'New' as const },
-      { name: 'Tiendas', href: '/landing-lab/stores', icon: Store },
-      { name: 'API Keys', href: '/landing-lab/api-keys', icon: Key, badge: 'Beta' as const },
     ],
   },
   {
@@ -121,7 +113,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     (item.href !== '/crear' && pathname.startsWith(item.href + '/'));
                   const Icon = item.icon;
 
-                  const badge = 'badge' in item ? (item as { badge?: string }).badge : undefined;
                   return (
                     <Link
                       key={item.name}
@@ -134,12 +125,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       )}
                     >
                       <Icon className="h-3 w-3 shrink-0" />
-                      <span className="flex-1">{item.name}</span>
-                      {badge && (
-                        <span className="rounded-full bg-[#07A498]/20 px-1.5 py-[1px] text-[8px] font-semibold uppercase tracking-wider text-[#07A498]">
-                          {badge}
-                        </span>
-                      )}
+                      <span>{item.name}</span>
                     </Link>
                   );
                 })}
@@ -149,26 +135,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </nav>
 
         <div className="space-y-0.5 border-t border-gray-900 px-3 py-2">
-          <Link
-            href="/landing-lab/tutorial"
-            className={cn(
-              'flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-medium text-gray-400 transition-all hover:bg-gray-900 hover:text-white',
-              pathname?.startsWith('/landing-lab/tutorial') && 'bg-[#07A498]/10 text-[#07A498]',
-            )}
-          >
-            <PlayCircle className="h-3 w-3 shrink-0" />
-            <span>Tutorial</span>
-          </Link>
-
-          <Link
-            href="/configuracion?tab=referrals"
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-medium text-gray-400 transition-all hover:bg-gray-900 hover:text-white"
-          >
-            <Gift className="h-3 w-3 shrink-0" />
-            <span className="flex-1">Invita y gana</span>
-            <span className="text-[8px] uppercase tracking-wider text-[#07A498]">Créditos</span>
-          </Link>
-
           <Link
             href="/configuracion"
             className={cn(
