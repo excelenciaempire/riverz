@@ -1058,16 +1058,19 @@ function applyTemplateContent(tpl){
   currentTemplateId = tpl.id;
 
   // 4b) The editor frame paints #page-area and #page-wrap with the dark
-  //     Vitalu palette by default — that bleeds through any template that
-  //     expects a different background (Pilar is white). Pull body { ...
-  //     background: X ... } out of the template CSS and apply X to both
-  //     containers so the editor canvas matches what the published page
-  //     will look like. restoreInlineLayout clears the inline styles
-  //     before swapping back to Vitalu so the dark bg returns there.
-  var bodyBg = extractBodyBg(tpl.css);
+  //     Vitalu palette (#0E0A06) by default. Worse, #page-wrap is
+  //     `background: var(--ink, #0E0A06)` — and Pilar's :root defines
+  //     --ink as #0f1115 (also dark) for its body text colour, so the
+  //     CSS-var resolution lands on Pilar's --ink and the canvas STAYS
+  //     dark even after my template CSS injects `body { background: #fff }`.
+  //     We force the canvas colour with !important + default to white for
+  //     any dynamic template (almost every advertorial / landing uses a
+  //     light canvas; templates that genuinely want dark can author CSS
+  //     that overrides the inline style).
+  var bodyBg = extractBodyBg(tpl.css) || '#ffffff';
   var pa = document.getElementById('page-area');
-  if (pa) pa.style.background = bodyBg || '';
-  if (pw) pw.style.background = bodyBg || '';
+  if (pa) pa.style.setProperty('background', bodyBg, 'important');
+  if (pw) pw.style.setProperty('background', bodyBg, 'important');
 
   // 5) Rebuild slot tables + re-decorate image slots with the editor chrome
   rebuildSlotTables();
@@ -1098,14 +1101,16 @@ function restoreInlineLayout(){
   document.querySelectorAll('style[data-tpl]').forEach(function(s){ s.remove(); });
   document.querySelectorAll('link[data-tpl]').forEach(function(l){ l.remove(); });
   // Clear the per-template bg overrides so #page-area falls back to the
-  // dark Vitalu palette (#0E0A06) defined in this file's CSS.
+  // dark Vitalu palette (#0E0A06) defined in this file's CSS. Use
+  // removeProperty so the !important inline style we set on the way in
+  // actually goes away.
   var pa0 = document.getElementById('page-area');
-  if (pa0) pa0.style.background = '';
+  if (pa0) pa0.style.removeProperty('background');
   if (inlinePageWrapHtml === null) return; // never left in the first place
   var pw = g('page-wrap');
   if (!pw) return;
   pw.innerHTML = inlinePageWrapHtml;
-  pw.style.background = '';
+  pw.style.removeProperty('background');
   currentTemplateId = null;
   // Vitalu's hardcoded slot tables — restore the original values so
   // legacy code that walks IMG_KEYS keeps working.
