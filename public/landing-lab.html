@@ -947,7 +947,26 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
 'use strict';
 
 var SK = 'lab_v5';
+// IMG_KEYS used to be a hard-coded list of Vitalu's 16 image slots. Now it's
+// a mutable list rebuilt from the live #page-wrap whenever a template is
+// loaded — that's what lets the same editor handle Vitalu, the new Pilar
+// listicle, and any future template without code changes. The Vitalu
+// defaults stay seeded here so Vitalu projects open with the right slot
+// order before a template swap kicks in.
 var IMG_KEYS = ['img-1','img-2','img-3','img-4','img-5a','img-5b','img-5c','img-5d','img-5e','img-5f','img-6','img-7a','img-7b','img-7c','img-8','img-9'];
+
+// Map of dynamic templates → their HTML location under /public. Inline
+// templates (Vitalu A/B) are NOT in this map — they're authored directly in
+// this file and don't need fetching.
+var TEMPLATE_FILES = {
+  'pilar-listicle': '/templates/advertorial-listicle.html'
+};
+// Tracks which template's HTML is currently mounted in #page-wrap. null =
+// the inline Vitalu layout that ships with this file.
+var currentTemplateId = null;
+// First-load snapshot of the inline #page-wrap, kept so we can restore the
+// Vitalu layout after a temporary swap-in of a dynamic template.
+var inlinePageWrapHtml = null;
 var projects=[], activeId=null, isRestoring=false, isDirty=false;
 var curImgKey=null, saveT=null, vp='desktop', sidebarOpen=true;
 var histMap={}, histIdx={}, genTimers=[], stickyGone=false, stickyThresh=0.20;
@@ -973,8 +992,143 @@ var SYS = 'Eres un copywriter experto en ecommerce colombiano de skincare.\n'
 
 function g(id){return document.getElementById(id);}
 
+// ── DYNAMIC TEMPLATE LOADER ─────────────────────────────────
+// Fetches a template's standalone HTML, parses it, returns the bits we
+// need to reconstruct it inside the editor: a string of body HTML, the
+// concatenated <style> CSS, and any external <link rel=stylesheet> hrefs
+// (Google Fonts, etc.) that should also load in the editor frame.
+async function fetchTemplate(templateId){
+  var url = TEMPLATE_FILES[templateId];
+  if (!url) throw new Error('Template no registrado: '+templateId);
+  var res = await fetch(url, { credentials: 'same-origin' });
+  if (!res.ok) throw new Error('No se pudo cargar el template ('+res.status+')');
+  var html = await res.text();
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  var css = '';
+  doc.querySelectorAll('style').forEach(function(s){ css += s.textContent + '\n'; });
+  var linkHrefs = Array.from(doc.querySelectorAll('link[rel="stylesheet"]'))
+    .map(function(l){ return l.href || l.getAttribute('href'); })
+    .filter(Boolean);
+  // We strip the template's own <script> (sticky/scroll glue) when mounting
+  // it inside the editor — the editor has its own scroll handling and we
+  // don't want two competing initStickyScroll setups firing. The script
+  // lives in the published page (publish endpoint re-injects it).
+  doc.querySelectorAll('script').forEach(function(s){ s.remove(); });
+  var bodyHtml = doc.body ? doc.body.innerHTML : html;
+  return { id: templateId, css: css, linkHrefs: linkHrefs, bodyHtml: bodyHtml };
+}
+
+// Mount a fetched template into #page-wrap. Removes the prior template's
+// CSS, replaces #page-wrap's HTML, rebuilds the slot tables, and re-runs
+// the contentEditable / image-overlay decoration so the editor chrome
+// works against the new DOM.
+function applyTemplateContent(tpl){
+  // 1) Remove any previously-injected template CSS / link tags
+  document.querySelectorAll('style[data-tpl]').forEach(function(s){ s.remove(); });
+  document.querySelectorAll('link[data-tpl]').forEach(function(l){ l.remove(); });
+
+  // 2) Inject this template's external stylesheet links (fonts mostly)
+  tpl.linkHrefs.forEach(function(href){
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.setAttribute('data-tpl', tpl.id);
+    document.head.appendChild(link);
+  });
+
+  // 3) Inject template CSS, marked so we can find it for publish + cleanup
+  var styleEl = document.createElement('style');
+  styleEl.setAttribute('data-tpl', tpl.id);
+  styleEl.textContent = tpl.css;
+  document.head.appendChild(styleEl);
+
+  // 4) Snapshot the inline Vitalu HTML the first time we leave it, so we
+  //    can restore it later for a Vitalu project without a page reload.
+  var pw = g('page-wrap');
+  if (!pw) return;
+  if (inlinePageWrapHtml === null) inlinePageWrapHtml = pw.innerHTML;
+  pw.innerHTML = tpl.bodyHtml;
+  currentTemplateId = tpl.id;
+
+  // 5) Rebuild slot tables + re-decorate image slots with the editor chrome
+  rebuildSlotTables();
+  decorateImageSlots();
+  // initEdit re-attaches contentEditable to the new [data-v-text] nodes.
+  if (typeof initEdit === 'function') initEdit();
+}
+
+// Restore the inline Vitalu HTML when switching from a dynamic template
+// back to a Vitalu project (without a page reload).
+function restoreInlineLayout(){
+  document.querySelectorAll('style[data-tpl]').forEach(function(s){ s.remove(); });
+  document.querySelectorAll('link[data-tpl]').forEach(function(l){ l.remove(); });
+  if (inlinePageWrapHtml === null) return; // never left in the first place
+  var pw = g('page-wrap');
+  if (!pw) return;
+  pw.innerHTML = inlinePageWrapHtml;
+  currentTemplateId = null;
+  // Vitalu's hardcoded slot tables — restore the original values so
+  // legacy code that walks IMG_KEYS keeps working.
+  IMG_KEYS = ['img-1','img-2','img-3','img-4','img-5a','img-5b','img-5c','img-5d','img-5e','img-5f','img-6','img-7a','img-7b','img-7c','img-8','img-9'];
+  // SLOT_CFG and DEFAULT_TEXTS are the originals from this file's body —
+  // they were never overwritten on this path, only augmented for dynamic
+  // templates via rebuildSlotTables.
+  if (typeof initEdit === 'function') initEdit();
+}
+
+// Re-derive IMG_KEYS, SLOT_CFG, DEFAULT_TEXTS from whatever's currently
+// inside #page-wrap. Called after applying a dynamic template so the rest
+// of the editor (image picker, snapshot, publish) sees the right slots.
+function rebuildSlotTables(){
+  IMG_KEYS = [];
+  SLOT_CFG = {};
+  DEFAULT_TEXTS = {};
+  var seen = {};
+  document.querySelectorAll('#page-wrap [data-v-img]').forEach(function(el){
+    var slot = el.getAttribute('data-v-img');
+    if (!slot || seen[slot]) return;
+    seen[slot] = true;
+    IMG_KEYS.push(slot);
+    var img = el.querySelector('img');
+    var alt = img ? (img.getAttribute('alt') || '') : '';
+    SLOT_CFG[slot] = {
+      label: el.getAttribute('data-v-img-label') || (slot + (alt ? ' · ' + alt : '')),
+      brief: el.getAttribute('data-v-img-brief') || alt,
+      ratio: el.getAttribute('data-v-img-ratio') || '1:1'
+    };
+  });
+  document.querySelectorAll('#page-wrap [data-v-text]').forEach(function(el){
+    var slot = el.getAttribute('data-v-text');
+    if (!slot || (slot in DEFAULT_TEXTS)) return;
+    DEFAULT_TEXTS[slot] = el.innerHTML;
+  });
+}
+
+// Wraps every [data-v-img] with the same .iov / .idel overlay buttons the
+// inline Vitalu template renders by default. Idempotent — skipped if
+// already decorated. Without this, dynamic templates show no way to
+// upload/replace an image.
+function decorateImageSlots(){
+  document.querySelectorAll('#page-wrap [data-v-img]').forEach(function(el){
+    if (el.querySelector(':scope > .iov')) return;
+    var slot = el.getAttribute('data-v-img');
+    if (!slot) return;
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+    var iov = document.createElement('button');
+    iov.className = 'iov'; iov.type = 'button';
+    iov.textContent = '📷 Cambiar imagen';
+    iov.onclick = function(e){ e.preventDefault(); e.stopPropagation(); pickImg(slot); };
+    el.appendChild(iov);
+    var idel = document.createElement('button');
+    idel.className = 'idel'; idel.type = 'button';
+    idel.innerHTML = '🗑';
+    idel.onclick = function(e){ e.preventDefault(); e.stopPropagation(); delImg(e, slot); };
+    el.appendChild(idel);
+  });
+}
+
 // ── STORAGE ──────────────────────────────────────────────────
-function loadAll(){
+async function loadAll(){
   try{ var s=localStorage.getItem(SK); if(s){var d=JSON.parse(s);projects=d.projects||[];activeId=d.activeId||null;} }catch(e){}
   if(projects.length===0){
     var pa=mkProj('Landing A — Ancestral','Ingrediente ancestral: sebo de res que nuestras bisabuelas usaban');
@@ -983,27 +1137,33 @@ function loadAll(){
     pb.id='vitalu_b'; pb.texts=JSON.parse(JSON.stringify(TEXTS_B)); projects.push(pb);
     activeId='vitalu_a';
   }
-  // The new dashboard at /landing-lab navigates here with ?p=<id> when the
-  // user clicks one of their existing pages — use it to override activeId
-  // before the first render so we land directly in the right project.
-  // ?template=<id> is reserved for the template-load flow (next ticket); for
-  // now we show a toast pointing the user back at the gallery.
+  // The new dashboard at /landing-lab navigates here with either:
+  //   ?p=<id>          → open an existing project
+  //   ?template=<id>   → start a NEW project from a template
+  // For Vitalu inline templates (frustración / ancestral) we resolve to the
+  // existing seed projects so we don't dupe them. For dynamic templates
+  // listed in TEMPLATE_FILES we mint a new project on the fly and rewrite
+  // the URL so a refresh resumes that same project instead of creating
+  // another one.
   try{
     var qs=new URLSearchParams(window.location.search);
     var pid=qs.get('p');
-    if(pid && projects.find(function(p){return p.id===pid;})) activeId=pid;
     var tpl=qs.get('template');
-    if(tpl){
-      var inline = (tpl==='vitalu-frustracion') ? 'vitalu_b'
-                 : (tpl==='vitalu-ancestral')  ? 'vitalu_a'
-                 : null;
-      if(inline && projects.find(function(p){return p.id===inline;})) activeId=inline;
-      else setTimeout(function(){ try{ toast('Ese template todavía no es editable. Estamos conectándolo al editor.',1); }catch(e){} }, 600);
+    if (tpl === 'vitalu-frustracion') { pid = 'vitalu_b'; tpl = null; }
+    else if (tpl === 'vitalu-ancestral') { pid = 'vitalu_a'; tpl = null; }
+    if (tpl && TEMPLATE_FILES[tpl]) {
+      var newProj = mkProj('Nueva landing', '', null, tpl);
+      projects.push(newProj);
+      activeId = newProj.id;
+      try { history.replaceState(null, '', '/landing-lab/edit?p='+newProj.id); } catch(e){}
+      saveAll();
+    } else if (pid && projects.find(function(p){return p.id===pid;})) {
+      activeId = pid;
     }
   }catch(e){}
   renderSidebar();
   var found=activeId&&projects.find(function(p){return p.id===activeId;});
-  if(found) activateProject(activeId);
+  if(found) await bootProject(activeId);
   else if(projects.length) activateProject(projects[0].id);
   else showEmpty();
 }
@@ -1012,7 +1172,7 @@ function qSave(){if(isRestoring)return;isDirty=true;dot('dirty');clearTimeout(sa
 
 // ── PROJECTS ─────────────────────────────────────────────────
 function uid(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
-function mkProj(name,angle,url){return{id:uid(),name:name||'Nueva Landing',angle:angle||'',ctaUrl:url||'https://vitaluoficial.store/products/kit-vitalu',texts:{},images:{}};}
+function mkProj(name,angle,url,templateId){return{id:uid(),name:name||'Nueva Landing',angle:angle||'',ctaUrl:url||'https://vitaluoficial.store/products/kit-vitalu',texts:{},images:{},templateId:templateId||undefined};}
 function getActive(){return projects.find(function(p){return p.id===activeId;});}
 
 function openNewModal(){
@@ -1078,13 +1238,38 @@ function renderSidebar(){
     var db=document.createElement('button');db.className='sb-act del';db.innerHTML='&#x1F5D1;';db.onclick=function(e){e.stopPropagation();doDelete(proj.id);};
     acts.appendChild(cb);acts.appendChild(db);
     el.appendChild(nm);el.appendChild(ag);el.appendChild(acts);
-    el.onclick=function(e){if(!e.target.closest('.sb-item-actions'))activateProject(proj.id);};
+    el.onclick=function(e){if(!e.target.closest('.sb-item-actions'))bootProject(proj.id);};
     list.appendChild(el);
   });
   var cnt=g('sb-count');if(cnt)cnt.textContent=projects.length+' landing'+(projects.length!==1?'s':'');
 }
-function doClone(id){var src=projects.find(function(p){return p.id===id;});if(!src)return;if(id===activeId)collectTexts();var c=JSON.parse(JSON.stringify(src));c.id=uid();c.name=src.name+' (copia)';projects.push(c);renderSidebar();activateProject(c.id);saveAll();toast('Clonada');}
-function doDelete(id){if(projects.length<=1){toast('No puedes eliminar la unica',1);return;}projects=projects.filter(function(p){return p.id!==id;});delete histMap[id];delete histIdx[id];if(activeId===id){activeId=null;if(projects.length)activateProject(projects[0].id);else showEmpty();}renderSidebar();saveAll();toast('Eliminada');}
+function doClone(id){var src=projects.find(function(p){return p.id===id;});if(!src)return;if(id===activeId)collectTexts();var c=JSON.parse(JSON.stringify(src));c.id=uid();c.name=src.name+' (copia)';projects.push(c);renderSidebar();bootProject(c.id);saveAll();toast('Clonada');}
+function doDelete(id){if(projects.length<=1){toast('No puedes eliminar la unica',1);return;}projects=projects.filter(function(p){return p.id!==id;});delete histMap[id];delete histIdx[id];if(activeId===id){activeId=null;if(projects.length)bootProject(projects[0].id);else showEmpty();}renderSidebar();saveAll();toast('Eliminada');}
+
+// ── BOOT-A-PROJECT (template-aware) ─────────────────────────
+// Wrapper around activateProject that swaps the active template's HTML
+// into #page-wrap before the synchronous activate runs. Use this anywhere
+// you'd previously call activateProject(id) — the sync path still works
+// for in-template switches, this just adds the template-load when the
+// target project uses a different template than what's currently mounted.
+async function bootProject(id){
+  var proj = projects.find(function(p){return p.id===id;});
+  if (!proj) return;
+  if (proj.templateId && currentTemplateId !== proj.templateId) {
+    try {
+      toast('Cargando template…', 0);
+      var tpl = await fetchTemplate(proj.templateId);
+      applyTemplateContent(tpl);
+    } catch(e){
+      console.error('template load failed', e);
+      toast('No se pudo cargar el template: '+(e.message||'error'), 1);
+      return;
+    }
+  } else if (!proj.templateId && currentTemplateId !== null) {
+    restoreInlineLayout();
+  }
+  activateProject(id);
+}
 
 // ── ACTIVATE ─────────────────────────────────────────────────
 function activateProject(id){
@@ -1112,7 +1297,17 @@ function collectTexts(){var proj=getActive();if(!proj)return;document.querySelec
 function applyTexts(texts){document.querySelectorAll('#page-wrap [data-v-text]').forEach(function(el){var k=el.getAttribute('data-v-text');if(texts&&texts[k]!==undefined)el.innerHTML=texts[k];});}
 function applyCTA(url){if(!url)return;document.querySelectorAll('#page-wrap a.cta-btn,#page-wrap a.sticky-btn').forEach(function(a){a.href=url;});}
 
-function imgEl(k){return document.getElementById('img-el-'+k.replace('img-',''));}
+// imgEl resolves a slot key to its <img> element. The legacy Vitalu layout
+// uses `<img id="img-el-<n>">` so we still try that first for back-compat;
+// every template that comes in via the dynamic loader uses [data-v-img]
+// wrappers with a child <img> instead, which is the path we resolve next.
+function imgEl(k){
+  if(!k) return null;
+  var legacy=document.getElementById('img-el-'+k.replace('img-',''));
+  if(legacy) return legacy;
+  var slot=document.querySelector('#page-wrap [data-v-img="'+k+'"]');
+  return slot ? slot.querySelector('img') : null;
+}
 function resetSlot(k){var el=imgEl(k);if(!el)return;el.src='';var ph=el.closest('.img-ph');if(ph)ph.classList.remove('loaded','collapsed');}
 function setSlot(k,src){var el=imgEl(k);if(!el)return;el.src=src;var ph=el.closest('.img-ph');if(ph){ph.classList.add('loaded');ph.classList.remove('collapsed');}}
 function collapseSlot(k){var el=imgEl(k);if(!el)return;el.src='';var ph=el.closest('.img-ph');if(ph){ph.classList.remove('loaded');ph.classList.add('collapsed');}}
@@ -1291,13 +1486,39 @@ function buildPublishPayload(proj){
   });
 
   // Inline the page CSS so the Shopify theme can't override the layout.
-  // We trim everything after the EDITOR UI marker — that section is editor-only.
-  var allCSS='';document.querySelectorAll('style').forEach(function(s){allCSS+=s.textContent;});
-  var cut=allCSS.indexOf('/* EDITOR UI */');if(cut>-1)allCSS=allCSS.substring(0,cut);
+  // For dynamic templates (Pilar, future advertorials, product pages) the
+  // CSS lives in a single <style data-tpl="<id>"> we injected at template
+  // load — pick that one and skip everything else.
+  // For Vitalu (no templateId) we keep the legacy behaviour: concatenate
+  // every <style> in the document and trim at /* EDITOR UI */ which marks
+  // the start of editor-only chrome styles.
+  var allCSS = '';
+  if (proj.templateId) {
+    var tplStyle = document.querySelector('style[data-tpl="'+proj.templateId+'"]');
+    if (tplStyle) allCSS = tplStyle.textContent;
+  } else {
+    document.querySelectorAll('style').forEach(function(s){
+      if (s.hasAttribute('data-tpl')) return; // never leak another template's CSS
+      allCSS += s.textContent;
+    });
+    var cut=allCSS.indexOf('/* EDITOR UI */'); if(cut>-1) allCSS=allCSS.substring(0,cut);
+  }
   // Scope the styles to a wrapper so they don't leak into the merchant's
   // theme (e.g. the merchant's body{} rules vs ours).
   var wrapId='riverz-landing-'+(proj.id||'x').replace(/[^a-z0-9]/gi,'').slice(0,12);
-  var fontsLink='<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">';
+  // Carry over the template's external font links (Google Fonts etc.). For
+  // Vitalu we hardcode Cormorant + Instrument Sans because that's what its
+  // inline CSS expects.
+  var fontsLink = '';
+  if (proj.templateId) {
+    document.querySelectorAll('link[data-tpl="'+proj.templateId+'"]').forEach(function(l){
+      var href = l.getAttribute('href') || l.href;
+      if (href) fontsLink += '<link rel="stylesheet" href="'+href+'">';
+    });
+  }
+  if (!fontsLink) {
+    fontsLink = '<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">';
+  }
   // Same scroll-driven script as buildHTML(): toggles the sticky CTA after
   // the user scrolls past 22%, plays the .rv reveal animations via
   // IntersectionObserver, and dismisses the sticky on close. Without this
