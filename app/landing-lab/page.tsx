@@ -8,8 +8,8 @@ import {
   type LandingTemplate,
   type LandingTemplateKind,
 } from '@/lib/landing-templates/registry';
+import { SideNav } from './_side-nav';
 
-type Project = { id: string; name: string; angle?: string; templateId?: string };
 type Product = {
   id: string;
   name: string;
@@ -21,10 +21,6 @@ type Product = {
 
 const PROJECTS_KEY = 'lab_v5';
 
-// Each chat-pill page type maps to a default template id (the first of that
-// kind). When the user picks "Listicle" without choosing a specific
-// template, we fall back to this so the AI gen has something concrete to
-// fill. Updated as we add templates.
 const TYPE_DEFAULT_TEMPLATE: Record<LandingTemplateKind, string | null> = {
   advertorial: 'pilar-listicle',
   listicle: 'pilar-listicle',
@@ -49,12 +45,9 @@ const TYPE_LABEL: Record<LandingTemplateKind, string> = {
 export default function LandingLabDashboard() {
   const router = useRouter();
   const [filter, setFilter] = useState<'all' | LandingTemplateKind>('all');
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
-  // Composer state — the chat-style box at the top is the only entry point
-  // to the AI generation flow.
+  // Composer state
   const [prompt, setPrompt] = useState('');
   const [products, setProducts] = useState<Product[] | null>(null);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -66,22 +59,7 @@ export default function LandingLabDashboard() {
   const [genError, setGenError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Lazy-load existing projects + product list on mount.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PROJECTS_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const list: Project[] = Array.isArray(parsed?.projects)
-          ? parsed.projects.map((p: any) => ({
-              id: p.id, name: p.name, angle: p.angle, templateId: p.templateId,
-            }))
-          : [];
-        setProjects(list);
-        setActiveId(parsed?.activeId || null);
-      }
-    } catch { /* localStorage corrupt or first visit */ }
-
     setProductsLoading(true);
     fetch('/api/products')
       .then((r) => (r.ok ? r.json() : []))
@@ -105,7 +83,6 @@ export default function LandingLabDashboard() {
     setFilter(kind);
     setPageType(kind);
     if (!prompt.trim()) setPrompt(TYPE_STARTER_PROMPT[kind]);
-    // Scroll the composer into view so user sees the prompt got filled
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -121,20 +98,12 @@ export default function LandingLabDashboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function openProject(id: string) {
-    router.push(`/landing-lab/edit?p=${encodeURIComponent(id)}`);
-  }
-
-  function onAttachClick() {
-    fileInputRef.current?.click();
-  }
-
+  function onAttachClick() { fileInputRef.current?.click(); }
   function onFilesPicked(files: FileList | null) {
     if (!files) return;
     const arr = Array.from(files).filter((f) => f.type.startsWith('image/'));
     setAttachments((prev) => [...prev, ...arr]);
   }
-
   function removeAttachment(idx: number) {
     setAttachments((prev) => prev.filter((_, i) => i !== idx));
   }
@@ -143,10 +112,6 @@ export default function LandingLabDashboard() {
     if (e) e.preventDefault();
     setGenError(null);
 
-    // Resolve the template to use:
-    // 1) explicit chosenTemplate from clicking a card
-    // 2) page type → first template of that kind
-    // 3) error if nothing
     const templateId =
       chosenTemplate?.id ||
       (pageType ? TYPE_DEFAULT_TEMPLATE[pageType] : null);
@@ -218,27 +183,10 @@ export default function LandingLabDashboard() {
 
   return (
     <div className="fixed inset-0 z-[9999] flex bg-[#0b0d12] text-white">
-      {/* ─── Left nav rail ─── */}
-      <SideNav />
+      <SideNav active="inicio" />
 
-      {/* ─── Main content ─── */}
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto max-w-[960px] px-6 pt-8 pb-24 sm:px-8">
-
-          {/* Top strip — back link + plan badge */}
-          <div className="mb-10 flex items-center justify-between">
-            <a
-              href="/dashboard"
-              className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white"
-            >
-              <span aria-hidden>←</span> Volver a Riverz
-            </a>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs">
-              <span className="text-white/60">Free plan</span>
-              <span className="text-purple-400">·</span>
-              <a href="/configuracion?tab=plan" className="text-purple-400 hover:text-purple-300">Upgrade</a>
-            </div>
-          </div>
+        <main className="mx-auto max-w-[960px] px-6 pt-12 pb-24 sm:px-8">
 
           {/* Hero headline */}
           <h1 className="text-center text-[40px] font-bold leading-[1.05] tracking-tight sm:text-[56px]">
@@ -260,7 +208,6 @@ export default function LandingLabDashboard() {
               className="w-full resize-none bg-transparent px-3 py-2 text-[15px] text-white placeholder:text-white/40 focus:outline-none disabled:opacity-50"
             />
 
-            {/* Attachments preview */}
             {attachments.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2 px-3">
                 {attachments.map((f, i) => (
@@ -282,7 +229,6 @@ export default function LandingLabDashboard() {
             )}
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              {/* Producto chip — dropdown of user's products */}
               <ProductChip
                 products={products}
                 productId={productId}
@@ -290,8 +236,6 @@ export default function LandingLabDashboard() {
                 loading={productsLoading}
                 disabled={generating}
               />
-
-              {/* Adjuntar chip — file upload */}
               <button
                 type="button"
                 onClick={onAttachClick}
@@ -310,13 +254,11 @@ export default function LandingLabDashboard() {
               />
 
               <div className="ml-auto flex items-center gap-2">
-                {/* Tipo de página chip */}
                 <PageTypeChip
                   value={pageType}
                   onChange={setPageType}
                   disabled={generating}
                 />
-                {/* Template específico chip — solo aparece si el user clickeó un card */}
                 {chosenTemplate && (
                   <span className="inline-flex select-none items-center gap-1.5 rounded-full bg-purple-500/15 px-3 py-1.5 text-xs text-purple-200 ring-1 ring-inset ring-purple-400/30">
                     <span aria-hidden>📐</span>
@@ -348,7 +290,7 @@ export default function LandingLabDashboard() {
             )}
           </form>
 
-          {/* 4 Category cards (also autofill the chat) */}
+          {/* 4 Category cards */}
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <CategoryCard
               title="Landing Pages"
@@ -376,56 +318,17 @@ export default function LandingLabDashboard() {
             />
           </div>
 
-          {/* Mis páginas (existing projects) */}
-          {projects.length > 0 && (
-            <section className="mt-16">
-              <div className="flex items-end justify-between">
-                <div>
-                  <h2 className="text-2xl font-semibold">Mis páginas</h2>
-                  <p className="mt-1 text-sm text-white/50">Continuá donde lo dejaste.</p>
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {projects.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => openProject(p.id)}
-                    className="group rounded-xl border border-white/10 bg-[#15181f] p-4 text-left transition hover:border-white/25 hover:bg-[#1a1e27]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-base font-semibold">{p.name}</div>
-                        {p.angle && (
-                          <div className="mt-1 line-clamp-2 text-sm text-white/50">{p.angle}</div>
-                        )}
-                      </div>
-                      {activeId === p.id && (
-                        <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-                          Activo
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-4 flex items-center gap-2 text-xs text-white/40 group-hover:text-white/70">
-                      Editar <span aria-hidden>→</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
           {/* Discover templates */}
           <section className="mt-16">
             <div className="flex items-end justify-between">
               <div>
                 <h2 className="text-2xl font-semibold">Descubrí templates</h2>
                 <p className="mt-1 text-sm text-white/50">
-                  Elegí uno y se carga en el chat para que el AI lo adapte a tu producto.
+                  Hover sobre un template para ver el preview animado. Click para cargarlo en el chat.
                 </p>
               </div>
             </div>
 
-            {/* Filter pills */}
             <div className="mt-5 flex flex-wrap items-center gap-2">
               {TEMPLATE_CATEGORIES.map((c) => {
                 const active = filter === c.id;
@@ -458,7 +361,6 @@ export default function LandingLabDashboard() {
               </div>
             </div>
 
-            {/* Carousel */}
             <div
               ref={carouselRef}
               className="mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -482,49 +384,8 @@ export default function LandingLabDashboard() {
 
 /* ───── presentational sub-components ───── */
 
-function SideNav() {
-  return (
-    <aside className="hidden w-[60px] shrink-0 flex-col items-center border-r border-white/5 bg-[#0e1015] py-4 sm:flex">
-      <a href="/landing-lab" className="grid size-9 place-items-center rounded-lg bg-white/[0.06] text-base font-bold">
-        L
-      </a>
-      <nav className="mt-6 flex flex-col items-center gap-1">
-        <NavIcon href="/landing-lab" label="Landing Lab" icon="📐" active />
-        <NavIcon href="/static-ads" label="Static Ads" icon="🖼" />
-        <NavIcon href="/marcas" label="Marcas" icon="📦" />
-        <NavIcon href="/configuracion" label="Configuración" icon="⚙️" />
-      </nav>
-      <div className="mt-auto">
-        <NavIcon href="/dashboard" label="Volver a Riverz" icon="←" />
-      </div>
-    </aside>
-  );
-}
-
-function NavIcon({ href, label, icon, active = false }: { href: string; label: string; icon: string; active?: boolean }) {
-  return (
-    <a
-      href={href}
-      title={label}
-      className={
-        'group relative grid size-9 place-items-center rounded-lg text-sm transition ' +
-        (active ? 'bg-white/[0.08] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white')
-      }
-    >
-      <span aria-hidden>{icon}</span>
-      <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md border border-white/10 bg-[#15181f] px-2 py-1 text-xs text-white/80 shadow-lg group-hover:block">
-        {label}
-      </span>
-    </a>
-  );
-}
-
 function ProductChip({
-  products,
-  productId,
-  setProductId,
-  loading,
-  disabled,
+  products, productId, setProductId, loading, disabled,
 }: {
   products: Product[] | null;
   productId: string;
@@ -571,8 +432,7 @@ function ProductChip({
               No tenés productos.{' '}
               <a href="/marcas" className="font-semibold text-purple-300 hover:text-purple-200">
                 Agregá uno
-              </a>
-              .
+              </a>.
             </div>
           )}
           {hasProducts && (
@@ -603,9 +463,7 @@ function ProductChip({
 }
 
 function PageTypeChip({
-  value,
-  onChange,
-  disabled,
+  value, onChange, disabled,
 }: {
   value: LandingTemplateKind | '';
   onChange: (v: LandingTemplateKind | '') => void;
@@ -676,14 +534,57 @@ function CategoryCard({
 }
 
 function TemplateCard({ template, onClick }: { template: LandingTemplate; onClick: () => void }) {
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  function startScrollAnim() {
+    cancelAnim();
+    const win = iframeRef.current?.contentWindow;
+    const doc = win?.document;
+    if (!win || !doc) return;
+    const max = Math.max(0, doc.documentElement.scrollHeight - win.innerHeight);
+    if (max <= 0) return;
+    const duration = 5500; // ~5.5s for a full-page sweep — slow enough to read, fast enough to feel alive
+    const startScroll = win.scrollY || 0;
+    const t0 = performance.now();
+    function step(now: number) {
+      const t = Math.min(1, (now - t0) / duration);
+      // Ease in-out so the start and end aren't jarring
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      win!.scrollTo(0, startScroll + (max - startScroll) * eased);
+      if (t < 1) rafRef.current = requestAnimationFrame(step);
+    }
+    rafRef.current = requestAnimationFrame(step);
+  }
+
+  function stopScrollAnim() {
+    cancelAnim();
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    // Smooth scroll back to top so the next hover starts clean
+    try { win.scrollTo({ top: 0, behavior: 'smooth' }); } catch { win.scrollTo(0, 0); }
+  }
+
+  function cancelAnim() {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }
+
   return (
     <button
       onClick={onClick}
+      onMouseEnter={startScrollAnim}
+      onMouseLeave={stopScrollAnim}
+      onFocus={startScrollAnim}
+      onBlur={stopScrollAnim}
       className="group relative w-[300px] shrink-0 snap-start overflow-hidden rounded-xl border border-white/10 bg-[#15181f] text-left transition hover:border-white/25"
       disabled={template.comingSoon}
     >
       <div className="relative h-[210px] overflow-hidden bg-white">
         <iframe
+          ref={iframeRef}
           src={template.htmlUrl}
           title={`${template.name} preview`}
           aria-hidden
