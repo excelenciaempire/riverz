@@ -21,47 +21,67 @@ type Product = {
 
 const PROJECTS_KEY = 'lab_v5';
 
+// Each chat-pill page type maps to a default template id (the first of that
+// kind). When the user picks "Listicle" without choosing a specific
+// template, we fall back to this so the AI gen has something concrete to
+// fill. Updated as we add templates.
+const TYPE_DEFAULT_TEMPLATE: Record<LandingTemplateKind, string | null> = {
+  advertorial: 'pilar-listicle',
+  listicle: 'pilar-listicle',
+  landing_page: null,
+  product_page: null,
+};
+
+const TYPE_STARTER_PROMPT: Record<LandingTemplateKind, string> = {
+  landing_page: 'Crea una landing page enfocada en una sola oferta para mi producto.',
+  product_page: 'Crea una página de producto con beneficios, variantes y add-to-cart.',
+  listicle: 'Crea un listicle de 5 razones por las que mi producto es la mejor opción.',
+  advertorial: 'Crea un advertorial estilo editorial que eduque y caliente tráfico frío.',
+};
+
+const TYPE_LABEL: Record<LandingTemplateKind, string> = {
+  landing_page: 'Landing page',
+  product_page: 'Product page',
+  listicle: 'Listicle',
+  advertorial: 'Advertorial',
+};
+
 export default function LandingLabDashboard() {
   const router = useRouter();
   const [filter, setFilter] = useState<'all' | LandingTemplateKind>('all');
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState('');
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
-  // Product-picker modal state — opens when user clicks a non-inline template card
-  const [picker, setPicker] = useState<{ template: LandingTemplate } | null>(null);
+  // Composer state — the chat-style box at the top is the only entry point
+  // to the AI generation flow.
+  const [prompt, setPrompt] = useState('');
   const [products, setProducts] = useState<Product[] | null>(null);
   const [productsLoading, setProductsLoading] = useState(false);
-  const [productId, setProductId] = useState<string>('');
-  const [angle, setAngle] = useState('');
+  const [productId, setProductId] = useState<string | ''>('');
+  const [pageType, setPageType] = useState<LandingTemplateKind | ''>('');
+  const [chosenTemplate, setChosenTemplate] = useState<LandingTemplate | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Load existing projects from localStorage so the user can keep editing.
+  // Lazy-load existing projects + product list on mount.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(PROJECTS_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const list: Project[] = Array.isArray(parsed?.projects)
-        ? parsed.projects.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            angle: p.angle,
-            templateId: p.templateId,
-          }))
-        : [];
-      setProjects(list);
-      setActiveId(parsed?.activeId || null);
-    } catch {
-      // localStorage corrupt or first visit — leave empty.
-    }
-  }, []);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const list: Project[] = Array.isArray(parsed?.projects)
+          ? parsed.projects.map((p: any) => ({
+              id: p.id, name: p.name, angle: p.angle, templateId: p.templateId,
+            }))
+          : [];
+        setProjects(list);
+        setActiveId(parsed?.activeId || null);
+      }
+    } catch { /* localStorage corrupt or first visit */ }
 
-  // Lazy-load products only when the picker opens.
-  useEffect(() => {
-    if (!picker || products !== null) return;
     setProductsLoading(true);
     fetch('/api/products')
       .then((r) => (r.ok ? r.json() : []))
@@ -71,7 +91,7 @@ export default function LandingLabDashboard() {
       })
       .catch(() => setProducts([]))
       .finally(() => setProductsLoading(false));
-  }, [picker, products]);
+  }, []);
 
   const visibleTemplates = useMemo(
     () =>
@@ -81,51 +101,76 @@ export default function LandingLabDashboard() {
     [filter],
   );
 
-  function openTemplate(t: LandingTemplate) {
+  function pickCategory(kind: LandingTemplateKind) {
+    setFilter(kind);
+    setPageType(kind);
+    if (!prompt.trim()) setPrompt(TYPE_STARTER_PROMPT[kind]);
+    // Scroll the composer into view so user sees the prompt got filled
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function pickTemplateFromCard(t: LandingTemplate) {
     if (t.comingSoon) return;
-    // Vitalu inline templates open the seed projects directly — no AI needed,
-    // they're starter templates with hand-written copy already.
     if (t.inlineSource) {
       router.push(`/landing-lab/edit?template=${encodeURIComponent(t.inlineSource)}`);
       return;
     }
-    // Everything else (Pilar listicle, future product pages) goes through
-    // the AI-generation modal so the copy lands in the editor adapted to
-    // the user's product instead of showing the example content.
-    setPicker({ template: t });
-    setGenError(null);
-    setAngle('');
+    setChosenTemplate(t);
+    setPageType(t.kind);
+    if (!prompt.trim()) setPrompt(TYPE_STARTER_PROMPT[t.kind]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function openProject(id: string) {
     router.push(`/landing-lab/edit?p=${encodeURIComponent(id)}`);
   }
 
-  function closePicker() {
-    if (generating) return; // Don't let the user dismiss mid-generation
-    setPicker(null);
-    setGenError(null);
+  function onAttachClick() {
+    fileInputRef.current?.click();
   }
 
-  async function handleGenerate() {
-    if (!picker) return;
+  function onFilesPicked(files: FileList | null) {
+    if (!files) return;
+    const arr = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    setAttachments((prev) => [...prev, ...arr]);
+  }
+
+  function removeAttachment(idx: number) {
+    setAttachments((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  async function handleSubmit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    setGenError(null);
+
+    // Resolve the template to use:
+    // 1) explicit chosenTemplate from clicking a card
+    // 2) page type → first template of that kind
+    // 3) error if nothing
+    const templateId =
+      chosenTemplate?.id ||
+      (pageType ? TYPE_DEFAULT_TEMPLATE[pageType] : null);
+
+    if (!templateId) {
+      setGenError('Elegí un tipo de página o un template específico abajo.');
+      return;
+    }
+
     const product = (products || []).find((p) => p.id === productId);
-    // Allow ad-hoc fallback: if user has zero products, they still get a
-    // free-form "describe your product" textarea (in the angle field). We
-    // build a thin product_info from what they typed.
-    if (!product && !angle.trim()) {
-      setGenError('Elegí un producto o describilo en el campo de abajo.');
+    if (!product && !prompt.trim()) {
+      setGenError('Elegí un producto o describí qué querés en el chat.');
       return;
     }
 
     setGenerating(true);
-    setGenError(null);
-
     try {
-      const reqBody: any = { template_id: picker.template.id };
-      if (product) reqBody.product_id = product.id;
-      else reqBody.product_info = { name: 'Mi producto', description: angle, angle };
-      if (angle.trim() && product) reqBody.product_info = { name: product.name, angle };
+      const reqBody: any = { template_id: templateId };
+      if (product) {
+        reqBody.product_id = product.id;
+        if (prompt.trim()) reqBody.product_info = { name: product.name, angle: prompt.trim() };
+      } else {
+        reqBody.product_info = { name: 'Mi producto', description: prompt.trim(), angle: prompt.trim() };
+      }
 
       const res = await fetch('/api/landing-lab/generate-from-template', {
         method: 'POST',
@@ -135,20 +180,17 @@ export default function LandingLabDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
 
-      // Drop the new project straight into the same lab_v5 storage the
-      // editor reads on boot. The editor's bootProject() will then notice
-      // the templateId, fetch the template HTML, and applyTexts() with
-      // what we just generated. No extra round trip.
       const newId = makeProjectId();
-      const projectName = `${picker.template.name} — ${data.product_name || 'Sin producto'}`;
+      const tplName = LANDING_TEMPLATES.find((t) => t.id === templateId)?.name || 'Template';
+      const projectName = `${tplName} — ${data.product_name || product?.name || 'Sin producto'}`;
       const newProject = {
         id: newId,
         name: projectName,
-        angle: angle || (product?.name || ''),
+        angle: prompt.trim() || product?.name || '',
         ctaUrl: 'https://',
         texts: data.texts || {},
         images: {},
-        templateId: picker.template.id,
+        templateId,
       };
 
       const raw = localStorage.getItem(PROJECTS_KEY);
@@ -159,7 +201,6 @@ export default function LandingLabDashboard() {
       stored.activeId = newId;
       localStorage.setItem(PROJECTS_KEY, JSON.stringify(stored));
 
-      setPicker(null);
       router.push(`/landing-lab/edit?p=${encodeURIComponent(newId)}`);
     } catch (err: any) {
       setGenError(err?.message || 'No se pudo generar el copy');
@@ -173,233 +214,452 @@ export default function LandingLabDashboard() {
     el.scrollBy({ left: dir * Math.min(el.clientWidth * 0.85, 720), behavior: 'smooth' });
   }
 
-  function onPromptSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!prompt.trim()) return;
-    alert('La generación por prompt libre llega en el próximo release. Por ahora elegí un template abajo y se adapta a tu producto.');
-  }
+  const submitDisabled = generating || (!prompt.trim() && !productId && !chosenTemplate);
 
   return (
-    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-[#0b0d12] text-white">
-      <main className="mx-auto max-w-[960px] px-6 pt-10 pb-24 sm:px-8">
+    <div className="fixed inset-0 z-[9999] flex bg-[#0b0d12] text-white">
+      {/* ─── Left nav rail ─── */}
+      <SideNav />
 
-        {/* Header strip — plan badge + close button */}
-        <div className="mb-10 flex items-center justify-between">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs">
-            <span className="text-white/60">Free plan</span>
-            <span className="text-purple-400">·</span>
-            <a href="/configuracion?tab=plan" className="text-purple-400 hover:text-purple-300">Upgrade</a>
-          </div>
-          <a
-            href="/dashboard"
-            className="text-sm text-white/50 hover:text-white"
-            title="Volver al dashboard"
-          >
-            Salir ✕
-          </a>
-        </div>
+      {/* ─── Main content ─── */}
+      <div className="flex-1 overflow-y-auto">
+        <main className="mx-auto max-w-[960px] px-6 pt-8 pb-24 sm:px-8">
 
-        {/* Hero headline */}
-        <h1 className="text-center text-[44px] font-bold leading-[1.05] tracking-tight sm:text-[60px]">
-          Lanzá 10x más páginas.<br />
-          <span className="text-white/90">Escalá 90% más rápido.</span>
-        </h1>
-
-        {/* Prompt input */}
-        <form onSubmit={onPromptSubmit} className="mt-10 rounded-2xl border border-white/10 bg-[#15181f] p-3 shadow-[0_2px_30px_rgba(0,0,0,.4)]">
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Pídele a Riverz que cree un listicle con 5 razones para tu producto..."
-            rows={3}
-            className="w-full resize-none bg-transparent px-3 py-2 text-[15px] text-white placeholder:text-white/40 focus:outline-none"
-          />
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <PillButton icon="🎨" label="Brand Style" />
-            <PillButton icon="📦" label="Producto" />
-            <PillButton icon="📎" label="Adjuntar" />
-            <div className="ml-auto flex items-center gap-2">
-              <PillButton icon="📐" label="Landing page" />
-              <button
-                type="submit"
-                aria-label="Generar"
-                className="grid size-9 place-items-center rounded-full bg-white text-black transition hover:bg-white/90 disabled:opacity-50"
-                disabled={!prompt.trim()}
-              >
-                ↑
-              </button>
+          {/* Top strip — back link + plan badge */}
+          <div className="mb-10 flex items-center justify-between">
+            <a
+              href="/dashboard"
+              className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white"
+            >
+              <span aria-hidden>←</span> Volver a Riverz
+            </a>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs">
+              <span className="text-white/60">Free plan</span>
+              <span className="text-purple-400">·</span>
+              <a href="/configuracion?tab=plan" className="text-purple-400 hover:text-purple-300">Upgrade</a>
             </div>
           </div>
-        </form>
 
-        {/* 4 Category cards */}
-        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <CategoryCard
-            title="Landing Pages"
-            subtitle="Probá nuevas ofertas, ángulos e ideas de tus mejores ads."
-            tone="from-violet-500/20 to-violet-500/5"
-            onClick={() => setFilter('landing_page')}
-          />
-          <CategoryCard
-            title="Product Pages"
-            subtitle="Templates personalizados de página de producto en tu Shopify."
-            tone="from-amber-500/20 to-amber-500/5"
-            onClick={() => setFilter('product_page')}
-          />
-          <CategoryCard
-            title="Listicles"
-            subtitle="Lista las razones por las que tu producto es la mejor opción."
-            tone="from-rose-500/20 to-rose-500/5"
-            onClick={() => setFilter('listicle')}
-          />
-          <CategoryCard
-            title="Advertorials"
-            subtitle="Educa y calienta tráfico frío antes de la compra."
-            tone="from-emerald-500/20 to-emerald-500/5"
-            onClick={() => setFilter('advertorial')}
-          />
-        </div>
+          {/* Hero headline */}
+          <h1 className="text-center text-[40px] font-bold leading-[1.05] tracking-tight sm:text-[56px]">
+            Lanzá 10x más páginas.<br />
+            <span className="text-white/90">Escalá 90% más rápido.</span>
+          </h1>
 
-        {/* Mis páginas (existing projects) */}
-        {projects.length > 0 && (
+          {/* Composer (chat) */}
+          <form
+            onSubmit={handleSubmit}
+            className="mt-10 rounded-2xl border border-white/10 bg-[#15181f] p-3 shadow-[0_2px_30px_rgba(0,0,0,.4)]"
+          >
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Describí lo que querés crear, o elegí una categoría abajo y Riverz autocompleta el prompt…"
+              rows={3}
+              disabled={generating}
+              className="w-full resize-none bg-transparent px-3 py-2 text-[15px] text-white placeholder:text-white/40 focus:outline-none disabled:opacity-50"
+            />
+
+            {/* Attachments preview */}
+            {attachments.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2 px-3">
+                {attachments.map((f, i) => (
+                  <span
+                    key={`${f.name}-${i}`}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-white/70"
+                  >
+                    <span aria-hidden>🖼</span>
+                    <span className="max-w-[140px] truncate">{f.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(i)}
+                      className="ml-1 text-white/40 hover:text-white"
+                      aria-label={`Quitar ${f.name}`}
+                    >×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {/* Producto chip — dropdown of user's products */}
+              <ProductChip
+                products={products}
+                productId={productId}
+                setProductId={setProductId}
+                loading={productsLoading}
+                disabled={generating}
+              />
+
+              {/* Adjuntar chip — file upload */}
+              <button
+                type="button"
+                onClick={onAttachClick}
+                disabled={generating}
+                className="inline-flex select-none items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5 text-xs text-white/75 ring-1 ring-inset ring-white/10 hover:bg-white/[0.1] hover:text-white disabled:opacity-50"
+              >
+                <span aria-hidden>📎</span> Adjuntar
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                onChange={(e) => { onFilesPicked(e.target.files); e.target.value = ''; }}
+              />
+
+              <div className="ml-auto flex items-center gap-2">
+                {/* Tipo de página chip */}
+                <PageTypeChip
+                  value={pageType}
+                  onChange={setPageType}
+                  disabled={generating}
+                />
+                {/* Template específico chip — solo aparece si el user clickeó un card */}
+                {chosenTemplate && (
+                  <span className="inline-flex select-none items-center gap-1.5 rounded-full bg-purple-500/15 px-3 py-1.5 text-xs text-purple-200 ring-1 ring-inset ring-purple-400/30">
+                    <span aria-hidden>📐</span>
+                    {chosenTemplate.name}
+                    <button
+                      type="button"
+                      onClick={() => setChosenTemplate(null)}
+                      className="ml-1 text-purple-300/60 hover:text-purple-100"
+                      aria-label="Quitar template"
+                      disabled={generating}
+                    >×</button>
+                  </span>
+                )}
+                <button
+                  type="submit"
+                  aria-label="Generar"
+                  disabled={submitDisabled}
+                  className="inline-flex h-9 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {generating ? (<><Spinner /> Generando…</>) : (<>Generar →</>)}
+                </button>
+              </div>
+            </div>
+
+            {genError && (
+              <div className="mx-3 mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                {genError}
+              </div>
+            )}
+          </form>
+
+          {/* 4 Category cards (also autofill the chat) */}
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <CategoryCard
+              title="Landing Pages"
+              subtitle="Probá nuevas ofertas, ángulos e ideas de tus mejores ads."
+              tone="from-violet-500/20 to-violet-500/5"
+              onClick={() => pickCategory('landing_page')}
+            />
+            <CategoryCard
+              title="Product Pages"
+              subtitle="Templates personalizados de página de producto en tu Shopify."
+              tone="from-amber-500/20 to-amber-500/5"
+              onClick={() => pickCategory('product_page')}
+            />
+            <CategoryCard
+              title="Listicles"
+              subtitle="Lista las razones por las que tu producto es la mejor opción."
+              tone="from-rose-500/20 to-rose-500/5"
+              onClick={() => pickCategory('listicle')}
+            />
+            <CategoryCard
+              title="Advertorials"
+              subtitle="Educa y calienta tráfico frío antes de la compra."
+              tone="from-emerald-500/20 to-emerald-500/5"
+              onClick={() => pickCategory('advertorial')}
+            />
+          </div>
+
+          {/* Mis páginas (existing projects) */}
+          {projects.length > 0 && (
+            <section className="mt-16">
+              <div className="flex items-end justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold">Mis páginas</h2>
+                  <p className="mt-1 text-sm text-white/50">Continuá donde lo dejaste.</p>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {projects.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => openProject(p.id)}
+                    className="group rounded-xl border border-white/10 bg-[#15181f] p-4 text-left transition hover:border-white/25 hover:bg-[#1a1e27]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-base font-semibold">{p.name}</div>
+                        {p.angle && (
+                          <div className="mt-1 line-clamp-2 text-sm text-white/50">{p.angle}</div>
+                        )}
+                      </div>
+                      {activeId === p.id && (
+                        <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                          Activo
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-4 flex items-center gap-2 text-xs text-white/40 group-hover:text-white/70">
+                      Editar <span aria-hidden>→</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Discover templates */}
           <section className="mt-16">
             <div className="flex items-end justify-between">
               <div>
-                <h2 className="text-2xl font-semibold">Mis páginas</h2>
-                <p className="mt-1 text-sm text-white/50">Continuá donde lo dejaste.</p>
+                <h2 className="text-2xl font-semibold">Descubrí templates</h2>
+                <p className="mt-1 text-sm text-white/50">
+                  Elegí uno y se carga en el chat para que el AI lo adapte a tu producto.
+                </p>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {projects.map((p) => (
+
+            {/* Filter pills */}
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              {TEMPLATE_CATEGORIES.map((c) => {
+                const active = filter === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setFilter(c.id)}
+                    className={
+                      'rounded-full px-4 py-1.5 text-sm transition ' +
+                      (active
+                        ? 'bg-white text-black'
+                        : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white')
+                    }
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+              <div className="ml-auto flex items-center gap-2">
                 <button
-                  key={p.id}
-                  onClick={() => openProject(p.id)}
-                  className="group rounded-xl border border-white/10 bg-[#15181f] p-4 text-left transition hover:border-white/25 hover:bg-[#1a1e27]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-base font-semibold">{p.name}</div>
-                      {p.angle && (
-                        <div className="mt-1 line-clamp-2 text-sm text-white/50">{p.angle}</div>
-                      )}
-                    </div>
-                    {activeId === p.id && (
-                      <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-                        Activo
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-4 flex items-center gap-2 text-xs text-white/40 group-hover:text-white/70">
-                    Editar <span aria-hidden>→</span>
-                  </div>
-                </button>
+                  aria-label="Anterior"
+                  onClick={() => scrollCarousel(-1)}
+                  className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10 hover:text-white"
+                >‹</button>
+                <button
+                  aria-label="Siguiente"
+                  onClick={() => scrollCarousel(1)}
+                  className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10 hover:text-white"
+                >›</button>
+              </div>
+            </div>
+
+            {/* Carousel */}
+            <div
+              ref={carouselRef}
+              className="mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {visibleTemplates.map((t) => (
+                <TemplateCard key={t.id} template={t} onClick={() => pickTemplateFromCard(t)} />
               ))}
+              {visibleTemplates.length === 0 && (
+                <div className="grid h-[260px] w-full place-items-center rounded-xl border border-dashed border-white/10 text-sm text-white/40">
+                  No hay templates en esta categoría todavía.
+                </div>
+              )}
             </div>
           </section>
-        )}
 
-        {/* Discover templates */}
-        <section className="mt-16">
-          <div className="flex items-end justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold">Descubrí templates</h2>
-              <p className="mt-1 text-sm text-white/50">Empezá tu próximo proyecto desde un template.</p>
-            </div>
-          </div>
-
-          {/* Filter pills */}
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            {TEMPLATE_CATEGORIES.map((c) => {
-              const active = filter === c.id;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setFilter(c.id)}
-                  className={
-                    'rounded-full px-4 py-1.5 text-sm transition ' +
-                    (active
-                      ? 'bg-white text-black'
-                      : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white')
-                  }
-                >
-                  {c.label}
-                </button>
-              );
-            })}
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                aria-label="Anterior"
-                onClick={() => scrollCarousel(-1)}
-                className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10 hover:text-white"
-              >‹</button>
-              <button
-                aria-label="Siguiente"
-                onClick={() => scrollCarousel(1)}
-                className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10 hover:text-white"
-              >›</button>
-            </div>
-          </div>
-
-          {/* Carousel */}
-          <div
-            ref={carouselRef}
-            className="mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {visibleTemplates.map((t) => (
-              <TemplateCard key={t.id} template={t} onClick={() => openTemplate(t)} />
-            ))}
-            {visibleTemplates.length === 0 && (
-              <div className="grid h-[260px] w-full place-items-center rounded-xl border border-dashed border-white/10 text-sm text-white/40">
-                No hay templates en esta categoría todavía.
-              </div>
-            )}
-          </div>
-        </section>
-
-      </main>
-
-      {/* Product picker modal — only opens for non-inline templates */}
-      {picker && (
-        <PickerModal
-          template={picker.template}
-          products={products}
-          loading={productsLoading}
-          productId={productId}
-          setProductId={setProductId}
-          angle={angle}
-          setAngle={setAngle}
-          generating={generating}
-          error={genError}
-          onClose={closePicker}
-          onGenerate={handleGenerate}
-        />
-      )}
+        </main>
+      </div>
     </div>
   );
 }
 
 /* ───── presentational sub-components ───── */
 
-function PillButton({ icon, label }: { icon: string; label: string }) {
+function SideNav() {
   return (
-    <span className="inline-flex select-none items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5 text-xs text-white/75 ring-1 ring-inset ring-white/10">
+    <aside className="hidden w-[60px] shrink-0 flex-col items-center border-r border-white/5 bg-[#0e1015] py-4 sm:flex">
+      <a href="/landing-lab" className="grid size-9 place-items-center rounded-lg bg-white/[0.06] text-base font-bold">
+        L
+      </a>
+      <nav className="mt-6 flex flex-col items-center gap-1">
+        <NavIcon href="/landing-lab" label="Landing Lab" icon="📐" active />
+        <NavIcon href="/static-ads" label="Static Ads" icon="🖼" />
+        <NavIcon href="/marcas" label="Marcas" icon="📦" />
+        <NavIcon href="/configuracion" label="Configuración" icon="⚙️" />
+      </nav>
+      <div className="mt-auto">
+        <NavIcon href="/dashboard" label="Volver a Riverz" icon="←" />
+      </div>
+    </aside>
+  );
+}
+
+function NavIcon({ href, label, icon, active = false }: { href: string; label: string; icon: string; active?: boolean }) {
+  return (
+    <a
+      href={href}
+      title={label}
+      className={
+        'group relative grid size-9 place-items-center rounded-lg text-sm transition ' +
+        (active ? 'bg-white/[0.08] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white')
+      }
+    >
       <span aria-hidden>{icon}</span>
-      {label}
-    </span>
+      <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md border border-white/10 bg-[#15181f] px-2 py-1 text-xs text-white/80 shadow-lg group-hover:block">
+        {label}
+      </span>
+    </a>
+  );
+}
+
+function ProductChip({
+  products,
+  productId,
+  setProductId,
+  loading,
+  disabled,
+}: {
+  products: Product[] | null;
+  productId: string;
+  setProductId: (v: string) => void;
+  loading: boolean;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  const selected = (products || []).find((p) => p.id === productId);
+  const hasProducts = (products?.length || 0) > 0;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        disabled={disabled || loading}
+        className={
+          'inline-flex select-none items-center gap-1.5 rounded-full px-3 py-1.5 text-xs ring-1 ring-inset transition ' +
+          (selected
+            ? 'bg-emerald-500/15 text-emerald-200 ring-emerald-400/30 hover:bg-emerald-500/20'
+            : 'bg-white/[0.06] text-white/75 ring-white/10 hover:bg-white/[0.1] hover:text-white') +
+          ' disabled:opacity-50'
+        }
+      >
+        <span aria-hidden>📦</span>
+        {loading ? 'Cargando productos…' : selected ? selected.name : 'Producto'}
+        <span aria-hidden className="text-white/40">▾</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1.5 w-[260px] overflow-hidden rounded-lg border border-white/10 bg-[#15181f] shadow-xl">
+          {!hasProducts && (
+            <div className="p-3 text-xs text-white/55">
+              No tenés productos.{' '}
+              <a href="/marcas" className="font-semibold text-purple-300 hover:text-purple-200">
+                Agregá uno
+              </a>
+              .
+            </div>
+          )}
+          {hasProducts && (
+            <ul className="max-h-[260px] overflow-y-auto py-1">
+              {(products || []).map((p) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => { setProductId(p.id); setOpen(false); }}
+                    className={
+                      'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition hover:bg-white/[0.05] ' +
+                      (productId === p.id ? 'text-white' : 'text-white/75')
+                    }
+                  >
+                    <span className="truncate">{p.name}</span>
+                    {p.research_status === 'completed' && (
+                      <span className="shrink-0 text-[10px] uppercase tracking-wider text-emerald-300/80">research</span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PageTypeChip({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: LandingTemplateKind | '';
+  onChange: (v: LandingTemplateKind | '') => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        disabled={disabled}
+        className="inline-flex select-none items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5 text-xs text-white/75 ring-1 ring-inset ring-white/10 hover:bg-white/[0.1] hover:text-white disabled:opacity-50"
+      >
+        <span aria-hidden>📐</span>
+        {value ? TYPE_LABEL[value] : 'Tipo de página'}
+        <span aria-hidden className="text-white/40">▾</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-1.5 w-[180px] overflow-hidden rounded-lg border border-white/10 bg-[#15181f] shadow-xl">
+          <ul className="py-1">
+            {(Object.keys(TYPE_LABEL) as LandingTemplateKind[]).map((k) => (
+              <li key={k}>
+                <button
+                  type="button"
+                  onClick={() => { onChange(k); setOpen(false); }}
+                  className={
+                    'block w-full px-3 py-2 text-left text-sm hover:bg-white/[0.05] ' +
+                    (value === k ? 'text-white' : 'text-white/75')
+                  }
+                >
+                  {TYPE_LABEL[k]}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
 function CategoryCard({
-  title,
-  subtitle,
-  tone,
-  onClick,
-}: {
-  title: string;
-  subtitle: string;
-  tone: string;
-  onClick: () => void;
-}) {
+  title, subtitle, tone, onClick,
+}: { title: string; subtitle: string; tone: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -409,7 +669,7 @@ function CategoryCard({
       <h3 className="text-xl font-bold tracking-tight">{title}</h3>
       <p className="mt-2 max-w-[28ch] text-sm text-white/55">{subtitle}</p>
       <span className="mt-6 inline-flex items-center gap-1 text-xs font-semibold text-white/40 transition group-hover:text-white">
-        Ver templates <span aria-hidden>→</span>
+        Cargar prompt en el chat <span aria-hidden>→</span>
       </span>
     </button>
   );
@@ -441,145 +701,14 @@ function TemplateCard({ template, onClick }: { template: LandingTemplate; onClic
       <div className="p-4">
         <div className="text-base font-semibold">{template.name}</div>
         <div className="mt-1 text-xs uppercase tracking-wider text-white/40">
-          {kindLabel(template.kind)}
+          {template.kind === 'advertorial' ? 'Advertorial'
+            : template.kind === 'listicle' ? 'Listicle'
+            : template.kind === 'product_page' ? 'Product page'
+            : 'Landing page'}
         </div>
         <div className="mt-2 line-clamp-2 text-sm text-white/55">{template.description}</div>
       </div>
     </button>
-  );
-}
-
-function kindLabel(k: LandingTemplateKind): string {
-  if (k === 'advertorial') return 'Advertorial';
-  if (k === 'listicle') return 'Listicle';
-  if (k === 'product_page') return 'Product page';
-  return 'Landing page';
-}
-
-function PickerModal(props: {
-  template: LandingTemplate;
-  products: Product[] | null;
-  loading: boolean;
-  productId: string;
-  setProductId: (v: string) => void;
-  angle: string;
-  setAngle: (v: string) => void;
-  generating: boolean;
-  error: string | null;
-  onClose: () => void;
-  onGenerate: () => void;
-}) {
-  const hasProducts = !!props.products && props.products.length > 0;
-  return (
-    <div
-      className="fixed inset-0 z-[10000] grid place-items-center bg-black/70 px-4 backdrop-blur-sm"
-      onClick={props.onClose}
-    >
-      <div
-        className="relative w-full max-w-[520px] overflow-hidden rounded-2xl border border-white/10 bg-[#15181f] text-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="border-b border-white/5 px-6 py-5">
-          <h3 className="text-lg font-semibold">{props.template.name}</h3>
-          <p className="mt-1 text-sm text-white/55">
-            Elegí el producto y Riverz adapta todo el copy del template a tu producto.
-          </p>
-        </div>
-
-        <div className="space-y-4 px-6 py-5">
-          {props.loading && (
-            <div className="text-sm text-white/50">Cargando tus productos…</div>
-          )}
-
-          {!props.loading && !hasProducts && (
-            <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-4 text-sm text-white/60">
-              Todavía no tenés productos en Riverz.{' '}
-              <a href="/marcas" className="font-semibold text-purple-300 hover:text-purple-200">
-                Agregá uno acá
-              </a>{' '}
-              (con su Deep Research) para que el AI tenga material para escribir.
-            </div>
-          )}
-
-          {!props.loading && hasProducts && (
-            <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                Producto
-              </label>
-              <select
-                value={props.productId}
-                onChange={(e) => props.setProductId(e.target.value)}
-                disabled={props.generating}
-                className="w-full appearance-none rounded-lg border border-white/10 bg-[#0e1015] px-3 py-2.5 text-sm text-white focus:border-white/30 focus:outline-none"
-              >
-                {props.products!.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-[#0e1015]">
-                    {p.name}
-                    {p.research_status === 'completed' ? ' ✓ con research' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-              Ángulo de venta (opcional)
-            </label>
-            <textarea
-              value={props.angle}
-              onChange={(e) => props.setAngle(e.target.value)}
-              disabled={props.generating}
-              rows={3}
-              placeholder="Ej: para mujeres 35-50 que ya probaron todo y siguen sin resultados, enfoque en ingrediente ancestral..."
-              className="w-full resize-none rounded-lg border border-white/10 bg-[#0e1015] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
-            />
-            <p className="mt-1.5 text-xs text-white/40">
-              Si lo dejás vacío, Riverz usa el research del producto para definir el ángulo.
-            </p>
-          </div>
-
-          {props.error && (
-            <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-              {props.error}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-end gap-2 border-t border-white/5 bg-white/[0.02] px-6 py-4">
-          <button
-            onClick={props.onClose}
-            disabled={props.generating}
-            className="rounded-lg px-3 py-2 text-sm text-white/60 hover:text-white disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={props.onGenerate}
-            disabled={props.generating || (!hasProducts && !props.angle.trim())}
-            className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white/30"
-          >
-            {props.generating ? (
-              <>
-                <Spinner /> Generando copy…
-              </>
-            ) : (
-              <>Generar y editar →</>
-            )}
-          </button>
-        </div>
-
-        {props.generating && (
-          <div className="absolute inset-0 grid place-items-center bg-[#15181f]/85 backdrop-blur-sm">
-            <div className="flex flex-col items-center gap-3 text-sm text-white/70">
-              <Spinner />
-              <div className="font-medium">Adaptando el template a tu producto…</div>
-              <div className="text-xs text-white/45">Esto tarda 15–40 segundos.</div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
 

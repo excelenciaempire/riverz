@@ -1057,6 +1057,18 @@ function applyTemplateContent(tpl){
   pw.innerHTML = tpl.bodyHtml;
   currentTemplateId = tpl.id;
 
+  // 4b) The editor frame paints #page-area and #page-wrap with the dark
+  //     Vitalu palette by default — that bleeds through any template that
+  //     expects a different background (Pilar is white). Pull body { ...
+  //     background: X ... } out of the template CSS and apply X to both
+  //     containers so the editor canvas matches what the published page
+  //     will look like. restoreInlineLayout clears the inline styles
+  //     before swapping back to Vitalu so the dark bg returns there.
+  var bodyBg = extractBodyBg(tpl.css);
+  var pa = document.getElementById('page-area');
+  if (pa) pa.style.background = bodyBg || '';
+  if (pw) pw.style.background = bodyBg || '';
+
   // 5) Rebuild slot tables + re-decorate image slots with the editor chrome
   rebuildSlotTables();
   // Snapshot the template's default image src values so projects that
@@ -1085,10 +1097,15 @@ function applyTemplateContent(tpl){
 function restoreInlineLayout(){
   document.querySelectorAll('style[data-tpl]').forEach(function(s){ s.remove(); });
   document.querySelectorAll('link[data-tpl]').forEach(function(l){ l.remove(); });
+  // Clear the per-template bg overrides so #page-area falls back to the
+  // dark Vitalu palette (#0E0A06) defined in this file's CSS.
+  var pa0 = document.getElementById('page-area');
+  if (pa0) pa0.style.background = '';
   if (inlinePageWrapHtml === null) return; // never left in the first place
   var pw = g('page-wrap');
   if (!pw) return;
   pw.innerHTML = inlinePageWrapHtml;
+  pw.style.background = '';
   currentTemplateId = null;
   // Vitalu's hardcoded slot tables — restore the original values so
   // legacy code that walks IMG_KEYS keeps working.
@@ -1097,6 +1114,26 @@ function restoreInlineLayout(){
   // they were never overwritten on this path, only augmented for dynamic
   // templates via rebuildSlotTables.
   if (typeof initEdit === 'function') initEdit();
+}
+
+// Best-effort extraction of `body { background: <X> }` from a CSS string,
+// resolving one level of var(--name) lookups against a `:root { --name: V }`
+// rule in the same stylesheet. Used to make the editor canvas match the
+// template's background instead of bleeding the editor's own dark palette.
+// Regex is fragile but covers every template we ship — any miss just leaves
+// the editor's existing background in place, which is non-fatal.
+function extractBodyBg(css){
+  if (!css) return '';
+  var m = css.match(/(?:^|[}\s])body\s*\{[^}]*\bbackground(?:-color)?\s*:\s*([^;}]+)/);
+  if (!m) return '';
+  var v = m[1].trim();
+  var varM = v.match(/var\(\s*(--[\w-]+)/);
+  if (varM) {
+    var name = varM[1].replace(/-/g, '\\-');
+    var rootM = css.match(new RegExp(':root\\s*\\{[^}]*' + name + '\\s*:\\s*([^;}]+)'));
+    if (rootM) v = rootM[1].trim();
+  }
+  return v;
 }
 
 // Re-derive IMG_KEYS, SLOT_CFG, DEFAULT_TEXTS from whatever's currently
