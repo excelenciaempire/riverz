@@ -149,8 +149,9 @@ body{color:#E2E4EF;font-family:'Instrument Sans',sans-serif;font-size:13px;displ
 #sb-toggle{width:30px;height:30px;border:none;background:transparent;color:#4A5270;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:5px;transition:all .15s;flex-shrink:0;font-size:15px}
 #sb-toggle:hover{background:#181B27;color:#C8CAD8}
 #main{display:flex;flex:1;overflow:hidden;min-height:0}
-#sidebar{width:220px;min-width:220px;flex-shrink:0;background:#0D0E14;border-right:1px solid #181B27;display:flex;flex-direction:column;overflow:hidden;transition:width .25s,min-width .25s,border-width .25s}
-#sidebar.collapsed{width:0!important;min-width:0!important;overflow:hidden;border-right-width:0}
+#sidebar{display:none!important}
+#sb-toggle{display:none!important}
+.t-sep:has(+ #sb-toggle){display:none!important}
 .sb-head{padding:12px 12px 8px;border-bottom:1px solid #181B27;flex-shrink:0}
 .sb-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#3E4560;font-weight:600;margin-bottom:8px}
 .sb-new{width:100%;padding:8px 10px;background:transparent;border:1px dashed #252840;border-radius:6px;color:#5B6490;font-size:11px;font-weight:500;cursor:pointer;font-family:'Instrument Sans',sans-serif;transition:all .15s;display:flex;align-items:center;gap:5px}
@@ -269,6 +270,39 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
 #toast{position:fixed;bottom:18px;right:18px;background:#4CAF7D;color:#fff;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:500;transform:translateY(8px);opacity:0;transition:all .2s;z-index:99999;pointer-events:none;font-family:'Instrument Sans',sans-serif}
 #toast.on{transform:translateY(0);opacity:1}#toast.err{background:#E85555}#toast.info{background:#4A90E2}
 /* ══ IMAGE GENERATION MODAL ══ */
+/* SETTINGS MODAL */
+.set-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);z-index:99996;display:none;align-items:center;justify-content:center;padding:20px}
+.set-overlay.on{display:flex}
+.set-card{background:#15181f;border:1px solid #2a2e38;border-radius:12px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;color:#fff;font-family:'Instrument Sans',sans-serif;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+.set-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid rgba(255,255,255,.06)}
+.set-head h2{margin:0;font-size:17px;font-weight:600}
+.set-close{background:transparent;border:0;color:rgba(255,255,255,.5);font-size:22px;cursor:pointer;line-height:1;padding:0;width:28px;height:28px}
+.set-close:hover{color:#fff}
+.set-body{padding:18px 22px 22px;overflow-y:auto;flex:1}
+.set-section{margin-bottom:24px}
+.set-section h3{margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.set-help{font-size:12px;color:rgba(255,255,255,.55);margin:0 0 10px;line-height:1.4}
+.set-field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.set-field>span{font-size:12px;color:rgba(255,255,255,.7);font-weight:500}
+.set-field>small{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px}
+.set-field input,.set-field textarea{background:#0e1015;border:1px solid #2a2e38;color:#fff;padding:9px 11px;border-radius:6px;font-size:13px;font-family:inherit;line-height:1.4}
+.set-field input:focus,.set-field textarea:focus{outline:none;border-color:#4A90E2}
+.set-field textarea{resize:vertical;min-height:64px}
+.set-handle-row{display:flex;align-items:stretch;border:1px solid #2a2e38;border-radius:6px;overflow:hidden;background:#0e1015}
+.set-handle-row .prefix{padding:9px 11px;font-size:13px;color:rgba(255,255,255,.45);background:#181b22;border-right:1px solid #2a2e38;font-family:inherit;white-space:nowrap}
+.set-handle-row input{flex:1;border:0;background:transparent}
+.versions-list{margin-top:12px;display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto}
+.ver-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:#0e1015;border:1px solid #2a2e38;border-radius:6px;font-size:12px}
+.ver-item-meta{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.ver-item-name{font-weight:600;color:rgba(255,255,255,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ver-item-ts{font-size:11px;color:rgba(255,255,255,.45)}
+.ver-item-actions{display:flex;gap:6px;flex:0 0 auto}
+.ver-btn{background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);padding:5px 10px;border-radius:5px;font-size:11px;cursor:pointer;font-family:inherit}
+.ver-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.ver-btn.danger:hover{border-color:#E85555;color:#E85555}
+.ver-empty{font-size:12px;color:rgba(255,255,255,.4);text-align:center;padding:14px 0}
+.ver-save{display:flex;align-items:center;gap:8px}
+
 #igp-modal{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99997;display:none;align-items:center;justify-content:center;backdrop-filter:blur(12px)}
 #igp-modal.on{display:flex}
 .igp-panel{width:560px;max-width:94vw;background:#0A0B0F;border:1px solid #1E2130;border-radius:14px;overflow:hidden;box-shadow:0 32px 100px rgba(0,0,0,.8)}
@@ -389,6 +423,7 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
     <button class="tb tb-ghost" id="btn-redo" onclick="doRedo()" title="Ctrl+Y">&#x21B7;</button>
     <div class="t-sep"></div>
     <button class="tb tb-gal" onclick="openGallery()">&#x1F4F7; Imagenes</button>
+    <button class="tb tb-ghost" onclick="openSettings()" title="Ajustes de la página">&#x2699; Ajustes</button>
     <button class="tb tb-blue" onclick="exportCurrent()">&#x2B07; Exportar HTML</button>
     <button class="tb tb-grn" onclick="publishToShopify()" title="Publicar como página en tu Shopify">&#x1F6D2; Publicar en Shopify</button>
     <input type="file" id="file-in" accept="image/*" style="display:none" onchange="onFilePick(event)">
@@ -811,6 +846,64 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
       <div class="go-step" id="gstep-2"><div class="go-step-dot"></div>Escribiendo copy de conversion</div>
       <div class="go-step" id="gstep-3"><div class="go-step-dot"></div>Creando testimonios</div>
       <div class="go-step" id="gstep-4"><div class="go-step-dot"></div>Finalizando CTAs</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SETTINGS MODAL ─── -->
+<div id="settings-modal" class="set-overlay" onclick="closeSettings()">
+  <div class="set-card" onclick="event.stopPropagation()">
+    <div class="set-head">
+      <h2>&#x2699; Configuración de la página</h2>
+      <button class="set-close" onclick="closeSettings()" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="set-body">
+
+      <div class="set-section">
+        <h3>Página</h3>
+        <label class="set-field">
+          <span>Título de la página</span>
+          <input id="set-name" type="text" oninput="setSetting('name', this.value)" placeholder="Mi landing">
+        </label>
+        <label class="set-field">
+          <span>URL Handle</span>
+          <div class="set-handle-row">
+            <span class="prefix">/pages/</span>
+            <input id="set-handle" type="text" oninput="setSetting('handle', this.value)" placeholder="mi-landing">
+          </div>
+          <small>El URL final en tu Shopify. Ej: <code>tu-tienda.com/pages/mi-landing</code>. Si lo dejás vacío, Shopify lo genera del título.</small>
+        </label>
+        <label class="set-field">
+          <span>CTA URL</span>
+          <input id="set-cta" type="text" oninput="setSetting('ctaUrl', this.value)" placeholder="https://tu-tienda.com/products/...">
+          <small>A dónde van todos los botones de "Comprar".</small>
+        </label>
+      </div>
+
+      <div class="set-section">
+        <h3>SEO (opcional)</h3>
+        <p class="set-help">Cómo se ve la página en Google y al compartirla.</p>
+        <label class="set-field">
+          <span>SEO Title</span>
+          <input id="set-seo-title" type="text" maxlength="70" oninput="setSetting('seoTitle', this.value)" placeholder="Si lo dejás vacío, usa el título de la página">
+          <small>Máx 70 caracteres recomendado.</small>
+        </label>
+        <label class="set-field">
+          <span>Meta Description</span>
+          <textarea id="set-seo-desc" rows="3" maxlength="160" oninput="setSetting('metaDescription', this.value)" placeholder="Resumen de 1-2 oraciones que aparece debajo del título en Google."></textarea>
+          <small>Máx 160 caracteres recomendado.</small>
+        </label>
+      </div>
+
+      <div class="set-section">
+        <h3>Versiones</h3>
+        <p class="set-help">Guardá una versión antes de cambios grandes para poder volver atrás.</p>
+        <div class="ver-save">
+          <button class="tb tb-acc" onclick="saveVersion()" type="button">+ Guardar versión actual</button>
+        </div>
+        <div id="versions-list" class="versions-list"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1652,6 +1745,9 @@ function buildPublishPayload(proj){
   return {
     project_id: proj.id || 'default',
     title: proj.name || 'Landing',
+    handle: proj.handle || undefined,
+    seo_title: proj.seoTitle || undefined,
+    meta_description: proj.metaDescription || undefined,
     body_html: body_html,
     images: images,
   };
@@ -1696,6 +1792,138 @@ async function publishToShopify(){
   }
 }
 window.publishToShopify = publishToShopify;
+
+// ── SETTINGS MODAL ────────────────────────────────────────────
+// Single panel for everything that's NOT inline editable: page title,
+// URL handle, SEO, CTA URL, version history. Wired to the project
+// record so toggling a field saves immediately (qSave debounced).
+function openSettings(){
+  var proj = getActive(); if (!proj) { toast('Selecciona una landing primero', 1); return; }
+  var byId = function(id){ return document.getElementById(id); };
+  byId('set-name').value = proj.name || '';
+  byId('set-handle').value = proj.handle || '';
+  byId('set-cta').value = proj.ctaUrl || '';
+  byId('set-seo-title').value = proj.seoTitle || '';
+  byId('set-seo-desc').value = proj.metaDescription || '';
+  renderVersionsList();
+  byId('settings-modal').classList.add('on');
+}
+function closeSettings(){
+  var m = document.getElementById('settings-modal');
+  if (m) m.classList.remove('on');
+}
+function setSetting(key, value){
+  var proj = getActive(); if (!proj) return;
+  // URL handle: lowercase, dash-separated, alnum + dash only
+  if (key === 'handle') value = String(value||'').toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'');
+  proj[key] = value;
+  if (key === 'name') {
+    var nameInput = document.getElementById('proj-name-in');
+    if (nameInput) nameInput.value = value;
+  }
+  if (key === 'ctaUrl') applyCTA(value);
+  qSave();
+}
+window.openSettings = openSettings;
+window.closeSettings = closeSettings;
+window.setSetting = setSetting;
+
+// ── VERSION CONTROL ──────────────────────────────────────────
+// Lightweight per-project version history: snapshot of texts + images
+// + handle/seo metadata. Lives on proj.versions (capped at 20). Stored
+// in the same lab_v5 localStorage payload, so version snapshots persist
+// across reloads without any backend.
+function snapshotProjectState(label){
+  var proj = getActive(); if (!proj) return null;
+  collectTexts();
+  var ts = new Date();
+  return {
+    id: 'v_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+    name: label || ('Versión ' + ((proj.versions||[]).length + 1)),
+    ts: ts.toISOString(),
+    texts: JSON.parse(JSON.stringify(proj.texts || {})),
+    images: JSON.parse(JSON.stringify(proj.images || {})),
+    name_: proj.name || '',
+    handle: proj.handle || '',
+    ctaUrl: proj.ctaUrl || '',
+    seoTitle: proj.seoTitle || '',
+    metaDescription: proj.metaDescription || ''
+  };
+}
+function saveVersion(){
+  var proj = getActive(); if (!proj) return;
+  if (!Array.isArray(proj.versions)) proj.versions = [];
+  var v = snapshotProjectState();
+  if (!v) return;
+  proj.versions.unshift(v);
+  if (proj.versions.length > 20) proj.versions.length = 20;
+  saveAll();
+  renderVersionsList();
+  toast('✓ Versión guardada');
+}
+function restoreVersion(vid){
+  var proj = getActive(); if (!proj || !Array.isArray(proj.versions)) return;
+  var v = proj.versions.find(function(x){ return x.id === vid; });
+  if (!v) return;
+  if (!confirm('¿Restaurar "' + v.name + '"? Esto reemplaza el contenido actual. Vamos a guardar una versión "antes de restaurar" automáticamente.')) return;
+  // Auto-snapshot the current state so the restore is itself reversible
+  var auto = snapshotProjectState('Antes de restaurar');
+  if (auto) { proj.versions.unshift(auto); if (proj.versions.length > 20) proj.versions.length = 20; }
+  proj.texts = JSON.parse(JSON.stringify(v.texts || {}));
+  proj.images = JSON.parse(JSON.stringify(v.images || {}));
+  if (v.name_) proj.name = v.name_;
+  if (v.handle !== undefined) proj.handle = v.handle;
+  if (v.ctaUrl !== undefined) proj.ctaUrl = v.ctaUrl;
+  if (v.seoTitle !== undefined) proj.seoTitle = v.seoTitle;
+  if (v.metaDescription !== undefined) proj.metaDescription = v.metaDescription;
+  applyTexts(proj.texts);
+  IMG_KEYS.forEach(function(k){
+    var x = proj.images[k];
+    if (x === null) collapseSlot(k);
+    else if (typeof x === 'string' && x) setSlot(k, x);
+    else if (TEMPLATE_DEFAULT_IMAGES[k]) setSlot(k, TEMPLATE_DEFAULT_IMAGES[k]);
+    else resetSlot(k);
+  });
+  applyCTA(proj.ctaUrl);
+  saveAll();
+  // Refresh modal fields
+  if (document.getElementById('settings-modal').classList.contains('on')) openSettings();
+  toast('✓ Versión restaurada');
+}
+function deleteVersion(vid){
+  var proj = getActive(); if (!proj || !Array.isArray(proj.versions)) return;
+  if (!confirm('¿Borrar esta versión? No se puede deshacer.')) return;
+  proj.versions = proj.versions.filter(function(x){ return x.id !== vid; });
+  saveAll();
+  renderVersionsList();
+}
+function renderVersionsList(){
+  var proj = getActive();
+  var list = document.getElementById('versions-list');
+  if (!list) return;
+  var versions = (proj && proj.versions) || [];
+  if (versions.length === 0) {
+    list.innerHTML = '<div class="ver-empty">No hay versiones guardadas todavía.</div>';
+    return;
+  }
+  list.innerHTML = versions.map(function(v){
+    var when = '';
+    try { when = new Date(v.ts).toLocaleString('es', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); } catch(e){}
+    return '<div class="ver-item">'
+      + '<div class="ver-item-meta">'
+      + '<div class="ver-item-name">' + _esc(v.name) + '</div>'
+      + '<div class="ver-item-ts">' + _esc(when) + '</div>'
+      + '</div>'
+      + '<div class="ver-item-actions">'
+      + '<button class="ver-btn" type="button" onclick="restoreVersion(\'' + v.id + '\')">Restaurar</button>'
+      + '<button class="ver-btn danger" type="button" onclick="deleteVersion(\'' + v.id + '\')" title="Borrar">×</button>'
+      + '</div></div>';
+  }).join('');
+}
+function _esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+window.saveVersion = saveVersion;
+window.restoreVersion = restoreVersion;
+window.deleteVersion = deleteVersion;
 
 function cpTxt(t,msg){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast(msg);}).catch(function(){fb(t,msg);});}else fb(t,msg);}
 function fb(t,msg){var ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:-9999px;opacity:0';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);toast(msg);}

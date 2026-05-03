@@ -20,6 +20,10 @@ interface PublishRequest {
   title: string;
   /** Optional handle (URL slug). */
   handle?: string;
+  /** Optional SEO title. Falls back to `title` in Shopify if omitted. */
+  seo_title?: string;
+  /** Optional meta description. ≤160 chars recommended. */
+  meta_description?: string;
   /**
    * Full HTML for the page body — what the editor exports today, minus the
    * <html>/<body> wrapper which Shopify Pages don't support.
@@ -134,6 +138,8 @@ export async function POST(req: Request) {
         bodyHtml,
         handle: payload.handle ?? existing.shopify_page_handle ?? undefined,
         published: payload.published,
+        seoTitle: payload.seo_title,
+        metaDescription: payload.meta_description,
       });
     } else {
       result = await createPage(client, primaryDomain, {
@@ -141,6 +147,8 @@ export async function POST(req: Request) {
         bodyHtml,
         handle: payload.handle,
         published: payload.published,
+        seoTitle: payload.seo_title,
+        metaDescription: payload.meta_description,
       });
     }
   } catch (e: any) {

@@ -16,6 +16,10 @@ export interface PageInput {
   published?: boolean;
   /** Optional handle override; Shopify auto-generates from title if omitted. */
   handle?: string;
+  /** Optional SEO title. Shopify falls back to `title` if omitted. */
+  seoTitle?: string;
+  /** Optional meta description for the page. ≤160 chars recommended. */
+  metaDescription?: string;
 }
 
 export interface PublishedPage {
@@ -48,6 +52,7 @@ export async function createPage(
         body: input.bodyHtml,
         handle: input.handle,
         isPublished: input.published !== false,
+        ...buildSeoInput(input),
       },
     },
   );
@@ -85,6 +90,7 @@ export async function updatePage(
         body: input.bodyHtml,
         handle: input.handle,
         isPublished: input.published !== false,
+        ...buildSeoInput(input),
       },
     },
   );
@@ -94,4 +100,20 @@ export async function updatePage(
   const p = data.pageUpdate.page;
   if (!p) throw new Error('pageUpdate returned no page');
   return { id: p.id, handle: p.handle, url: `https://${primaryDomain}/pages/${p.handle}` };
+}
+
+/**
+ * Builds the optional SEOInput piece of a Page{Create,Update}Input. Only
+ * emits the `seo` key when the user actually filled either field — passing
+ * an empty SEO block to Shopify wipes whatever defaults the storefront
+ * theme would otherwise show.
+ */
+function buildSeoInput(input: PageInput): { seo?: { title?: string; description?: string } } {
+  const title = (input.seoTitle || '').trim();
+  const desc = (input.metaDescription || '').trim();
+  if (!title && !desc) return {};
+  const seo: { title?: string; description?: string } = {};
+  if (title) seo.title = title;
+  if (desc) seo.description = desc;
+  return { seo };
 }
