@@ -36,9 +36,9 @@ export default function MisPaginasPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex bg-[#0b0d12] text-white">
+    <div className="fixed inset-0 z-[9999] bg-[#0b0d12] text-white">
       <SideNav active="mis-paginas" />
-      <div className="flex-1 overflow-y-auto">
+      <div className="ml-0 h-full overflow-y-auto sm:ml-56">
         <main className="mx-auto max-w-[960px] px-6 pt-10 pb-24 sm:px-8">
           <h1 className="text-3xl font-bold">Mis páginas</h1>
           <p className="mt-1 text-sm text-white/55">Continuá donde lo dejaste.</p>

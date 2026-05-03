@@ -182,10 +182,10 @@ export default function LandingLabDashboard() {
   const submitDisabled = generating || (!prompt.trim() && !productId && !chosenTemplate);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex bg-[#0b0d12] text-white">
+    <div className="fixed inset-0 z-[9999] bg-[#0b0d12] text-white">
       <SideNav active="inicio" />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="ml-0 h-full overflow-y-auto sm:ml-56">
         <main className="mx-auto max-w-[960px] px-6 pt-12 pb-24 sm:px-8">
 
           {/* Hero headline */}

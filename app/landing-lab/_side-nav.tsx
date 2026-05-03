@@ -1,50 +1,121 @@
 'use client';
 
+import Link from 'next/link';
+import { UserButton } from '@clerk/nextjs';
+import { ArrowLeft, Home, FileText, Store } from 'lucide-react';
+import { useCredits } from '@/hooks/useCredits';
+import { cn } from '@/lib/utils';
+
 /**
- * Minimal left rail shared by every /landing-lab page.
+ * Landing Lab side rail. Matches the visual language of the main Riverz
+ * sidebar (components/layout/sidebar.tsx) so /landing-lab feels like part of
+ * the same product instead of a one-off dark surface.
  *
- * Three items only — Inicio, Mis Páginas, Tienda — to match the user's
- * spec. Tienda routes to the Riverz Configuración → Integraciones tab so
- * the existing Shopify-connect UI is reused (no duplicate UI to maintain).
- * The "← Volver" button at the very top exits the Landing Lab back to the
- * main Riverz dashboard, replacing the larger "Volver a Riverz" link that
- * used to sit on the canvas top bar.
+ * Three nav items per the user's spec:
+ *   Inicio        → /landing-lab
+ *   Mis Páginas   → /landing-lab/mis-paginas
+ *   Tienda        → /configuracion?tab=integrations (reuses existing UI)
+ *
+ * "Volver" at the very top exits the Lab back to the main /dashboard.
+ * Footer carries the UserButton + credits counter, same as the main
+ * sidebar, so the user always knows their plan state.
  */
 export function SideNav({ active }: { active?: 'inicio' | 'mis-paginas' | 'tienda' }) {
+  const { credits } = useCredits();
+
   return (
-    <aside className="hidden w-[60px] shrink-0 flex-col items-center border-r border-white/5 bg-[#0e1015] py-4 sm:flex">
-      <NavIcon href="/dashboard" label="Volver" icon="←" />
-      <a
-        href="/landing-lab"
-        className="mt-4 grid size-9 place-items-center rounded-lg bg-white/[0.06] text-base font-bold"
-        aria-label="Landing Lab"
-      >
-        L
-      </a>
-      <nav className="mt-6 flex flex-1 flex-col items-center gap-1">
-        <NavIcon href="/landing-lab" label="Inicio" icon="⌂" active={active === 'inicio'} />
-        <NavIcon href="/landing-lab/mis-paginas" label="Mis Páginas" icon="📄" active={active === 'mis-paginas'} />
-        <NavIcon href="/configuracion?tab=integrations" label="Tienda" icon="🛍" active={active === 'tienda'} />
+    <div className="fixed left-0 top-0 z-30 flex h-screen w-56 flex-col border-r border-gray-900 bg-black">
+      {/* Volver row */}
+      <div className="flex h-12 items-center px-3">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-medium text-gray-400 transition-all hover:bg-gray-900 hover:text-white"
+        >
+          <ArrowLeft className="h-3 w-3 shrink-0" />
+          <span>Volver</span>
+        </Link>
+      </div>
+
+      {/* Brand */}
+      <div className="flex h-10 items-center px-3">
+        <h1 className="text-xl font-bold tracking-wider text-[#07A498]">RIVERZ</h1>
+      </div>
+
+      <nav className="flex-1 overflow-hidden px-3 py-2 hover:overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+        <div className="mb-3">
+          <h3 className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-wider text-gray-500">
+            Landing Lab
+          </h3>
+          <div className="space-y-0.5">
+            <NavItem
+              href="/landing-lab"
+              icon={Home}
+              label="Inicio"
+              active={active === 'inicio'}
+            />
+            <NavItem
+              href="/landing-lab/mis-paginas"
+              icon={FileText}
+              label="Mis Páginas"
+              active={active === 'mis-paginas'}
+            />
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <h3 className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-wider text-gray-500">
+            Conexión
+          </h3>
+          <div className="space-y-0.5">
+            <NavItem
+              href="/configuracion?tab=integrations"
+              icon={Store}
+              label="Tienda"
+              active={active === 'tienda'}
+            />
+          </div>
+        </div>
       </nav>
-    </aside>
+
+      {/* Footer — UserButton + credits counter, same as the main Riverz sidebar */}
+      <div className="border-t border-gray-900 p-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="origin-left scale-90">
+            <UserButton afterSignOutUrl="/sign-in" />
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] text-gray-500">Créditos</p>
+            <p className="text-xs font-bold text-[#07A498]">{credits ?? 0}</p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function NavIcon({ href, label, icon, active = false }: { href: string; label: string; icon: string; active?: boolean }) {
+function NavItem({
+  href,
+  icon: Icon,
+  label,
+  active,
+}: {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  active?: boolean;
+}) {
   return (
-    <a
+    <Link
       href={href}
-      title={label}
-      aria-label={label}
-      className={
-        'group relative grid size-9 place-items-center rounded-lg text-sm transition ' +
-        (active ? 'bg-white/[0.08] text-white' : 'text-white/55 hover:bg-white/[0.05] hover:text-white')
-      }
+      className={cn(
+        'flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-medium transition-all',
+        active
+          ? 'bg-[#07A498]/10 text-[#07A498]'
+          : 'text-gray-400 hover:bg-gray-900 hover:text-white',
+      )}
     >
-      <span aria-hidden>{icon}</span>
-      <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md border border-white/10 bg-[#15181f] px-2 py-1 text-xs text-white/80 shadow-lg group-hover:block">
-        {label}
-      </span>
-    </a>
+      <Icon className="h-3 w-3 shrink-0" />
+      <span>{label}</span>
+    </Link>
   );
 }
