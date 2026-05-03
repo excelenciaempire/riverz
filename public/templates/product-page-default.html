@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title data-v-text="page-title">Producto — Tu Marca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ─── RESET / TOKENS ─────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+:root{
+  --ink:#0d0f12;
+  --ink-2:#1d2229;
+  --muted:#5b6470;
+  --rule:#e6e8eb;
+  --bg:#ffffff;
+  --bg-soft:#f6f7f9;
+  --accent:#0a0a0a;
+  --accent-fg:#ffffff;
+  --price:#0d0f12;
+  --discount-bg:#1d3b2a;
+  --discount-fg:#ffffff;
+  --strike:#9aa0a8;
+  --star:#f5a623;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08);
+  --r-sm:6px;
+  --r-md:10px;
+  --r-lg:16px;
+}
+body{font-family:'Inter',system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:var(--bg);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+img{max-width:100%;display:block;height:auto}
+button{font-family:inherit;cursor:pointer}
+a{color:inherit;text-decoration:none}
+p{margin:0 0 1em}
+h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.015em;font-weight:800;color:var(--ink)}
+
+/* ─── PAGE WRAPPER ───────────────────────────────────────────── */
+.pp{max-width:1200px;margin:0 auto;padding:0 20px 80px}
+@media (min-width:760px){ .pp{padding:0 32px 120px} }
+
+/* ─── 1. ANNOUNCEMENT BAR ────────────────────────────────────── */
+.pp-announce{background:var(--accent);color:var(--accent-fg);text-align:center;padding:10px 16px;font-size:13px;font-weight:600;letter-spacing:0.02em}
+
+/* ─── 2. PRODUCT MAIN: gallery + buy box ─────────────────────── */
+.pp-main{display:grid;grid-template-columns:1fr;gap:32px;padding-top:28px}
+@media (min-width:900px){ .pp-main{grid-template-columns:1.1fr .9fr;gap:56px;padding-top:48px} }
+
+/* gallery */
+.pp-gallery{display:flex;flex-direction:column;gap:12px}
+.gallery-main{aspect-ratio:1/1;background:var(--bg-soft);border-radius:var(--r-md);overflow:hidden;position:relative}
+.gallery-main img{width:100%;height:100%;object-fit:cover}
+.gallery-thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (min-width:900px){ .gallery-thumbs{grid-template-columns:repeat(5,1fr)} }
+.thumb{aspect-ratio:1/1;background:var(--bg-soft);border:2px solid transparent;border-radius:var(--r-sm);overflow:hidden;padding:0;transition:border-color .15s}
+.thumb:hover,.thumb.is-active{border-color:var(--ink)}
+.thumb img{width:100%;height:100%;object-fit:cover}
+
+/* buy box (info column) */
+.pp-info{display:flex;flex-direction:column;gap:18px}
+@media (min-width:900px){ .pp-info{position:sticky;top:24px;align-self:start;max-height:calc(100vh - 48px);overflow-y:auto;padding-right:8px} }
+.prod-tag{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#1d3b2a;background:#e3f1e7;padding:6px 10px;border-radius:999px}
+.prod-name{font-size:30px;font-weight:800;letter-spacing:-0.02em}
+@media (min-width:760px){ .prod-name{font-size:36px} }
+.prod-rating{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.prod-rating .stars{color:var(--star);letter-spacing:1px;font-size:15px}
+.prod-rating a{color:var(--ink);text-decoration:underline;text-underline-offset:2px}
+
+.prod-price-row{display:flex;align-items:baseline;flex-wrap:wrap;gap:10px;margin-top:4px}
+.price{font-size:32px;font-weight:800;color:var(--price);letter-spacing:-0.02em}
+.compare-at{font-size:18px;color:var(--strike);text-decoration:line-through;font-weight:500}
+.discount-badge{font-size:12px;font-weight:700;background:var(--discount-bg);color:var(--discount-fg);padding:4px 8px;border-radius:var(--r-sm);letter-spacing:0.04em}
+.installments{font-size:13px;color:var(--muted);margin-top:2px}
+
+.prod-short{font-size:15px;color:var(--ink-2);line-height:1.5;margin:0}
+
+/* options (variants) */
+.opts{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.opts-label{font-size:13px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:0.05em}
+.opts-row{display:flex;flex-wrap:wrap;gap:8px}
+.opt-btn{padding:10px 18px;border:1.5px solid var(--rule);background:var(--bg);color:var(--ink);font-size:14px;font-weight:600;border-radius:var(--r-sm);transition:border-color .15s,background .15s}
+.opt-btn:hover{border-color:var(--ink)}
+.opt-btn.is-active{border-color:var(--ink);background:var(--ink);color:var(--accent-fg)}
+
+/* qty + cta */
+.qty-row{display:flex;gap:10px;align-items:stretch;margin-top:4px}
+.qty{display:inline-flex;align-items:center;border:1.5px solid var(--rule);border-radius:var(--r-sm);overflow:hidden;flex:0 0 auto}
+.qty button{width:38px;height:46px;background:var(--bg);border:0;font-size:18px;color:var(--ink);font-weight:600}
+.qty button:hover{background:var(--bg-soft)}
+.qty input{width:42px;height:46px;text-align:center;border:0;border-left:1px solid var(--rule);border-right:1px solid var(--rule);font-size:15px;font-weight:600;background:var(--bg);color:var(--ink);font-family:inherit}
+.qty input:focus{outline:none}
+
+.cta-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:1;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:15px;letter-spacing:0.04em;padding:14px 22px;border-radius:var(--r-sm);border:0;text-transform:uppercase;transition:transform .12s,opacity .12s;text-align:center}
+.cta-btn:hover{opacity:.92}
+.cta-btn:active{transform:translateY(1px)}
+
+.guarantee{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:4px}
+.guarantee::before{content:"🛡️"}
+
+/* trust badges */
+.trust{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding:14px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.trust-item{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:12px;color:var(--ink-2);font-weight:600}
+.trust-icon{font-size:20px}
+
+/* ─── 3. BENEFITS GRID ───────────────────────────────────────── */
+.section{margin-top:80px}
+.section-h2{font-size:28px;font-weight:800;text-align:center;letter-spacing:-0.02em}
+@media (min-width:760px){ .section-h2{font-size:36px} }
+.section-sub{font-size:16px;color:var(--muted);text-align:center;max-width:560px;margin:8px auto 0}
+
+.benefits{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:32px}
+@media (min-width:760px){ .benefits{grid-template-columns:repeat(4,1fr);gap:20px} }
+.benefit{background:var(--bg-soft);border-radius:var(--r-md);padding:24px 20px;text-align:center}
+.b-icon{font-size:32px;margin-bottom:10px}
+.benefit h3{font-size:15px;font-weight:700;margin:0 0 6px}
+.benefit p{font-size:14px;color:var(--ink-2);line-height:1.45;margin:0}
+
+/* ─── 4. LONG DESCRIPTION ────────────────────────────────────── */
+.long-desc{display:grid;grid-template-columns:1fr;gap:32px;margin-top:48px}
+@media (min-width:760px){ .long-desc{grid-template-columns:1fr 1fr;align-items:center;gap:60px} }
+.long-desc-img{aspect-ratio:4/5;background:var(--bg-soft);border-radius:var(--r-md);overflow:hidden}
+.long-desc-img img{width:100%;height:100%;object-fit:cover}
+.long-desc-body{font-size:16px;line-height:1.7;color:var(--ink-2)}
+.long-desc-body h3{font-size:22px;font-weight:800;margin:0 0 12px;color:var(--ink)}
+
+/* ─── 5. HOW TO USE ──────────────────────────────────────────── */
+.steps{display:grid;grid-template-columns:1fr;gap:20px;margin-top:32px}
+@media (min-width:760px){ .steps{grid-template-columns:repeat(3,1fr);gap:28px} }
+.step{text-align:center;padding:0 12px}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:var(--ink);color:var(--accent-fg);font-weight:800;font-size:18px;margin-bottom:14px}
+.step h3{font-size:17px;font-weight:700;margin:0 0 6px}
+.step p{font-size:14px;color:var(--ink-2);line-height:1.5;margin:0}
+
+/* ─── 6. REVIEWS ─────────────────────────────────────────────── */
+.reviews{display:grid;grid-template-columns:1fr;gap:16px;margin-top:32px}
+@media (min-width:760px){ .reviews{grid-template-columns:repeat(3,1fr)} }
+.review-card{background:var(--bg);border:1px solid var(--rule);border-radius:var(--r-md);padding:22px;display:flex;flex-direction:column;gap:10px}
+.review-stars{color:var(--star);letter-spacing:1px;font-size:15px}
+.review-card h4{font-size:15px;font-weight:700;margin:0}
+.review-card p{font-size:14px;color:var(--ink-2);line-height:1.55;margin:0;flex:1}
+.review-author{display:flex;align-items:center;gap:10px;margin-top:6px;padding-top:14px;border-top:1px solid var(--rule)}
+.rev-avatar{width:38px;height:38px;border-radius:50%;background:var(--bg-soft);overflow:hidden;flex:0 0 38px}
+.rev-avatar img{width:100%;height:100%;object-fit:cover}
+.rev-meta{font-size:13px;line-height:1.3}
+.rev-meta strong{font-weight:700}
+.rev-meta span{color:var(--muted);font-size:12px;display:block;margin-top:2px}
+
+/* ─── 7. FAQ ─────────────────────────────────────────────────── */
+.faq{max-width:760px;margin:32px auto 0}
+.faq-item{border:1px solid var(--rule);border-radius:var(--r-md);margin-bottom:10px;overflow:hidden;background:var(--bg)}
+.faq-item summary{padding:18px 22px;font-weight:700;font-size:15px;list-style:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.faq-item summary::after{content:"+";font-size:22px;font-weight:300;color:var(--ink-2);transition:transform .2s}
+.faq-item[open] summary::after{transform:rotate(45deg)}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-body{padding:0 22px 18px;font-size:14px;color:var(--ink-2);line-height:1.6}
+
+/* ─── 8. FINAL CTA ───────────────────────────────────────────── */
+.final-cta{margin-top:80px;text-align:center;background:var(--bg-soft);padding:48px 24px;border-radius:var(--r-lg)}
+.final-cta h2{font-size:28px;margin-bottom:8px}
+.final-cta p{font-size:16px;color:var(--muted);margin:0 0 24px}
+.final-cta .cta-btn{display:inline-flex;width:auto;max-width:340px;margin:0 auto}
+
+/* ─── 9. STICKY BUY BAR ──────────────────────────────────────── */
+.sticky-bar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--rule);padding:10px 16px;display:flex;align-items:center;gap:12px;z-index:50;transform:translateY(110%);transition:transform .25s ease;box-shadow:0 -4px 18px rgba(0,0,0,.08)}
+.sticky-bar.show{transform:translateY(0)}
+.sticky-info{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.sticky-img{width:42px;height:42px;border-radius:var(--r-sm);overflow:hidden;flex:0 0 42px;background:var(--bg-soft)}
+.sticky-img img{width:100%;height:100%;object-fit:cover}
+.sticky-text{font-size:13px;line-height:1.3;flex:1;min-width:0}
+.sticky-text strong{display:block;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sticky-text span{color:var(--muted)}
+.sticky-text s{color:var(--strike)}
+.sticky-bar .cta-btn{flex:0 0 auto;padding:10px 16px;font-size:13px;text-transform:uppercase;letter-spacing:0.04em}
+
+/* ─── REVEAL ON SCROLL ───────────────────────────────────────── */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease}
+.rv.on{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<div id="page-wrap">
+
+  <!-- 1. Announcement bar -->
+  <div class="pp-announce" data-v-text="announce">Envío gratis · 3 cuotas sin interés · Garantía 30 días</div>
+
+  <div class="pp">
+
+    <!-- 2. Main product (gallery + buy box) -->
+    <section class="pp-main">
+
+      <!-- Gallery -->
+      <div class="pp-gallery">
+        <div class="gallery-main" data-v-img="prod-main">
+          <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=900&q=80&auto=format&fit=crop" alt="Foto principal del producto">
+        </div>
+        <div class="gallery-thumbs">
+          <button class="thumb is-active" data-v-img="prod-thumb-1" type="button"><img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=200&q=80&auto=format&fit=crop" alt="Vista 1"></button>
+          <button class="thumb" data-v-img="prod-thumb-2" type="button"><img src="https://images.unsplash.com/photo-1556228720-195a672e8a03?w=200&q=80&auto=format&fit=crop" alt="Vista 2"></button>
+          <button class="thumb" data-v-img="prod-thumb-3" type="button"><img src="https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=200&q=80&auto=format&fit=crop" alt="Vista 3"></button>
+          <button class="thumb" data-v-img="prod-thumb-4" type="button"><img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&q=80&auto=format&fit=crop" alt="Vista 4"></button>
+          <button class="thumb" data-v-img="prod-thumb-5" type="button"><img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&q=80&auto=format&fit=crop" alt="Vista 5"></button>
+        </div>
+      </div>
+
+      <!-- Buy box -->
+      <div class="pp-info">
+        <span class="prod-tag" data-v-text="tag">★ Más vendido · Stock limitado</span>
+        <h1 class="prod-name" data-v-text="product-name">Nombre del producto</h1>
+
+        <div class="prod-rating">
+          <span class="stars" data-v-text="rating-stars">★★★★★</span>
+          <span data-v-text="rating-text">4.9</span>
+          <a href="#reviews" data-v-text="rating-link">(1,247 reseñas)</a>
+        </div>
+
+        <div class="prod-price-row">
+          <span class="price" data-v-text="price">$59.900</span>
+          <span class="compare-at" data-v-text="compare-at">$120.000</span>
+          <span class="discount-badge" data-v-text="discount">50% OFF</span>
+        </div>
+        <div class="installments" data-v-text="installments">o 3 cuotas sin interés de $19.967</div>
+
+        <p class="prod-short" data-v-text="short-desc">Una descripción corta del producto, en 1-2 oraciones que enganchen al lector y lo hagan querer leer más.</p>
+
+        <div class="opts">
+          <span class="opts-label" data-v-text="opt-label">Tamaño</span>
+          <div class="opts-row">
+            <button class="opt-btn is-active" type="button" data-v-text="opt-1">30 ml</button>
+            <button class="opt-btn" type="button" data-v-text="opt-2">60 ml</button>
+            <button class="opt-btn" type="button" data-v-text="opt-3">100 ml</button>
+          </div>
+        </div>
+
+        <div class="qty-row">
+          <div class="qty">
+            <button type="button" aria-label="Quitar">−</button>
+            <input type="text" value="1" aria-label="Cantidad">
+            <button type="button" aria-label="Sumar">+</button>
+          </div>
+          <a href="#" class="cta-btn" data-v-text="cta-text">🛒 Comprar ahora</a>
+        </div>
+
+        <div class="guarantee" data-v-text="guarantee">Garantía 30 días · Si no funciona, te devolvemos cada peso</div>
+
+        <div class="trust">
+          <div class="trust-item"><span class="trust-icon">🚚</span><span data-v-text="trust-1">Envío gratis</span></div>
+          <div class="trust-item"><span class="trust-icon">↩️</span><span data-v-text="trust-2">30 días devolución</span></div>
+          <div class="trust-item"><span class="trust-icon">🔒</span><span data-v-text="trust-3">Pago seguro</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Benefits grid -->
+    <section class="section rv">
+      <h2 class="section-h2" data-v-text="benefits-title">¿Por qué elegir este producto?</h2>
+      <p class="section-sub" data-v-text="benefits-sub">Cuatro razones que hacen la diferencia.</p>
+      <div class="benefits">
+        <div class="benefit"><div class="b-icon">⚡</div><h3 data-v-text="b1-name">Resultados rápidos</h3><p data-v-text="b1-desc">Notás la diferencia desde la primera semana de uso.</p></div>
+        <div class="benefit"><div class="b-icon">💧</div><h3 data-v-text="b2-name">Hidratación profunda</h3><p data-v-text="b2-desc">Penetra hasta las capas más profundas de la piel.</p></div>
+        <div class="benefit"><div class="b-icon">🌿</div><h3 data-v-text="b3-name">Ingredientes naturales</h3><p data-v-text="b3-desc">Sin parabenos, sin siliconas, sin químicos agresivos.</p></div>
+        <div class="benefit"><div class="b-icon">✨</div><h3 data-v-text="b4-name">Apto pieles sensibles</h3><p data-v-text="b4-desc">Probado dermatológicamente. 0% irritación.</p></div>
+      </div>
+    </section>
+
+    <!-- 4. Long description with image -->
+    <section class="section long-desc rv">
+      <div class="long-desc-img" data-v-img="desc-img">
+        <img src="https://images.unsplash.com/photo-1556228720-195a672e8a03?w=900&q=80&auto=format&fit=crop" alt="Producto en uso">
+      </div>
+      <div class="long-desc-body">
+        <h3 data-v-text="desc-title">La fórmula que estabas esperando</h3>
+        <p data-v-text="desc-p1">Diseñado para resolver el problema específico que ningún otro producto del mercado resuelve realmente. Combinación única de ingredientes activos.</p>
+        <p data-v-text="desc-p2">Cada componente fue seleccionado por su eficacia comprobada en estudios clínicos. Sin atajos, sin fórmulas baratas.</p>
+        <p data-v-text="desc-p3">Los resultados hablan por sí solos: miles de clientes ya lo probaron y lo siguen comprando.</p>
+      </div>
+    </section>
+
+    <!-- 5. How to use -->
+    <section class="section rv">
+      <h2 class="section-h2" data-v-text="how-title">Cómo usarlo</h2>
+      <p class="section-sub" data-v-text="how-sub">Simple, rápido, todos los días.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><h3 data-v-text="step-1-name">Limpiá la piel</h3><p data-v-text="step-1-desc">Empezá con la cara limpia y seca. Esto permite que el producto se absorba mejor.</p></div>
+        <div class="step"><div class="step-num">2</div><h3 data-v-text="step-2-name">Aplicá 3-4 gotas</h3><p data-v-text="step-2-desc">Una cantidad pequeña es suficiente. Distribuilo con movimientos circulares suaves.</p></div>
+        <div class="step"><div class="step-num">3</div><h3 data-v-text="step-3-name">Esperá los resultados</h3><p data-v-text="step-3-desc">En 2-4 semanas vas a notar la diferencia. Constancia es clave.</p></div>
+      </div>
+    </section>
+
+    <!-- 6. Reviews -->
+    <section class="section rv" id="reviews">
+      <h2 class="section-h2" data-v-text="reviews-title">Lo que dicen nuestros clientes</h2>
+      <p class="section-sub" data-v-text="reviews-sub">Reseñas verificadas de clientes reales.</p>
+      <div class="reviews">
+        <div class="review-card">
+          <div class="review-stars">★★★★★</div>
+          <h4 data-v-text="rev-1-title">Cambió mi rutina</h4>
+          <p data-v-text="rev-1-body">Lo uso hace 3 meses y mi piel nunca se vio mejor. Vale cada peso.</p>
+          <div class="review-author">
+            <div class="rev-avatar" data-v-img="rev-1-avatar"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=80&auto=format&fit=crop" alt=""></div>
+            <div class="rev-meta">
+              <strong data-v-text="rev-1-name">María González</strong>
+              <span data-v-text="rev-1-loc">Bogotá · Cliente verificado</span>
+            </div>
+          </div>
+        </div>
+        <div class="review-card">
+          <div class="review-stars">★★★★★</div>
+          <h4 data-v-text="rev-2-title">Resultados en 2 semanas</h4>
+          <p data-v-text="rev-2-body">Pensé que era otra promesa más, pero esta vez sí. Mi piel está más firme, más luminosa.</p>
+          <div class="review-author">
+            <div class="rev-avatar" data-v-img="rev-2-avatar"><img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&q=80&auto=format&fit=crop" alt=""></div>
+            <div class="rev-meta">
+              <strong data-v-text="rev-2-name">Camila Rodríguez</strong>
+              <span data-v-text="rev-2-loc">Medellín · Cliente verificado</span>
+            </div>
+          </div>
+        </div>
+        <div class="review-card">
+          <div class="review-stars">★★★★★</div>
+          <h4 data-v-text="rev-3-title">Mi nuevo favorito</h4>
+          <p data-v-text="rev-3-body">Probé todo lo del mercado. Esto es lo único que de verdad funciona y no irrita mi piel sensible.</p>
+          <div class="review-author">
+            <div class="rev-avatar" data-v-img="rev-3-avatar"><img src="https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=120&q=80&auto=format&fit=crop" alt=""></div>
+            <div class="rev-meta">
+              <strong data-v-text="rev-3-name">Laura Martínez</strong>
+              <span data-v-text="rev-3-loc">Cali · Cliente verificado</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. FAQ -->
+    <section class="section rv">
+      <h2 class="section-h2" data-v-text="faq-title">Preguntas frecuentes</h2>
+      <div class="faq">
+        <details class="faq-item">
+          <summary data-v-text="faq-1-q">¿Cuándo voy a ver resultados?</summary>
+          <div class="faq-body" data-v-text="faq-1-a">La mayoría notan diferencia desde la primera semana. Resultados visibles en 2-4 semanas de uso constante.</div>
+        </details>
+        <details class="faq-item">
+          <summary data-v-text="faq-2-q">¿Es apto para pieles sensibles?</summary>
+          <div class="faq-body" data-v-text="faq-2-a">Sí. La fórmula está libre de parabenos, siliconas y químicos agresivos. Probada dermatológicamente.</div>
+        </details>
+        <details class="faq-item">
+          <summary data-v-text="faq-3-q">¿Cuánto dura un envase?</summary>
+          <div class="faq-body" data-v-text="faq-3-a">Usándolo todos los días, un envase de 30 ml dura aproximadamente 2 meses.</div>
+        </details>
+        <details class="faq-item">
+          <summary data-v-text="faq-4-q">¿Cuál es la política de devolución?</summary>
+          <div class="faq-body" data-v-text="faq-4-a">Tenés 30 días desde la compra para probarlo. Si no estás conforme, te devolvemos el 100% sin preguntas.</div>
+        </details>
+      </div>
+    </section>
+
+    <!-- 8. Final CTA -->
+    <section class="final-cta rv">
+      <h2 data-v-text="final-cta-title">¿Listo para probar?</h2>
+      <p data-v-text="final-cta-sub">Garantía 30 días · Envío gratis · 3 cuotas sin interés</p>
+      <a href="#" class="cta-btn" data-v-text="final-cta-btn">🛒 Comprar ahora</a>
+    </section>
+
+  </div>
+
+  <!-- 9. Sticky buy bar -->
+  <aside id="sticky" class="sticky-bar">
+    <div class="sticky-info">
+      <div class="sticky-img" data-v-img="sticky-img">
+        <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=120&q=80&auto=format&fit=crop" alt="">
+      </div>
+      <div class="sticky-text">
+        <strong data-v-text="sticky-name">Nombre del producto</strong>
+        <span><span data-v-text="sticky-price">$59.900</span> <s data-v-text="sticky-compare">$120.000</s></span>
+      </div>
+    </div>
+    <a href="#" class="cta-btn sticky-btn" data-v-text="sticky-cta">Comprar →</a>
+  </aside>
+
+</div>
+
+<script>
+(function(){
+  // Reveal-on-scroll
+  var rv = document.querySelectorAll('.rv');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); }
+      });
+    }, {threshold:.07, rootMargin:'0px 0px -20px 0px'});
+    rv.forEach(function(el){ io.observe(el); });
+  } else {
+    rv.forEach(function(el){ el.classList.add('on'); });
+  }
+
+  // Sticky bar after 22% scroll
+  var sticky = document.getElementById('sticky');
+  function onScroll(){
+    var doc = document.documentElement;
+    var ratio = doc.scrollTop / Math.max(1, (doc.scrollHeight - doc.clientHeight));
+    if (sticky) sticky.classList.toggle('show', ratio >= 0.22);
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+
+  // Gallery thumb click → swap main image
+  var thumbs = document.querySelectorAll('.thumb');
+  var main = document.querySelector('.gallery-main img');
+  thumbs.forEach(function(t){
+    t.addEventListener('click', function(){
+      var img = t.querySelector('img');
+      if (!img || !main) return;
+      main.src = img.src;
+      thumbs.forEach(function(x){ x.classList.remove('is-active'); });
+      t.classList.add('is-active');
+    });
+  });
+
+  // Quantity steppers
+  var qty = document.querySelector('.qty');
+  if (qty) {
+    var input = qty.querySelector('input');
+    var btns = qty.querySelectorAll('button');
+    btns[0].addEventListener('click', function(){ input.value = Math.max(1, (parseInt(input.value, 10) || 1) - 1); });
+    btns[1].addEventListener('click', function(){ input.value = (parseInt(input.value, 10) || 1) + 1; });
+  }
+})();
+</script>
+
+</body>
+</html>

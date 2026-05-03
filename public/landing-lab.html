@@ -1069,16 +1069,26 @@ function applyTemplateContent(tpl){
   //     Default to white because virtually every advertorial / landing
   //     template ships a light canvas.
   var bodyBg = extractBodyBg(tpl.css) || '#ffffff';
+  var bodyColor = extractBodyColor(tpl.css) || '#0f1115';
   document.querySelectorAll('style[data-tpl-bg]').forEach(function(s){ s.remove(); });
   var bgStyle = document.createElement('style');
   bgStyle.setAttribute('data-tpl-bg', tpl.id);
+  // Force both bg and text colour on the canvas so paragraphs without an
+  // explicit `color` rule inherit something readable instead of the
+  // editor's leftover `var(--cream)` (yellow on white).
   bgStyle.textContent =
-    '#page-area, #page-wrap { background: ' + bodyBg + ' !important; }\n' +
-    'body.mob-mode #page-area { background: ' + bodyBg + ' !important; }';
+    '#page-area, #page-wrap { background: ' + bodyBg + ' !important; color: ' + bodyColor + ' !important; }\n' +
+    'body.mob-mode #page-area { background: ' + bodyBg + ' !important; color: ' + bodyColor + ' !important; }';
   document.head.appendChild(bgStyle);
   var pa = document.getElementById('page-area');
-  if (pa) pa.style.setProperty('background', bodyBg, 'important');
-  if (pw) pw.style.setProperty('background', bodyBg, 'important');
+  if (pa) {
+    pa.style.setProperty('background', bodyBg, 'important');
+    pa.style.setProperty('color', bodyColor, 'important');
+  }
+  if (pw) {
+    pw.style.setProperty('background', bodyBg, 'important');
+    pw.style.setProperty('color', bodyColor, 'important');
+  }
 
   // 5) Rebuild slot tables + re-decorate image slots with the editor chrome
   rebuildSlotTables();
@@ -1109,17 +1119,21 @@ function restoreInlineLayout(){
   document.querySelectorAll('style[data-tpl]').forEach(function(s){ s.remove(); });
   document.querySelectorAll('style[data-tpl-bg]').forEach(function(s){ s.remove(); });
   document.querySelectorAll('link[data-tpl]').forEach(function(l){ l.remove(); });
-  // Clear the per-template bg overrides so #page-area falls back to the
-  // dark Vitalu palette (#0E0A06) defined in this file's CSS. Use
-  // removeProperty so the !important inline style we set on the way in
-  // actually goes away.
+  // Clear the per-template bg + text-colour overrides so #page-area falls
+  // back to the dark Vitalu palette (#0E0A06) defined in this file's CSS.
+  // Use removeProperty so the !important inline styles we set on the way
+  // in actually go away.
   var pa0 = document.getElementById('page-area');
-  if (pa0) pa0.style.removeProperty('background');
+  if (pa0) {
+    pa0.style.removeProperty('background');
+    pa0.style.removeProperty('color');
+  }
   if (inlinePageWrapHtml === null) return; // never left in the first place
   var pw = g('page-wrap');
   if (!pw) return;
   pw.innerHTML = inlinePageWrapHtml;
   pw.style.removeProperty('background');
+  pw.style.removeProperty('color');
   currentTemplateId = null;
   // Vitalu's hardcoded slot tables — restore the original values so
   // legacy code that walks IMG_KEYS keeps working.
@@ -1137,8 +1151,19 @@ function restoreInlineLayout(){
 // Regex is fragile but covers every template we ship — any miss just leaves
 // the editor's existing background in place, which is non-fatal.
 function extractBodyBg(css){
+  return extractBodyDecl(css, 'background(?:-color)?');
+}
+function extractBodyColor(css){
+  return extractBodyDecl(css, 'color');
+}
+// Pull `body { <prop>: VALUE }` out of a CSS string, resolving one level
+// of var(--name) against a `:root { --name: V }` rule. We need both bg
+// and text colour so the editor canvas can match the template — without
+// the colour override the editor's inherited `color: var(--cream)` paints
+// every <p> in cream/yellow on a white canvas → invisible.
+function extractBodyDecl(css, propRe){
   if (!css) return '';
-  var m = css.match(/(?:^|[}\s])body\s*\{[^}]*\bbackground(?:-color)?\s*:\s*([^;}]+)/);
+  var m = css.match(new RegExp('(?:^|[}\\s])body\\s*\\{[^}]*\\b' + propRe + '\\s*:\\s*([^;}]+)'));
   if (!m) return '';
   var v = m[1].trim();
   var varM = v.match(/var\(\s*(--[\w-]+)/);
@@ -1178,26 +1203,33 @@ function rebuildSlotTables(){
   });
 }
 
-// Wraps every [data-v-img] with the same .iov / .idel overlay buttons the
-// inline Vitalu template renders by default. Idempotent — skipped if
-// already decorated. Without this, dynamic templates show no way to
-// upload/replace an image.
+// Wraps every [data-v-img] with always-visible "Cambiar imagen" + delete
+// buttons so the user never has to guess where to click to swap an image.
+// Earlier we reused the inline Vitalu .iov overlay (opacity 0 → 1 on
+// .img-ph:hover), but Pilar / product-page slots don't have .img-ph and
+// the overlay never appeared. We use riverz-img-* classes with inline
+// styles so the buttons render regardless of which template is loaded.
 function decorateImageSlots(){
   document.querySelectorAll('#page-wrap [data-v-img]').forEach(function(el){
-    if (el.querySelector(':scope > .iov')) return;
+    if (el.querySelector(':scope > .riverz-img-edit')) return;
     var slot = el.getAttribute('data-v-img');
     if (!slot) return;
     if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
-    var iov = document.createElement('button');
-    iov.className = 'iov'; iov.type = 'button';
-    iov.textContent = '📷 Cambiar imagen';
-    iov.onclick = function(e){ e.preventDefault(); e.stopPropagation(); pickImg(slot); };
-    el.appendChild(iov);
-    var idel = document.createElement('button');
-    idel.className = 'idel'; idel.type = 'button';
-    idel.innerHTML = '🗑';
-    idel.onclick = function(e){ e.preventDefault(); e.stopPropagation(); delImg(e, slot); };
-    el.appendChild(idel);
+    el.style.minHeight = el.style.minHeight || '60px';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'riverz-img-edit';
+    btn.innerHTML = '📷 Imagen';
+    btn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:30;background:rgba(0,0,0,.75);color:#fff;border:0;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);font-family:Inter,system-ui,sans-serif;letter-spacing:0.02em';
+    btn.onclick = function(e){ e.preventDefault(); e.stopPropagation(); pickImg(slot); };
+    el.appendChild(btn);
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'riverz-img-del';
+    del.innerHTML = '🗑';
+    del.style.cssText = 'position:absolute;top:8px;left:8px;z-index:30;background:rgba(0,0,0,.75);color:#fff;border:0;width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+    del.onclick = function(e){ e.preventDefault(); e.stopPropagation(); delImg(e, slot); };
+    el.appendChild(del);
   });
 }
 

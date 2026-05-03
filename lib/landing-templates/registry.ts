@@ -64,13 +64,12 @@ export const LANDING_TEMPLATES: LandingTemplate[] = [
     inlineSource: 'vitalu-ancestral',
   },
   {
-    id: 'product-page-coming-soon',
+    id: 'product-page-default',
     kind: 'product_page',
     name: 'Product Page — Hero & Buy Box',
     description:
-      'Hero + beneficios + variants + add-to-cart nativo. Llega en la próxima semana.',
-    htmlUrl: '/templates/advertorial-listicle.html', // placeholder preview
-    comingSoon: true,
+      'Galería de fotos + precio (con tachado de precio anterior) + variantes + reseñas + FAQ. El estándar DTC moderno.',
+    htmlUrl: '/templates/product-page-default.html',
   },
 ];
 

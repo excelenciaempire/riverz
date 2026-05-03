@@ -19,6 +19,7 @@ const KIE_ENDPOINT = 'https://api.kie.ai/gemini-3-pro/v1/chat/completions';
 // is needed because we only have the template ids on the wire here.
 const TEMPLATE_FILES: Record<string, string> = {
   'pilar-listicle': 'advertorial-listicle.html',
+  'product-page-default': 'product-page-default.html',
 };
 
 interface GenerateRequest {
