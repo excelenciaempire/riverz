@@ -24,7 +24,11 @@ const buildCsp = (frameAncestors: string) =>
     // success, but the fallback path in saveResult keeps the kie URL — so
     // aiquickdraw needs to be allowed too, otherwise the browser blocks the
     // image even though we already paid for it.
-    "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://*.kie.ai https://*.aiquickdraw.com https://*.googleusercontent.com https://*.cloudfront.net https://*.amazonaws.com https://*.elevenlabs.io https://riverzai.com https://cdn.riverzai.com https://placehold.co https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://*.fbcdn.net https://*.cdninstagram.com https://graph.facebook.com",
+    // cdn.shopify.com is needed once we upload product / landing imagery
+    // to a merchant's Shopify Files — those URLs replace the placehold.co
+    // defaults in the landing-lab editor. Without this the editor can't
+    // render its own freshly-uploaded images.
+    "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://*.kie.ai https://*.aiquickdraw.com https://*.googleusercontent.com https://*.cloudfront.net https://*.amazonaws.com https://*.elevenlabs.io https://riverzai.com https://cdn.riverzai.com https://placehold.co https://cdn.shopify.com https://*.myshopify.com https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://*.fbcdn.net https://*.cdninstagram.com https://graph.facebook.com",
     "media-src 'self' blob: https://*.supabase.co https://*.supabase.in https://*.kie.ai https://*.aiquickdraw.com https://*.cloudfront.net https://*.amazonaws.com https://*.fbcdn.net https://*.cdninstagram.com",
     // connect-src governs fetch() / XHR / WebSocket. The Descargar button
     // calls fetch() against Meta's CDN to bundle the asset into a Blob, so

@@ -423,6 +423,7 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
     <button class="tb tb-ghost" id="btn-redo" onclick="doRedo()" title="Ctrl+Y">&#x21B7;</button>
     <div class="t-sep"></div>
     <button class="tb tb-gal" onclick="openGallery()">&#x1F4F7; Imagenes</button>
+    <button class="tb tb-ghost" onclick="openVersionsModal()" title="Historial de versiones">&#x1F570; Versiones</button>
     <button class="tb tb-ghost" onclick="openSettings()" title="Ajustes de la página">&#x2699; Ajustes</button>
     <button class="tb tb-blue" onclick="exportCurrent()">&#x2B07; Exportar HTML</button>
     <button class="tb tb-grn" onclick="publishToShopify()" title="Publicar como página en tu Shopify">&#x1F6D2; Publicar en Shopify</button>
@@ -846,6 +847,23 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
       <div class="go-step" id="gstep-2"><div class="go-step-dot"></div>Escribiendo copy de conversion</div>
       <div class="go-step" id="gstep-3"><div class="go-step-dot"></div>Creando testimonios</div>
       <div class="go-step" id="gstep-4"><div class="go-step-dot"></div>Finalizando CTAs</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── VERSIONS MODAL ─── -->
+<div id="versions-modal" class="set-overlay" onclick="closeVersionsModal()">
+  <div class="set-card" onclick="event.stopPropagation()" style="max-width:680px">
+    <div class="set-head">
+      <h2>&#x1F570; Historial de versiones</h2>
+      <button class="set-close" onclick="closeVersionsModal()" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="set-body">
+      <p class="set-help">Cada vez que publicás a Shopify se guarda una versión automáticamente. También podés guardar una versión manual antes de un cambio grande.</p>
+      <div class="ver-save" style="margin:12px 0">
+        <button class="tb tb-acc" onclick="saveVersion(); renderVersionsList(); renderVersionsListLarge();" type="button">+ Guardar versión actual</button>
+      </div>
+      <div id="versions-list-large" class="versions-list" style="max-height:none"></div>
     </div>
   </div>
 </div>
@@ -1821,7 +1839,7 @@ function delImg(e,key){e.stopPropagation();e.preventDefault();var proj=getActive
 function snapshot(){if(isRestoring||!activeId)return;collectTexts();var proj=getActive();if(!proj)return;var snap={texts:JSON.parse(JSON.stringify(proj.texts)),images:JSON.parse(JSON.stringify(proj.images)),layoutOrder:proj.layoutOrder?JSON.parse(JSON.stringify(proj.layoutOrder)):null};if(!histMap[activeId]){histMap[activeId]=[];histIdx[activeId]=-1;}histMap[activeId].splice(histIdx[activeId]+1);histMap[activeId].push(snap);if(histMap[activeId].length>60)histMap[activeId].shift();histIdx[activeId]=histMap[activeId].length-1;updateUR();}
 function doUndo(){if(!activeId||(histIdx[activeId]||0)<=0)return;histIdx[activeId]--;applySnap(histMap[activeId][histIdx[activeId]]);updateUR();toast('Deshecho');}
 function doRedo(){var h=histMap[activeId]||[];if(!activeId||(histIdx[activeId]||0)>=h.length-1)return;histIdx[activeId]++;applySnap(h[histIdx[activeId]]);updateUR();toast('Rehecho');}
-function applySnap(snap){isRestoring=true;var proj=getActive();if(!proj){isRestoring=false;return;}proj.texts=JSON.parse(JSON.stringify(snap.texts));proj.images=JSON.parse(JSON.stringify(snap.images));if(snap.layoutOrder){proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));if(typeof applyLayoutOrder==='function')applyLayoutOrder(proj);}IMG_KEYS.forEach(function(k){resetSlot(k);});applyTexts(proj.texts);IMG_KEYS.forEach(function(k){var v=proj.images[k];if(v===null)collapseSlot(k);else if(typeof v==='string'&&v)setSlot(k,v);});saveAll();isRestoring=false;}
+function applySnap(snap){isRestoring=true;var proj=getActive();if(!proj){isRestoring=false;return;}proj.texts=JSON.parse(JSON.stringify(snap.texts||{}));proj.images=JSON.parse(JSON.stringify(snap.images||{}));if(snap.layoutOrder){proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));if(typeof applyLayoutOrder==='function')applyLayoutOrder(proj);}applyTexts(proj.texts);IMG_KEYS.forEach(function(k){var v=proj.images[k];if(v===null){collapseSlot(k);return;}if(typeof v==='string'&&v){setSlot(k,v);return;}if(TEMPLATE_DEFAULT_IMAGES[k])setSlot(k,TEMPLATE_DEFAULT_IMAGES[k]);else resetSlot(k);});saveAll();isRestoring=false;}
 function updateUR(){var id=activeId;var u=g('btn-undo'),r=g('btn-redo');if(u)u.disabled=!id||(histIdx[id]||0)<=0;if(r)r.disabled=!id||(histIdx[id]||0)>=((histMap[id]||[]).length-1);}
 
 // ── FONT SIZE CONTROLS ────────────────────────────────────────
@@ -2038,9 +2056,22 @@ async function publishToShopify(){
     if(url){
       // Persist the published URL on the project so we can show "View live page" later.
       proj.shopifyUrl = url;
-      saveAll();
-      setTimeout(function(){ window.open(url,'_blank'); }, 600);
     }
+    // Auto-snapshot a "Publicado · …" version so the user can roll back to
+    // any prior live state without thinking about it. Cap at 30 entries.
+    try {
+      if (typeof window.snapshotProjectState === 'function') {
+        var label = 'Publicado · ' + new Date().toLocaleString('es', {day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+        var v = window.snapshotProjectState(label);
+        if (v) {
+          if (!Array.isArray(proj.versions)) proj.versions = [];
+          proj.versions.unshift(v);
+          if (proj.versions.length > 30) proj.versions.length = 30;
+        }
+      }
+    } catch (snapErr) { console.warn('publish auto-snapshot failed', snapErr); }
+    saveAll();
+    if (url) setTimeout(function(){ window.open(url,'_blank'); }, 600);
   }catch(e){
     toast(e.message||'Error al publicar',1);
   }
@@ -2180,6 +2211,48 @@ function renderVersionsList(){
   }).join('');
 }
 function _esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+// Dedicated versions window — bigger surface for the timeline UI than
+// the cramped section inside Settings. Shares the same render code so
+// both views show identical data.
+function openVersionsModal(){
+  var proj = getActive(); if (!proj) { toast('Selecciona una landing primero', 1); return; }
+  renderVersionsListLarge();
+  document.getElementById('versions-modal').classList.add('on');
+}
+function closeVersionsModal(){
+  var m = document.getElementById('versions-modal');
+  if (m) m.classList.remove('on');
+}
+function renderVersionsListLarge(){
+  var proj = getActive();
+  var list = document.getElementById('versions-list-large');
+  if (!list) return;
+  var versions = (proj && proj.versions) || [];
+  if (versions.length === 0) {
+    list.innerHTML = '<div class="ver-empty" style="padding:32px 0">Todavía no hay versiones guardadas. Guardá una manualmente o publicá a Shopify (cada publish guarda automáticamente).</div>';
+    return;
+  }
+  list.innerHTML = versions.map(function(v){
+    var when = '';
+    try { when = new Date(v.ts).toLocaleString('es', {day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}); } catch(e){}
+    var isPublish = (v.name||'').indexOf('Publicado') === 0;
+    var badge = isPublish ? '<span style="display:inline-block;background:#1ca25a22;color:#1ca25a;padding:2px 7px;border-radius:9px;font-size:10px;font-weight:700;letter-spacing:.05em;margin-left:6px;text-transform:uppercase">publish</span>' : '';
+    return '<div class="ver-item" style="padding:14px 16px">'
+      + '<div class="ver-item-meta">'
+      + '<div class="ver-item-name">' + _esc(v.name) + badge + '</div>'
+      + '<div class="ver-item-ts">' + _esc(when) + '</div>'
+      + '</div>'
+      + '<div class="ver-item-actions">'
+      + '<button class="ver-btn" type="button" onclick="restoreVersion(\'' + v.id + '\'); renderVersionsListLarge();">Restaurar</button>'
+      + '<button class="ver-btn danger" type="button" onclick="deleteVersion(\'' + v.id + '\'); renderVersionsListLarge();" title="Borrar">×</button>'
+      + '</div></div>';
+  }).join('');
+}
+window.openVersionsModal = openVersionsModal;
+window.closeVersionsModal = closeVersionsModal;
+window.renderVersionsListLarge = renderVersionsListLarge;
+
+window.snapshotProjectState = snapshotProjectState;
 window.saveVersion = saveVersion;
 window.restoreVersion = restoreVersion;
 window.deleteVersion = deleteVersion;
