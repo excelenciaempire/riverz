@@ -72,13 +72,26 @@ export async function POST(req: Request) {
   let productContext = '';
   let productName = body.product_info?.name || 'tu producto';
   if (body.product_id) {
+    // SELECT * because the products schema has drifted across migrations
+    // (description / category were removed in the static-ads cleanup) and
+    // the endpoint kept asking for them — supabase-js returns a 42703
+    // "column does not exist" error which we were misreporting as "product
+    // not found". Pull every column and let formatProductContext pick what
+    // it can use.
     const { data: product, error } = await supabaseAdmin
       .from('products')
-      .select('name, description, benefits, category, website, research_data')
+      .select('*')
       .eq('id', body.product_id)
       .eq('clerk_user_id', userId)
       .maybeSingle();
-    if (error || !product) {
+    if (error) {
+      console.error('[generate-from-template] product lookup failed', error);
+      return NextResponse.json(
+        { error: 'No se pudo leer el producto: ' + error.message },
+        { status: 500 },
+      );
+    }
+    if (!product) {
       return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
     }
     productName = product.name;
