@@ -1018,6 +1018,13 @@ async function fetchTemplate(templateId){
   return { id: templateId, css: css, linkHrefs: linkHrefs, bodyHtml: bodyHtml };
 }
 
+// Snapshot of each [data-v-img] slot's default src as it shipped in the
+// template HTML — so when a user activates a fresh project (no images
+// uploaded yet) we can restore the template defaults instead of clearing
+// every slot to empty. Per templateId so cross-template switches don't
+// crosstalk.
+var TEMPLATE_DEFAULT_IMAGES = {};
+
 // Mount a fetched template into #page-wrap. Removes the prior template's
 // CSS, replaces #page-wrap's HTML, rebuilds the slot tables, and re-runs
 // the contentEditable / image-overlay decoration so the editor chrome
@@ -1052,6 +1059,22 @@ function applyTemplateContent(tpl){
 
   // 5) Rebuild slot tables + re-decorate image slots with the editor chrome
   rebuildSlotTables();
+  // Snapshot the template's default image src values so projects that
+  // haven't uploaded their own images render with the originals instead
+  // of empty <img> tags.
+  TEMPLATE_DEFAULT_IMAGES = {};
+  document.querySelectorAll('#page-wrap [data-v-img]').forEach(function(el){
+    var slot = el.getAttribute('data-v-img');
+    var img = el.querySelector('img');
+    if (slot && img) TEMPLATE_DEFAULT_IMAGES[slot] = img.getAttribute('src') || '';
+  });
+  // The template ships .rv reveal-on-scroll classes that start at
+  // opacity:0 and are toggled to .on by an IntersectionObserver in the
+  // PUBLISHED page. We strip the script from the in-editor copy (the
+  // editor has its own scroll handling), so without this the entire body
+  // is invisible. Forcing .on at mount time makes the editor render
+  // every reveal-able section straight away.
+  document.querySelectorAll('#page-wrap .rv').forEach(function(el){ el.classList.add('on'); });
   decorateImageSlots();
   // initEdit re-attaches contentEditable to the new [data-v-text] nodes.
   if (typeof initEdit === 'function') initEdit();
@@ -1277,10 +1300,19 @@ function activateProject(id){
   activeId=id; var proj=getActive(); if(!proj){showEmpty();return;}
   if(!histMap[id]){histMap[id]=[];histIdx[id]=-1;}
   isRestoring=true;
-  IMG_KEYS.forEach(function(k){resetSlot(k);});
   var texts=Object.keys(proj.texts).length>0?proj.texts:DEFAULT_TEXTS;
   applyTexts(texts);
-  IMG_KEYS.forEach(function(k){var v=proj.images[k];if(v===null)collapseSlot(k);else if(typeof v==='string'&&v)setSlot(k,v);});
+  // For each slot, prefer the user's saved image; fall back to the
+  // template's default; if neither, clear the slot. We don't blindly
+  // resetSlot first anymore — that wiped the placeholder images that
+  // ship with templates like Pilar before any user value got applied.
+  IMG_KEYS.forEach(function(k){
+    var v = proj.images[k];
+    if (v === null) { collapseSlot(k); return; }
+    if (typeof v === 'string' && v) { setSlot(k, v); return; }
+    if (TEMPLATE_DEFAULT_IMAGES[k]) setSlot(k, TEMPLATE_DEFAULT_IMAGES[k]);
+    else resetSlot(k);
+  });
   applyCTA(proj.ctaUrl);
   isRestoring=false;
   setTimeout(function(){document.querySelectorAll('#page-wrap [data-v-text]').forEach(function(el){el.contentEditable='true';});},30);
