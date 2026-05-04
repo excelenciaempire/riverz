@@ -1,11 +1,22 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Poppins, Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import Script from "next/script";
 
 const poppins = Poppins({
   variable: "--font-poppins",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
+
+// Inter Tight — used on the marketing landing for editorial-display
+// headlines (massive type at 300/400 weights with negative tracking).
+// Loaded site-wide via the CSS variable but only opt-in classes on the
+// landing actually use it; the rest of the app keeps Poppins.
+const interTight = Inter_Tight({
+  variable: "--font-inter-tight",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   display: "swap",
@@ -61,7 +72,7 @@ export default function RootLayout({
         )}
       </head>
       <body
-        className={`${poppins.variable} antialiased`}
+        className={`${poppins.variable} ${interTight.variable} antialiased`}
         suppressHydrationWarning
       >
         <Providers>{children}</Providers>

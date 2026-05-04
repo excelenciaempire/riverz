@@ -1,53 +1,108 @@
 import Link from 'next/link';
 
+/**
+ * Final hero — equivalent of Weave's sage closing block. Massive split
+ * heading "Inteligencia Artificial + Visión de marca" on a calm green
+ * surface, the wordmark, and the legal/footer block tucked underneath.
+ */
 export function FinalCTA() {
   return (
-    <section className="relative overflow-hidden py-24 md:py-32">
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-grid bg-grid-fade opacity-30" />
-        <div className="aurora opacity-90" />
-      </div>
-
-      <div className="mx-auto max-w-4xl px-5 text-center md:px-8">
-        <div className="relative" data-reveal>
-          <div className="pointer-events-none absolute -top-10 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(20,224,204,0.6),transparent_70%)] blur-2xl" />
-          <span className="relative inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.2em] text-white/70 backdrop-blur">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#14E0CC] shadow-[0_0_10px_#14E0CC]" />
-            Listo para tu marca
-          </span>
-          <h2 className="font-display mt-6 text-[clamp(34px,7vw,84px)] font-semibold leading-[0.98] tracking-tight">
-            Tu próxima campaña
+    <section id="planes" className="lv2-section-sage relative overflow-hidden">
+      <div className="mx-auto max-w-[1480px] px-5 py-28 md:px-9 md:py-40">
+        <div className="grid items-end gap-2 md:grid-cols-[1fr_auto_1fr] md:gap-8">
+          <h2 className="editorial-h1 lv2-rv">
+            Inteligencia
             <br />
-            <span className="text-gradient-primary">empieza hoy.</span>
+            Artificial
           </h2>
-          <p className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-white/60 md:text-[17px]">
-            Estamos cerrando registros para preparar la próxima oleada. Únete a la
-            lista de espera y te avisaremos en cuanto abramos cupos.
-          </p>
+          <span className="editorial-h1 lv2-rv text-center">+</span>
+          <h2 className="editorial-h1 lv2-rv md:text-right">
+            Visión
+            <br />
+            de marca
+          </h2>
+        </div>
 
-          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/sign-up"
-              className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-[15px] font-semibold text-black shadow-[0_22px_50px_-12px_rgba(20,224,204,0.55)] transition hover:translate-y-[-1px] sm:w-auto"
-            >
-              Únete a la lista de espera
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:translate-x-0.5">
-                <path d="M5 12h14M13 5l7 7-7 7" />
-              </svg>
-            </Link>
-            <Link
-              href="/sign-in"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-6 py-4 text-[15px] font-medium text-white/85 backdrop-blur transition hover:border-white/25 hover:bg-white/[0.06] sm:w-auto"
-            >
-              Iniciar sesión
-            </Link>
+        <div className="mt-20 grid gap-10 md:mt-32 md:grid-cols-[1fr_2fr] md:gap-16">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="grid h-9 w-9 place-items-center rounded-md bg-[#0a0a0a] text-[14px] font-bold text-[#f7ff9e]">
+                R
+              </span>
+              <span className="font-editorial text-[20px] font-semibold tracking-tight">
+                Riverz
+              </span>
+            </div>
           </div>
-
-          <p className="mt-6 text-[12px] text-white/40">
-            312 marcas activas · 1.2M+ assets entregados · Soporte humano en español
+          <p className="text-[14px] leading-relaxed text-black/75 md:text-[15px]">
+            Riverz es una nueva forma de crear contenido. Acortamos la distancia entre lo que la
+            IA puede hacer y lo que tu marca necesita, para que tu equipo creativo opere a la
+            velocidad del mercado sin perder identidad.
           </p>
         </div>
+
+        <div className="mt-16 grid gap-8 text-[12px] md:grid-cols-4 md:gap-12">
+          <FooterCol
+            title="Empezar"
+            links={[
+              { href: '/sign-up', label: 'Lista de espera' },
+              { href: '/sign-in', label: 'Iniciar sesión' },
+            ]}
+          />
+          <FooterCol
+            title="Producto"
+            links={[
+              { href: '#agentes', label: 'Agentes' },
+              { href: '#flujos', label: 'Flujos' },
+              { href: '#modelos', label: 'Modelos' },
+            ]}
+          />
+          <FooterCol
+            title="Compañía"
+            links={[
+              { href: '#', label: 'Sobre Riverz' },
+              { href: '#', label: 'Contacto' },
+            ]}
+          />
+          <FooterCol
+            title="Legal"
+            links={[
+              { href: '#', label: 'Términos' },
+              { href: '#', label: 'Privacidad' },
+            ]}
+          />
+        </div>
+
+        <p className="mt-16 border-t border-black/15 pt-6 text-[11px] uppercase tracking-[0.16em] text-black/55">
+          Riverz © {new Date().getFullYear()} · Todos los derechos reservados
+        </p>
       </div>
     </section>
+  );
+}
+
+function FooterCol({
+  title,
+  links,
+}: {
+  title: string;
+  links: Array<{ href: string; label: string }>;
+}) {
+  return (
+    <div>
+      <p className="editorial-eyebrow mb-3 text-black/45">{title}</p>
+      <ul className="space-y-2">
+        {links.map((l) => (
+          <li key={l.label}>
+            <Link
+              href={l.href}
+              className="text-[13px] uppercase tracking-[0.1em] text-black/80 hover:text-black"
+            >
+              {l.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

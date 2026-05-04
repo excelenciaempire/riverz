@@ -4,19 +4,17 @@ import { LandingNav } from '@/components/landing/nav';
 import { Hero } from '@/components/landing/hero';
 import { Differentiator } from '@/components/landing/differentiator';
 import { AgentsGrid } from '@/components/landing/agents-grid';
-import { Pipeline } from '@/components/landing/pipeline';
 import { Capabilities } from '@/components/landing/capabilities';
-import { Stats } from '@/components/landing/stats';
+import { Pipeline } from '@/components/landing/pipeline';
 import { UseCases } from '@/components/landing/use-cases';
-import { Pricing } from '@/components/landing/pricing';
 import { FinalCTA } from '@/components/landing/final-cta';
-import { LandingFooter } from '@/components/landing/footer';
+import { StickyCTA } from '@/components/landing/sticky-cta';
 import { RevealOnScroll } from '@/components/landing/reveal';
 
 export const metadata = {
-  title: 'Riverz · El estudio creativo con IA para marcas que venden',
+  title: 'Riverz · Estudio Creativo IA para marcas',
   description:
-    'Produce UGC, anuncios estáticos, foto de producto y video para tu marca de e-commerce. Tu equipo creativo de IA — listo para Meta, TikTok y tu tienda.',
+    'Una plataforma. Todos los modelos. Producí UGC, anuncios estáticos, foto de producto y video con la velocidad de la IA y el control de un creativo.',
 };
 
 export default async function LandingPage() {
@@ -26,19 +24,17 @@ export default async function LandingPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#0a0a0a] text-white">
+    <main className="lv2-page relative min-h-screen overflow-x-hidden">
       <RevealOnScroll />
       <LandingNav />
       <Hero />
       <Differentiator />
       <AgentsGrid />
-      <Pipeline />
       <Capabilities />
-      <Stats />
+      <Pipeline />
       <UseCases />
-      <Pricing />
       <FinalCTA />
-      <LandingFooter />
+      <StickyCTA />
     </main>
   );
 }
