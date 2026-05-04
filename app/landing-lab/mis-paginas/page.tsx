@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SideNav } from '../_side-nav';
 
@@ -13,6 +13,9 @@ export default function MisPaginasPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pendingDelete, setPendingDelete] = useState(false);
 
   useEffect(() => {
     try {
@@ -31,8 +34,71 @@ export default function MisPaginasPage() {
     setLoaded(true);
   }, []);
 
+  const selectedCount = selected.size;
+  const allSelected = useMemo(
+    () => projects.length > 0 && projects.every((p) => selected.has(p.id)),
+    [projects, selected],
+  );
+
   function openProject(id: string) {
+    if (editMode) {
+      toggleSelect(id);
+      return;
+    }
     router.push(`/landing-lab/edit?p=${encodeURIComponent(id)}`);
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(projects.map((p) => p.id)));
+    }
+  }
+
+  function exitEditMode() {
+    setEditMode(false);
+    setSelected(new Set());
+  }
+
+  function deleteSelected() {
+    if (selectedCount === 0) return;
+    const ids = selected;
+    const remaining = projects.filter((p) => !ids.has(p.id));
+
+    // Persist: read full JSON, drop selected projects (preserving any extra
+    // fields like texts/images that we don't surface on this page), and
+    // pick a new activeId if the current one was deleted.
+    try {
+      const raw = localStorage.getItem(PROJECTS_KEY);
+      const parsed = raw ? JSON.parse(raw) : { projects: [], activeId: null };
+      const fullList: any[] = Array.isArray(parsed.projects) ? parsed.projects : [];
+      const kept = fullList.filter((p: any) => !ids.has(p.id));
+      let newActive = parsed.activeId;
+      if (newActive && ids.has(newActive)) {
+        newActive = kept[0]?.id ?? null;
+      }
+      localStorage.setItem(
+        PROJECTS_KEY,
+        JSON.stringify({ ...parsed, projects: kept, activeId: newActive }),
+      );
+      setProjects(remaining);
+      setActiveId(newActive);
+    } catch {
+      setProjects(remaining);
+    }
+
+    setSelected(new Set());
+    setEditMode(false);
+    setPendingDelete(false);
   }
 
   return (
@@ -40,8 +106,50 @@ export default function MisPaginasPage() {
       <SideNav active="mis-paginas" />
       <div className="ml-0 h-full overflow-y-auto sm:ml-56">
         <main className="mx-auto max-w-[960px] px-6 pt-10 pb-24 sm:px-8">
-          <h1 className="text-3xl font-bold">Mis páginas</h1>
-          <p className="mt-1 text-sm text-white/55">Continuá donde lo dejaste.</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Mis páginas</h1>
+              <p className="mt-1 text-sm text-white/55">
+                {editMode
+                  ? `${selectedCount} seleccionada${selectedCount === 1 ? '' : 's'}.`
+                  : 'Continuá donde lo dejaste.'}
+              </p>
+            </div>
+            {loaded && projects.length > 0 && (
+              <div className="flex shrink-0 items-center gap-2">
+                {editMode ? (
+                  <>
+                    <button
+                      onClick={toggleSelectAll}
+                      className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:border-white/30 hover:text-white"
+                    >
+                      {allSelected ? 'Quitar todas' : 'Seleccionar todas'}
+                    </button>
+                    <button
+                      onClick={() => setPendingDelete(true)}
+                      disabled={selectedCount === 0}
+                      className="rounded-lg bg-red-500/90 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-red-500/30"
+                    >
+                      Eliminar{selectedCount ? ` (${selectedCount})` : ''}
+                    </button>
+                    <button
+                      onClick={exitEditMode}
+                      className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:border-white/30 hover:text-white"
+                    >
+                      Listo
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setEditMode(true)}
+                    className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:border-white/30 hover:text-white"
+                  >
+                    Seleccionar
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           {loaded && projects.length === 0 && (
             <div className="mt-10 rounded-xl border border-dashed border-white/10 bg-[#15181f] p-8 text-center text-white/55">
@@ -54,34 +162,92 @@ export default function MisPaginasPage() {
 
           {loaded && projects.length > 0 && (
             <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {projects.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => openProject(p.id)}
-                  className="group rounded-xl border border-white/10 bg-[#15181f] p-4 text-left transition hover:border-white/25 hover:bg-[#1a1e27]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-base font-semibold">{p.name}</div>
-                      {p.angle && (
-                        <div className="mt-1 line-clamp-2 text-sm text-white/50">{p.angle}</div>
+              {projects.map((p) => {
+                const isSelected = selected.has(p.id);
+                return (
+                  <div
+                    key={p.id}
+                    className={`group relative rounded-xl border p-4 text-left transition cursor-pointer ${
+                      isSelected
+                        ? 'border-purple-400/70 bg-[#1d1830]'
+                        : 'border-white/10 bg-[#15181f] hover:border-white/25 hover:bg-[#1a1e27]'
+                    }`}
+                    onClick={() => openProject(p.id)}
+                  >
+                    {editMode && (
+                      <div
+                        className={`absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded border-2 transition ${
+                          isSelected
+                            ? 'border-purple-400 bg-purple-400 text-[#0b0d12]'
+                            : 'border-white/30 bg-transparent'
+                        }`}
+                      >
+                        {isSelected && (
+                          <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="2 6.5 5 9 10 3.5" />
+                          </svg>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-start justify-between gap-3 pr-6">
+                      <div className="min-w-0">
+                        <div className="truncate text-base font-semibold">{p.name}</div>
+                        {p.angle && (
+                          <div className="mt-1 line-clamp-2 text-sm text-white/50">{p.angle}</div>
+                        )}
+                      </div>
+                      {!editMode && activeId === p.id && (
+                        <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                          Activo
+                        </span>
                       )}
                     </div>
-                    {activeId === p.id && (
-                      <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-                        Activo
-                      </span>
+                    {!editMode && (
+                      <div className="mt-4 flex items-center gap-2 text-xs text-white/40 group-hover:text-white/70">
+                        Editar <span aria-hidden>→</span>
+                      </div>
                     )}
                   </div>
-                  <div className="mt-4 flex items-center gap-2 text-xs text-white/40 group-hover:text-white/70">
-                    Editar <span aria-hidden>→</span>
-                  </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </main>
       </div>
+
+      {pendingDelete && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setPendingDelete(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-white/10 bg-[#15181f] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold">
+              ¿Eliminar {selectedCount} {selectedCount === 1 ? 'página' : 'páginas'}?
+            </h2>
+            <p className="mt-2 text-sm text-white/60">
+              Esto borra los proyectos de tu navegador. Las páginas ya publicadas en Shopify
+              no se ven afectadas.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setPendingDelete(false)}
+                className="rounded-lg border border-white/15 px-3 py-2 text-sm font-semibold text-white/80 hover:border-white/30"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={deleteSelected}
+                className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white hover:bg-red-400"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

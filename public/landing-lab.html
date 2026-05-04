@@ -985,7 +985,17 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         <label class="set-field">
           <span>CTA URL</span>
           <input id="set-cta" type="text" oninput="setSetting('ctaUrl', this.value)" placeholder="https://tu-tienda.com/products/...">
-          <small>A dónde van todos los botones de "Comprar".</small>
+          <small>Fallback: se usa solo si no conectaste un producto Shopify abajo.</small>
+        </label>
+      </div>
+
+      <div class="set-section">
+        <h3>Producto Shopify (opcional)</h3>
+        <p class="set-help">Conectá un producto de tu Shopify y los botones "Comprar", el selector de cantidad, las variantes y el precio quedan funcionales en la página publicada — sin instalar ningún tema. Si lo dejás vacío, los botones llevan a "CTA URL".</p>
+        <label class="set-field">
+          <span>Handle del producto</span>
+          <input id="set-shopify-handle" type="text" oninput="setSetting('shopifyProductHandle', this.value)" placeholder="gomitas-shilajit-himalaya">
+          <small>Podés pegar la URL completa del producto (<code>tu-tienda.com/products/gomitas-shilajit-himalaya</code>) y extraemos el handle automáticamente.</small>
         </label>
       </div>
 
@@ -1162,7 +1172,8 @@ var IMG_KEYS = ['img-1','img-2','img-3','img-4','img-5a','img-5b','img-5c','img-
 // templates (Vitalu A/B) are NOT in this map — they're authored directly in
 // this file and don't need fetching.
 var TEMPLATE_FILES = {
-  'pilar-listicle': '/templates/advertorial-listicle.html'
+  'pilar-listicle': '/templates/advertorial-listicle.html',
+  'product-page-default': '/templates/product-page-default.html'
 };
 // Tracks which template's HTML is currently mounted in #page-wrap. null =
 // the inline Vitalu layout that ships with this file.
@@ -2480,11 +2491,25 @@ function buildPublishPayload(proj){
   var thresh = (typeof proj.stickyThresh === 'number' ? proj.stickyThresh : 0.22);
   thresh = Math.max(0, Math.min(0.95, thresh));
   var stickyCode='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh='+thresh+';function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
+  // Shopify product wiring — runs on the published page only. When the user
+  // sets a product handle in Settings, the wrapper carries data-shopify-handle
+  // and this script fetches /products/<handle>.js, populates price/compare-at
+  // /title/main image, maps each .opt-btn to a real variant, and turns every
+  // .cta-btn / .sticky-btn into an AJAX add-to-cart that respects the .qty
+  // input. Works on any Shopify theme (Dawn, Horizon, custom) — no theme
+  // install, no scopes beyond what the publish flow already needs.
+  var shopifyHandle = (proj.shopifyProductHandle || '').trim();
+  var handleAttr = shopifyHandle ? ' data-shopify-handle="'+shopifyHandle.replace(/[^a-z0-9-]/gi,'')+'"' : '';
+  var shopifyCode = '';
+  if (shopifyHandle) {
+    shopifyCode = '(function(){var w=document.querySelector("[data-shopify-handle]");if(!w)return;var h=w.getAttribute("data-shopify-handle");if(!h)return;var fmt=function(c){try{if(window.Shopify&&Shopify.formatMoney)return Shopify.formatMoney(c,(window.theme&&theme.moneyFormat)||"${{amount}}");}catch(e){}return"$"+(c/100).toFixed(2);};var sel=null,prod=null;function applyVariant(v){if(!v)return;sel=v;var pe=w.querySelector(\'.price,[data-v-text="price"]\');if(pe)pe.textContent=fmt(v.price);var ce=w.querySelector(\'.compare-at,[data-v-text="compare-at"]\');if(ce){if(v.compare_at_price&&v.compare_at_price>v.price){ce.textContent=fmt(v.compare_at_price);ce.style.display="";}else{ce.style.display="none";}}var sp=w.querySelector(\'.sticky-text [data-v-text="sticky-price"]\');if(sp)sp.textContent=fmt(v.price);var sc=w.querySelector(\'.sticky-text [data-v-text="sticky-compare"]\');if(sc){if(v.compare_at_price&&v.compare_at_price>v.price){sc.textContent=fmt(v.compare_at_price);sc.style.display="";}else{sc.style.display="none";}}}fetch("/products/"+h+".js").then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(p){prod=p;var first=p.variants.find(function(v){return v.available;})||p.variants[0];applyVariant(first);var ne=w.querySelector(\'.prod-name,[data-v-text="product-name"]\');if(ne&&p.title)ne.textContent=p.title;var mi=w.querySelector(".gallery-main img");if(mi&&/placehold\\.co|placeholder/i.test(mi.src||"")&&p.featured_image)mi.src=p.featured_image;var rows=w.querySelectorAll(".opts-row");rows.forEach(function(row){var btns=row.querySelectorAll(".opt-btn");if(p.variants.length<=1){var optsBlock=row.closest(".opts");if(optsBlock)optsBlock.style.display="none";return;}p.variants.forEach(function(v,i){var b=btns[i];if(!b)return;b.setAttribute("data-variant-id",v.id);if(!v.available){b.classList.add("is-soldout");b.style.opacity="0.5";}});for(var i=p.variants.length;i<btns.length;i++)btns[i].style.display="none";row.addEventListener("click",function(e){var b=e.target.closest(".opt-btn");if(!b)return;var id=b.getAttribute("data-variant-id");if(!id)return;var v=p.variants.find(function(x){return String(x.id)===String(id);});if(!v)return;applyVariant(v);btns.forEach(function(x){x.classList.remove("is-active");});b.classList.add("is-active");});});}).catch(function(e){console.warn("[Riverz] Shopify product",h,"no se pudo cargar:",e&&e.message);});function addToCart(){if(!sel){alert("Cargando producto, intentá de nuevo en un segundo.");return;}var qi=w.querySelector(".qty input");var q=qi?Math.max(1,parseInt(qi.value,10)||1):1;fetch("/cart/add.js",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({id:sel.id,quantity:q})}).then(function(r){if(!r.ok)return r.json().then(function(d){throw new Error(d.description||d.message||"Error al agregar al carrito");});window.location.href="/cart";}).catch(function(e){alert(e.message||"No se pudo agregar al carrito");});}w.addEventListener("click",function(e){var c=e.target.closest(".cta-btn,.sticky-btn");if(!c||!w.contains(c))return;e.preventDefault();addToCart();});})();';
+  }
   var body_html =
     fontsLink +
     '<style>'+allCSS+'</style>' +
-    '<div id="'+wrapId+'">'+clone.outerHTML+'</div>' +
-    SO+stickyCode+SC;
+    '<div id="'+wrapId+'"'+handleAttr+'>'+clone.outerHTML+'</div>' +
+    SO+stickyCode+SC +
+    (shopifyCode ? (SO+shopifyCode+SC) : '');
 
   return {
     project_id: proj.id || 'default',
@@ -2565,6 +2590,7 @@ function openSettings(){
   byId('set-name').value = proj.name || '';
   byId('set-handle').value = proj.handle || '';
   byId('set-cta').value = proj.ctaUrl || '';
+  var spInp = byId('set-shopify-handle'); if (spInp) spInp.value = proj.shopifyProductHandle || '';
   byId('set-seo-title').value = proj.seoTitle || '';
   byId('set-seo-desc').value = proj.metaDescription || '';
   var stickyPct = (typeof proj.stickyThresh === 'number' ? proj.stickyThresh : 0.22) * 100;
@@ -2580,6 +2606,13 @@ function setSetting(key, value){
   var proj = getActive(); if (!proj) return;
   // URL handle: lowercase, dash-separated, alnum + dash only
   if (key === 'handle') value = String(value||'').toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'');
+  // Shopify product handle: same rules, but also unwrap a pasted /products/<handle> URL
+  if (key === 'shopifyProductHandle') {
+    var s = String(value||'').trim();
+    var m = s.match(/\/products\/([^?#/]+)/i);
+    if (m) s = m[1];
+    value = s.toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'');
+  }
   proj[key] = value;
   if (key === 'name') {
     var nameInput = document.getElementById('proj-name-in');
@@ -2666,6 +2699,7 @@ function snapshotProjectState(label){
     name_: proj.name || '',
     handle: proj.handle || '',
     ctaUrl: proj.ctaUrl || '',
+    shopifyProductHandle: proj.shopifyProductHandle || '',
     seoTitle: proj.seoTitle || '',
     metaDescription: proj.metaDescription || ''
   };
@@ -2694,6 +2728,7 @@ function restoreVersion(vid){
   if (v.name_) proj.name = v.name_;
   if (v.handle !== undefined) proj.handle = v.handle;
   if (v.ctaUrl !== undefined) proj.ctaUrl = v.ctaUrl;
+  if (v.shopifyProductHandle !== undefined) proj.shopifyProductHandle = v.shopifyProductHandle;
   if (v.seoTitle !== undefined) proj.seoTitle = v.seoTitle;
   if (v.metaDescription !== undefined) proj.metaDescription = v.metaDescription;
   applyTexts(proj.texts);
