@@ -209,7 +209,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
     <div className="mx-auto max-w-7xl px-4 py-8">
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
-        <Button variant="ghost" onClick={() => router.push('/marcas')} className="text-gray-400 hover:text-white">
+        <Button variant="ghost" onClick={() => router.push('/marcas')} className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver
         </Button>
 
@@ -220,7 +220,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
               ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }}
           variant="outline"
-          className="border-brand-accent text-brand-accent hover:bg-brand-accent/10"
+          className="border-[var(--rvz-ink)] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/10"
         >
           <BookOpen className="mr-2 h-4 w-4" /> Ver Knowledge Base
         </Button>
@@ -229,7 +229,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Images */}
         <div className="space-y-4">
-          <div className="aspect-square overflow-hidden rounded-2xl border border-gray-800 bg-[#141414]">
+          <div className="aspect-square overflow-hidden rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)]">
              {product.images && product.images[0] && (
                <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
              )}
@@ -237,7 +237,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
           {product.images && product.images.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
               {product.images.slice(1).map((img, i) => (
-                <div key={i} className="aspect-square overflow-hidden rounded-lg border border-gray-800 bg-[#141414]">
+                <div key={i} className="aspect-square overflow-hidden rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-card)]">
                   <img src={img} alt="" className="h-full w-full object-cover" />
                 </div>
               ))}
@@ -248,26 +248,26 @@ export default function ProductClient({ product }: { product: ProductWithResearc
         {/* Info */}
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-white">{product.name}</h1>
-            <p className="mt-2 text-2xl text-brand-accent">${product.price}</p>
+            <h1 className="text-3xl font-bold text-[var(--rvz-ink)]">{product.name}</h1>
+            <p className="mt-2 text-2xl text-[var(--rvz-ink)]">${product.price}</p>
           </div>
 
-          <div className="rounded-xl border border-gray-800 bg-[#141414] p-6">
-            <h3 className="mb-3 font-semibold text-white">Información</h3>
-            <div className="space-y-3 text-gray-400">
-              <p><span className="text-gray-500">Web:</span> {product.website || 'N/A'}</p>
-              <p><span className="text-gray-500">Beneficios:</span> {product.benefits}</p>
+          <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6">
+            <h3 className="mb-3 font-semibold text-[var(--rvz-ink)]">Información</h3>
+            <div className="space-y-3 text-[var(--rvz-ink-muted)]">
+              <p><span className="text-[var(--rvz-ink-muted)]">Web:</span> {product.website || 'N/A'}</p>
+              <p><span className="text-[var(--rvz-ink-muted)]">Beneficios:</span> {product.benefits}</p>
             </div>
           </div>
 
           {/* Deep Research Section */}
-          <div className="rounded-xl border border-brand-accent/20 bg-brand-accent/5 p-6">
-            <h3 className="mb-4 flex items-center font-semibold text-white">
-              <Sparkles className="mr-2 h-5 w-5 text-brand-accent" />
+          <div className="rounded-xl border border-[var(--rvz-ink)]/20 bg-[var(--rvz-accent)]/5 p-6">
+            <h3 className="mb-4 flex items-center font-semibold text-[var(--rvz-ink)]">
+              <Sparkles className="mr-2 h-5 w-5 text-[var(--rvz-ink)]" />
               Deep Research de Mercado
             </h3>
 
-            <p className="mb-4 text-sm text-gray-400">
+            <p className="mb-4 text-sm text-[var(--rvz-ink-muted)]">
               {hasResearch
                 ? 'El research profundo está listo. Úsalo para crear ads que conecten emocionalmente con tu audiencia.'
                 : 'La IA analizará Reddit, reseñas y redes sociales para descubrir los verdaderos motivadores emocionales de compra de tu público objetivo.'
@@ -289,16 +289,16 @@ export default function ProductClient({ product }: { product: ProductWithResearc
               return (
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-lg bg-black/30 p-2">
-                    <p className="text-lg font-bold text-brand-accent">{stats.emociones}</p>
-                    <p className="text-xs text-gray-500">Emociones</p>
+                    <p className="text-lg font-bold text-[var(--rvz-ink)]">{stats.emociones}</p>
+                    <p className="text-xs text-[var(--rvz-ink-muted)]">Emociones</p>
                   </div>
                   <div className="rounded-lg bg-black/30 p-2">
-                    <p className="text-lg font-bold text-brand-accent">{stats.miedos}</p>
-                    <p className="text-xs text-gray-500">Miedos</p>
+                    <p className="text-lg font-bold text-[var(--rvz-ink)]">{stats.miedos}</p>
+                    <p className="text-xs text-[var(--rvz-ink-muted)]">Miedos</p>
                   </div>
                   <div className="rounded-lg bg-black/30 p-2">
-                    <p className="text-lg font-bold text-brand-accent">{stats.keywords}</p>
-                    <p className="text-xs text-gray-500">Keywords</p>
+                    <p className="text-lg font-bold text-[var(--rvz-ink)]">{stats.keywords}</p>
+                    <p className="text-xs text-[var(--rvz-ink-muted)]">Keywords</p>
                   </div>
                 </div>
               );
@@ -308,21 +308,21 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                 bring an external research doc (Notion / Google Doc / Reddit
                 dump / call transcript) and Gemini normalizes it into the same
                 schema /api/research generates. */}
-            <div className="mt-5 border-t border-brand-accent/20 pt-4">
+            <div className="mt-5 border-t border-[var(--rvz-ink)]/20 pt-4">
               {!uploadOpen ? (
                 <button
                   type="button"
                   onClick={() => setUploadOpen(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-700 bg-black/20 px-4 py-3 text-sm text-gray-300 transition hover:border-brand-accent hover:text-white"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--rvz-card-border)] bg-black/20 px-4 py-3 text-sm text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-ink)] hover:text-[var(--rvz-ink)]"
                 >
                   <Upload className="h-4 w-4" />
                   Subir mi propio research
                 </button>
               ) : (
-                <div className="space-y-3 rounded-lg border border-gray-800 bg-black/40 p-4">
+                <div className="space-y-3 rounded-lg border border-[var(--rvz-card-border)] bg-black/40 p-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="flex items-center gap-2 text-sm font-semibold text-white">
-                      <Upload className="h-4 w-4 text-brand-accent" />
+                    <h4 className="flex items-center gap-2 text-sm font-semibold text-[var(--rvz-ink)]">
+                      <Upload className="h-4 w-4 text-[var(--rvz-ink)]" />
                       Subir research propio
                     </h4>
                     <button
@@ -332,14 +332,14 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                         setUploadText('');
                         setUploadFile(null);
                       }}
-                      className="text-gray-500 hover:text-white"
+                      className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
                       aria-label="Cerrar"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
 
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-[var(--rvz-ink-muted)]">
                     Sube un archivo <code className="rounded bg-black px-1">.pdf</code>,
                     {' '}<code className="rounded bg-black px-1">.docx</code>,
                     {' '}<code className="rounded bg-black px-1">.txt</code> o
@@ -363,22 +363,22 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                       size="sm"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploadResearch.isPending}
-                      className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                      className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)]"
                     >
                       <FileText className="mr-2 h-4 w-4" />
                       Cargar archivo (PDF, DOCX, TXT, MD)
                     </Button>
-                    <span className="text-[11px] text-gray-500">
+                    <span className="text-[11px] text-[var(--rvz-ink-muted)]">
                       o pega el texto abajo
                     </span>
                   </div>
 
                   {uploadFile && (
-                    <div className="flex items-center justify-between gap-2 rounded-lg border border-brand-accent/40 bg-brand-accent/5 px-3 py-2">
-                      <div className="flex items-center gap-2 text-xs text-white">
-                        <FileText className="h-4 w-4 text-brand-accent" />
+                    <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--rvz-ink)]/40 bg-[var(--rvz-accent)]/5 px-3 py-2">
+                      <div className="flex items-center gap-2 text-xs text-[var(--rvz-ink)]">
+                        <FileText className="h-4 w-4 text-[var(--rvz-ink)]" />
                         <span className="truncate font-medium">{uploadFile.name}</span>
-                        <span className="text-gray-400">
+                        <span className="text-[var(--rvz-ink-muted)]">
                           {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
                         </span>
                       </div>
@@ -389,7 +389,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                           if (fileInputRef.current) fileInputRef.current.value = '';
                         }}
                         disabled={uploadResearch.isPending}
-                        className="text-gray-500 hover:text-white"
+                        className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
                         aria-label="Quitar archivo"
                       >
                         <X className="h-4 w-4" />
@@ -411,11 +411,11 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                         ? 'Archivo seleccionado arriba — al procesar se usará el archivo (no este texto). Si quieres usar texto, quita el archivo primero.'
                         : 'Pega aquí tu research completo. Cuanto más contexto, mejor: testimonios, dolores, miedos, lenguaje del cliente, soluciones que probaron antes, etc.'
                     }
-                    className="min-h-[160px] border-gray-700 bg-black/60 text-sm text-white"
+                    className="min-h-[160px] border-[var(--rvz-card-border)] bg-black/60 text-sm text-[var(--rvz-ink)]"
                     disabled={uploadResearch.isPending || !!uploadFile}
                   />
 
-                  <div className="flex items-center justify-between text-[11px] text-gray-500">
+                  <div className="flex items-center justify-between text-[11px] text-[var(--rvz-ink-muted)]">
                     <span>
                       {uploadFile
                         ? 'Texto se extrae en el servidor'
@@ -437,7 +437,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                         setUploadFile(null);
                       }}
                       disabled={uploadResearch.isPending}
-                      className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                      className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)]"
                     >
                       Cancelar
                     </Button>
@@ -449,7 +449,7 @@ export default function ProductClient({ product }: { product: ProductWithResearc
                         uploadResearch.isPending ||
                         (!uploadFile && uploadText.trim().length < 50)
                       }
-                      className="bg-brand-accent text-white hover:bg-brand-accent/80"
+                      className="bg-[var(--rvz-accent)] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/80"
                     >
                       {uploadResearch.isPending ? (
                         <>

@@ -20,8 +20,8 @@ const STATUS_LABEL: Record<MetaUploadStatus, string> = {
 
 export function UploadStatusRow({ upload, thumbnailUrl, label }: Props) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-gray-800 bg-black/40 p-3">
-      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-gray-900">
+    <div className="flex items-center gap-3 rounded-lg border border-[var(--rvz-card-border)] bg-black/40 p-3">
+      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-[var(--rvz-card)]">
         {thumbnailUrl ? (
           upload.asset_type === 'video' ? (
             <video src={thumbnailUrl} className="h-full w-full object-cover" muted />
@@ -29,16 +29,16 @@ export function UploadStatusRow({ upload, thumbnailUrl, label }: Props) {
             <img src={thumbnailUrl} alt="" className="h-full w-full object-cover" />
           )
         ) : upload.asset_type === 'video' ? (
-          <Video className="absolute inset-0 m-auto h-5 w-5 text-gray-500" />
+          <Video className="absolute inset-0 m-auto h-5 w-5 text-[var(--rvz-ink-muted)]" />
         ) : (
-          <ImageIcon className="absolute inset-0 m-auto h-5 w-5 text-gray-500" />
+          <ImageIcon className="absolute inset-0 m-auto h-5 w-5 text-[var(--rvz-ink-muted)]" />
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-white">{label || upload.id.slice(-8)}</p>
+        <p className="truncate text-sm font-medium text-[var(--rvz-ink)]">{label || upload.id.slice(-8)}</p>
         <p
           className={cn('truncate text-xs', {
-            'text-gray-400': upload.status === 'pending' || upload.status === 'uploading' || upload.status === 'processing',
+            'text-[var(--rvz-ink-muted)]': upload.status === 'pending' || upload.status === 'uploading' || upload.status === 'processing',
             'text-green-400': upload.status === 'ready',
             'text-red-400': upload.status === 'failed',
           })}
@@ -53,9 +53,9 @@ export function UploadStatusRow({ upload, thumbnailUrl, label }: Props) {
         {upload.status === 'ready' && <CheckCircle2 className="h-5 w-5 text-green-400" />}
         {upload.status === 'failed' && <XCircle className="h-5 w-5 text-red-400" />}
         {(upload.status === 'uploading' || upload.status === 'processing') && (
-          <Loader2 className="h-5 w-5 animate-spin text-brand-accent" />
+          <Loader2 className="h-5 w-5 animate-spin text-[var(--rvz-ink)]" />
         )}
-        {upload.status === 'pending' && <Clock className="h-5 w-5 text-gray-500" />}
+        {upload.status === 'pending' && <Clock className="h-5 w-5 text-[var(--rvz-ink-muted)]" />}
       </div>
     </div>
   );

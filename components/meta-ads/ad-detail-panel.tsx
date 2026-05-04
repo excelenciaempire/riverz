@@ -110,19 +110,19 @@ export function AdDetailPanel({ ad, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/70" onClick={onClose} />
-      <aside className="relative flex w-full max-w-2xl flex-col overflow-y-auto border-l border-gray-800 bg-[#0d0d0d]">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-800 bg-[#0d0d0d] px-6 py-4">
+      <aside className="relative flex w-full max-w-2xl flex-col overflow-y-auto border-l border-[var(--rvz-card-border)] bg-[#0d0d0d]">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--rvz-card-border)] bg-[#0d0d0d] px-6 py-4">
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-white">{ad.name || ad.id}</p>
-            <p className="truncate text-xs text-gray-500">{ad.campaign_name || ad.campaign_id} · {ad.adset_name || ad.adset_id}</p>
+            <p className="truncate text-base font-semibold text-[var(--rvz-ink)]">{ad.name || ad.id}</p>
+            <p className="truncate text-xs text-[var(--rvz-ink-muted)]">{ad.campaign_name || ad.campaign_id} · {ad.adset_name || ad.adset_id}</p>
           </div>
-          <button onClick={onClose} className="rounded-md p-1.5 text-gray-400 hover:bg-gray-800 hover:text-white">
+          <button onClick={onClose} className="rounded-md p-1.5 text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Media player */}
-        <div className="border-b border-gray-800 bg-black p-4">
+        <div className="border-b border-[var(--rvz-card-border)] bg-black p-4">
           <div className="relative mx-auto aspect-square max-w-md overflow-hidden rounded-lg bg-black">
             {isVideo && playableUrl ? (
               <video
@@ -146,7 +146,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
               <>
                 <img src={previewUrl} alt={ad.name} className="h-full w-full object-contain opacity-90" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40">
-                  <p className="text-sm text-gray-300">Meta no devolvió el source.</p>
+                  <p className="text-sm text-[var(--rvz-ink-muted)]">Meta no devolvió el source.</p>
                   {ad.video_permalink_url && (
                     <a
                       href={ad.video_permalink_url}
@@ -163,7 +163,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
             ) : previewUrl ? (
               <img src={previewUrl} alt={ad.name} className="h-full w-full object-contain" />
             ) : (
-              <div className="flex h-full items-center justify-center text-gray-600">Sin preview</div>
+              <div className="flex h-full items-center justify-center text-[var(--rvz-ink)]">Sin preview</div>
             )}
           </div>
         </div>
@@ -190,7 +190,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition',
                 intel?.is_winner === false
-                  ? 'border-red-400 bg-red-500 text-white'
+                  ? 'border-red-400 bg-red-500 text-[var(--rvz-ink)]'
                   : 'border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20',
               )}
             >
@@ -221,7 +221,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
             {downloadUrl && (
               <button
                 onClick={handleDownload}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-black/40 px-3 py-1.5 text-xs text-gray-300 hover:text-white"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--rvz-card-border)] bg-black/40 px-3 py-1.5 text-xs text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
               >
                 <Download className="h-3.5 w-3.5" />
                 Descargar
@@ -232,7 +232,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
                 href={ad.link_url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-black/40 px-3 py-1.5 text-xs text-gray-300 hover:text-white"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--rvz-card-border)] bg-black/40 px-3 py-1.5 text-xs text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 Abrir destino
@@ -283,8 +283,8 @@ export function AdDetailPanel({ ad, onClose }: Props) {
             )}
 
             {!isTranscribing && intel?.transcript && (
-              <div className="relative rounded-lg border border-gray-800 bg-black/40 p-3">
-                <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-gray-200">
+              <div className="relative rounded-lg border border-[var(--rvz-card-border)] bg-black/40 p-3">
+                <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-[var(--rvz-ink-muted)]">
                   {intel.transcript}
                 </pre>
                 <button
@@ -292,7 +292,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
                     navigator.clipboard.writeText(intel.transcript || '');
                     toast.success('Copiado');
                   }}
-                  className="absolute right-2 top-2 rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
+                  className="absolute right-2 top-2 rounded p-1 text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]"
                 >
                   <Copy className="h-3.5 w-3.5" />
                 </button>
@@ -300,7 +300,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
             )}
 
             {!isTranscribing && !intel?.transcript && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[var(--rvz-ink-muted)]">
                 {isVideo
                   ? 'Manda el video a kie.ai · Gemini 3 Pro y trae transcripción del audio + OCR del texto en pantalla + hook visual + ángulo. Queda guardado en tu base de datos.'
                   : 'Extrae hook visual, OCR del texto en pantalla y posible ángulo con kie.ai · Gemini 3 Pro. Queda guardado en tu base de datos.'}
@@ -314,7 +314,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Por qué funciona / no funciona, ángulo, hook, hipótesis..."
-              className="h-24 w-full resize-y rounded-lg border border-gray-800 bg-black/40 p-3 text-sm text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none"
+              className="h-24 w-full resize-y rounded-lg border border-[var(--rvz-card-border)] bg-black/40 p-3 text-sm text-[var(--rvz-ink)] placeholder-gray-600 focus:border-[var(--rvz-ink)] focus:outline-none"
             />
             <Button size="sm" onClick={saveNotes} disabled={intelMutation.isPending}>
               {intelMutation.isPending ? 'Guardando...' : 'Guardar notas'}
@@ -329,7 +329,7 @@ export function AdDetailPanel({ ad, onClose }: Props) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <h4 className="text-xs uppercase tracking-wide text-gray-500">{title}</h4>
+      <h4 className="text-xs uppercase tracking-wide text-[var(--rvz-ink-muted)]">{title}</h4>
       {children}
     </div>
   );
@@ -338,31 +338,31 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function CopyRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
-    <div className="rounded border border-gray-800 bg-black/30 p-2.5">
-      <p className="text-[10px] uppercase text-gray-500">{label}</p>
-      <p className="mt-0.5 break-words text-sm text-white">{value}</p>
+    <div className="rounded border border-[var(--rvz-card-border)] bg-black/30 p-2.5">
+      <p className="text-[10px] uppercase text-[var(--rvz-ink-muted)]">{label}</p>
+      <p className="mt-0.5 break-words text-sm text-[var(--rvz-ink)]">{value}</p>
     </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-gray-800 bg-black/30 p-2">
-      <div className="text-[9px] uppercase text-gray-500">{label}</div>
-      <div className="text-sm font-semibold text-white">{value}</div>
+    <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/30 p-2">
+      <div className="text-[9px] uppercase text-[var(--rvz-ink-muted)]">{label}</div>
+      <div className="text-sm font-semibold text-[var(--rvz-ink)]">{value}</div>
     </div>
   );
 }
 
 function TranscribingAnimation({ isVideo }: { isVideo: boolean }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-brand-accent/30 bg-gradient-to-br from-brand-accent/10 via-black/40 to-emerald-500/10 p-4">
+    <div className="overflow-hidden rounded-lg border border-[var(--rvz-ink)]/30 bg-gradient-to-br from-brand-accent/10 via-black/40 to-emerald-500/10 p-4">
       <div className="mb-3 flex items-center gap-2">
         <div className="relative">
-          <Sparkles className="h-4 w-4 text-brand-accent" />
-          <span className="absolute inset-0 animate-ping rounded-full bg-brand-accent/40" />
+          <Sparkles className="h-4 w-4 text-[var(--rvz-ink)]" />
+          <span className="absolute inset-0 animate-ping rounded-full bg-[var(--rvz-accent)]/40" />
         </div>
-        <p className="text-sm font-medium text-white">
+        <p className="text-sm font-medium text-[var(--rvz-ink)]">
           {isVideo
             ? 'Transcribiendo audio + visuales · kie.ai / Gemini 3 Pro'
             : 'Analizando · kie.ai / Gemini 3 Pro'}
@@ -375,7 +375,7 @@ function TranscribingAnimation({ isVideo }: { isVideo: boolean }) {
         <SkeletonBar width="64%" delay="450ms" />
         <SkeletonBar width="71%" delay="600ms" />
       </div>
-      <p className="mt-3 text-[11px] text-gray-400">
+      <p className="mt-3 text-[11px] text-[var(--rvz-ink-muted)]">
         {isVideo
           ? 'kie.ai está bajando el video, mandándolo a Gemini 3 Pro y esperando la respuesta. Suele tardar 30–90 s.'
           : 'kie.ai está mandando la imagen a Gemini 3 Pro. Suele tardar pocos segundos.'}
@@ -387,7 +387,7 @@ function TranscribingAnimation({ isVideo }: { isVideo: boolean }) {
 function SkeletonBar({ width, delay }: { width: string; delay: string }) {
   return (
     <div
-      className="h-2.5 animate-pulse rounded bg-white/10"
+      className="h-2.5 animate-pulse rounded bg-[var(--rvz-bg-soft)]"
       style={{ width, animationDelay: delay }}
     />
   );
@@ -423,7 +423,7 @@ function CommentsSection({
   return (
     <Section title="Comentarios">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-[var(--rvz-ink-muted)]">
           {syncedAt
             ? `Sincronizado: ${new Date(syncedAt).toLocaleString('es')}`
             : 'Aún no sincronizado.'}
@@ -447,7 +447,7 @@ function CommentsSection({
         <div className="space-y-3">
           <SentimentBars sentiment={insights.sentiment} total={insights.total} />
           {summary && (
-            <p className="rounded border border-gray-800 bg-black/30 p-2.5 text-xs text-gray-200">
+            <p className="rounded border border-[var(--rvz-card-border)] bg-black/30 p-2.5 text-xs text-[var(--rvz-ink-muted)]">
               {summary}
             </p>
           )}
@@ -456,7 +456,7 @@ function CommentsSection({
           <CommentsBucket title="Elogios" items={insights.praise} accent="emerald" />
         </div>
       ) : (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-[var(--rvz-ink-muted)]">
           Aprieta "Sincronizar ahora" para traer los comentarios del post + análisis de sentimiento +
           objeciones recurrentes (kie.ai · Gemini 3 Pro).
         </p>
@@ -475,7 +475,7 @@ function SentimentBars({
   const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-gray-500">
+      <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-[var(--rvz-ink-muted)]">
         <span>Sentimiento</span>
         <span>{total} comentarios</span>
       </div>
@@ -503,7 +503,7 @@ function SentimentDot({ color, label }: { color: string; label: string }) {
     red: 'bg-red-500',
   };
   return (
-    <span className="inline-flex items-center gap-1 text-gray-300">
+    <span className="inline-flex items-center gap-1 text-[var(--rvz-ink-muted)]">
       <span className={`h-2 w-2 rounded-full ${map[color]}`} />
       {label}
     </span>
@@ -527,8 +527,8 @@ function CommentsBucket({
   };
   return (
     <div className={`rounded border p-2 ${map[accent]}`}>
-      <p className="text-[10px] uppercase tracking-wide text-gray-400">{title}</p>
-      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-white">
+      <p className="text-[10px] uppercase tracking-wide text-[var(--rvz-ink-muted)]">{title}</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-[var(--rvz-ink)]">
         {items.slice(0, 5).map((it, i) => (
           <li key={i}>{it}</li>
         ))}

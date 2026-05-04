@@ -84,7 +84,7 @@ function DnaContent() {
       <div className="flex items-center gap-3">
         <Link
           href="/campanas/meta"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+          className="inline-flex items-center gap-1.5 text-sm text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
         >
           <ArrowLeft className="h-4 w-4" /> Volver a Meta Ads
         </Link>
@@ -92,11 +92,11 @@ function DnaContent() {
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
-            <Sparkles className="h-6 w-6 text-brand-accent" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-[var(--rvz-ink)]">
+            <Sparkles className="h-6 w-6 text-[var(--rvz-ink)]" />
             Winner DNA Lab
           </h1>
-          <p className="mt-0.5 text-sm text-gray-400">
+          <p className="mt-0.5 text-sm text-[var(--rvz-ink-muted)]">
             Patrones extraídos de tus anuncios marcados. La IA compara qué tienen los winners vs los que no
             funcionan y arma un brief para tu próximo creativo.
           </p>
@@ -104,14 +104,14 @@ function DnaContent() {
         <div className="flex flex-wrap items-end gap-2">
           {accountsQuery.data && accountsQuery.data.accounts.length > 1 && (
             <div className="min-w-[180px]">
-              <div className="mb-1 text-[10px] uppercase tracking-wide text-gray-500">Cuenta</div>
+              <div className="mb-1 text-[10px] uppercase tracking-wide text-[var(--rvz-ink-muted)]">Cuenta</div>
               <Select value={adAccountId} onValueChange={setAdAccountId}>
-                <SelectTrigger className="border-gray-700 bg-[#0a0a0a] text-white">
+                <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink)]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="border-gray-800 bg-[#141414] text-white">
+                <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                   {accountsQuery.data.accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id} className="focus:bg-brand-accent/20 focus:text-white">
+                    <SelectItem key={a.id} value={a.id} className="focus:bg-[var(--rvz-accent)]/20 focus:text-[var(--rvz-ink)]">
                       {a.name}
                     </SelectItem>
                   ))}
@@ -122,7 +122,7 @@ function DnaContent() {
           <button
             onClick={() => generateMutation.mutate()}
             disabled={!adAccountId || isGenerating}
-            className="inline-flex items-center gap-1.5 rounded-md bg-brand-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--rvz-accent)] px-4 py-2 text-sm font-medium text-[var(--rvz-ink)] transition hover:bg-[var(--rvz-accent)]/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isGenerating ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -137,11 +137,11 @@ function DnaContent() {
       </div>
 
       {!adAccountId ? (
-        <div className="rounded-xl border border-gray-800 bg-[#141414] p-8 text-center">
-          <p className="text-gray-400">Configura tu cuenta publicitaria primero.</p>
+        <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-8 text-center">
+          <p className="text-[var(--rvz-ink-muted)]">Configura tu cuenta publicitaria primero.</p>
           <Link
             href="/campanas/meta"
-            className="mt-3 inline-flex items-center gap-1.5 text-sm text-brand-accent hover:underline"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm text-[var(--rvz-ink)] hover:underline"
           >
             Ir a configuración
           </Link>
@@ -152,7 +152,7 @@ function DnaContent() {
         <EmptyState />
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--rvz-ink-muted)]">
             <Counter label="Winners" value={dna.winner_count} icon={<Trophy className="h-3 w-3 text-amber-400" />} />
             <Counter
               label="No funcionan"
@@ -182,24 +182,24 @@ function DnaContent() {
           </div>
 
           {dna.dna_data?.comparison && (
-            <div className="rounded-xl border border-gray-800 bg-[#141414] p-5">
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-400">
+            <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-5">
+              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--rvz-ink-muted)]">
                 Comparación
               </h3>
-              <p className="text-sm leading-relaxed text-white">{dna.dna_data.comparison}</p>
+              <p className="text-sm leading-relaxed text-[var(--rvz-ink)]">{dna.dna_data.comparison}</p>
             </div>
           )}
 
           {dna.dna_data?.comments_themes && dna.dna_data.comments_themes.length > 0 && (
-            <div className="rounded-xl border border-gray-800 bg-[#141414] p-5">
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-400">
+            <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-5">
+              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--rvz-ink-muted)]">
                 Temas en comentarios
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {dna.dna_data.comments_themes.map((t, i) => (
                   <span
                     key={i}
-                    className="inline-block rounded border border-gray-700 bg-black/40 px-2 py-1 text-xs text-gray-300"
+                    className="inline-block rounded border border-[var(--rvz-card-border)] bg-black/40 px-2 py-1 text-xs text-[var(--rvz-ink-muted)]"
                   >
                     {t}
                   </span>
@@ -223,10 +223,10 @@ function Counter({
   icon: React.ReactNode;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded border border-gray-800 bg-black/30 px-2 py-1">
+    <span className="inline-flex items-center gap-1.5 rounded border border-[var(--rvz-card-border)] bg-black/30 px-2 py-1">
       {icon}
-      <span className="font-medium text-white">{value}</span>
-      <span className="text-gray-500">{label}</span>
+      <span className="font-medium text-[var(--rvz-ink)]">{value}</span>
+      <span className="text-[var(--rvz-ink-muted)]">{label}</span>
     </span>
   );
 }
@@ -234,10 +234,10 @@ function Counter({
 function BriefCard({ brief }: { brief: string | null }) {
   if (!brief) return null;
   return (
-    <div className="relative overflow-hidden rounded-xl border border-brand-accent/40 bg-gradient-to-br from-brand-accent/10 via-black/40 to-emerald-500/10 p-5">
+    <div className="relative overflow-hidden rounded-xl border border-[var(--rvz-ink)]/40 bg-gradient-to-br from-brand-accent/10 via-black/40 to-emerald-500/10 p-5">
       <div className="mb-2 flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-brand-accent" />
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-white">
+        <Sparkles className="h-4 w-4 text-[var(--rvz-ink)]" />
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--rvz-ink)]">
           Brief para tu próximo anuncio
         </h3>
         <button
@@ -245,12 +245,12 @@ function BriefCard({ brief }: { brief: string | null }) {
             navigator.clipboard.writeText(brief);
             toast.success('Brief copiado');
           }}
-          className="ml-auto inline-flex items-center gap-1 rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
+          className="ml-auto inline-flex items-center gap-1 rounded p-1 text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]"
         >
           <Copy className="h-3.5 w-3.5" />
         </button>
       </div>
-      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-white">{brief}</pre>
+      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-[var(--rvz-ink)]">{brief}</pre>
     </div>
   );
 }
@@ -268,13 +268,13 @@ function PatternCard({
 }) {
   const border = accent === 'amber' ? 'border-amber-500/30' : 'border-red-500/30';
   return (
-    <div className={`rounded-xl border bg-[#141414] p-5 ${border}`}>
+    <div className={`rounded-xl border bg-[var(--rvz-card)] p-5 ${border}`}>
       <div className="mb-3 flex items-center gap-2">
         {icon}
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-white">{title}</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--rvz-ink)]">{title}</h3>
       </div>
       {!patterns ? (
-        <p className="text-xs text-gray-500">No disponible.</p>
+        <p className="text-xs text-[var(--rvz-ink-muted)]">No disponible.</p>
       ) : (
         <div className="space-y-3 text-sm">
           <Bucket label="Hooks" items={patterns.hooks} />
@@ -282,9 +282,9 @@ function PatternCard({
           <Bucket label="CTAs" items={patterns.ctas} />
           <Bucket label="Frases comunes" items={patterns.common_phrases} />
           {patterns.lengths && (patterns.lengths.median_seconds || patterns.lengths.range) && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-[var(--rvz-ink-muted)]">
               Duración:{' '}
-              <span className="font-medium text-white">
+              <span className="font-medium text-[var(--rvz-ink)]">
                 {patterns.lengths.median_seconds ? `${patterns.lengths.median_seconds}s mediana` : '—'}
                 {patterns.lengths.range
                   ? ` · rango ${patterns.lengths.range[0]}–${patterns.lengths.range[1]}s`
@@ -302,8 +302,8 @@ function Bucket({ label, items }: { label: string; items?: string[] }) {
   if (!items || items.length === 0) return null;
   return (
     <div>
-      <p className="mb-1 text-[10px] uppercase tracking-wide text-gray-500">{label}</p>
-      <ul className="list-disc space-y-0.5 pl-4 text-sm text-white">
+      <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--rvz-ink-muted)]">{label}</p>
+      <ul className="list-disc space-y-0.5 pl-4 text-sm text-[var(--rvz-ink)]">
         {items.map((it, i) => (
           <li key={i}>{it}</li>
         ))}
@@ -314,10 +314,10 @@ function Bucket({ label, items }: { label: string; items?: string[] }) {
 
 function EmptyState() {
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#141414] p-10 text-center">
-      <Sparkles className="mx-auto h-10 w-10 text-brand-accent" />
-      <h3 className="mt-3 text-lg font-semibold text-white">Aún no generaste el DNA de esta marca</h3>
-      <p className="mx-auto mt-1 max-w-md text-sm text-gray-400">
+    <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-10 text-center">
+      <Sparkles className="mx-auto h-10 w-10 text-[var(--rvz-ink)]" />
+      <h3 className="mt-3 text-lg font-semibold text-[var(--rvz-ink)]">Aún no generaste el DNA de esta marca</h3>
+      <p className="mx-auto mt-1 max-w-md text-sm text-[var(--rvz-ink-muted)]">
         Asegúrate de que los anuncios estén transcritos (botón "Transcribir N pendientes" en /anuncios) y de
         haber marcado al menos algunos como winner / no funciona. Después aprieta "Generar DNA".
       </p>

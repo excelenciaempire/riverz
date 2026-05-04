@@ -169,28 +169,28 @@ export function KnowledgeBaseSection({ productId }: { productId: string }) {
   const list = items.data || [];
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#141414] p-6">
+    <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center font-semibold text-white">
-          <BookOpen className="mr-2 h-5 w-5 text-brand-accent" />
+        <h3 className="flex items-center font-semibold text-[var(--rvz-ink)]">
+          <BookOpen className="mr-2 h-5 w-5 text-[var(--rvz-ink)]" />
           Knowledge Base
         </h3>
         {list.length > 0 && (
-          <span className="text-xs text-gray-500">{list.length} item{list.length === 1 ? '' : 's'}</span>
+          <span className="text-xs text-[var(--rvz-ink-muted)]">{list.length} item{list.length === 1 ? '' : 's'}</span>
         )}
       </div>
 
-      <p className="mb-4 text-sm text-gray-400">
+      <p className="mb-4 text-sm text-[var(--rvz-ink-muted)]">
         Material de contexto que el sistema interno usa para generar ideas creativas: notas, briefs, documentos y enlaces. El research profundo del producto ya está incluido automáticamente — esto es para sumar contexto adicional.
       </p>
 
       {/* Item list */}
       {items.isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+          <Loader2 className="h-5 w-5 animate-spin text-[var(--rvz-ink-muted)]" />
         </div>
       ) : list.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-700 bg-black/20 p-6 text-center text-sm text-gray-500">
+        <div className="rounded-lg border border-dashed border-[var(--rvz-card-border)] bg-black/20 p-6 text-center text-sm text-[var(--rvz-ink-muted)]">
           Aún no hay items en la Knowledge Base
         </div>
       ) : (
@@ -202,14 +202,14 @@ export function KnowledgeBaseSection({ productId }: { productId: string }) {
       )}
 
       {/* Add controls */}
-      <div className="mt-5 border-t border-gray-800 pt-4">
+      <div className="mt-5 border-t border-[var(--rvz-card-border)] pt-4">
         {addMode === null ? (
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setAddMode('text')}
-              className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)]"
             >
               <StickyNote className="mr-2 h-4 w-4" />
               Agregar texto
@@ -218,7 +218,7 @@ export function KnowledgeBaseSection({ productId }: { productId: string }) {
               variant="outline"
               size="sm"
               onClick={() => setAddMode('link')}
-              className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)]"
             >
               <LinkIcon className="mr-2 h-4 w-4" />
               Agregar enlace
@@ -227,23 +227,23 @@ export function KnowledgeBaseSection({ productId }: { productId: string }) {
               variant="outline"
               size="sm"
               onClick={() => setAddMode('document')}
-              className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)]"
             >
               <Upload className="mr-2 h-4 w-4" />
               Subir documento
             </Button>
           </div>
         ) : (
-          <div className="space-y-3 rounded-lg border border-gray-800 bg-black/40 p-4">
+          <div className="space-y-3 rounded-lg border border-[var(--rvz-card-border)] bg-black/40 p-4">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-white">
+              <h4 className="text-sm font-semibold text-[var(--rvz-ink)]">
                 {addMode === 'text' && 'Agregar nota / brief'}
                 {addMode === 'link' && 'Agregar enlace de referencia'}
                 {addMode === 'document' && 'Subir documento'}
               </h4>
               <button
                 onClick={resetForms}
-                className="text-gray-500 hover:text-white"
+                className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
                 aria-label="Cancelar"
                 disabled={addJson.isPending || uploadDoc.isPending}
               >
@@ -257,20 +257,20 @@ export function KnowledgeBaseSection({ productId }: { productId: string }) {
                   value={textTitle}
                   onChange={(e) => setTextTitle(e.target.value)}
                   placeholder="Título (ej: Brief de marca)"
-                  className="border-gray-700 bg-black/60 text-white"
+                  className="border-[var(--rvz-card-border)] bg-black/60 text-[var(--rvz-ink)]"
                 />
                 <Textarea
                   value={textContent}
                   onChange={(e) => setTextContent(e.target.value)}
                   placeholder="Contenido: posicionamiento, ángulos competidores, transcripción de llamadas, copy de la landing, etc."
-                  className="min-h-[140px] border-gray-700 bg-black/60 text-sm text-white"
+                  className="min-h-[140px] border-[var(--rvz-card-border)] bg-black/60 text-sm text-[var(--rvz-ink)]"
                 />
                 <div className="flex justify-end">
                   <Button
                     size="sm"
                     onClick={handleSubmitText}
                     disabled={addJson.isPending}
-                    className="bg-brand-accent text-white hover:bg-brand-accent/80"
+                    className="bg-[var(--rvz-accent)] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/80"
                   >
                     {addJson.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                     Agregar
@@ -285,20 +285,20 @@ export function KnowledgeBaseSection({ productId }: { productId: string }) {
                   value={linkTitle}
                   onChange={(e) => setLinkTitle(e.target.value)}
                   placeholder="Título (ej: Landing del competidor)"
-                  className="border-gray-700 bg-black/60 text-white"
+                  className="border-[var(--rvz-card-border)] bg-black/60 text-[var(--rvz-ink)]"
                 />
                 <Input
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
                   placeholder="https://..."
-                  className="border-gray-700 bg-black/60 text-white"
+                  className="border-[var(--rvz-card-border)] bg-black/60 text-[var(--rvz-ink)]"
                 />
                 <div className="flex justify-end">
                   <Button
                     size="sm"
                     onClick={handleSubmitLink}
                     disabled={addJson.isPending}
-                    className="bg-brand-accent text-white hover:bg-brand-accent/80"
+                    className="bg-[var(--rvz-accent)] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/80"
                   >
                     {addJson.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                     Agregar
@@ -313,7 +313,7 @@ export function KnowledgeBaseSection({ productId }: { productId: string }) {
                   value={docTitle}
                   onChange={(e) => setDocTitle(e.target.value)}
                   placeholder="Título (opcional — usa el nombre del archivo si lo dejas vacío)"
-                  className="border-gray-700 bg-black/60 text-white"
+                  className="border-[var(--rvz-card-border)] bg-black/60 text-[var(--rvz-ink)]"
                 />
                 <input
                   ref={docInputRef}
@@ -329,22 +329,22 @@ export function KnowledgeBaseSection({ productId }: { productId: string }) {
                     size="sm"
                     onClick={() => docInputRef.current?.click()}
                     disabled={uploadDoc.isPending}
-                    className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                    className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)]"
                   >
                     <FileText className="mr-2 h-4 w-4" />
                     {docFile ? 'Cambiar archivo' : 'Seleccionar archivo (PDF, DOCX, TXT, MD)'}
                   </Button>
                   {docFile && (
-                    <div className="flex items-center justify-between gap-2 rounded-lg border border-brand-accent/40 bg-brand-accent/5 px-3 py-2">
-                      <div className="flex items-center gap-2 text-xs text-white">
-                        <FileText className="h-4 w-4 text-brand-accent" />
+                    <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--rvz-ink)]/40 bg-[var(--rvz-accent)]/5 px-3 py-2">
+                      <div className="flex items-center gap-2 text-xs text-[var(--rvz-ink)]">
+                        <FileText className="h-4 w-4 text-[var(--rvz-ink)]" />
                         <span className="truncate font-medium">{docFile.name}</span>
-                        <span className="text-gray-400">{(docFile.size / 1024 / 1024).toFixed(2)} MB</span>
+                        <span className="text-[var(--rvz-ink-muted)]">{(docFile.size / 1024 / 1024).toFixed(2)} MB</span>
                       </div>
                       <button
                         onClick={() => setDocFile(null)}
                         disabled={uploadDoc.isPending}
-                        className="text-gray-500 hover:text-white"
+                        className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
                         aria-label="Quitar"
                       >
                         <X className="h-4 w-4" />
@@ -352,7 +352,7 @@ export function KnowledgeBaseSection({ productId }: { productId: string }) {
                     </div>
                   )}
                 </div>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-[var(--rvz-ink-muted)]">
                   Se conserva el archivo original; el sistema extrae el texto en markdown internamente para usarlo de contexto.
                 </p>
                 <div className="flex justify-end">
@@ -360,7 +360,7 @@ export function KnowledgeBaseSection({ productId }: { productId: string }) {
                     size="sm"
                     onClick={handleSubmitDoc}
                     disabled={!docFile || uploadDoc.isPending}
-                    className="bg-brand-accent text-white hover:bg-brand-accent/80"
+                    className="bg-[var(--rvz-accent)] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/80"
                   >
                     {uploadDoc.isPending ? (
                       <>
@@ -395,12 +395,12 @@ function KnowledgeRow({ item, onDelete, deleting }: { item: KnowledgeItem; onDel
   };
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-black/30 p-3">
+    <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/30 p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-1 items-start gap-3 min-w-0">
           <Icon className={cn('mt-0.5 h-5 w-5 shrink-0', colorByKind[item.kind])} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">{item.title}</p>
+            <p className="truncate text-sm font-medium text-[var(--rvz-ink)]">{item.title}</p>
             {item.kind === 'link' && item.source_url && (
               <a
                 href={item.source_url}
@@ -426,7 +426,7 @@ function KnowledgeRow({ item, onDelete, deleting }: { item: KnowledgeItem; onDel
             {item.kind === 'text' && item.content && (
               <button
                 onClick={() => setExpanded((v) => !v)}
-                className="text-xs text-gray-400 hover:text-white"
+                className="text-xs text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
               >
                 {expanded ? 'Ocultar' : 'Mostrar'} contenido
               </button>
@@ -436,7 +436,7 @@ function KnowledgeRow({ item, onDelete, deleting }: { item: KnowledgeItem; onDel
         <button
           onClick={onDelete}
           disabled={deleting}
-          className="text-gray-500 hover:text-red-400 disabled:opacity-50"
+          className="text-[var(--rvz-ink-muted)] hover:text-red-400 disabled:opacity-50"
           aria-label="Eliminar"
           title="Eliminar"
         >
@@ -444,7 +444,7 @@ function KnowledgeRow({ item, onDelete, deleting }: { item: KnowledgeItem; onDel
         </button>
       </div>
       {expanded && item.content && (
-        <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded bg-black/50 p-3 text-xs text-gray-300">
+        <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded bg-black/50 p-3 text-xs text-[var(--rvz-ink-muted)]">
           {item.content}
         </pre>
       )}

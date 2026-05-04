@@ -324,7 +324,7 @@ function AnunciosContent() {
       <div className="flex items-center gap-3">
         <button
           onClick={goBack}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+          className="inline-flex items-center gap-1.5 text-sm text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
         >
           <ArrowLeft className="h-4 w-4" />
           <span className="max-w-[280px] truncate">{backLabel}</span>
@@ -333,8 +333,8 @@ function AnunciosContent() {
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Tus anuncios</h1>
-          <p className="mt-0.5 text-sm text-gray-400">
+          <h1 className="text-2xl font-bold text-[var(--rvz-ink)]">Tus anuncios</h1>
+          <p className="mt-0.5 text-sm text-[var(--rvz-ink-muted)]">
             Reproduce, transcribe y marca winners para enseñar a tu IA qué funciona.
           </p>
         </div>
@@ -342,12 +342,12 @@ function AnunciosContent() {
           {accountsQuery.data && accountsQuery.data.accounts.length > 1 && (
             <FilterBox label="Cuenta">
               <Select value={adAccountId} onValueChange={setAdAccountId}>
-                <SelectTrigger className="border-gray-700 bg-[#0a0a0a] text-white">
+                <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink)]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="border-gray-800 bg-[#141414] text-white">
+                <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                   {accountsQuery.data.accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id} className="focus:bg-brand-accent/20 focus:text-white">
+                    <SelectItem key={a.id} value={a.id} className="focus:bg-[var(--rvz-accent)]/20 focus:text-[var(--rvz-ink)]">
                       {a.name}
                     </SelectItem>
                   ))}
@@ -357,12 +357,12 @@ function AnunciosContent() {
           )}
           <FilterBox label="Periodo">
             <Select value={datePreset} onValueChange={setDatePreset}>
-              <SelectTrigger className="border-gray-700 bg-[#0a0a0a] text-white">
+              <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink)]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-gray-800 bg-[#141414] text-white">
+              <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                 {DATE_PRESETS.map((p) => (
-                  <SelectItem key={p.value} value={p.value} className="focus:bg-brand-accent/20 focus:text-white">
+                  <SelectItem key={p.value} value={p.value} className="focus:bg-[var(--rvz-accent)]/20 focus:text-[var(--rvz-ink)]">
                     {p.label}
                   </SelectItem>
                 ))}
@@ -371,10 +371,10 @@ function AnunciosContent() {
           </FilterBox>
           <FilterBox label="Tipo">
             <Select value={mediaFilter} onValueChange={(v) => setMediaFilter(v as MediaFilter)}>
-              <SelectTrigger className="border-gray-700 bg-[#0a0a0a] text-white">
+              <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink)]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-gray-800 bg-[#141414] text-white">
+              <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="video">Videos</SelectItem>
                 <SelectItem value="image">Imágenes</SelectItem>
@@ -384,10 +384,10 @@ function AnunciosContent() {
           </FilterBox>
           <FilterBox label="Resultado">
             <Select value={winnerFilter} onValueChange={(v) => setWinnerFilter(v as WinnerFilter)}>
-              <SelectTrigger className="border-gray-700 bg-[#0a0a0a] text-white">
+              <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink)]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-gray-800 bg-[#141414] text-white">
+              <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="winners">Winners</SelectItem>
                 <SelectItem value="losers">No funcionan</SelectItem>
@@ -405,7 +405,7 @@ function AnunciosContent() {
           <button
             onClick={() => adsQuery.refetch()}
             disabled={adsQuery.isFetching}
-            className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-[#0a0a0a] px-3 py-2 text-xs text-gray-300 hover:text-white"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-3 py-2 text-xs text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
           >
             <RefreshCcw className={`h-3.5 w-3.5 ${adsQuery.isFetching ? 'animate-spin' : ''}`} />
             Refrescar
@@ -427,11 +427,11 @@ function AnunciosContent() {
       )}
 
       {!adAccountId ? (
-        <div className="rounded-xl border border-gray-800 bg-[#141414] p-8 text-center">
-          <p className="text-gray-400">Configura tu cuenta publicitaria primero.</p>
+        <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-8 text-center">
+          <p className="text-[var(--rvz-ink-muted)]">Configura tu cuenta publicitaria primero.</p>
           <Link
             href="/campanas/meta"
-            className="mt-3 inline-flex items-center gap-1.5 text-sm text-brand-accent hover:underline"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm text-[var(--rvz-ink)] hover:underline"
           >
             Ir a configuración
           </Link>
@@ -469,7 +469,7 @@ function AnunciosContent() {
             />
           )}
           {/* Stats line */}
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 text-xs text-[var(--rvz-ink-muted)]">
             <Filter className="h-3 w-3" />
             {level === 'campaigns'
               ? `${totalCampaigns} campaña${totalCampaigns === 1 ? '' : 's'} · ${totalAds} ad${totalAds === 1 ? '' : 's'}`
@@ -566,23 +566,23 @@ function Breadcrumb({ activeCampaign, activeAdSet, onResetAll, onResetAdSet }: B
     <nav className="flex flex-wrap items-center gap-1.5 text-sm">
       <button
         onClick={onResetAll}
-        className="text-gray-400 hover:text-white"
+        className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
       >
         Todas las campañas
       </button>
       {activeCampaign && (
         <>
-          <ChevronRight className="h-3.5 w-3.5 text-gray-600" />
+          <ChevronRight className="h-3.5 w-3.5 text-[var(--rvz-ink)]" />
           {activeAdSet ? (
             <button
               onClick={onResetAdSet}
-              className="max-w-[260px] truncate text-gray-400 hover:text-white"
+              className="max-w-[260px] truncate text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
               title={activeCampaign.name}
             >
               {activeCampaign.name}
             </button>
           ) : (
-            <span className="max-w-[260px] truncate font-medium text-white" title={activeCampaign.name}>
+            <span className="max-w-[260px] truncate font-medium text-[var(--rvz-ink)]" title={activeCampaign.name}>
               {activeCampaign.name}
             </span>
           )}
@@ -590,8 +590,8 @@ function Breadcrumb({ activeCampaign, activeAdSet, onResetAll, onResetAdSet }: B
       )}
       {activeAdSet && (
         <>
-          <ChevronRight className="h-3.5 w-3.5 text-gray-600" />
-          <span className="max-w-[260px] truncate font-medium text-white" title={activeAdSet.name}>
+          <ChevronRight className="h-3.5 w-3.5 text-[var(--rvz-ink)]" />
+          <span className="max-w-[260px] truncate font-medium text-[var(--rvz-ink)]" title={activeAdSet.name}>
             {activeAdSet.name}
           </span>
         </>
@@ -603,7 +603,7 @@ function Breadcrumb({ activeCampaign, activeAdSet, onResetAll, onResetAdSet }: B
 function FilterBox({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-[140px]">
-      <div className="mb-1 text-[10px] uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="mb-1 text-[10px] uppercase tracking-wide text-[var(--rvz-ink-muted)]">{label}</div>
       {children}
     </div>
   );
@@ -611,7 +611,7 @@ function FilterBox({ label, children }: { label: string; children: React.ReactNo
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#141414] p-8 text-center text-sm text-gray-400">
+    <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-8 text-center text-sm text-[var(--rvz-ink-muted)]">
       {children}
     </div>
   );
@@ -640,7 +640,7 @@ function BulkTranscribeButton({
     <button
       onClick={onClick}
       disabled={isPending || pending === 0}
-      className="inline-flex items-center gap-1.5 rounded-md border border-brand-accent/40 bg-brand-accent/10 px-3 py-2 text-xs font-medium text-brand-accent transition hover:bg-brand-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex items-center gap-1.5 rounded-md border border-[var(--rvz-ink)]/40 bg-[var(--rvz-accent)]/10 px-3 py-2 text-xs font-medium text-[var(--rvz-ink)] transition hover:bg-[var(--rvz-accent)]/20 disabled:cursor-not-allowed disabled:opacity-50"
       title="Transcribe con IA cada anuncio sin transcript de esta cuenta. Construye la base de datos de winners + losers."
     >
       {inFlight ? (

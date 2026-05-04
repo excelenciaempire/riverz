@@ -137,7 +137,7 @@ export function AccountPicker({ accounts }: Props) {
   // Compact view: show the resolved selection as a one-line status.
   if (compact && selectedAccount) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-800 bg-[#141414] px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
           <Pill icon={<Building2 className="h-3.5 w-3.5" />} label={selectedAccount.name} />
           {accounts.default_page_name && (
@@ -150,12 +150,12 @@ export function AccountPicker({ accounts }: Props) {
             />
           )}
           {!accounts.default_instagram_username && (
-            <span className="text-xs text-gray-500">Solo Facebook (sin IG)</span>
+            <span className="text-xs text-[var(--rvz-ink-muted)]">Solo Facebook (sin IG)</span>
           )}
         </div>
         <button
           onClick={() => setExpanded(true)}
-          className="text-xs text-gray-400 hover:text-white"
+          className="text-xs text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
         >
           Cambiar
         </button>
@@ -165,11 +165,11 @@ export function AccountPicker({ accounts }: Props) {
 
   // Full picker
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#141414] p-6">
+    <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-white">Cuenta de trabajo</h3>
-          <p className="mt-1 text-sm text-gray-400">
+          <h3 className="text-lg font-semibold text-[var(--rvz-ink)]">Cuenta de trabajo</h3>
+          <p className="mt-1 text-sm text-[var(--rvz-ink-muted)]">
             Estos defaults se usan en todas las pantallas de Meta Ads.
             {hasChoice && ' Puedes cambiarlos cuando quieras.'}
           </p>
@@ -177,7 +177,7 @@ export function AccountPicker({ accounts }: Props) {
         {!hasChoice && expanded && (
           <button
             onClick={() => setExpanded(false)}
-            className="text-xs text-gray-400 hover:text-white"
+            className="text-xs text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
           >
             Colapsar
           </button>
@@ -187,20 +187,20 @@ export function AccountPicker({ accounts }: Props) {
       <div className="grid gap-4 md:grid-cols-3">
         {/* Ad account */}
         <div>
-          <label className="mb-1.5 flex items-center gap-1.5 text-xs uppercase tracking-wide text-gray-500">
+          <label className="mb-1.5 flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--rvz-ink-muted)]">
             <Building2 className="h-3.5 w-3.5" />
             Cuenta publicitaria
           </label>
           <Select value={adAccountId} onValueChange={setAdAccountId}>
-            <SelectTrigger className="border-gray-700 bg-[#0a0a0a] text-white">
+            <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink)]">
               <SelectValue placeholder="Elegir cuenta" />
             </SelectTrigger>
-            <SelectContent className="border-gray-800 bg-[#141414] text-white">
+            <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
               {accounts.accounts.map((a) => (
                 <SelectItem
                   key={a.id}
                   value={a.id}
-                  className="focus:bg-brand-accent/20 focus:text-white"
+                  className="focus:bg-[var(--rvz-accent)]/20 focus:text-[var(--rvz-ink)]"
                 >
                   {a.name}
                   {a.business_name ? ` · ${a.business_name}` : ''}
@@ -213,7 +213,7 @@ export function AccountPicker({ accounts }: Props) {
 
         {/* Page */}
         <div>
-          <label className="mb-1.5 flex items-center gap-1.5 text-xs uppercase tracking-wide text-gray-500">
+          <label className="mb-1.5 flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--rvz-ink-muted)]">
             <Facebook className="h-3.5 w-3.5" />
             Fan Page
           </label>
@@ -227,15 +227,15 @@ export function AccountPicker({ accounts }: Props) {
             </p>
           ) : (
             <Select value={pageId} onValueChange={setPageId}>
-              <SelectTrigger className="border-gray-700 bg-[#0a0a0a] text-white">
+              <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink)]">
                 <SelectValue placeholder="Elegir página" />
               </SelectTrigger>
-              <SelectContent className="border-gray-800 bg-[#141414] text-white">
+              <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                 {(pagesQuery.data?.pages || []).map((p) => (
                   <SelectItem
                     key={p.id}
                     value={p.id}
-                    className="focus:bg-brand-accent/20 focus:text-white"
+                    className="focus:bg-[var(--rvz-accent)]/20 focus:text-[var(--rvz-ink)]"
                   >
                     {p.name}
                     {p.has_instagram ? ' · IG conectado' : ''}
@@ -248,29 +248,29 @@ export function AccountPicker({ accounts }: Props) {
 
         {/* Instagram */}
         <div>
-          <label className="mb-1.5 flex items-center gap-1.5 text-xs uppercase tracking-wide text-gray-500">
+          <label className="mb-1.5 flex items-center gap-1.5 text-xs uppercase tracking-wide text-[var(--rvz-ink-muted)]">
             <Instagram className="h-3.5 w-3.5" />
             Instagram
           </label>
           {!pageId ? (
-            <p className="text-xs text-gray-500">Elige primero la página.</p>
+            <p className="text-xs text-[var(--rvz-ink-muted)]">Elige primero la página.</p>
           ) : igQuery.isLoading ? (
             <Loading text="..." />
           ) : (igQuery.data?.accounts.length || 0) === 0 ? (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-[var(--rvz-ink-muted)]">
               Esta página no tiene IG vinculado (los anuncios saldrán solo en Facebook).
             </p>
           ) : (
             <Select value={instagramId} onValueChange={setInstagramId}>
-              <SelectTrigger className="border-gray-700 bg-[#0a0a0a] text-white">
+              <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink)]">
                 <SelectValue placeholder="Elegir IG" />
               </SelectTrigger>
-              <SelectContent className="border-gray-800 bg-[#141414] text-white">
+              <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                 {(igQuery.data?.accounts || []).map((ig) => (
                   <SelectItem
                     key={ig.id}
                     value={ig.id}
-                    className="focus:bg-brand-accent/20 focus:text-white"
+                    className="focus:bg-[var(--rvz-accent)]/20 focus:text-[var(--rvz-ink)]"
                   >
                     @{ig.username}
                   </SelectItem>
@@ -285,7 +285,7 @@ export function AccountPicker({ accounts }: Props) {
         <button
           onClick={handleSave}
           disabled={!dirty || saveMutation.isPending}
-          className="inline-flex items-center gap-2 rounded-md bg-brand-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-[var(--rvz-accent)] px-4 py-2 text-sm font-medium text-[var(--rvz-ink)] transition hover:bg-[var(--rvz-accent)]/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Check className="h-4 w-4" />
           {saveMutation.isPending ? 'Guardando...' : dirty ? 'Guardar' : 'Guardado'}
@@ -297,7 +297,7 @@ export function AccountPicker({ accounts }: Props) {
 
 function Pill({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-black/40 px-2.5 py-1 text-xs text-white">
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--rvz-card-border)] bg-black/40 px-2.5 py-1 text-xs text-[var(--rvz-ink)]">
       {icon}
       {label}
     </span>

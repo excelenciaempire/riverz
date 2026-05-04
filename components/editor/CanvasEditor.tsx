@@ -487,7 +487,7 @@ export default function CanvasEditor() {
   }, [canvas]);
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-black text-white">
+    <div className="flex h-full w-full overflow-hidden bg-black text-[var(--rvz-ink)]">
       {/* Sidebar Tools */}
       <Toolbar
         activeTool={activeTool}
@@ -508,12 +508,12 @@ export default function CanvasEditor() {
         {/* Top Prompt Bar */}
         {hasImage && (
           <div className="z-10 flex w-full justify-center items-start px-4 pt-4 absolute top-0">
-            <div className="w-full max-w-[600px] rounded-full bg-black/50 p-1 backdrop-blur-md border border-gray-800">
+            <div className="w-full max-w-[600px] rounded-full bg-black/50 p-1 backdrop-blur-md border border-[var(--rvz-card-border)]">
               <Input 
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Describe lo que quieres cambiar (opcional)..."
-                className="border-none bg-transparent text-center text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="border-none bg-transparent text-center text-[var(--rvz-ink)] placeholder:text-[var(--rvz-ink-muted)] focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </div>
           </div>
@@ -540,27 +540,27 @@ export default function CanvasEditor() {
                 "group relative rounded-2xl border-2 border-dashed transition-all cursor-pointer overflow-hidden",
                 "min-w-[400px] min-h-[300px] flex items-center justify-center",
                 isDragging
-                  ? "border-brand-accent bg-brand-accent/10 scale-[1.02]"
-                  : "border-gray-800 bg-gray-900/30 hover:border-gray-700 hover:bg-gray-900/50"
+                  ? "border-[var(--rvz-ink)] bg-[var(--rvz-accent)]/10 scale-[1.02]"
+                  : "border-[var(--rvz-card-border)] bg-[var(--rvz-card)]/30 hover:border-[var(--rvz-card-border)] hover:bg-[var(--rvz-card)]/50"
               )}>
                 <div className="flex flex-col items-center gap-4 p-12">
                   <div className={cn(
                     "rounded-full p-5 transition-all",
                     isDragging 
-                      ? "bg-brand-accent/20 scale-110" 
-                      : "bg-gray-800/50 group-hover:bg-gray-800"
+                      ? "bg-[var(--rvz-accent)]/20 scale-110" 
+                      : "bg-[var(--rvz-card)]/50 group-hover:bg-[var(--rvz-card)]"
                   )}>
                     <Upload className={cn(
                       "h-10 w-10 transition-all",
-                      isDragging ? "text-brand-accent animate-bounce" : "text-gray-400 group-hover:text-gray-300"
+                      isDragging ? "text-[var(--rvz-ink)] animate-bounce" : "text-[var(--rvz-ink-muted)] group-hover:text-[var(--rvz-ink-muted)]"
                     )} />
                   </div>
                   
                   <div className="text-center space-y-2">
-                    <p className="text-lg font-medium text-white">
+                    <p className="text-lg font-medium text-[var(--rvz-ink)]">
                       {isDragging ? 'Suelta la imagen aquí' : 'Haz clic o arrastra una imagen'}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-[var(--rvz-ink-muted)]">
                       Soporta JPG, PNG · Máximo 10MB
                     </p>
                   </div>
@@ -580,8 +580,8 @@ export default function CanvasEditor() {
           ) : (
             <div className="flex h-full w-full items-center justify-center p-8 gap-4">
               {hasResult && previousImageSrc && (
-                <div className="flex h-full flex-1 flex-col items-center justify-center rounded-2xl border border-gray-800 bg-black relative overflow-hidden">
-                  <div className="absolute left-4 top-4 rounded-md bg-gray-800/80 px-2 py-1 text-xs font-medium text-gray-300 backdrop-blur-sm z-10">
+                <div className="flex h-full flex-1 flex-col items-center justify-center rounded-2xl border border-[var(--rvz-card-border)] bg-black relative overflow-hidden">
+                  <div className="absolute left-4 top-4 rounded-md bg-[var(--rvz-card)]/80 px-2 py-1 text-xs font-medium text-[var(--rvz-ink-muted)] backdrop-blur-sm z-10">
                     Original
                   </div>
                   <img 
@@ -594,11 +594,11 @@ export default function CanvasEditor() {
 
               <div 
                 ref={wrapperRef}
-                className={`flex h-full flex-col items-center justify-center rounded-2xl border border-gray-800 bg-black relative overflow-hidden ${hasResult ? 'flex-1' : 'w-full'}`}
+                className={`flex h-full flex-col items-center justify-center rounded-2xl border border-[var(--rvz-card-border)] bg-black relative overflow-hidden ${hasResult ? 'flex-1' : 'w-full'}`}
               >
                 {hasResult && resultImageSrc ? (
                   <>
-                    <div className="absolute left-4 top-4 rounded-md bg-blue-600/80 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm z-10">
+                    <div className="absolute left-4 top-4 rounded-md bg-blue-600/80 px-2 py-1 text-xs font-medium text-[var(--rvz-ink)] backdrop-blur-sm z-10">
                       Resultado
                     </div>
                     <img 
@@ -610,7 +610,7 @@ export default function CanvasEditor() {
                 ) : (
                   <>
                     {hasResult && (
-                      <div className="absolute left-4 top-4 rounded-md bg-blue-600/80 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm z-10">
+                      <div className="absolute left-4 top-4 rounded-md bg-blue-600/80 px-2 py-1 text-xs font-medium text-[var(--rvz-ink)] backdrop-blur-sm z-10">
                         Editando
                       </div>
                     )}

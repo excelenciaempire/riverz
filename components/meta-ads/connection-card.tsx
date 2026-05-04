@@ -48,8 +48,8 @@ export function ConnectionCard({ data, error, isLoading, onRateLimitExpire }: Pr
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-gray-800 bg-[#141414] p-6">
-        <p className="text-gray-400">Verificando conexión con Meta...</p>
+      <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6">
+        <p className="text-[var(--rvz-ink-muted)]">Verificando conexión con Meta...</p>
       </div>
     );
   }
@@ -68,17 +68,17 @@ export function ConnectionCard({ data, error, isLoading, onRateLimitExpire }: Pr
 
   if (error || !data) {
     return (
-      <div className="rounded-xl border border-gray-800 bg-[#141414] p-6">
+      <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6">
         <div className="mb-3 flex items-center gap-2 text-amber-400">
           <AlertTriangle className="h-5 w-5" />
           <h3 className="text-lg font-semibold">No conectado</h3>
         </div>
-        <p className="mb-4 text-sm text-gray-400">
+        <p className="mb-4 text-sm text-[var(--rvz-ink-muted)]">
           {error?.message || 'Conecta tu cuenta de Meta para subir tus assets a la biblioteca de medios de tu ad account.'}
         </p>
         <a
           href="/api/meta/auth/start"
-          className="inline-flex items-center gap-2 rounded-md bg-brand-accent px-4 py-2 text-sm font-medium text-white hover:bg-brand-accent/90"
+          className="inline-flex items-center gap-2 rounded-md bg-[var(--rvz-accent)] px-4 py-2 text-sm font-medium text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/90"
         >
           <ExternalLink className="h-4 w-4" />
           Conectar con Meta
@@ -88,15 +88,15 @@ export function ConnectionCard({ data, error, isLoading, onRateLimitExpire }: Pr
   }
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#141414] p-6">
+    <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6">
       <div className="mb-2 flex items-center gap-2 text-green-400">
         <CheckCircle2 className="h-5 w-5" />
         <h3 className="text-lg font-semibold">Conectado</h3>
       </div>
-      <p className="mb-1 text-sm text-gray-400">Usuario de Meta</p>
-      <p className="mb-4 text-base font-medium text-white">{data.fb_user_name || '—'}</p>
-      <p className="mb-1 text-sm text-gray-400">Cuentas de anuncios disponibles</p>
-      <p className="mb-4 text-base font-medium text-white">{data.accounts.length}</p>
+      <p className="mb-1 text-sm text-[var(--rvz-ink-muted)]">Usuario de Meta</p>
+      <p className="mb-4 text-base font-medium text-[var(--rvz-ink)]">{data.fb_user_name || '—'}</p>
+      <p className="mb-1 text-sm text-[var(--rvz-ink-muted)]">Cuentas de anuncios disponibles</p>
+      <p className="mb-4 text-base font-medium text-[var(--rvz-ink)]">{data.accounts.length}</p>
       <Button
         variant="outline"
         size="sm"

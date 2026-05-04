@@ -74,7 +74,7 @@ export function ResearchProgress({
     return (
       <Button 
         onClick={onViewResearch}
-        className="w-full bg-green-600 hover:bg-green-700 text-white"
+        className="w-full bg-green-600 hover:bg-green-700 text-[var(--rvz-ink)]"
       >
         <Eye className="mr-2 h-5 w-5" />
         Ver Research
@@ -86,21 +86,21 @@ export function ResearchProgress({
   if (status === 'processing' || isStarting) {
     return (
       <div className="w-full space-y-3">
-        <div className="relative overflow-hidden rounded-lg bg-brand-accent/20 p-4">
+        <div className="relative overflow-hidden rounded-lg bg-[var(--rvz-accent)]/20 p-4">
           {/* Animated background */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-accent/20 to-transparent animate-shimmer" />
           
           <div className="relative flex items-center justify-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-brand-accent" />
-            <span className="font-medium text-brand-accent">Analizando mercado...</span>
+            <Loader2 className="h-5 w-5 animate-spin text-[var(--rvz-ink)]" />
+            <span className="font-medium text-[var(--rvz-ink)]">Analizando mercado...</span>
           </div>
           
           {/* Progress bar */}
-          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-800">
+          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--rvz-card)]">
             <div className="h-full w-full animate-progress bg-gradient-to-r from-brand-accent via-brand-accent/50 to-brand-accent rounded-full" />
           </div>
           
-          <p className="mt-2 text-center text-xs text-gray-400">
+          <p className="mt-2 text-center text-xs text-[var(--rvz-ink-muted)]">
             Esto puede tomar hasta 60 segundos
           </p>
         </div>
@@ -119,7 +119,7 @@ export function ResearchProgress({
         <Button 
           onClick={onStartResearch}
           disabled={isStarting}
-          className="w-full bg-brand-accent hover:bg-brand-accent/90"
+          className="w-full bg-[var(--rvz-accent)] hover:bg-[var(--rvz-accent)]/90"
         >
           <Sparkles className="mr-2 h-5 w-5" />
           Reintentar Research
@@ -133,7 +133,7 @@ export function ResearchProgress({
     <Button 
       onClick={onStartResearch}
       disabled={isStarting}
-      className="w-full bg-brand-accent hover:bg-brand-accent/90"
+      className="w-full bg-[var(--rvz-accent)] hover:bg-[var(--rvz-accent)]/90"
     >
       {isStarting ? (
         <>

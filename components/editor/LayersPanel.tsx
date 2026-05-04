@@ -102,17 +102,17 @@ export function LayersPanel({
   const displayLayers = [...layers].reverse();
 
   return (
-    <div className="flex h-full w-64 flex-col border-l border-gray-800 bg-[#0a0a0a]">
+    <div className="flex h-full w-64 flex-col border-l border-[var(--rvz-card-border)] bg-[var(--rvz-bg)]">
       {/* Header */}
-      <div className="border-b border-gray-800 p-3">
-        <h3 className="text-sm font-medium text-white">Capas</h3>
+      <div className="border-b border-[var(--rvz-card-border)] p-3">
+        <h3 className="text-sm font-medium text-[var(--rvz-ink)]">Capas</h3>
       </div>
 
       {/* Layers List */}
       <div className="flex-1 overflow-y-auto">
         {displayLayers.length === 0 ? (
           <div className="flex h-full items-center justify-center p-4">
-            <p className="text-center text-sm text-gray-500">
+            <p className="text-center text-sm text-[var(--rvz-ink-muted)]">
               No hay capas aún
             </p>
           </div>
@@ -129,16 +129,16 @@ export function LayersPanel({
                 className={cn(
                   'group flex items-center gap-2 rounded-lg border p-2 transition-all',
                   selectedLayerId === layer.id
-                    ? 'border-brand-accent bg-brand-accent/10'
-                    : 'border-gray-800 bg-[#141414] hover:border-gray-700',
-                  dragOverLayerId === layer.id && 'border-brand-accent',
+                    ? 'border-[var(--rvz-ink)] bg-[var(--rvz-accent)]/10'
+                    : 'border-[var(--rvz-card-border)] bg-[var(--rvz-card)] hover:border-[var(--rvz-card-border)]',
+                  dragOverLayerId === layer.id && 'border-[var(--rvz-ink)]',
                   draggedLayerId === layer.id && 'opacity-50',
                   !layer.visible && 'opacity-60'
                 )}
                 onClick={() => onSelect(layer.id)}
               >
                 {/* Layer Icon */}
-                <div className="shrink-0 text-gray-400">
+                <div className="shrink-0 text-[var(--rvz-ink-muted)]">
                   {getLayerIcon(layer.type)}
                 </div>
 
@@ -158,13 +158,13 @@ export function LayersPanel({
                           setEditingName('');
                         }
                       }}
-                      className="w-full bg-gray-900 px-2 py-1 text-xs text-white border border-brand-accent rounded outline-none"
+                      className="w-full bg-[var(--rvz-card)] px-2 py-1 text-xs text-[var(--rvz-ink)] border border-[var(--rvz-ink)] rounded outline-none"
                       autoFocus
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
                     <p
-                      className="truncate text-xs text-white"
+                      className="truncate text-xs text-[var(--rvz-ink)]"
                       onDoubleClick={(e) => {
                         e.stopPropagation();
                         handleStartEdit(layer);
@@ -185,13 +185,13 @@ export function LayersPanel({
                       e.stopPropagation();
                       onToggleVisibility(layer.id);
                     }}
-                    className="rounded p-1 hover:bg-gray-700 transition-colors"
+                    className="rounded p-1 hover:bg-[var(--rvz-bg-soft)] transition-colors"
                     title={layer.visible ? 'Ocultar' : 'Mostrar'}
                   >
                     {layer.visible ? (
-                      <Eye className="h-3.5 w-3.5 text-gray-400" />
+                      <Eye className="h-3.5 w-3.5 text-[var(--rvz-ink-muted)]" />
                     ) : (
-                      <EyeOff className="h-3.5 w-3.5 text-gray-500" />
+                      <EyeOff className="h-3.5 w-3.5 text-[var(--rvz-ink-muted)]" />
                     )}
                   </button>
 
@@ -200,29 +200,29 @@ export function LayersPanel({
                       e.stopPropagation();
                       onToggleLock(layer.id);
                     }}
-                    className="rounded p-1 hover:bg-gray-700 transition-colors"
+                    className="rounded p-1 hover:bg-[var(--rvz-bg-soft)] transition-colors"
                     title={layer.locked ? 'Desbloquear' : 'Bloquear'}
                   >
                     {layer.locked ? (
-                      <Lock className="h-3.5 w-3.5 text-gray-400" />
+                      <Lock className="h-3.5 w-3.5 text-[var(--rvz-ink-muted)]" />
                     ) : (
-                      <Unlock className="h-3.5 w-3.5 text-gray-400" />
+                      <Unlock className="h-3.5 w-3.5 text-[var(--rvz-ink-muted)]" />
                     )}
                   </button>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <button className="rounded p-1 hover:bg-gray-700 transition-colors">
-                        <MoreVertical className="h-3.5 w-3.5 text-gray-400" />
+                      <button className="rounded p-1 hover:bg-[var(--rvz-bg-soft)] transition-colors">
+                        <MoreVertical className="h-3.5 w-3.5 text-[var(--rvz-ink-muted)]" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-[#141414] border-gray-800" align="end">
+                    <DropdownMenuContent className="bg-[var(--rvz-card)] border-[var(--rvz-card-border)]" align="end">
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
                           handleStartEdit(layer);
                         }}
-                        className="text-gray-300 hover:bg-gray-800 hover:text-white"
+                        className="text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]"
                       >
                         Renombrar
                       </DropdownMenuItem>
@@ -231,7 +231,7 @@ export function LayersPanel({
                           e.stopPropagation();
                           onDuplicate(layer.id);
                         }}
-                        className="text-gray-300 hover:bg-gray-800 hover:text-white"
+                        className="text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]"
                       >
                         <Copy className="mr-2 h-3.5 w-3.5" />
                         Duplicar
@@ -256,8 +256,8 @@ export function LayersPanel({
       </div>
 
       {/* Footer Info */}
-      <div className="border-t border-gray-800 p-3">
-        <p className="text-xs text-gray-500">
+      <div className="border-t border-[var(--rvz-card-border)] p-3">
+        <p className="text-xs text-[var(--rvz-ink-muted)]">
           {layers.length} {layers.length === 1 ? 'capa' : 'capas'}
         </p>
       </div>

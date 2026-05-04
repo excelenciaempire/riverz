@@ -101,24 +101,24 @@ function FramePicker({
         disabled={disabled || busy}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          'group relative h-12 w-12 overflow-hidden rounded-lg border border-gray-700 bg-gray-900/60 transition-colors',
-          'hover:border-[#07A498] hover:bg-gray-900',
+          'group relative h-12 w-12 overflow-hidden rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-card)]/60 transition-colors',
+          'hover:border-[#07A498] hover:bg-[var(--rvz-card)]',
           'disabled:cursor-not-allowed disabled:opacity-50',
         )}
       >
         {busy ? (
           <div className="flex h-full w-full items-center justify-center">
-            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            <Loader2 className="h-4 w-4 animate-spin text-[var(--rvz-ink-muted)]" />
           </div>
         ) : value ? (
           <>
             <img src={value.preview} alt={label} className="h-full w-full object-cover" />
             <div className="absolute inset-0 hidden items-center justify-center bg-black/60 group-hover:flex">
-              <ImageIcon className="h-4 w-4 text-white" />
+              <ImageIcon className="h-4 w-4 text-[var(--rvz-ink)]" />
             </div>
           </>
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 text-gray-400">
+          <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 text-[var(--rvz-ink-muted)]">
             <Plus className="h-4 w-4" />
             <span className="text-[9px] uppercase tracking-wide">{label}</span>
           </div>
@@ -128,7 +128,7 @@ function FramePicker({
         <button
           type="button"
           onClick={() => onChange(null)}
-          className="text-[10px] text-gray-500 hover:text-red-400"
+          className="text-[10px] text-[var(--rvz-ink-muted)] hover:text-red-400"
         >
           quitar
         </button>
@@ -150,7 +150,7 @@ function FramePicker({
 
 function StatusBadge({ status }: { status: Status }) {
   const map: Record<Status, { label: string; className: string }> = {
-    pending_generation: { label: 'En cola', className: 'bg-gray-700/40 text-gray-300' },
+    pending_generation: { label: 'En cola', className: 'bg-[var(--rvz-bg-soft)]/40 text-[var(--rvz-ink-muted)]' },
     generating: { label: 'Generando', className: 'bg-[#07A498]/20 text-[#07A498]' },
     completed: { label: 'Listo', className: 'bg-green-500/20 text-green-400' },
     failed: { label: 'Error', className: 'bg-red-500/20 text-red-400' },
@@ -163,7 +163,7 @@ function VideoTile({ gen }: { gen: Generation }) {
   const isReady = gen.status === 'completed' && gen.result_url;
   const isFailed = gen.status === 'failed';
   return (
-    <div className="group relative aspect-[9/16] overflow-hidden rounded-xl border border-gray-800 bg-[#0a0a0a]">
+    <div className="group relative aspect-[9/16] overflow-hidden rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)]">
       {isReady ? (
         <video
           src={gen.result_url!}
@@ -174,7 +174,7 @@ function VideoTile({ gen }: { gen: Generation }) {
       ) : isFailed ? (
         <div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center">
           <span className="text-xs font-medium text-red-400">Error</span>
-          <span className="line-clamp-3 text-[10px] text-gray-500">{gen.error_message || 'kie.ai falló'}</span>
+          <span className="line-clamp-3 text-[10px] text-[var(--rvz-ink-muted)]">{gen.error_message || 'kie.ai falló'}</span>
         </div>
       ) : (
         <div className="flex h-full flex-col items-center justify-center gap-2">
@@ -186,7 +186,7 @@ function VideoTile({ gen }: { gen: Generation }) {
         <a
           href={gen.result_url!}
           download
-          className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white opacity-0 transition-opacity hover:bg-black/80 group-hover:opacity-100"
+          className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-[var(--rvz-ink)] opacity-0 transition-opacity hover:bg-black/80 group-hover:opacity-100"
           onClick={(e) => e.stopPropagation()}
         >
           <Download className="h-3.5 w-3.5" />
@@ -232,7 +232,7 @@ function groupByMessage(generations: Generation[]): MessageGroup[] {
 
 export default function UGCChatPage() {
   return (
-    <Suspense fallback={<div className="flex h-[calc(100vh-32px)] items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-gray-500" /></div>}>
+    <Suspense fallback={<div className="flex h-[calc(100vh-32px)] items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-[var(--rvz-ink-muted)]" /></div>}>
       <UGCChatInner />
     </Suspense>
   );
@@ -364,18 +364,18 @@ function UGCChatInner() {
   const canSend = prompt.trim().length > 0 && !sendMutation.isPending;
 
   return (
-    <div className="-m-8 flex h-screen bg-[#0a0a0a]">
+    <div className="-m-8 flex h-screen bg-[var(--rvz-bg)]">
       <aside
         className={cn(
-          'hidden shrink-0 flex-col border-r border-white/5 bg-black/40 transition-[width,transform] duration-200 ease-out lg:flex',
+          'hidden shrink-0 flex-col border-r border-[var(--rvz-card-border)] bg-black/40 transition-[width,transform] duration-200 ease-out lg:flex',
           sidebarOpen ? 'w-72' : 'w-0 overflow-hidden border-r-0',
         )}
       >
         <div className="flex h-14 items-center justify-between px-5">
-          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-gray-500">Sesiones</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-[var(--rvz-ink-muted)]">Sesiones</p>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="rounded-full p-1.5 text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-200"
+            className="rounded-full p-1.5 text-[var(--rvz-ink-muted)] transition-colors hover:bg-[var(--rvz-bg-soft)] hover:text-[var(--rvz-ink-muted)]"
             aria-label="Ocultar historial"
           >
             <PanelLeftClose className="h-4 w-4" />
@@ -395,8 +395,8 @@ function UGCChatInner() {
                 className={cn(
                   'block w-full truncate rounded-2xl px-3 py-2.5 text-left text-sm transition-colors',
                   activeSessionId === s.id
-                    ? 'bg-white/10 text-white'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-white',
+                    ? 'bg-[var(--rvz-bg-soft)] text-[var(--rvz-ink)]'
+                    : 'text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-bg-soft)] hover:text-[var(--rvz-ink)]',
                 )}
                 title={s.name}
               >
@@ -404,7 +404,7 @@ function UGCChatInner() {
               </button>
             ))}
             {sessionsQuery.data?.length === 0 && (
-              <p className="px-3 py-2 text-xs text-gray-600">Sin conversaciones aún.</p>
+              <p className="px-3 py-2 text-xs text-[var(--rvz-ink)]">Sin conversaciones aún.</p>
             )}
           </div>
         </div>
@@ -414,7 +414,7 @@ function UGCChatInner() {
         {!sidebarOpen && (
           <button
             onClick={() => setSidebarOpen(true)}
-            className="absolute left-4 top-4 z-20 hidden h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/60 text-gray-300 backdrop-blur-md transition-colors hover:border-[#07A498] hover:text-white lg:flex"
+            className="absolute left-4 top-4 z-20 hidden h-9 w-9 items-center justify-center rounded-full border border-[var(--rvz-card-border)] bg-black/60 text-[var(--rvz-ink-muted)] backdrop-blur-md transition-colors hover:border-[#07A498] hover:text-[var(--rvz-ink)] lg:flex"
             aria-label="Mostrar historial"
           >
             <PanelLeftOpen className="h-4 w-4" />
@@ -424,22 +424,22 @@ function UGCChatInner() {
         <div className="flex-1 overflow-y-auto px-6 pb-40 pt-12 lg:px-12">
           {!activeSessionId ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
-              <p className="max-w-md text-sm text-gray-500">
+              <p className="max-w-md text-sm text-[var(--rvz-ink-muted)]">
                 Describe el video que quieres crear. Sube una imagen como frame inicial y/o
                 final si quieres más control sobre el resultado.
               </p>
             </div>
           ) : sessionQuery.isLoading ? (
             <div className="flex h-full items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+              <Loader2 className="h-5 w-5 animate-spin text-[var(--rvz-ink-muted)]" />
             </div>
           ) : groups.length === 0 ? (
-            <p className="text-sm text-gray-500">Esta conversación está vacía.</p>
+            <p className="text-sm text-[var(--rvz-ink-muted)]">Esta conversación está vacía.</p>
           ) : (
             <div className="mx-auto max-w-5xl space-y-8">
               {groups.map((g, i) => (
                 <div key={i} className="space-y-4">
-                  <div className="rounded-3xl bg-white/[0.04] px-5 py-4">
+                  <div className="rounded-3xl bg-[var(--rvz-bg-soft)] px-5 py-4">
                     <div className="flex flex-wrap items-start gap-3">
                       {g.firstFrameUrl && (
                         <img src={g.firstFrameUrl} alt="inicial" className="h-16 w-16 rounded-2xl object-cover" />
@@ -448,8 +448,8 @@ function UGCChatInner() {
                         <img src={g.lastFrameUrl} alt="final" className="h-16 w-16 rounded-2xl object-cover" />
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="whitespace-pre-wrap text-sm text-gray-100">{g.prompt}</p>
-                        <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-gray-500">
+                        <p className="whitespace-pre-wrap text-sm text-[var(--rvz-ink)]">{g.prompt}</p>
+                        <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-[var(--rvz-ink-muted)]">
                           {g.model || 'veo3_fast'} · {g.aspectRatio || '9:16'} · {g.generations.length} video(s)
                         </p>
                       </div>
@@ -468,7 +468,7 @@ function UGCChatInner() {
         </div>
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-6 pt-12 lg:px-12">
-          <div className="pointer-events-auto mx-auto max-w-3xl rounded-3xl border border-white/10 bg-[#141414]/90 p-4 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.8)] backdrop-blur-md">
+          <div className="pointer-events-auto mx-auto max-w-3xl rounded-3xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)]/90 p-4 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.8)] backdrop-blur-md">
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -481,7 +481,7 @@ function UGCChatInner() {
             disabled={sendMutation.isPending}
             placeholder="¿Qué quieres crear?"
             rows={2}
-            className="w-full resize-none bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none"
+            className="w-full resize-none bg-transparent text-sm text-[var(--rvz-ink)] placeholder:text-[var(--rvz-ink-muted)] focus:outline-none"
           />
           <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -493,7 +493,7 @@ function UGCChatInner() {
                 value={model}
                 onChange={(e) => setModel(e.target.value as typeof model)}
                 disabled={sendMutation.isPending}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-200 transition-colors hover:bg-white/10 focus:border-[#07A498] focus:outline-none"
+                className="rounded-full border border-[var(--rvz-card-border)] bg-[var(--rvz-bg-soft)] px-3 py-1.5 text-xs text-[var(--rvz-ink-muted)] transition-colors hover:bg-[var(--rvz-bg-soft)] focus:border-[#07A498] focus:outline-none"
               >
                 {MODEL_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -503,7 +503,7 @@ function UGCChatInner() {
                 value={aspectRatio}
                 onChange={(e) => setAspectRatio(e.target.value as typeof aspectRatio)}
                 disabled={sendMutation.isPending}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-200 transition-colors hover:bg-white/10 focus:border-[#07A498] focus:outline-none"
+                className="rounded-full border border-[var(--rvz-card-border)] bg-[var(--rvz-bg-soft)] px-3 py-1.5 text-xs text-[var(--rvz-ink-muted)] transition-colors hover:bg-[var(--rvz-bg-soft)] focus:border-[#07A498] focus:outline-none"
               >
                 {ASPECT_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -513,7 +513,7 @@ function UGCChatInner() {
                 value={count}
                 onChange={(e) => setCount(Number(e.target.value))}
                 disabled={sendMutation.isPending}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-200 transition-colors hover:bg-white/10 focus:border-[#07A498] focus:outline-none"
+                className="rounded-full border border-[var(--rvz-card-border)] bg-[var(--rvz-bg-soft)] px-3 py-1.5 text-xs text-[var(--rvz-ink-muted)] transition-colors hover:bg-[var(--rvz-bg-soft)] focus:border-[#07A498] focus:outline-none"
                 title="Cantidad"
               >
                 {[1, 2, 3, 4].map((n) => (
@@ -527,8 +527,8 @@ function UGCChatInner() {
                 className={cn(
                   'flex h-10 w-10 items-center justify-center rounded-full transition-colors',
                   canSend
-                    ? 'bg-[#07A498] text-white hover:bg-[#068f84]'
-                    : 'cursor-not-allowed bg-white/10 text-gray-600',
+                    ? 'bg-[#07A498] text-[var(--rvz-ink)] hover:bg-[#068f84]'
+                    : 'cursor-not-allowed bg-[var(--rvz-bg-soft)] text-[var(--rvz-ink)]',
                 )}
               >
                 {sendMutation.isPending ? (

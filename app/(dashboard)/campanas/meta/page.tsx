@@ -89,8 +89,8 @@ function MetaCampaignsContent() {
   return (
     <div className="space-y-6 pb-12">
       <div>
-        <h1 className="text-3xl font-bold text-white">Meta Ads</h1>
-        <p className="mt-1 text-sm text-gray-400">
+        <h1 className="text-3xl font-bold text-[var(--rvz-ink)]">Meta Ads</h1>
+        <p className="mt-1 text-sm text-[var(--rvz-ink-muted)]">
           Conecta Meta, elige cuenta + página + Instagram, y empieza a crear y analizar anuncios desde Riverz.
         </p>
       </div>
@@ -122,7 +122,7 @@ function MetaCampaignsContent() {
           />
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-white">Subidas recientes</h2>
+            <h2 className="mb-3 text-xl font-semibold text-[var(--rvz-ink)]">Subidas recientes</h2>
             {uploadsQuery.isLoading ? (
               <Loading text="Cargando subidas..." />
             ) : uploadsQuery.error ? (
@@ -130,9 +130,9 @@ function MetaCampaignsContent() {
                 {(uploadsQuery.error as Error).message}
               </p>
             ) : !uploadsQuery.data || uploadsQuery.data.items.length === 0 ? (
-              <div className="rounded-lg border border-gray-800 bg-[#141414] p-8 text-center">
-                <p className="text-gray-400">Aún no has subido nada a Meta Ads.</p>
-                <p className="mt-1 text-xs text-gray-500">
+              <div className="rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-8 text-center">
+                <p className="text-[var(--rvz-ink-muted)]">Aún no has subido nada a Meta Ads.</p>
+                <p className="mt-1 text-xs text-[var(--rvz-ink-muted)]">
                   Ve a Historial, selecciona varios assets y pulsa "Subir a Meta Ads", o usa "Crear nueva campaña" arriba.
                 </p>
               </div>
@@ -145,7 +145,7 @@ function MetaCampaignsContent() {
                       thumbnailUrl={u.generations?.result_url}
                       label={`${u.generations?.type?.replace(/_/g, ' ') || u.asset_type} · ${u.ad_account_id}`}
                     />
-                    <p className="pl-1 text-[10px] text-gray-500">
+                    <p className="pl-1 text-[10px] text-[var(--rvz-ink-muted)]">
                       {format(new Date(u.created_at), 'PPp', { locale: es })}
                     </p>
                   </div>

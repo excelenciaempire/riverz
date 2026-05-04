@@ -65,24 +65,24 @@ function CollapsibleSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-gray-800 rounded-xl overflow-hidden">
+    <div className="border border-[var(--rvz-card-border)] rounded-xl overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "w-full flex items-center justify-between p-4 text-left transition-colors",
-          isOpen ? "bg-gray-800/50" : "hover:bg-gray-800/30"
+          isOpen ? "bg-[var(--rvz-card)]/50" : "hover:bg-[var(--rvz-card)]/30"
         )}
       >
         <div className="flex items-center gap-3">
           <div className={cn("p-2 rounded-lg", `bg-${accentColor}/20`)}>
             <Icon className={cn("h-5 w-5", `text-${accentColor}`)} />
           </div>
-          <span className="font-semibold text-white">{title}</span>
+          <span className="font-semibold text-[var(--rvz-ink)]">{title}</span>
         </div>
         {isOpen ? (
-          <ChevronUp className="h-5 w-5 text-gray-400" />
+          <ChevronUp className="h-5 w-5 text-[var(--rvz-ink-muted)]" />
         ) : (
-          <ChevronDown className="h-5 w-5 text-gray-400" />
+          <ChevronDown className="h-5 w-5 text-[var(--rvz-ink-muted)]" />
         )}
       </button>
       {isOpen && (
@@ -96,16 +96,16 @@ function CollapsibleSection({
 
 function QuoteCard({ persona, quote }: { persona: string; quote: string }) {
   return (
-    <div className="bg-gray-800/30 rounded-lg p-3 border-l-4 border-brand-accent">
-      <p className="text-gray-300 italic">"{quote}"</p>
-      <p className="text-sm text-gray-500 mt-1">— {persona}</p>
+    <div className="bg-[var(--rvz-card)]/30 rounded-lg p-3 border-l-4 border-[var(--rvz-ink)]">
+      <p className="text-[var(--rvz-ink-muted)] italic">"{quote}"</p>
+      <p className="text-sm text-[var(--rvz-ink-muted)] mt-1">— {persona}</p>
     </div>
   );
 }
 
 function Badge({ children, variant = 'default' }: { children: React.ReactNode; variant?: 'default' | 'danger' | 'success' }) {
   const colors = {
-    default: 'bg-gray-700 text-gray-300',
+    default: 'bg-[var(--rvz-bg-soft)] text-[var(--rvz-ink-muted)]',
     danger: 'bg-red-500/20 text-red-400',
     success: 'bg-green-500/20 text-green-400'
   };
@@ -124,14 +124,14 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
   if (researchData?.parse_error || researchData?.raw_response) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6">
-          <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-white">
+        <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] p-6">
+          <button onClick={onClose} className="absolute right-4 top-4 text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]">
             <X className="h-6 w-6" />
           </button>
           
-          <h2 className="text-2xl font-bold text-white mb-4">Research de {productName}</h2>
+          <h2 className="text-2xl font-bold text-[var(--rvz-ink)] mb-4">Research de {productName}</h2>
           <p className="text-yellow-500 mb-4">El research se generó pero no se pudo estructurar automáticamente.</p>
-          <div className="bg-gray-800/50 rounded-lg p-4 text-gray-300 whitespace-pre-wrap text-sm">
+          <div className="bg-[var(--rvz-card)]/50 rounded-lg p-4 text-[var(--rvz-ink-muted)] whitespace-pre-wrap text-sm">
             {researchData?.raw_response || 'Sin datos'}
           </div>
           
@@ -144,13 +144,13 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
   if (!researchData) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="relative w-full max-w-md rounded-2xl border border-gray-800 bg-[#0a0a0a] p-6 text-center">
-          <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-white">
+        <div className="relative w-full max-w-md rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] p-6 text-center">
+          <button onClick={onClose} className="absolute right-4 top-4 text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]">
             <X className="h-6 w-6" />
           </button>
           <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Sin Research</h2>
-          <p className="text-gray-400 mb-6">Este producto aún no tiene research generado.</p>
+          <h2 className="text-xl font-bold text-[var(--rvz-ink)] mb-2">Sin Research</h2>
+          <p className="text-[var(--rvz-ink-muted)] mb-6">Este producto aún no tiene research generado.</p>
           <Button onClick={onClose}>Cerrar</Button>
         </div>
       </div>
@@ -159,14 +159,14 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-800 bg-[#0a0a0a]">
+      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)]">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-800 bg-[#0a0a0a] p-6">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] p-6">
           <div>
-            <h2 className="text-2xl font-bold text-white">Deep Research</h2>
-            <p className="text-gray-400">{productName}</p>
+            <h2 className="text-2xl font-bold text-[var(--rvz-ink)]">Deep Research</h2>
+            <p className="text-[var(--rvz-ink-muted)]">{productName}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <button onClick={onClose} className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -176,13 +176,13 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
           {researchData.perfil_demografico && (
             <CollapsibleSection title="Perfil Demográfico" icon={User} defaultOpen={true}>
               <div className="bg-gradient-to-r from-brand-accent/10 to-transparent rounded-lg p-4">
-                <h4 className="text-lg font-bold text-brand-accent">
+                <h4 className="text-lg font-bold text-[var(--rvz-ink)]">
                   {researchData.perfil_demografico.nombre_arquetipo || 'Avatar'}
                 </h4>
-                <p className="text-gray-400 text-sm mt-1">
+                <p className="text-[var(--rvz-ink-muted)] text-sm mt-1">
                   Edad: {researchData.perfil_demografico.edad || 'No especificado'}
                 </p>
-                <p className="text-gray-300 mt-3">
+                <p className="text-[var(--rvz-ink-muted)] mt-3">
                   {researchData.perfil_demografico.descripcion}
                 </p>
               </div>
@@ -195,12 +195,12 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
               <div className="space-y-4">
                 <div className="bg-red-500/10 rounded-lg p-4 border border-red-500/20">
                   <h4 className="font-semibold text-red-400 mb-2">Dolor Principal</h4>
-                  <p className="text-gray-300">{researchData.problema_central.dolor_principal}</p>
+                  <p className="text-[var(--rvz-ink-muted)]">{researchData.problema_central.dolor_principal}</p>
                 </div>
                 
                 {researchData.problema_central.emociones && (
                   <div>
-                    <h4 className="font-semibold text-white mb-2">Emociones Dominantes</h4>
+                    <h4 className="font-semibold text-[var(--rvz-ink)] mb-2">Emociones Dominantes</h4>
                     <div className="flex flex-wrap gap-2">
                       {researchData.problema_central.emociones.map((emocion, i) => (
                         <Badge key={i} variant="danger">{emocion}</Badge>
@@ -221,7 +221,7 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
                     {researchData.miedos_oscuros.miedos.map((m, i) => (
                       <div key={i} className="bg-purple-500/10 rounded-lg p-3 border border-purple-500/20">
                         <h5 className="font-medium text-purple-400">{m.miedo}</h5>
-                        {m.descripcion && <p className="text-gray-400 text-sm mt-1">{m.descripcion}</p>}
+                        {m.descripcion && <p className="text-[var(--rvz-ink-muted)] text-sm mt-1">{m.descripcion}</p>}
                       </div>
                     ))}
                   </div>
@@ -229,7 +229,7 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
                 
                 {researchData.miedos_oscuros.citas_hirientes && researchData.miedos_oscuros.citas_hirientes.length > 0 && (
                   <div>
-                    <h4 className="font-semibold text-white mb-2">Cosas Hirientes Que Les Dicen</h4>
+                    <h4 className="font-semibold text-[var(--rvz-ink)] mb-2">Cosas Hirientes Que Les Dicen</h4>
                     <div className="space-y-2">
                       {researchData.miedos_oscuros.citas_hirientes.map((cita, i) => (
                         <QuoteCard key={i} persona={cita.persona || 'Alguien'} quote={cita.cita || ''} />
@@ -250,9 +250,9 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
                     {researchData.soluciones_fallidas.productos_fallidos.map((p, i) => (
                       <div key={i} className="bg-orange-500/10 rounded-lg p-3 border border-orange-500/20">
                         <h5 className="font-medium text-orange-400">{p.nombre}</h5>
-                        <p className="text-gray-400 text-sm mt-1">Por qué falló: {p.razon_fallo}</p>
+                        <p className="text-[var(--rvz-ink-muted)] text-sm mt-1">Por qué falló: {p.razon_fallo}</p>
                         {p.soundbite && (
-                          <p className="text-gray-500 text-sm italic mt-2">"{p.soundbite}"</p>
+                          <p className="text-[var(--rvz-ink-muted)] text-sm italic mt-2">"{p.soundbite}"</p>
                         )}
                       </div>
                     ))}
@@ -268,11 +268,11 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
               <div className="space-y-4">
                 {researchData.transformacion.resultados && (
                   <div>
-                    <h4 className="font-semibold text-white mb-2">Resultados del "Genio Mágico"</h4>
+                    <h4 className="font-semibold text-[var(--rvz-ink)] mb-2">Resultados del "Genio Mágico"</h4>
                     <div className="space-y-2">
                       {researchData.transformacion.resultados.map((r, i) => (
                         <div key={i} className="bg-green-500/10 rounded-lg p-3 border border-green-500/20">
-                          <p className="text-gray-300">{r}</p>
+                          <p className="text-[var(--rvz-ink-muted)]">{r}</p>
                         </div>
                       ))}
                     </div>
@@ -282,7 +282,7 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
                 {researchData.transformacion.impacto_estatus && (
                   <div className="bg-gradient-to-r from-green-500/10 to-transparent rounded-lg p-4">
                     <h4 className="font-semibold text-green-400 mb-2">Impacto en Estatus</h4>
-                    <p className="text-gray-300">{researchData.transformacion.impacto_estatus}</p>
+                    <p className="text-[var(--rvz-ink-muted)]">{researchData.transformacion.impacto_estatus}</p>
                   </div>
                 )}
               </div>
@@ -296,17 +296,17 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
                 {researchData.creencias.si_solo_tuviera && (
                   <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/20">
                     <h4 className="font-semibold text-blue-400 mb-2">"Si solo tuviera..."</h4>
-                    <p className="text-gray-300">{researchData.creencias.si_solo_tuviera}</p>
+                    <p className="text-[var(--rvz-ink-muted)]">{researchData.creencias.si_solo_tuviera}</p>
                   </div>
                 )}
                 
                 {researchData.creencias.objeciones && (
                   <div>
-                    <h4 className="font-semibold text-white mb-2">Objeciones Principales</h4>
+                    <h4 className="font-semibold text-[var(--rvz-ink)] mb-2">Objeciones Principales</h4>
                     <div className="space-y-2">
                       {researchData.creencias.objeciones.map((obj, i) => (
-                        <div key={i} className="bg-gray-800/50 rounded-lg p-3">
-                          <p className="text-gray-300">{obj}</p>
+                        <div key={i} className="bg-[var(--rvz-card)]/50 rounded-lg p-3">
+                          <p className="text-[var(--rvz-ink-muted)]">{obj}</p>
                         </div>
                       ))}
                     </div>
@@ -315,7 +315,7 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
                 
                 {researchData.creencias.culpables && (
                   <div>
-                    <h4 className="font-semibold text-white mb-2">A Quién Culpan</h4>
+                    <h4 className="font-semibold text-[var(--rvz-ink)] mb-2">A Quién Culpan</h4>
                     <div className="flex flex-wrap gap-2">
                       {researchData.creencias.culpables.map((c, i) => (
                         <Badge key={i}>{c}</Badge>
@@ -342,8 +342,8 @@ export function ResearchPanel({ isOpen, onClose, researchData, productName }: Re
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 border-t border-gray-800 bg-[#0a0a0a] p-4">
-          <Button onClick={onClose} className="w-full bg-brand-accent hover:bg-brand-accent/90">
+        <div className="sticky bottom-0 border-t border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] p-4">
+          <Button onClick={onClose} className="w-full bg-[var(--rvz-accent)] hover:bg-[var(--rvz-accent)]/90">
             Cerrar Research
           </Button>
         </div>

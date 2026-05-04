@@ -29,14 +29,14 @@ export function BottomBar({
   if (!hasImage) return null;
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-gray-800 bg-black/90 px-4 py-3 backdrop-blur-md shadow-xl">
+    <div className="flex items-center gap-3 rounded-2xl border border-[var(--rvz-card-border)] bg-black/90 px-4 py-3 backdrop-blur-md shadow-xl">
       {!hasResult ? (
         // Mode 1: Initial Editing
         <>
           <label className="cursor-pointer">
             <Button 
               variant="ghost" 
-              className="text-gray-300 hover:text-white hover:bg-white/10 rounded-lg pointer-events-none"
+              className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] hover:bg-[var(--rvz-bg-soft)] rounded-lg pointer-events-none"
             >
               <Upload className="mr-2 h-4 w-4" />
               Reemplazar
@@ -52,12 +52,12 @@ export function BottomBar({
             />
           </label>
 
-          <div className="h-6 w-px bg-gray-700" />
+          <div className="h-6 w-px bg-[var(--rvz-bg-soft)]" />
 
           <Button
             onClick={onGenerate}
             disabled={isGenerating}
-            className="bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 rounded-lg font-medium transition-all shadow-lg shadow-blue-600/20"
+            className="bg-blue-600 px-6 py-2 text-[var(--rvz-ink)] hover:bg-blue-700 rounded-lg font-medium transition-all shadow-lg shadow-blue-600/20"
           >
             {isGenerating ? (
               <>
@@ -78,7 +78,7 @@ export function BottomBar({
           <Button 
             variant="ghost" 
             onClick={onUsePrevious}
-            className="text-gray-300 hover:text-white hover:bg-white/10 rounded-lg"
+            className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] hover:bg-[var(--rvz-bg-soft)] rounded-lg"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Usar Anterior
@@ -87,7 +87,7 @@ export function BottomBar({
           <Button 
             variant="ghost"
             onClick={onRedoGeneration}
-            className="text-gray-300 hover:text-white hover:bg-white/10 rounded-lg"
+            className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] hover:bg-[var(--rvz-bg-soft)] rounded-lg"
           >
             Redo
             <ArrowRight className="ml-2 h-4 w-4" />
@@ -105,18 +105,18 @@ export function BottomBar({
           <Button 
             variant="ghost"
             onClick={onDownload}
-            className="text-gray-300 hover:text-white hover:bg-white/10 rounded-lg"
+            className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] hover:bg-[var(--rvz-bg-soft)] rounded-lg"
           >
             <Download className="mr-2 h-4 w-4" />
             Descargar
           </Button>
 
-          <div className="h-6 w-px bg-gray-700" />
+          <div className="h-6 w-px bg-[var(--rvz-bg-soft)]" />
 
           <Button
             onClick={onGenerate}
             disabled={isGenerating}
-            className="bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 rounded-lg font-medium transition-all shadow-lg shadow-blue-600/20"
+            className="bg-blue-600 px-6 py-2 text-[var(--rvz-ink)] hover:bg-blue-700 rounded-lg font-medium transition-all shadow-lg shadow-blue-600/20"
           >
             {isGenerating ? (
               <>

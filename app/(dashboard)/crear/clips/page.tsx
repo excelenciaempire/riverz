@@ -87,7 +87,7 @@ export default function ClipsPage() {
       {/* Back Button */}
       <button
         onClick={() => router.push('/crear')}
-        className="mb-4 flex items-center gap-2 text-gray-400 transition hover:text-white"
+        className="mb-4 flex items-center gap-2 text-[var(--rvz-ink-muted)] transition hover:text-[var(--rvz-ink)]"
       >
         <ArrowLeft className="h-5 w-5" />
         <span className="text-sm">Volver</span>
@@ -127,8 +127,8 @@ export default function ClipsPage() {
               className={cn(
                 'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 model === 'sora-2'
-                  ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
+                  ? 'border-[var(--rvz-ink)] bg-[var(--rvz-accent)]/10 text-[var(--rvz-ink)]'
+                  : 'border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink-muted)] hover:border-[var(--rvz-card-border)]'
               )}
             >
               Sora 2
@@ -138,8 +138,8 @@ export default function ClipsPage() {
               className={cn(
                 'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 model === 'sora-2-pro'
-                  ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
+                  ? 'border-[var(--rvz-ink)] bg-[var(--rvz-accent)]/10 text-[var(--rvz-ink)]'
+                  : 'border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink-muted)] hover:border-[var(--rvz-card-border)]'
               )}
             >
               Sora 2 Pro
@@ -156,8 +156,8 @@ export default function ClipsPage() {
               className={cn(
                 'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 format === '9:16'
-                  ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
+                  ? 'border-[var(--rvz-ink)] bg-[var(--rvz-accent)]/10 text-[var(--rvz-ink)]'
+                  : 'border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink-muted)] hover:border-[var(--rvz-card-border)]'
               )}
             >
               Vertical 9:16
@@ -167,8 +167,8 @@ export default function ClipsPage() {
               className={cn(
                 'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 format === '16:9'
-                  ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
+                  ? 'border-[var(--rvz-ink)] bg-[var(--rvz-accent)]/10 text-[var(--rvz-ink)]'
+                  : 'border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink-muted)] hover:border-[var(--rvz-card-border)]'
               )}
             >
               Horizontal 16:9
@@ -185,8 +185,8 @@ export default function ClipsPage() {
               className={cn(
                 'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 duration === '10'
-                  ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
+                  ? 'border-[var(--rvz-ink)] bg-[var(--rvz-accent)]/10 text-[var(--rvz-ink)]'
+                  : 'border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink-muted)] hover:border-[var(--rvz-card-border)]'
               )}
             >
               10 Segundos
@@ -196,8 +196,8 @@ export default function ClipsPage() {
               className={cn(
                 'flex-1 cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition',
                 duration === '15'
-                  ? 'border-brand-accent bg-brand-accent/10 text-white'
-                  : 'border-gray-800 bg-[#0a0a0a] text-gray-400 hover:border-gray-700'
+                  ? 'border-[var(--rvz-ink)] bg-[var(--rvz-accent)]/10 text-[var(--rvz-ink)]'
+                  : 'border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink-muted)] hover:border-[var(--rvz-card-border)]'
               )}
             >
               15 Segundos
@@ -208,7 +208,7 @@ export default function ClipsPage() {
         {/* Generate Button */}
         <Button
           onClick={handleGenerate}
-          className="w-full rounded-2xl bg-brand-accent py-6 text-white hover:bg-brand-accent/90"
+          className="w-full rounded-2xl bg-[var(--rvz-accent)] py-6 text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/90"
           size="lg"
           disabled={isGenerating}
         >
@@ -224,10 +224,10 @@ export default function ClipsPage() {
         </div>
 
         {/* Right side - Result */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-brand-dark-secondary p-8 min-h-[600px]">
+      <div className="flex flex-col items-center justify-center rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-8 min-h-[600px]">
         {isGenerating ? (
           <div className="w-full space-y-4">
-            <h3 className="text-center text-xl font-semibold text-white">
+            <h3 className="text-center text-xl font-semibold text-[var(--rvz-ink)]">
               Generando Clip...
             </h3>
             <ProgressBar progress={progress} />
@@ -242,14 +242,14 @@ export default function ClipsPage() {
               <Button variant="outline" className="flex-1">
                 Aumentar
               </Button>
-              <Button className="flex-1 bg-brand-accent hover:bg-brand-accent/90">
+              <Button className="flex-1 bg-[var(--rvz-accent)] hover:bg-[var(--rvz-accent)]/90">
                 <Download className="mr-2 h-4 w-4" />
                 Descargar
               </Button>
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-center text-gray-500">
+          <div className="flex items-center justify-center text-[var(--rvz-ink-muted)]">
             <p>El clip generado aparecerá aquí</p>
           </div>
         )}

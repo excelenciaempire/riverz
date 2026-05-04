@@ -98,25 +98,25 @@ export function AiProviderPanel() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2">
-        <Sparkles className="h-5 w-5 text-brand-accent" />
-        <h2 className="text-xl font-semibold text-white">Proveedor de IA · Static Ads</h2>
+        <Sparkles className="h-5 w-5 text-[var(--rvz-ink)]" />
+        <h2 className="text-xl font-semibold text-[var(--rvz-ink)]">Proveedor de IA · Static Ads</h2>
       </div>
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-[var(--rvz-ink-muted)]">
         Elige qué motor genera tus creativos estáticos. Puedes conectar ambos canales y usar uno como
         principal y el otro como fallback automático.
       </p>
 
       {/* kie.ai card */}
-      <div className="rounded-lg border border-gray-700 bg-black/30 p-4">
+      <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/30 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-medium text-white">kie.ai</span>
+              <span className="font-medium text-[var(--rvz-ink)]">kie.ai</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400">
                 <Check className="h-3 w-3" /> Conectado
               </span>
             </div>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-[var(--rvz-ink-muted)]">
               Provisionado por Riverz · 14 créditos por imagen.
             </p>
           </div>
@@ -124,28 +124,28 @@ export function AiProviderPanel() {
       </div>
 
       {/* Gemini card */}
-      <div className="rounded-lg border border-gray-700 bg-black/30 p-4">
+      <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/30 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-white">Gemini directo</span>
+              <span className="font-medium text-[var(--rvz-ink)]">Gemini directo</span>
               {hasKey ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-xs text-green-400">
                   <ShieldCheck className="h-3 w-3" /> Validada · termina en …{data?.gemini_api_key_last4}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-400">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--rvz-card)] px-2 py-0.5 text-xs text-[var(--rvz-ink-muted)]">
                   <KeyRound className="h-3 w-3" /> Sin key
                 </span>
               )}
             </div>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-[var(--rvz-ink-muted)]">
               Pega tu API key de{' '}
               <a
                 href="https://aistudio.google.com/app/apikey"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline hover:text-white"
+                className="underline hover:text-[var(--rvz-ink)]"
               >
                 Google AI Studio
               </a>
@@ -160,7 +160,7 @@ export function AiProviderPanel() {
                   placeholder="AIzaSy..."
                   value={keyInput}
                   onChange={(e) => setKeyInput(e.target.value)}
-                  className="bg-gray-800"
+                  className="bg-[var(--rvz-card)]"
                 />
                 <Button
                   onClick={() => saveKey.mutate(keyInput.trim())}
@@ -173,7 +173,7 @@ export function AiProviderPanel() {
 
             {hasKey && (
               <div className="mt-3 flex items-center gap-2">
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-[var(--rvz-ink-muted)]">
                   Validada el{' '}
                   {data?.gemini_api_key_validated_at
                     ? new Date(data.gemini_api_key_validated_at).toLocaleString()
@@ -195,10 +195,10 @@ export function AiProviderPanel() {
       </div>
 
       {/* Primary / fallback selector */}
-      <div className="rounded-lg border border-gray-700 bg-black/30 p-4">
-        <Label className="text-white">Canal principal</Label>
+      <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/30 p-4">
+        <Label className="text-[var(--rvz-ink)]">Canal principal</Label>
         <div className="mt-3 space-y-2">
-          <label className="flex cursor-pointer items-center gap-3 rounded-md border border-gray-800 bg-black/40 p-3 hover:border-gray-600">
+          <label className="flex cursor-pointer items-center gap-3 rounded-md border border-[var(--rvz-card-border)] bg-black/40 p-3 hover:border-[var(--rvz-card-hover-border)]">
             <input
               type="radio"
               checked={primary === 'kie'}
@@ -206,15 +206,15 @@ export function AiProviderPanel() {
               className="h-4 w-4 accent-brand-accent"
             />
             <div className="flex-1">
-              <div className="font-medium text-white">kie.ai (default)</div>
-              <div className="text-xs text-gray-400">14 créditos por imagen, gestionado por Riverz.</div>
+              <div className="font-medium text-[var(--rvz-ink)]">kie.ai (default)</div>
+              <div className="text-xs text-[var(--rvz-ink-muted)]">14 créditos por imagen, gestionado por Riverz.</div>
             </div>
           </label>
           <label
             className={`flex items-center gap-3 rounded-md border p-3 ${
               hasKey
-                ? 'cursor-pointer border-gray-800 bg-black/40 hover:border-gray-600'
-                : 'cursor-not-allowed border-gray-900 bg-black/20 opacity-50'
+                ? 'cursor-pointer border-[var(--rvz-card-border)] bg-black/40 hover:border-[var(--rvz-card-hover-border)]'
+                : 'cursor-not-allowed border-[var(--rvz-card-border)] bg-black/20 opacity-50'
             }`}
           >
             <input
@@ -225,8 +225,8 @@ export function AiProviderPanel() {
               className="h-4 w-4 accent-brand-accent"
             />
             <div className="flex-1">
-              <div className="font-medium text-white">Gemini directo</div>
-              <div className="text-xs text-gray-400">
+              <div className="font-medium text-[var(--rvz-ink)]">Gemini directo</div>
+              <div className="text-xs text-[var(--rvz-ink-muted)]">
                 {hasKey
                   ? '0 créditos en Riverz, pagas a Google. Llamada multimodal directa, sin polling.'
                   : 'Conecta primero una API key de Gemini válida.'}
@@ -235,7 +235,7 @@ export function AiProviderPanel() {
           </label>
         </div>
 
-        <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-gray-300">
+        <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-[var(--rvz-ink-muted)]">
           <input
             type="checkbox"
             checked={fallback}

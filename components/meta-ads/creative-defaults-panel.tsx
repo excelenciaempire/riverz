@@ -82,19 +82,19 @@ export function CreativeDefaultsPanel({ value, onChange }: Props) {
   };
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-[#0a0a0a]">
+    <div className="rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)]">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
       >
         <div className="flex items-center gap-2">
           {open ? (
-            <ChevronDown className="h-4 w-4 text-gray-400" />
+            <ChevronDown className="h-4 w-4 text-[var(--rvz-ink-muted)]" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-gray-400" />
+            <ChevronRight className="h-4 w-4 text-[var(--rvz-ink-muted)]" />
           )}
-          <Sparkles className="h-4 w-4 text-brand-accent" />
-          <span className="text-sm font-medium text-white">Creative Setup</span>
+          <Sparkles className="h-4 w-4 text-[var(--rvz-ink)]" />
+          <span className="text-sm font-medium text-[var(--rvz-ink)]">Creative Setup</span>
           <span
             className={cn(
               'rounded-full border px-2 py-0.5 text-[10px] uppercase',
@@ -106,7 +106,7 @@ export function CreativeDefaultsPanel({ value, onChange }: Props) {
             {allOff ? `${total}/${total} apagados` : `${enabledCount} activos · ${total - enabledCount} apagados`}
           </span>
         </div>
-        <span className="text-[11px] text-gray-500">
+        <span className="text-[11px] text-[var(--rvz-ink-muted)]">
           {allOff
             ? 'Todas las "mejoras automáticas" de Meta están desactivadas'
             : 'Tienes mejoras de Meta activas — revisa abajo'}
@@ -114,22 +114,22 @@ export function CreativeDefaultsPanel({ value, onChange }: Props) {
       </button>
 
       {open && (
-        <div className="space-y-4 border-t border-gray-800 px-4 py-4">
+        <div className="space-y-4 border-t border-[var(--rvz-card-border)] px-4 py-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-[var(--rvz-ink-muted)]">
               Por defecto desactivamos todo para que el anuncio se publique tal
               como lo armaste. Activa solo lo que quieras que Meta optimice.
             </p>
             <div className="flex shrink-0 gap-2">
               <button
                 onClick={() => setAll(false)}
-                className="inline-flex items-center gap-1 rounded border border-gray-700 px-2 py-1 text-[10px] text-gray-300 hover:bg-gray-800"
+                className="inline-flex items-center gap-1 rounded border border-[var(--rvz-card-border)] px-2 py-1 text-[10px] text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)]"
               >
                 <Power className="h-3 w-3" /> Apagar todo
               </button>
               <button
                 onClick={() => setAll(true)}
-                className="rounded border border-brand-accent/40 bg-brand-accent/10 px-2 py-1 text-[10px] text-brand-accent hover:bg-brand-accent/20"
+                className="rounded border border-[var(--rvz-ink)]/40 bg-[var(--rvz-accent)]/10 px-2 py-1 text-[10px] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/20"
               >
                 Activar todo
               </button>
@@ -142,22 +142,22 @@ export function CreativeDefaultsPanel({ value, onChange }: Props) {
               return (
                 <div
                   key={section.title}
-                  className="rounded border border-gray-800 bg-black/30 p-3"
+                  className="rounded border border-[var(--rvz-card-border)] bg-black/30 p-3"
                 >
                   <div className="mb-2 flex items-center justify-between">
-                    <h4 className="text-xs font-semibold text-white">{section.title}</h4>
-                    <span className="text-[10px] text-gray-500">
+                    <h4 className="text-xs font-semibold text-[var(--rvz-ink)]">{section.title}</h4>
+                    <span className="text-[10px] text-[var(--rvz-ink-muted)]">
                       {sectionOn === 0 ? 'todos OFF' : `${sectionOn}/${section.toggles.length} ON`}
                     </span>
                   </div>
                   {section.description && (
-                    <p className="mb-2 text-[11px] text-gray-500">{section.description}</p>
+                    <p className="mb-2 text-[11px] text-[var(--rvz-ink-muted)]">{section.description}</p>
                   )}
                   <div className="space-y-1.5">
                     {section.toggles.map((t) => (
                       <label
                         key={t.key}
-                        className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-[#0a0a0a]"
+                        className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-[var(--rvz-bg)]"
                       >
                         <input
                           type="checkbox"
@@ -167,7 +167,7 @@ export function CreativeDefaultsPanel({ value, onChange }: Props) {
                           }
                           className="h-3.5 w-3.5"
                         />
-                        <span className="text-xs text-gray-200">{t.label}</span>
+                        <span className="text-xs text-[var(--rvz-ink-muted)]">{t.label}</span>
                       </label>
                     ))}
                   </div>

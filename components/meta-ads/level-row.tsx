@@ -40,15 +40,15 @@ export function LevelRow({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full items-center justify-between gap-4 rounded-xl border border-gray-800 bg-[#141414] px-4 py-3 text-left transition hover:border-brand-accent hover:bg-[#181818]"
+      className="group flex w-full items-center justify-between gap-4 rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] px-4 py-3 text-left transition hover:border-[var(--rvz-ink)] hover:bg-[#181818]"
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <span
           className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_DOT[status] || 'bg-gray-500')}
         />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-white">{name}</p>
-          <p className="text-[11px] text-gray-500">
+          <p className="truncate text-sm font-semibold text-[var(--rvz-ink)]">{name}</p>
+          <p className="text-[11px] text-[var(--rvz-ink-muted)]">
             {childCountLabel}
             {winners > 0 && (
               <span className="ml-2 inline-flex items-center gap-0.5 text-amber-400">
@@ -62,7 +62,7 @@ export function LevelRow({
         <Stat label="Gastado" value={fmtCurrency(spend)} />
         <Stat label="Compras" value={purchases ? String(purchases) : '—'} />
         <Stat label="ROAS" value={roas ? `${roas.toFixed(2)}x` : '—'} />
-        <ChevronRight className="h-4 w-4 text-gray-500 transition group-hover:translate-x-0.5 group-hover:text-brand-accent" />
+        <ChevronRight className="h-4 w-4 text-[var(--rvz-ink-muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--rvz-ink)]" />
       </div>
     </button>
   );
@@ -71,8 +71,8 @@ export function LevelRow({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="hidden sm:block">
-      <div className="text-[9px] uppercase tracking-wide text-gray-500">{label}</div>
-      <div className="text-sm font-semibold text-white">{value}</div>
+      <div className="text-[9px] uppercase tracking-wide text-[var(--rvz-ink-muted)]">{label}</div>
+      <div className="text-sm font-semibold text-[var(--rvz-ink)]">{value}</div>
     </div>
   );
 }

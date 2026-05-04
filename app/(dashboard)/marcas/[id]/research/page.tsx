@@ -102,7 +102,7 @@ function SectionCard({
   className?: string;
 }) {
   const colorClasses: Record<string, string> = {
-    'brand-accent': 'border-brand-accent/30 bg-brand-accent/5',
+    'brand-accent': 'border-[var(--rvz-ink)]/30 bg-[var(--rvz-accent)]/5',
     'red-500': 'border-red-500/30 bg-red-500/5',
     'purple-500': 'border-purple-500/30 bg-purple-500/5',
     'orange-500': 'border-orange-500/30 bg-orange-500/5',
@@ -113,7 +113,7 @@ function SectionCard({
   };
 
   const iconColors: Record<string, string> = {
-    'brand-accent': 'text-brand-accent bg-brand-accent/20',
+    'brand-accent': 'text-[var(--rvz-ink)] bg-[var(--rvz-accent)]/20',
     'red-500': 'text-red-400 bg-red-500/20',
     'purple-500': 'text-purple-400 bg-purple-500/20',
     'orange-500': 'text-orange-400 bg-orange-500/20',
@@ -129,7 +129,7 @@ function SectionCard({
         <div className={cn("p-2.5 rounded-xl", iconColors[accentColor])}>
           <Icon className="h-5 w-5" />
         </div>
-        <h2 className="text-lg font-bold text-white">{title}</h2>
+        <h2 className="text-lg font-bold text-[var(--rvz-ink)]">{title}</h2>
       </div>
       {children}
     </div>
@@ -138,17 +138,17 @@ function SectionCard({
 
 function QuoteCard({ persona, quote }: { persona: string; quote: string }) {
   return (
-    <div className="bg-black/30 rounded-xl p-4 border-l-4 border-brand-accent">
-      <Quote className="h-4 w-4 text-brand-accent/50 mb-2" />
-      <p className="text-gray-300 italic">"{quote}"</p>
-      <p className="text-sm text-gray-500 mt-2">— {persona}</p>
+    <div className="bg-black/30 rounded-xl p-4 border-l-4 border-[var(--rvz-ink)]">
+      <Quote className="h-4 w-4 text-[var(--rvz-ink)]/50 mb-2" />
+      <p className="text-[var(--rvz-ink-muted)] italic">"{quote}"</p>
+      <p className="text-sm text-[var(--rvz-ink-muted)] mt-2">— {persona}</p>
     </div>
   );
 }
 
 function Badge({ children, variant = 'default' }: { children: React.ReactNode; variant?: 'default' | 'danger' | 'success' | 'warning' }) {
   const colors = {
-    default: 'bg-gray-700/50 text-gray-300 border-gray-600',
+    default: 'bg-[var(--rvz-bg-soft)]/50 text-[var(--rvz-ink-muted)] border-[var(--rvz-card-hover-border)]',
     danger: 'bg-red-500/10 text-red-400 border-red-500/30',
     success: 'bg-green-500/10 text-green-400 border-green-500/30',
     warning: 'bg-orange-500/10 text-orange-400 border-orange-500/30'
@@ -165,8 +165,8 @@ function FearCard({ miedo, porQue, escenario }: { miedo: string; porQue?: string
   return (
     <div className="bg-purple-500/10 rounded-xl p-4 border border-purple-500/20 space-y-2">
       <h4 className="font-semibold text-purple-400">{miedo}</h4>
-      {porQue && <p className="text-gray-400 text-sm"><span className="text-purple-300">Por qué aterra:</span> {porQue}</p>}
-      {escenario && <p className="text-gray-500 text-sm italic">Escenario pesadilla: {escenario}</p>}
+      {porQue && <p className="text-[var(--rvz-ink-muted)] text-sm"><span className="text-purple-300">Por qué aterra:</span> {porQue}</p>}
+      {escenario && <p className="text-[var(--rvz-ink-muted)] text-sm italic">Escenario pesadilla: {escenario}</p>}
     </div>
   );
 }
@@ -175,8 +175,8 @@ function SolutionCard({ nombre, razon, soundbite }: { nombre: string; razon?: st
   return (
     <div className="bg-orange-500/10 rounded-xl p-4 border border-orange-500/20 space-y-2">
       <h4 className="font-semibold text-orange-400">{nombre}</h4>
-      {razon && <p className="text-gray-400 text-sm"><span className="text-orange-300">Por qué falló:</span> {razon}</p>}
-      {soundbite && <p className="text-gray-500 text-sm italic">"{soundbite}"</p>}
+      {razon && <p className="text-[var(--rvz-ink-muted)] text-sm"><span className="text-orange-300">Por qué falló:</span> {razon}</p>}
+      {soundbite && <p className="text-[var(--rvz-ink-muted)] text-sm italic">"{soundbite}"</p>}
     </div>
   );
 }
@@ -212,7 +212,7 @@ export default function ResearchPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--rvz-ink)]" />
       </div>
     );
   }
@@ -221,7 +221,7 @@ export default function ResearchPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <AlertTriangle className="h-12 w-12 text-red-500" />
-        <p className="text-gray-400">{error || 'Producto no encontrado'}</p>
+        <p className="text-[var(--rvz-ink-muted)]">{error || 'Producto no encontrado'}</p>
         <Button onClick={() => router.back()}>Volver</Button>
       </div>
     );
@@ -231,21 +231,21 @@ export default function ResearchPage() {
   if (!researchData || researchData.parse_error) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-6 text-gray-400 hover:text-white">
+        <Button variant="ghost" onClick={() => router.back()} className="mb-6 text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver al producto
         </Button>
         
         <div className="text-center py-12">
           <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">Research no disponible</h1>
-          <p className="text-gray-400 mb-6">
+          <h1 className="text-2xl font-bold text-[var(--rvz-ink)] mb-2">Research no disponible</h1>
+          <p className="text-[var(--rvz-ink-muted)] mb-6">
             {researchData?.raw_response 
               ? 'El research se generó pero no se pudo estructurar. Aquí está la respuesta:'
               : 'Este producto aún no tiene research generado.'
             }
           </p>
           {researchData?.raw_response && (
-            <div className="text-left bg-gray-800/50 rounded-xl p-6 text-gray-300 whitespace-pre-wrap text-sm max-h-[60vh] overflow-y-auto">
+            <div className="text-left bg-[var(--rvz-card)]/50 rounded-xl p-6 text-[var(--rvz-ink-muted)] whitespace-pre-wrap text-sm max-h-[60vh] overflow-y-auto">
               {researchData.raw_response}
             </div>
           )}
@@ -283,23 +283,23 @@ export default function ResearchPage() {
   return (
     <div className="min-h-screen bg-black">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-black/90 backdrop-blur-lg border-b border-gray-800">
+      <div className="sticky top-0 z-20 bg-black/90 backdrop-blur-lg border-b border-[var(--rvz-card-border)]">
         <div className="mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" onClick={() => router.push(`/marcas/${productId}`)} className="text-gray-400 hover:text-white">
+              <Button variant="ghost" onClick={() => router.push(`/marcas/${productId}`)} className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Volver
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-white">Deep Research</h1>
-                <p className="text-sm text-gray-500">{product.name}</p>
+                <h1 className="text-xl font-bold text-[var(--rvz-ink)]">Deep Research</h1>
+                <p className="text-sm text-[var(--rvz-ink-muted)]">{product.name}</p>
               </div>
             </div>
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => router.push(`/marcas/${productId}`)}
-              className="border-brand-accent text-brand-accent hover:bg-brand-accent/10"
+              className="border-[var(--rvz-ink)] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/10"
             >
               <RefreshCw className="mr-2 h-4 w-4" /> Regenerar
             </Button>
@@ -315,35 +315,35 @@ export default function ResearchPage() {
             <SectionCard title="Perfil Demográfico" icon={User} accentColor="brand-accent" className="lg:col-span-2">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="bg-black/30 rounded-xl p-5">
-                  <h3 className="text-xl font-bold text-brand-accent mb-1">
+                  <h3 className="text-xl font-bold text-[var(--rvz-ink)] mb-1">
                     {perfil.nombre_avatar || perfil.nombre_arquetipo || 'Avatar'}
                   </h3>
-                  <p className="text-gray-400 text-sm mb-3">
+                  <p className="text-[var(--rvz-ink-muted)] text-sm mb-3">
                     {perfil.edad && `${perfil.edad}`}
                     {perfil.genero && ` • ${perfil.genero}`}
                     {perfil.ubicacion && ` • ${perfil.ubicacion}`}
                   </p>
-                  <p className="text-gray-300">
+                  <p className="text-[var(--rvz-ink-muted)]">
                     {perfil.descripcion_detallada || perfil.descripcion || 'Sin descripción'}
                   </p>
                 </div>
                 <div className="space-y-3">
                   {perfil.ocupacion && (
                     <div className="bg-black/20 rounded-lg p-3">
-                      <p className="text-xs text-gray-500 uppercase mb-1">Ocupación</p>
-                      <p className="text-gray-300 text-sm">{perfil.ocupacion}</p>
+                      <p className="text-xs text-[var(--rvz-ink-muted)] uppercase mb-1">Ocupación</p>
+                      <p className="text-[var(--rvz-ink-muted)] text-sm">{perfil.ocupacion}</p>
                     </div>
                   )}
                   {perfil.nivel_socioeconomico && (
                     <div className="bg-black/20 rounded-lg p-3">
-                      <p className="text-xs text-gray-500 uppercase mb-1">Nivel Socioeconómico</p>
-                      <p className="text-gray-300 text-sm">{perfil.nivel_socioeconomico}</p>
+                      <p className="text-xs text-[var(--rvz-ink-muted)] uppercase mb-1">Nivel Socioeconómico</p>
+                      <p className="text-[var(--rvz-ink-muted)] text-sm">{perfil.nivel_socioeconomico}</p>
                     </div>
                   )}
                   {perfil.comportamiento_online && (
                     <div className="bg-black/20 rounded-lg p-3">
-                      <p className="text-xs text-gray-500 uppercase mb-1">Comportamiento Online</p>
-                      <p className="text-gray-300 text-sm">{perfil.comportamiento_online}</p>
+                      <p className="text-xs text-[var(--rvz-ink-muted)] uppercase mb-1">Comportamiento Online</p>
+                      <p className="text-[var(--rvz-ink-muted)] text-sm">{perfil.comportamiento_online}</p>
                     </div>
                   )}
                 </div>
@@ -357,17 +357,17 @@ export default function ResearchPage() {
               <div className="space-y-4">
                 <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/20">
                   <h4 className="font-semibold text-red-400 mb-2">Dolor Principal</h4>
-                  <p className="text-gray-300">{problema.pain_point_principal || problema.dolor_principal}</p>
+                  <p className="text-[var(--rvz-ink-muted)]">{problema.pain_point_principal || problema.dolor_principal}</p>
                 </div>
                 {problema.sintomas_diarios && (
                   <div className="bg-black/20 rounded-lg p-4">
-                    <h4 className="text-sm text-gray-500 uppercase mb-2">Síntomas Diarios</h4>
-                    <p className="text-gray-400 text-sm">{problema.sintomas_diarios}</p>
+                    <h4 className="text-sm text-[var(--rvz-ink-muted)] uppercase mb-2">Síntomas Diarios</h4>
+                    <p className="text-[var(--rvz-ink-muted)] text-sm">{problema.sintomas_diarios}</p>
                   </div>
                 )}
                 {problema.como_se_siente && (
                   <div className="bg-black/30 rounded-xl p-4 border-l-4 border-red-500">
-                    <p className="text-gray-300 italic">"{problema.como_se_siente}"</p>
+                    <p className="text-[var(--rvz-ink-muted)] italic">"{problema.como_se_siente}"</p>
                   </div>
                 )}
               </div>
@@ -408,19 +408,19 @@ export default function ResearchPage() {
                 {relaciones.pareja && (
                   <div className="bg-black/20 rounded-lg p-3">
                     <p className="text-xs text-pink-400 uppercase mb-1">Pareja</p>
-                    <p className="text-gray-300 text-sm">{relaciones.pareja}</p>
+                    <p className="text-[var(--rvz-ink-muted)] text-sm">{relaciones.pareja}</p>
                   </div>
                 )}
                 {relaciones.amigos && (
                   <div className="bg-black/20 rounded-lg p-3">
                     <p className="text-xs text-pink-400 uppercase mb-1">Amigos</p>
-                    <p className="text-gray-300 text-sm">{relaciones.amigos}</p>
+                    <p className="text-[var(--rvz-ink-muted)] text-sm">{relaciones.amigos}</p>
                   </div>
                 )}
                 {relaciones.familia_extendida && (
                   <div className="bg-black/20 rounded-lg p-3">
                     <p className="text-xs text-pink-400 uppercase mb-1">Familia</p>
-                    <p className="text-gray-300 text-sm">{relaciones.familia_extendida}</p>
+                    <p className="text-[var(--rvz-ink-muted)] text-sm">{relaciones.familia_extendida}</p>
                   </div>
                 )}
               </div>
@@ -464,7 +464,7 @@ export default function ResearchPage() {
                     <div className="space-y-2">
                       {(transformacion as any).resultados_genio_magico.map((r: string, i: number) => (
                         <div key={i} className="bg-green-500/10 rounded-lg p-3 border border-green-500/20">
-                          <p className="text-gray-300 text-sm">{r}</p>
+                          <p className="text-[var(--rvz-ink-muted)] text-sm">{r}</p>
                         </div>
                       ))}
                     </div>
@@ -473,7 +473,7 @@ export default function ResearchPage() {
                 {((transformacion as any).impacto_estatus_social || (transformacion as any).impacto_estatus) && (
                   <div className="bg-green-500/10 rounded-xl p-4 border border-green-500/20">
                     <h4 className="font-semibold text-green-400 mb-2">Impacto en Estatus</h4>
-                    <p className="text-gray-300">{(transformacion as any).impacto_estatus_social || (transformacion as any).impacto_estatus}</p>
+                    <p className="text-[var(--rvz-ink-muted)]">{(transformacion as any).impacto_estatus_social || (transformacion as any).impacto_estatus}</p>
                   </div>
                 )}
               </div>
@@ -487,7 +487,7 @@ export default function ResearchPage() {
                 {((creencias as any).si_solo_tuviera) && (
                   <div className="bg-blue-500/10 rounded-xl p-4 border border-blue-500/20">
                     <h4 className="font-semibold text-blue-400 mb-2">"Si solo tuviera..."</h4>
-                    <p className="text-gray-300">{(creencias as any).si_solo_tuviera}</p>
+                    <p className="text-[var(--rvz-ink-muted)]">{(creencias as any).si_solo_tuviera}</p>
                   </div>
                 )}
                 {((creencias as any).objeciones_principales || (creencias as any).objeciones) && (

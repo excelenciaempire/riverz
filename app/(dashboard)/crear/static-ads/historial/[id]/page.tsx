@@ -201,12 +201,12 @@ function LoadingTile({ gen }: { gen: Generation; hint?: string; templateThumbnai
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className={cn('text-[11px] font-medium tabular-nums', isFailed ? 'text-red-400' : 'text-gray-200')}>
+            <span className={cn('text-[11px] font-medium tabular-nums', isFailed ? 'text-red-400' : 'text-[var(--rvz-ink-muted)]')}>
               {isFailed ? '!' : `${Math.round(progress)}%`}
             </span>
           </div>
         </div>
-        <p className="text-[11px] text-gray-500">{cfg.label}</p>
+        <p className="text-[11px] text-[var(--rvz-ink-muted)]">{cfg.label}</p>
       </div>
     </div>
   );
@@ -266,7 +266,7 @@ function EditProgressRing({ active }: { active: boolean }) {
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[11px] font-medium tabular-nums text-gray-200">
+        <span className="text-[11px] font-medium tabular-nums text-[var(--rvz-ink-muted)]">
           {Math.round(progress)}%
         </span>
       </div>
@@ -304,7 +304,7 @@ function VariationSlide({
 
   if (isCompleted && gen.result_url) {
     return (
-      <div className="relative overflow-hidden rounded-xl bg-[#0a0a0a]">
+      <div className="relative overflow-hidden rounded-xl bg-[var(--rvz-bg)]">
         {/* Image renders at its natural aspect ratio so masonry placement
             matches the static-ads template grid — no forced 3:4 crop. The
             image itself is intentionally inert: clicking does nothing. The
@@ -327,8 +327,8 @@ function VariationSlide({
           className={cn(
             'absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full transition-all cursor-pointer z-10',
             isSelected
-              ? 'bg-[#07A498] text-white'
-              : 'bg-black/40 text-white/40 hover:text-white hover:bg-black/70 group-hover:text-white/80 group-hover:bg-black/60',
+              ? 'bg-[#07A498] text-[var(--rvz-ink)]'
+              : 'bg-black/40 text-[var(--rvz-ink-faint)] hover:text-[var(--rvz-ink)] hover:bg-black/70 group-hover:text-[var(--rvz-ink)] group-hover:bg-black/60',
           )}
         >
           <Check className="h-3.5 w-3.5" />
@@ -339,14 +339,14 @@ function VariationSlide({
         <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center justify-center gap-1.5 px-2 pt-8 pb-3 bg-gradient-to-t from-black/85 via-black/45 to-transparent opacity-0 group-hover:opacity-100 transition">
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium transition border border-white/10 whitespace-nowrap"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-[var(--rvz-ink)] text-[11px] font-medium transition border border-[var(--rvz-card-border)] whitespace-nowrap"
           >
             <Edit2 className="h-3 w-3" />
             Editar
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onCompare(); }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium transition border border-white/10 whitespace-nowrap"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-[var(--rvz-ink)] text-[11px] font-medium transition border border-[var(--rvz-card-border)] whitespace-nowrap"
           >
             <Columns2 className="h-3 w-3" />
             Comparar
@@ -355,7 +355,7 @@ function VariationSlide({
             onClick={(e) => { e.stopPropagation(); onDownload(); }}
             aria-label="Descargar"
             title="Descargar"
-            className="flex items-center justify-center h-[26px] w-[26px] shrink-0 rounded-md bg-black/70 hover:bg-black/90 text-white transition border border-white/10"
+            className="flex items-center justify-center h-[26px] w-[26px] shrink-0 rounded-md bg-black/70 hover:bg-black/90 text-[var(--rvz-ink)] transition border border-[var(--rvz-card-border)]"
           >
             <Download className="h-3 w-3" />
           </button>
@@ -375,7 +375,7 @@ function VariationSlide({
   }
 
   return (
-    <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0a0a0a]">
+    <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[var(--rvz-bg)]">
       <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-red-950/40 to-red-900/10 border border-red-500/20 rounded-xl">
         <AlertCircle className="h-12 w-12 mb-2 text-red-400" />
         <p className="text-sm font-bold text-red-400 mb-1">Error</p>
@@ -431,14 +431,14 @@ function TemplateCard({
                 Descargar pills that appear on hover. */}
             <button
               onClick={prev}
-              className="absolute left-2 top-1/3 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition opacity-0 group-hover:opacity-100 z-20"
+              className="absolute left-2 top-1/3 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-[var(--rvz-ink)] hover:text-[var(--rvz-ink)] hover:bg-black/80 transition opacity-0 group-hover:opacity-100 z-20"
               aria-label="Variación anterior"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <button
               onClick={next}
-              className="absolute right-2 top-1/3 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition opacity-0 group-hover:opacity-100 z-20"
+              className="absolute right-2 top-1/3 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-[var(--rvz-ink)] hover:text-[var(--rvz-ink)] hover:bg-black/80 transition opacity-0 group-hover:opacity-100 z-20"
               aria-label="Variación siguiente"
             >
               <ChevronRight className="h-5 w-5" />
@@ -456,7 +456,7 @@ function TemplateCard({
                 ? 'bg-[#07A498]'
                 : v.status === 'failed'
                   ? 'bg-red-500'
-                  : 'bg-gray-600';
+                  : 'bg-[var(--rvz-bg-soft)]';
             const active = i === slideIndex;
             return (
               <button
@@ -876,7 +876,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-black text-white">
+    <div className="flex h-screen overflow-hidden bg-black text-[var(--rvz-ink)]">
       {/* Main Content */}
       <div className={cn("flex-1 overflow-y-auto transition-all", editingImage ? "mr-[560px]" : "")}>
         <div className="mx-auto max-w-[1800px] p-6">
@@ -885,7 +885,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/crear/static-ads/historial')}
-              className="flex items-center gap-2 text-gray-400 transition hover:text-white"
+              className="flex items-center gap-2 text-[var(--rvz-ink-muted)] transition hover:text-[var(--rvz-ink)]"
             >
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm">Volver</span>
@@ -899,7 +899,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 <Button
                   variant="outline"
                   onClick={handleSelectAll}
-                  className="border-gray-700 text-gray-300 hover:text-white"
+                  className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
                 >
                   {selectedImages.length === project?.generations.length ? 'Deseleccionar' : 'Seleccionar Todo'}
                 </Button>
@@ -907,7 +907,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   <>
                     <Button
                       onClick={handleDownload}
-                      className="bg-[#07A498] text-white hover:bg-[#068f84]"
+                      className="bg-[#07A498] text-[var(--rvz-ink)] hover:bg-[#068f84]"
                     >
                       <Download className="mr-2 h-4 w-4" />
                       Descargar ({selectedImages.length})
@@ -927,7 +927,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             <Button
               variant="outline"
               onClick={handleDeleteProject}
-              className="border-gray-700 text-gray-400 hover:text-red-400 hover:border-red-500/50"
+              className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] hover:text-red-400 hover:border-red-500/50"
               title="Eliminar proyecto completo"
             >
               <Trash2 className="h-4 w-4" />
@@ -940,12 +940,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             natural aspect ratio without forced 3:4 cropping. */}
         <div className="columns-2 lg:columns-3 xl:columns-4 gap-4">
           {templateGroups.length === 0 && (
-            <div className="mb-4 break-inside-avoid rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] overflow-hidden">
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/60">
-                <div className="h-10 w-10 rounded-md bg-white/5 animate-pulse" />
+            <div className="mb-4 break-inside-avoid rounded-2xl border border-[var(--rvz-card-border)]/60 bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--rvz-card-border)]/60">
+                <div className="h-10 w-10 rounded-md bg-[var(--rvz-bg-soft)] animate-pulse" />
                 <div className="flex-1 min-w-0 space-y-1">
-                  <div className="h-3 w-32 rounded bg-white/5 animate-pulse" />
-                  <div className="h-2 w-20 rounded bg-white/5 animate-pulse" />
+                  <div className="h-3 w-32 rounded bg-[var(--rvz-bg-soft)] animate-pulse" />
+                  <div className="h-2 w-20 rounded bg-[var(--rvz-bg-soft)] animate-pulse" />
                 </div>
               </div>
               <LoadingTile
@@ -990,7 +990,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           onClick={() => setComparingGen(null)}
         >
           <div
-            className="relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl border border-gray-800 bg-[#141414] shadow-2xl overflow-hidden"
+            className="relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Floating close button — the named header was removed because
@@ -998,7 +998,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 customer. The modal stands on its own without a title. */}
             <button
               onClick={() => setComparingGen(null)}
-              className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white/80 hover:text-white hover:bg-black/80 transition"
+              className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-[var(--rvz-ink)] hover:text-[var(--rvz-ink)] hover:bg-black/80 transition"
               aria-label="Cerrar comparación"
             >
               <X className="h-4 w-4" />
@@ -1006,17 +1006,17 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
             <div className="flex-1 grid grid-cols-2 gap-3 p-4 overflow-auto">
               <div className="flex flex-col items-center gap-2">
-                <div className="text-[10px] uppercase tracking-wider text-gray-400">
+                <div className="text-[10px] uppercase tracking-wider text-[var(--rvz-ink-muted)]">
                   Plantilla original
                 </div>
                 {comparingGen.input_data?.templateThumbnail ? (
                   <img
                     src={comparingGen.input_data.templateThumbnail}
                     alt="Plantilla original"
-                    className="max-w-full max-h-[60vh] w-auto h-auto rounded-lg border border-white/10 object-contain"
+                    className="max-w-full max-h-[60vh] w-auto h-auto rounded-lg border border-[var(--rvz-card-border)] object-contain"
                   />
                 ) : (
-                  <div className="flex items-center justify-center w-full aspect-[3/4] rounded-lg border border-white/10 text-gray-500 text-xs">
+                  <div className="flex items-center justify-center w-full aspect-[3/4] rounded-lg border border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] text-xs">
                     Sin plantilla original
                   </div>
                 )}
@@ -1028,7 +1028,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 <img
                   src={comparingGen.result_url}
                   alt="Resultado generado"
-                  className="max-w-full max-h-[60vh] w-auto h-auto rounded-lg border border-white/10 object-contain"
+                  className="max-w-full max-h-[60vh] w-auto h-auto rounded-lg border border-[var(--rvz-card-border)] object-contain"
                 />
               </div>
             </div>
@@ -1039,7 +1039,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       {/* Edit Drawer */}
       <div
         className={cn(
-          "fixed right-0 top-0 h-screen w-[560px] bg-[#141414] border-l border-gray-800 shadow-2xl transition-transform duration-300 transform p-6 flex flex-col z-50",
+          "fixed right-0 top-0 h-screen w-[560px] bg-[var(--rvz-card)] border-l border-[var(--rvz-card-border)] shadow-2xl transition-transform duration-300 transform p-6 flex flex-col z-50",
           editingImage ? "translate-x-0" : "translate-x-full"
         )}
       >
@@ -1050,7 +1050,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </h2>
           <button 
             onClick={() => setEditingImage(null)}
-            className="text-gray-400 hover:text-white"
+            className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
           >
             <X className="h-5 w-5" />
           </button>
@@ -1064,7 +1064,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             {/* Image preview — fills all space the controls don't need.
                 object-contain keeps any aspect ratio (3:4, 1:1, 9:16) visible
                 end-to-end without cropping. */}
-            <div className="relative flex-1 min-h-0 rounded-lg overflow-hidden border border-gray-700 bg-[#0a0a0a] flex items-center justify-center">
+            <div className="relative flex-1 min-h-0 rounded-lg overflow-hidden border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] flex items-center justify-center">
               <img
                 src={currentVersion.result_url}
                 alt={`Versión ${currentVersionIdx + 1}`}
@@ -1078,7 +1078,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 <button
                   type="button"
                   onClick={() => setCurrentVersionId(versionChain[currentVersionIdx - 1].id)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur flex items-center justify-center text-white transition shadow-lg"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur flex items-center justify-center text-[var(--rvz-ink)] transition shadow-lg"
                   aria-label="Versión anterior"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -1088,7 +1088,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 <button
                   type="button"
                   onClick={() => setCurrentVersionId(versionChain[currentVersionIdx + 1].id)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur flex items-center justify-center text-white transition shadow-lg"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur flex items-center justify-center text-[var(--rvz-ink)] transition shadow-lg"
                   aria-label="Siguiente versión"
                 >
                   <ChevronRight className="h-5 w-5" />
@@ -1096,7 +1096,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               )}
 
               {versionChain.length > 1 && (
-                <div className="absolute top-2 right-2 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur text-[11px] font-medium text-white tabular-nums">
+                <div className="absolute top-2 right-2 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur text-[11px] font-medium text-[var(--rvz-ink)] tabular-nums">
                   v{currentVersionIdx + 1} / {versionChain.length}
                 </div>
               )}
@@ -1104,7 +1104,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               {isGenerating && (
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3">
                   <EditProgressRing active={isGenerating} />
-                  <p className="text-sm text-gray-300">Generando magia...</p>
+                  <p className="text-sm text-[var(--rvz-ink-muted)]">Generando magia...</p>
                 </div>
               )}
             </div>
@@ -1117,13 +1117,13 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 value={editPrompt}
                 onChange={(e) => setEditPrompt(e.target.value)}
                 disabled={isGenerating}
-                className="bg-[#0a0a0a] border-gray-800 focus:border-[#07A498] min-h-[88px] resize-none"
+                className="bg-[var(--rvz-bg)] border-[var(--rvz-card-border)] focus:border-[#07A498] min-h-[88px] resize-none"
               />
 
               <Button
                 onClick={() => editMutation.mutate()}
                 disabled={isGenerating || !editPrompt}
-                className="w-full bg-[#07A498] hover:bg-[#068f84] text-white h-11"
+                className="w-full bg-[#07A498] hover:bg-[#068f84] text-[var(--rvz-ink)] h-11"
               >
                 {isGenerating ? (
                   <>

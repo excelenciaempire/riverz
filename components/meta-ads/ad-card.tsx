@@ -23,7 +23,7 @@ interface Props {
 
 const STATUS_COLOR: Record<string, string> = {
   ACTIVE: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  PAUSED: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
+  PAUSED: 'bg-gray-500/20 text-[var(--rvz-ink-muted)] border-[var(--rvz-card-hover-border)]/30',
   DELETED: 'bg-red-500/20 text-red-300 border-red-500/30',
   ARCHIVED: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
 };
@@ -55,7 +55,7 @@ async function downloadAsset(url: string, filename: string) {
 
 export function AdCard({ ad, onClick, selected }: Props) {
   const status = ad.effective_status || ad.status || '';
-  const statusClass = STATUS_COLOR[status] || 'bg-gray-700/30 text-gray-300 border-gray-700';
+  const statusClass = STATUS_COLOR[status] || 'bg-[var(--rvz-bg-soft)]/30 text-[var(--rvz-ink-muted)] border-[var(--rvz-card-border)]';
   const insights = ad.insights;
   const intel = ad.intel;
 
@@ -82,10 +82,10 @@ export function AdCard({ ad, onClick, selected }: Props) {
   return (
     <div
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-xl border bg-[#141414] transition',
+        'group relative flex flex-col overflow-hidden rounded-xl border bg-[var(--rvz-card)] transition',
         selected
-          ? 'border-brand-accent ring-2 ring-brand-accent/40'
-          : 'border-gray-800 hover:border-brand-accent',
+          ? 'border-[var(--rvz-ink)] ring-2 ring-brand-accent/40'
+          : 'border-[var(--rvz-card-border)] hover:border-[var(--rvz-ink)]',
       )}
     >
       <div className="relative aspect-square w-full bg-black">
@@ -115,12 +115,12 @@ export function AdCard({ ad, onClick, selected }: Props) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewSrc} alt={ad.name} className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-gray-600">
+          <div className="flex h-full w-full items-center justify-center text-[var(--rvz-ink)]">
             <Icon className="h-10 w-10" />
           </div>
         )}
 
-        <div className="pointer-events-none absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wide text-white">
+        <div className="pointer-events-none absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wide text-[var(--rvz-ink)]">
           <Icon className="h-3 w-3" />
           {ad.media_kind}
         </div>
@@ -191,7 +191,7 @@ export function AdCard({ ad, onClick, selected }: Props) {
                     e.stopPropagation();
                     downloadAsset(downloadUrl, downloadFilename);
                   }}
-                  className="pointer-events-auto inline-flex items-center gap-1.5 rounded-md bg-black/80 px-2.5 py-1 text-[11px] font-medium text-white opacity-0 transition group-hover:opacity-100 hover:bg-black"
+                  className="pointer-events-auto inline-flex items-center gap-1.5 rounded-md bg-black/80 px-2.5 py-1 text-[11px] font-medium text-[var(--rvz-ink)] opacity-0 transition group-hover:opacity-100 hover:bg-black"
                   title="Descargar"
                 >
                   <Download className="h-3 w-3" />
@@ -204,8 +204,8 @@ export function AdCard({ ad, onClick, selected }: Props) {
       </div>
 
       <button type="button" onClick={onClick} className="flex-1 cursor-pointer p-3 text-left">
-        <p className="truncate text-sm font-medium text-white">{ad.name || ad.id}</p>
-        <p className="truncate text-[11px] text-gray-500">{ad.adset_name || ad.adset_id}</p>
+        <p className="truncate text-sm font-medium text-[var(--rvz-ink)]">{ad.name || ad.id}</p>
+        <p className="truncate text-[11px] text-[var(--rvz-ink-muted)]">{ad.adset_name || ad.adset_id}</p>
         <span className={cn('mt-1.5 inline-block rounded border px-1.5 py-0.5 text-[10px] font-medium', statusClass)}>
           {status || '—'}
         </span>
@@ -222,8 +222,8 @@ export function AdCard({ ad, onClick, selected }: Props) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-black/40 px-1.5 py-1">
-      <div className="text-[9px] uppercase text-gray-500">{label}</div>
-      <div className="text-[11px] font-medium text-white">{value}</div>
+      <div className="text-[9px] uppercase text-[var(--rvz-ink-muted)]">{label}</div>
+      <div className="text-[11px] font-medium text-[var(--rvz-ink)]">{value}</div>
     </div>
   );
 }

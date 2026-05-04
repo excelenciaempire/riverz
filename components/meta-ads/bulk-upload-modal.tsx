@@ -144,14 +144,14 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
       const requiresReconnect = (accountsQuery.error as any)?.requiresReconnect;
       return (
         <div className="space-y-4 py-4 text-center">
-          <p className="text-gray-300">
+          <p className="text-[var(--rvz-ink-muted)]">
             {requiresReconnect
               ? 'Necesitas conectar tu cuenta de Meta antes de subir assets.'
               : `Error: ${accountsQuery.error.message}`}
           </p>
           <a
             href="/api/meta/auth/start"
-            className="inline-flex items-center gap-2 rounded-md bg-brand-accent px-4 py-2 text-sm font-medium text-white hover:bg-brand-accent/90"
+            className="inline-flex items-center gap-2 rounded-md bg-[var(--rvz-accent)] px-4 py-2 text-sm font-medium text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/90"
           >
             <ExternalLink className="h-4 w-4" />
             Conectar con Meta
@@ -167,8 +167,8 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
     if (accounts.length === 0) {
       return (
         <div className="space-y-3 py-4 text-center">
-          <p className="text-gray-300">No encontramos cuentas de anuncios en tu Meta Business.</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-[var(--rvz-ink-muted)]">No encontramos cuentas de anuncios en tu Meta Business.</p>
+          <p className="text-xs text-[var(--rvz-ink-muted)]">
             Asegúrate de tener acceso a una ad account y de haber autorizado los permisos solicitados.
           </p>
         </div>
@@ -176,17 +176,17 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
     }
     return (
       <div className="space-y-4">
-        <p className="text-sm text-gray-300">
-          Conectado como <span className="font-semibold text-white">{accountsQuery.data?.fb_user_name}</span>.
+        <p className="text-sm text-[var(--rvz-ink-muted)]">
+          Conectado como <span className="font-semibold text-[var(--rvz-ink)]">{accountsQuery.data?.fb_user_name}</span>.
           Elige la cuenta de anuncios destino.
         </p>
         <Select value={adAccountId} onValueChange={setAdAccountId}>
-          <SelectTrigger className="border-gray-700 bg-[#0a0a0a] text-white">
+          <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink)]">
             <SelectValue placeholder="Cuenta de anuncios" />
           </SelectTrigger>
-          <SelectContent className="border-gray-800 bg-[#141414] text-white">
+          <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
             {accounts.map((acc) => (
-              <SelectItem key={acc.id} value={acc.id} className="focus:bg-brand-accent/20 focus:text-white">
+              <SelectItem key={acc.id} value={acc.id} className="focus:bg-[var(--rvz-accent)]/20 focus:text-[var(--rvz-ink)]">
                 {acc.name}
                 {acc.business_name ? ` · ${acc.business_name}` : ''}
                 {acc.currency ? ` · ${acc.currency}` : ''}
@@ -214,7 +214,7 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
         metadata={metadata}
         onChange={setMetadata}
       />
-      <div className="flex justify-between gap-2 border-t border-gray-800 pt-4">
+      <div className="flex justify-between gap-2 border-t border-[var(--rvz-card-border)] pt-4">
         <Button variant="ghost" onClick={() => setStep('selectAccount')}>
           Atrás
         </Button>
@@ -239,29 +239,29 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
     }).length;
     return (
       <div className="space-y-4">
-        <div className="rounded-lg border border-gray-800 bg-black/40 p-4">
-          <p className="text-sm text-gray-400">Cuenta de anuncios</p>
-          <p className="text-base font-semibold text-white">{accountName}</p>
+        <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/40 p-4">
+          <p className="text-sm text-[var(--rvz-ink-muted)]">Cuenta de anuncios</p>
+          <p className="text-base font-semibold text-[var(--rvz-ink)]">{accountName}</p>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-lg border border-gray-800 bg-black/40 p-4 text-center">
-            <ImageIcon className="mx-auto h-5 w-5 text-brand-accent" />
-            <p className="mt-1 text-2xl font-bold text-white">{counts.images}</p>
-            <p className="text-xs text-gray-400">Imágenes</p>
+          <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/40 p-4 text-center">
+            <ImageIcon className="mx-auto h-5 w-5 text-[var(--rvz-ink)]" />
+            <p className="mt-1 text-2xl font-bold text-[var(--rvz-ink)]">{counts.images}</p>
+            <p className="text-xs text-[var(--rvz-ink-muted)]">Imágenes</p>
           </div>
-          <div className="rounded-lg border border-gray-800 bg-black/40 p-4 text-center">
-            <Video className="mx-auto h-5 w-5 text-brand-accent" />
-            <p className="mt-1 text-2xl font-bold text-white">{counts.videos}</p>
-            <p className="text-xs text-gray-400">Videos</p>
+          <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/40 p-4 text-center">
+            <Video className="mx-auto h-5 w-5 text-[var(--rvz-ink)]" />
+            <p className="mt-1 text-2xl font-bold text-[var(--rvz-ink)]">{counts.videos}</p>
+            <p className="text-xs text-[var(--rvz-ink-muted)]">Videos</p>
           </div>
-          <div className="rounded-lg border border-gray-800 bg-black/40 p-4 text-center">
+          <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/40 p-4 text-center">
             <p className="mt-1 text-2xl font-bold text-emerald-400">{withMeta}</p>
-            <p className="text-xs text-gray-400">Con copy</p>
+            <p className="text-xs text-[var(--rvz-ink-muted)]">Con copy</p>
           </div>
         </div>
-        <div className="grid max-h-64 grid-cols-4 gap-2 overflow-y-auto rounded-lg border border-gray-800 bg-black/30 p-2">
+        <div className="grid max-h-64 grid-cols-4 gap-2 overflow-y-auto rounded-lg border border-[var(--rvz-card-border)] bg-black/30 p-2">
           {selectedGenerations.map((g) => (
-            <div key={g.id} className="aspect-square overflow-hidden rounded-md bg-gray-900">
+            <div key={g.id} className="aspect-square overflow-hidden rounded-md bg-[var(--rvz-card)]">
               {g.result_url ? (
                 VIDEO_TYPES.has(g.type) || g.type.includes('video') ? (
                   <video src={g.result_url} className="h-full w-full object-cover" muted />
@@ -272,7 +272,7 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-[var(--rvz-ink-muted)]">
           Las imágenes se suben directo a la biblioteca de medios. Los videos quedan procesándose en Meta y aparecerán como
           "Listo" cuando estén disponibles. El copy se guarda con cada asset y se reutiliza cuando creas la campaña.
         </p>
@@ -292,7 +292,7 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
     const rows = statusQuery.data?.uploads || [];
     return (
       <div className="space-y-3">
-        <p className="text-sm text-gray-300">
+        <p className="text-sm text-[var(--rvz-ink-muted)]">
           Procesando {rows.length} asset{rows.length === 1 ? '' : 's'} en Meta. Puedes cerrar esta ventana — el progreso se
           guarda en la sección Meta Ads.
         </p>
@@ -320,9 +320,9 @@ export function BulkUploadModal({ isOpen, onClose, selectedGenerations }: Props)
     const failed = rows.filter((r) => r.status === 'failed').length;
     return (
       <div className="space-y-4">
-        <div className="rounded-lg border border-gray-800 bg-black/40 p-4 text-center">
-          <p className="text-sm text-gray-400">Resultado</p>
-          <p className="mt-1 text-lg font-semibold text-white">
+        <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/40 p-4 text-center">
+          <p className="text-sm text-[var(--rvz-ink-muted)]">Resultado</p>
+          <p className="mt-1 text-lg font-semibold text-[var(--rvz-ink)]">
             {success} listos · {failed} con error
           </p>
         </div>

@@ -355,7 +355,7 @@ function CrearContent() {
     return (
       <div className="space-y-3">
         <p className="text-sm text-red-400">No se pudo cargar tu cuenta de Meta.</p>
-        <Link href="/campanas/meta" className="text-sm text-brand-accent hover:underline">
+        <Link href="/campanas/meta" className="text-sm text-[var(--rvz-ink)] hover:underline">
           Reconectar
         </Link>
       </div>
@@ -378,14 +378,14 @@ function CrearContent() {
       <div className="flex items-center justify-between gap-3">
         <Link
           href="/campanas/meta"
-          className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-sm text-gray-300 hover:bg-gray-800 hover:text-white"
+          className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-sm text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]"
         >
           <ArrowLeft className="h-4 w-4" /> Volver
         </Link>
         {rows.length > 0 && phase !== 'done' && (
           <button
             onClick={handleReset}
-            className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs text-gray-400 hover:bg-red-500/10 hover:text-red-400"
+            className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs text-[var(--rvz-ink-muted)] hover:bg-red-500/10 hover:text-red-400"
             title="Borra todas las filas y empieza de cero"
           >
             <Trash2 className="h-3.5 w-3.5" /> Empezar de cero
@@ -395,15 +395,15 @@ function CrearContent() {
 
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Nueva campaña</h1>
-          <p className="mt-0.5 text-sm text-gray-400">
+          <h1 className="text-2xl font-bold text-[var(--rvz-ink)]">Nueva campaña</h1>
+          <p className="mt-0.5 text-sm text-[var(--rvz-ink-muted)]">
             Importa assets, edítalos en grilla, asígnalos a campañas/conjuntos de tu cuenta y
             lanza todo en pausa. Nada se sube a Meta hasta que pulses Lanzar.
           </p>
         </div>
-        <div className="text-right text-xs text-gray-500">
+        <div className="text-right text-xs text-[var(--rvz-ink-muted)]">
           <div>
-            <span className="text-white">{rows.length}</span> anuncios
+            <span className="text-[var(--rvz-ink)]">{rows.length}</span> anuncios
           </div>
         </div>
       </div>
@@ -432,18 +432,18 @@ function CrearContent() {
       )}
 
       {phase !== 'done' && rows.length > 0 && (
-        <div className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-800 bg-[#141414] px-4 py-3 shadow-lg">
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+        <div className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] px-4 py-3 shadow-lg">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--rvz-ink-muted)]">
             <span>
-              <span className="text-white">{summary.campaigns.size}</span> campañas
+              <span className="text-[var(--rvz-ink)]">{summary.campaigns.size}</span> campañas
             </span>
             <span>·</span>
             <span>
-              <span className="text-white">{summary.adsets.size}</span> conjuntos
+              <span className="text-[var(--rvz-ink)]">{summary.adsets.size}</span> conjuntos
             </span>
             <span>·</span>
             <span>
-              <span className="text-white">{rows.length}</span> anuncios
+              <span className="text-[var(--rvz-ink)]">{rows.length}</span> anuncios
             </span>
             {phase === 'uploading' && launchProgress && (
               <span className="flex items-center gap-1 text-amber-400">
@@ -452,7 +452,7 @@ function CrearContent() {
               </span>
             )}
             {phase === 'launching' && (
-              <span className="flex items-center gap-1 text-brand-accent">
+              <span className="flex items-center gap-1 text-[var(--rvz-ink)]">
                 Creando anuncios…
               </span>
             )}
@@ -507,10 +507,10 @@ function RecentLaunches({
 }) {
   return (
     <section className="space-y-3 pt-6">
-      <div className="flex items-center gap-2 border-b border-gray-800 pb-2">
-        <History className="h-4 w-4 text-gray-400" />
-        <h2 className="text-sm font-semibold text-white">Subidas recientes</h2>
-        <span className="text-xs text-gray-500">
+      <div className="flex items-center gap-2 border-b border-[var(--rvz-card-border)] pb-2">
+        <History className="h-4 w-4 text-[var(--rvz-ink-muted)]" />
+        <h2 className="text-sm font-semibold text-[var(--rvz-ink)]">Subidas recientes</h2>
+        <span className="text-xs text-[var(--rvz-ink-muted)]">
           ({launches.length} subida{launches.length === 1 ? '' : 's'})
         </span>
       </div>
@@ -522,7 +522,7 @@ function RecentLaunches({
           const errCount = (l.result?.rows || []).filter((r) => r.error).length;
           const total = l.rows?.length || 0;
           return (
-            <div key={l.id} className="rounded-lg border border-gray-800 bg-[#0a0a0a]">
+            <div key={l.id} className="rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)]">
               <button
                 onClick={() => onOpen(isOpen ? null : l.id)}
                 className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
@@ -530,13 +530,13 @@ function RecentLaunches({
                 <div className="flex items-center gap-3">
                   <ChevronRight
                     className={cn(
-                      'h-4 w-4 text-gray-400 transition-transform',
+                      'h-4 w-4 text-[var(--rvz-ink-muted)] transition-transform',
                       isOpen && 'rotate-90',
                     )}
                   />
                   <div>
-                    <p className="text-sm text-white">{l.name}</p>
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-sm text-[var(--rvz-ink)]">{l.name}</p>
+                    <p className="text-[11px] text-[var(--rvz-ink-muted)]">
                       {l.launched_at
                         ? new Date(l.launched_at).toLocaleString('es', {
                             day: '2-digit',
@@ -558,14 +558,14 @@ function RecentLaunches({
                       {errCount} con error
                     </span>
                   )}
-                  <span className="rounded-full border border-gray-700 bg-gray-800/40 px-2 py-0.5 text-gray-400">
+                  <span className="rounded-full border border-[var(--rvz-card-border)] bg-[var(--rvz-card)]/40 px-2 py-0.5 text-[var(--rvz-ink-muted)]">
                     Solo lectura
                   </span>
                 </div>
               </button>
 
               {isOpen && (
-                <div className="border-t border-gray-800 p-3">
+                <div className="border-t border-[var(--rvz-card-border)] p-3">
                   <AdGridEditor
                     rows={(l.rows as any[]).map((r) => ({
                       rowId: r.rowId,
@@ -598,13 +598,13 @@ function RecentLaunches({
                               : 'border-red-500/30 bg-red-500/5 text-red-300',
                           )}
                         >
-                          <span className="font-mono text-[10px] text-gray-500">
+                          <span className="font-mono text-[10px] text-[var(--rvz-ink-muted)]">
                             {r.rowId.slice(-6)}
                           </span>{' '}
                           {r.adId ? (
                             <>
                               ✓ Ad creado{' '}
-                              <span className="font-mono text-[10px] text-gray-500">
+                              <span className="font-mono text-[10px] text-[var(--rvz-ink-muted)]">
                                 {r.adId}
                               </span>
                             </>
@@ -635,15 +635,15 @@ function LaunchSummary({
   const okRows = result.rows.filter((r) => r.adId);
   const errorRows = result.rows.filter((r) => r.error);
   return (
-    <div className="space-y-4 rounded-xl border border-gray-800 bg-[#141414] p-6">
+    <div className="space-y-4 rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6">
       <div className="flex items-center gap-2">
         <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-        <h2 className="text-lg font-semibold text-white">
+        <h2 className="text-lg font-semibold text-[var(--rvz-ink)]">
           {okRows.length} anuncio{okRows.length === 1 ? '' : 's'} creado
           {okRows.length === 1 ? '' : 's'} en pausa
         </h2>
       </div>
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-[var(--rvz-ink-muted)]">
         Activa los anuncios desde Ads Manager cuando estés listo. La subida quedó guardada en
         "Subidas recientes" abajo.
       </p>

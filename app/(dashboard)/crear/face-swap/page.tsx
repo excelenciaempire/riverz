@@ -103,7 +103,7 @@ export default function FaceSwapPage() {
       {/* Back Button */}
       <button
         onClick={() => router.push('/crear')}
-        className="mb-4 flex items-center gap-2 text-gray-400 transition hover:text-white"
+        className="mb-4 flex items-center gap-2 text-[var(--rvz-ink-muted)] transition hover:text-[var(--rvz-ink)]"
       >
         <ArrowLeft className="h-5 w-5" />
         <span className="text-sm">Volver</span>
@@ -117,7 +117,7 @@ export default function FaceSwapPage() {
           {/* Source Video */}
           <div>
             <Label className="mb-1.5 block text-center text-sm">Video de Origen</Label>
-            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a] p-3">
+            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] p-3">
               {sourceVideo ? (
                 <video
                   src={URL.createObjectURL(sourceVideo)}
@@ -132,12 +132,12 @@ export default function FaceSwapPage() {
                     className="hidden"
                     id="source-video"
                   />
-                  <label htmlFor="source-video" className="flex h-full cursor-pointer flex-col items-center justify-center transition hover:bg-[#1a1a1a]">
-                    <svg className="mb-2 h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <label htmlFor="source-video" className="flex h-full cursor-pointer flex-col items-center justify-center transition hover:bg-[var(--rvz-input-bg)]">
+                    <svg className="mb-2 h-8 w-8 text-[var(--rvz-ink-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    <span className="text-center text-xs text-gray-400">Haz clic aquí</span>
-                    <p className="mt-1 text-[10px] text-gray-600">Máx: 100MB</p>
+                    <span className="text-center text-xs text-[var(--rvz-ink-muted)]">Haz clic aquí</span>
+                    <p className="mt-1 text-[10px] text-[var(--rvz-ink)]">Máx: 100MB</p>
                   </label>
                 </>
               )}
@@ -147,7 +147,7 @@ export default function FaceSwapPage() {
           {/* Character Image */}
           <div>
             <Label className="mb-1.5 block text-center text-sm">Imagen del Personaje</Label>
-            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-gray-800 bg-[#0a0a0a] p-3">
+            <div className="aspect-square overflow-hidden rounded-2xl border-2 border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] p-3">
               {characterImage ? (
                 <img
                   src={URL.createObjectURL(characterImage)}
@@ -163,12 +163,12 @@ export default function FaceSwapPage() {
                     className="hidden"
                     id="character-image"
                   />
-                  <label htmlFor="character-image" className="flex h-full cursor-pointer flex-col items-center justify-center transition hover:bg-[#1a1a1a]">
-                    <svg className="mb-2 h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <label htmlFor="character-image" className="flex h-full cursor-pointer flex-col items-center justify-center transition hover:bg-[var(--rvz-input-bg)]">
+                    <svg className="mb-2 h-8 w-8 text-[var(--rvz-ink-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    <span className="text-center text-xs text-gray-400">Haz clic aquí</span>
-                    <p className="mt-1 text-[10px] text-gray-600">Máx: 10MB</p>
+                    <span className="text-center text-xs text-[var(--rvz-ink-muted)]">Haz clic aquí</span>
+                    <p className="mt-1 text-[10px] text-[var(--rvz-ink)]">Máx: 10MB</p>
                   </label>
                 </>
               )}
@@ -198,15 +198,15 @@ export default function FaceSwapPage() {
         </div>
 
         {/* Checkbox */}
-        <div className="flex items-start gap-3 rounded-lg border border-gray-800 bg-[#0a0a0a] p-4">
+        <div className="flex items-start gap-3 rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] p-4">
           <input
             type="checkbox"
             id="consent"
             checked={consent}
             onChange={(e) => setConsent(e.target.checked)}
-            className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-600 bg-transparent text-brand-accent focus:ring-1 focus:ring-brand-accent"
+            className="mt-0.5 h-4 w-4 cursor-pointer rounded border-[var(--rvz-card-hover-border)] bg-transparent text-[var(--rvz-ink)] focus:ring-1 focus:ring-brand-accent"
           />
-          <label htmlFor="consent" className="cursor-pointer text-sm text-gray-300 leading-relaxed">
+          <label htmlFor="consent" className="cursor-pointer text-sm text-[var(--rvz-ink-muted)] leading-relaxed">
             Confirmo que tengo los derechos y/o consentimiento para usar las imágenes/videos si contienen personas reales.
           </label>
         </div>
@@ -214,7 +214,7 @@ export default function FaceSwapPage() {
         {/* Generate Button */}
         <Button
           onClick={handleGenerate}
-          className="w-full rounded-2xl bg-brand-accent py-6 text-white hover:bg-brand-accent/90"
+          className="w-full rounded-2xl bg-[var(--rvz-accent)] py-6 text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/90"
           size="lg"
           disabled={isGenerating}
         >
@@ -230,10 +230,10 @@ export default function FaceSwapPage() {
       </div>
 
         {/* Right side - Result */}
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-800 bg-[#141414] p-8 min-h-[750px]">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-8 min-h-[750px]">
           {isGenerating ? (
             <div className="w-full space-y-4">
-              <h3 className="text-center text-xl font-semibold text-white">
+              <h3 className="text-center text-xl font-semibold text-[var(--rvz-ink)]">
                 Generando Face Swap...
               </h3>
               <ProgressBar progress={progress} />
@@ -248,14 +248,14 @@ export default function FaceSwapPage() {
                 <Button variant="outline" className="flex-1">
                   Aumentar
                 </Button>
-                <Button className="flex-1 bg-brand-accent hover:bg-brand-accent/90">
+                <Button className="flex-1 bg-[var(--rvz-accent)] hover:bg-[var(--rvz-accent)]/90">
                   <Download className="mr-2 h-4 w-4" />
                   Descargar
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center text-gray-500">
+            <div className="flex items-center justify-center text-[var(--rvz-ink-muted)]">
               <p>El video con face swap aparecerá aquí</p>
             </div>
           )}

@@ -68,23 +68,23 @@ export function AssetPickerModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative z-10 flex h-[85vh] w-full max-w-5xl flex-col rounded-2xl border border-gray-800 bg-[#141414] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-800 px-6 py-4">
+      <div className="relative z-10 flex h-[85vh] w-full max-w-5xl flex-col rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[var(--rvz-card-border)] px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-white">Importar assets</h2>
-            <p className="text-xs text-gray-400">
+            <h2 className="text-lg font-semibold text-[var(--rvz-ink)]">Importar assets</h2>
+            <p className="text-xs text-[var(--rvz-ink-muted)]">
               Selecciona generaciones de tu historial para añadirlas como filas en la grilla.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white"
+            className="rounded-lg p-1.5 text-[var(--rvz-ink-muted)] transition hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex items-center justify-between border-b border-gray-800 px-6 py-3">
+        <div className="flex items-center justify-between border-b border-[var(--rvz-card-border)] px-6 py-3">
           <div className="flex gap-2">
             {(['all', 'videos', 'images'] as const).map((f) => (
               <button
@@ -93,16 +93,16 @@ export function AssetPickerModal({
                 className={cn(
                   'rounded-lg px-3 py-1.5 text-xs font-medium transition',
                   filter === f
-                    ? 'bg-brand-accent text-white'
-                    : 'bg-[#0a0a0a] text-gray-400 hover:text-white',
+                    ? 'bg-[var(--rvz-accent)] text-[var(--rvz-ink)]'
+                    : 'bg-[var(--rvz-bg)] text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]',
                 )}
               >
                 {f === 'all' ? 'Todos' : f === 'videos' ? 'Videos' : 'Imágenes'}
               </button>
             ))}
           </div>
-          <p className="text-xs text-gray-500">
-            <span className="text-white">{selected.size}</span> seleccionados
+          <p className="text-xs text-[var(--rvz-ink-muted)]">
+            <span className="text-[var(--rvz-ink)]">{selected.size}</span> seleccionados
           </p>
         </div>
 
@@ -117,19 +117,19 @@ export function AssetPickerModal({
               </p>
               <button
                 onClick={() => generationsQuery.refetch()}
-                className="mt-2 text-xs text-brand-accent hover:underline"
+                className="mt-2 text-xs text-[var(--rvz-ink)] hover:underline"
               >
                 Reintentar
               </button>
             </div>
           ) : items.length === 0 ? (
-            <div className="rounded-xl border border-gray-800 bg-[#0a0a0a] p-12 text-center">
-              <p className="text-gray-400">
+            <div className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] p-12 text-center">
+              <p className="text-[var(--rvz-ink-muted)]">
                 {(generationsQuery.data || []).length === 0
                   ? 'No hay generaciones completadas para esta cuenta.'
                   : 'Todas las generaciones ya están en la grilla.'}
               </p>
-              <a href="/historial" className="mt-2 inline-block text-xs text-brand-accent hover:underline">
+              <a href="/historial" className="mt-2 inline-block text-xs text-[var(--rvz-ink)] hover:underline">
                 Ver historial →
               </a>
             </div>
@@ -144,10 +144,10 @@ export function AssetPickerModal({
                     type="button"
                     onClick={() => toggle(g.id)}
                     className={cn(
-                      'group relative aspect-square overflow-hidden rounded-lg border bg-gray-900 transition',
+                      'group relative aspect-square overflow-hidden rounded-lg border bg-[var(--rvz-card)] transition',
                       isSelected
-                        ? 'border-brand-accent ring-2 ring-brand-accent/40'
-                        : 'border-gray-800 hover:border-brand-accent',
+                        ? 'border-[var(--rvz-ink)] ring-2 ring-brand-accent/40'
+                        : 'border-[var(--rvz-card-border)] hover:border-[var(--rvz-ink)]',
                     )}
                   >
                     {g.result_url &&
@@ -161,14 +161,14 @@ export function AssetPickerModal({
                         className={cn(
                           'flex h-6 w-6 items-center justify-center rounded border transition',
                           isSelected
-                            ? 'border-brand-accent bg-brand-accent text-white'
-                            : 'border-gray-500 bg-black/60 text-transparent group-hover:text-white',
+                            ? 'border-[var(--rvz-ink)] bg-[var(--rvz-accent)] text-[var(--rvz-ink)]'
+                            : 'border-[var(--rvz-card-hover-border)] bg-black/60 text-transparent group-hover:text-[var(--rvz-ink)]',
                         )}
                       >
                         <Check className="h-3.5 w-3.5" />
                       </div>
                     </div>
-                    <div className="absolute right-1.5 top-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[9px] uppercase text-white">
+                    <div className="absolute right-1.5 top-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[9px] uppercase text-[var(--rvz-ink)]">
                       {isVideo ? <Video className="inline h-3 w-3" /> : <ImageIcon className="inline h-3 w-3" />}
                     </div>
                   </button>
@@ -178,7 +178,7 @@ export function AssetPickerModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-gray-800 px-6 py-4">
+        <div className="flex items-center justify-end gap-2 border-t border-[var(--rvz-card-border)] px-6 py-4">
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>

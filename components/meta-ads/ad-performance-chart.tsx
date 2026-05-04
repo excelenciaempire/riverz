@@ -72,8 +72,8 @@ export function AdPerformanceChart({ adId, datePreset }: Props) {
             className={cn(
               'rounded-md border px-2 py-1 text-[11px] font-medium transition',
               metric === m.key
-                ? 'border-brand-accent bg-brand-accent/20 text-brand-accent'
-                : 'border-gray-700 bg-black/30 text-gray-400 hover:text-white',
+                ? 'border-[var(--rvz-ink)] bg-[var(--rvz-accent)]/20 text-[var(--rvz-ink)]'
+                : 'border-[var(--rvz-card-border)] bg-black/30 text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]',
             )}
           >
             {m.label}
@@ -81,9 +81,9 @@ export function AdPerformanceChart({ adId, datePreset }: Props) {
         ))}
       </div>
 
-      <div className="rounded-lg border border-gray-800 bg-black/30 p-3">
+      <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/30 p-3">
         {query.isLoading ? (
-          <div className="flex h-48 items-center justify-center text-xs text-gray-500">
+          <div className="flex h-48 items-center justify-center text-xs text-[var(--rvz-ink-muted)]">
             <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Cargando…
           </div>
         ) : query.error ? (
@@ -91,11 +91,11 @@ export function AdPerformanceChart({ adId, datePreset }: Props) {
             {(query.error as Error).message}
           </div>
         ) : data.length === 0 ? (
-          <div className="flex h-48 items-center justify-center text-xs text-gray-500">
+          <div className="flex h-48 items-center justify-center text-xs text-[var(--rvz-ink-muted)]">
             Sin datos en este periodo.
           </div>
         ) : allZero ? (
-          <div className="flex h-48 items-center justify-center text-xs text-gray-500">
+          <div className="flex h-48 items-center justify-center text-xs text-[var(--rvz-ink-muted)]">
             Todos los valores de {config.label} son 0 en este rango.
           </div>
         ) : (

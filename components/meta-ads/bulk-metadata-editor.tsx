@@ -103,17 +103,17 @@ export function BulkMetadataEditor({ generations, metadata, onChange, defaults }
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-brand-accent/30 bg-brand-accent/5 p-4">
+      <div className="rounded-lg border border-[var(--rvz-ink)]/30 bg-[var(--rvz-accent)]/5 p-4">
         <div className="mb-2 flex items-center gap-2">
-          <Wand2 className="h-4 w-4 text-brand-accent" />
-          <p className="text-sm font-semibold text-white">
+          <Wand2 className="h-4 w-4 text-[var(--rvz-ink)]" />
+          <p className="text-sm font-semibold text-[var(--rvz-ink)]">
             Edición en bulk · {generations.length} asset{generations.length === 1 ? '' : 's'}
-            <span className="ml-2 text-xs font-normal text-gray-400">
+            <span className="ml-2 text-xs font-normal text-[var(--rvz-ink-muted)]">
               ({counts.images} img · {counts.videos} video)
             </span>
           </p>
         </div>
-        <p className="mb-3 text-xs text-gray-400">
+        <p className="mb-3 text-xs text-[var(--rvz-ink-muted)]">
           Lo que escribas aquí se aplicará a todos. Después puedes ajustar cada asset individualmente abajo.
         </p>
         <div className="grid gap-3 md:grid-cols-2">
@@ -147,13 +147,13 @@ export function BulkMetadataEditor({ generations, metadata, onChange, defaults }
             placeholder="https://shop.example.com/producto"
           />
           <div>
-            <label className="mb-1 block text-[10px] uppercase tracking-wide text-gray-500">CTA</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--rvz-ink-muted)]">CTA</label>
             <div className="flex gap-2">
               <Select value={bulk.cta || 'SHOP_NOW'} onValueChange={(v) => setBulk({ ...bulk, cta: v })}>
-                <SelectTrigger className="border-gray-700 bg-[#0a0a0a] text-white">
+                <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink)]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="border-gray-800 bg-[#141414] text-white">
+                <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                   {CTA_OPTIONS.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c.replace(/_/g, ' ')}
@@ -163,7 +163,7 @@ export function BulkMetadataEditor({ generations, metadata, onChange, defaults }
               </Select>
               <button
                 onClick={() => applyBulkToAll('cta')}
-                className="rounded border border-brand-accent/40 bg-brand-accent/10 px-2 text-xs text-brand-accent hover:bg-brand-accent/20"
+                className="rounded border border-[var(--rvz-ink)]/40 bg-[var(--rvz-accent)]/10 px-2 text-xs text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/20"
               >
                 Aplicar
               </button>
@@ -187,9 +187,9 @@ export function BulkMetadataEditor({ generations, metadata, onChange, defaults }
           const effectiveName = meta.name || `Anuncio ${String(i + 1).padStart(2, '0')}`;
           const hasOverride = !!(meta.primary_text || meta.headline || meta.description || meta.link_url);
           return (
-            <div key={g.id} className="rounded-lg border border-gray-800 bg-black/40">
+            <div key={g.id} className="rounded-lg border border-[var(--rvz-card-border)] bg-black/40">
               <div className="flex items-center gap-3 p-3">
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-gray-900">
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-[var(--rvz-card)]">
                   {g.result_url ? (
                     isVideo ? (
                       <video src={g.result_url} className="h-full w-full object-cover" muted />
@@ -203,22 +203,22 @@ export function BulkMetadataEditor({ generations, metadata, onChange, defaults }
                     value={meta.name || ''}
                     onChange={(e) => updateAsset(g.id, { name: e.target.value })}
                     placeholder={effectiveName}
-                    className="w-full rounded bg-transparent text-sm font-medium text-white placeholder-gray-500 focus:outline-none"
+                    className="w-full rounded bg-transparent text-sm font-medium text-[var(--rvz-ink)] placeholder-gray-500 focus:outline-none"
                   />
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-[var(--rvz-ink-muted)]">
                     {g.type.replace(/_/g, ' ')} · {isVideo ? 'video' : 'imagen'}
-                    {hasOverride && <span className="ml-2 text-brand-accent">· overrides</span>}
+                    {hasOverride && <span className="ml-2 text-[var(--rvz-ink)]">· overrides</span>}
                   </p>
                 </div>
                 <button
                   onClick={() => toggleExpanded(g.id)}
-                  className="rounded p-1.5 text-gray-400 hover:bg-gray-800 hover:text-white"
+                  className="rounded p-1.5 text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]"
                 >
                   <ChevronDown className={cn('h-4 w-4 transition', isOpen && 'rotate-180')} />
                 </button>
               </div>
               {isOpen && (
-                <div className="grid gap-2.5 border-t border-gray-800 p-3 md:grid-cols-2">
+                <div className="grid gap-2.5 border-t border-[var(--rvz-card-border)] p-3 md:grid-cols-2">
                   <Field
                     label="Texto principal"
                     value={meta.primary_text || ''}
@@ -271,7 +271,7 @@ function BulkInput({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-[10px] uppercase tracking-wide text-gray-500">{label}</label>
+      <label className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--rvz-ink-muted)]">{label}</label>
       <div className="flex gap-2">
         {multiline ? (
           <textarea
@@ -279,20 +279,20 @@ function BulkInput({
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             rows={2}
-            className="min-h-[40px] flex-1 resize-y rounded border border-gray-700 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none"
+            className="min-h-[40px] flex-1 resize-y rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-sm text-[var(--rvz-ink)] placeholder-gray-600 focus:border-[var(--rvz-ink)] focus:outline-none"
           />
         ) : (
           <input
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className="flex-1 rounded border border-gray-700 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none"
+            className="flex-1 rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-sm text-[var(--rvz-ink)] placeholder-gray-600 focus:border-[var(--rvz-ink)] focus:outline-none"
           />
         )}
         <button
           onClick={onApply}
           disabled={!value}
-          className="shrink-0 rounded border border-brand-accent/40 bg-brand-accent/10 px-2 text-xs text-brand-accent hover:bg-brand-accent/20 disabled:opacity-40"
+          className="shrink-0 rounded border border-[var(--rvz-ink)]/40 bg-[var(--rvz-accent)]/10 px-2 text-xs text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/20 disabled:opacity-40"
         >
           Aplicar
         </button>
@@ -316,21 +316,21 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-[10px] uppercase tracking-wide text-gray-500">{label}</label>
+      <label className="mb-1 block text-[10px] uppercase tracking-wide text-[var(--rvz-ink-muted)]">{label}</label>
       {multiline ? (
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           rows={2}
-          className="w-full resize-y rounded border border-gray-800 bg-black/40 px-2 py-1.5 text-sm text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none"
+          className="w-full resize-y rounded border border-[var(--rvz-card-border)] bg-black/40 px-2 py-1.5 text-sm text-[var(--rvz-ink)] placeholder-gray-600 focus:border-[var(--rvz-ink)] focus:outline-none"
         />
       ) : (
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full rounded border border-gray-800 bg-black/40 px-2 py-1.5 text-sm text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none"
+          className="w-full rounded border border-[var(--rvz-card-border)] bg-black/40 px-2 py-1.5 text-sm text-[var(--rvz-ink)] placeholder-gray-600 focus:border-[var(--rvz-ink)] focus:outline-none"
         />
       )}
     </div>

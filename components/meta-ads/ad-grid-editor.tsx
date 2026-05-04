@@ -264,14 +264,14 @@ export function AdGridEditor({
   return (
     <div className="space-y-3">
       {!readOnly && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-800 bg-[#0a0a0a] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] p-3">
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={onImportAssets}>
               <Plus className="mr-1.5 h-3.5 w-3.5" /> Importar assets
             </Button>
-            <span className="text-xs text-gray-500">
-              <span className="text-white">{rows.length}</span> anuncios ·{' '}
-              <span className="text-white">{selected.size}</span> seleccionados
+            <span className="text-xs text-[var(--rvz-ink-muted)]">
+              <span className="text-[var(--rvz-ink)]">{rows.length}</span> anuncios ·{' '}
+              <span className="text-[var(--rvz-ink)]">{selected.size}</span> seleccionados
             </span>
           </div>
 
@@ -308,15 +308,15 @@ export function AdGridEditor({
         </div>
       )}
 
-      <div className="rvz-grid-scroll overflow-x-auto rounded-lg border border-gray-800 bg-[#0a0a0a]">
+      <div className="rvz-grid-scroll overflow-x-auto rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)]">
         {rows.length === 0 ? (
           <div className="flex min-h-[280px] items-center justify-center p-12 text-center">
             <div>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-[var(--rvz-ink-muted)]">
                 Aún no hay anuncios. Haz clic en{' '}
                 <button
                   onClick={onImportAssets}
-                  className="text-brand-accent hover:underline"
+                  className="text-[var(--rvz-ink)] hover:underline"
                 >
                   Importar assets
                 </button>{' '}
@@ -326,7 +326,7 @@ export function AdGridEditor({
           </div>
         ) : (
           <table className="min-w-[2000px] w-full text-xs">
-            <thead className="sticky top-0 z-10 bg-[#141414] text-[10px] uppercase tracking-wide text-gray-400">
+            <thead className="sticky top-0 z-10 bg-[var(--rvz-card)] text-[10px] uppercase tracking-wide text-[var(--rvz-ink-muted)]">
               <tr>
                 <Th className="w-10">
                   {!readOnly && (
@@ -473,8 +473,8 @@ function RowEditor({
   return (
     <tr
       className={cn(
-        'border-t border-gray-800',
-        isSelected ? 'bg-brand-accent/5' : 'hover:bg-[#0d0d0d]',
+        'border-t border-[var(--rvz-card-border)]',
+        isSelected ? 'bg-[var(--rvz-accent)]/5' : 'hover:bg-[#0d0d0d]',
         hasError && 'bg-amber-500/[0.03]',
       )}
     >
@@ -489,7 +489,7 @@ function RowEditor({
         )}
       </Td>
       <Td>
-        <div className="h-12 w-12 overflow-hidden rounded bg-gray-900">
+        <div className="h-12 w-12 overflow-hidden rounded bg-[var(--rvz-card)]">
           {row.resultUrl ? (
             isVideo ? (
               <video src={row.resultUrl} className="h-full w-full object-cover" muted />
@@ -610,7 +610,7 @@ function RowEditor({
       </Td>
       <Td>
         {readOnly ? (
-          <div className="rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-gray-300">
+          <div className="rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-xs text-[var(--rvz-ink-muted)]">
             {CTA_OPTIONS.find((c) => c.value === (meta.cta || 'SHOP_NOW'))?.label || meta.cta}
           </div>
         ) : (
@@ -618,10 +618,10 @@ function RowEditor({
             value={meta.cta || 'SHOP_NOW'}
             onValueChange={(v) => onUpdateMetadata({ cta: v })}
           >
-            <SelectTrigger className="h-8 border-gray-800 bg-[#0a0a0a] text-xs text-white">
+            <SelectTrigger className="h-8 border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-xs text-[var(--rvz-ink)]">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="border-gray-800 bg-[#141414] text-white">
+            <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
               {CTA_OPTIONS.map((c) => (
                 <SelectItem key={c.value} value={c.value}>
                   {c.label}
@@ -645,14 +645,14 @@ function RowEditor({
           <div className="flex items-center gap-1">
             <button
               onClick={onDuplicate}
-              className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
+              className="rounded p-1 text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]"
               title="Duplicar"
             >
               <Copy className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={onDelete}
-              className="rounded p-1 text-gray-400 hover:bg-red-500/20 hover:text-red-400"
+              className="rounded p-1 text-[var(--rvz-ink-muted)] hover:bg-red-500/20 hover:text-red-400"
               title="Eliminar"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -702,10 +702,10 @@ function CellInput({
       readOnly={readOnly}
       placeholder={placeholder}
       className={cn(
-        'w-full rounded border bg-[#0a0a0a] px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none',
+        'w-full rounded border bg-[var(--rvz-bg)] px-2 py-1.5 text-xs text-[var(--rvz-ink)] placeholder-gray-600 focus:outline-none',
         invalid
           ? 'border-red-500/40 focus:border-red-500'
-          : 'border-gray-800 focus:border-brand-accent',
+          : 'border-[var(--rvz-card-border)] focus:border-[var(--rvz-ink)]',
         mono && 'font-mono text-[11px]',
         readOnly && 'cursor-default opacity-90',
       )}
@@ -761,7 +761,7 @@ function MultiTextCell({
     <div className="space-y-1.5">
       {safeValues.map((v, i) => (
         <div key={i} className="flex items-start gap-1.5">
-          <span className="mt-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-gray-800 text-[9px] font-medium text-gray-400">
+          <span className="mt-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--rvz-card)] text-[9px] font-medium text-[var(--rvz-ink-muted)]">
             {i + 1}
           </span>
           {multiline ? (
@@ -773,7 +773,7 @@ function MultiTextCell({
               rows={2}
               maxLength={maxLen}
               className={cn(
-                'flex-1 resize-y rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none',
+                'flex-1 resize-y rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-xs text-[var(--rvz-ink)] placeholder-gray-600 focus:border-[var(--rvz-ink)] focus:outline-none',
                 readOnly && 'cursor-default opacity-90',
               )}
             />
@@ -785,7 +785,7 @@ function MultiTextCell({
               placeholder={placeholder}
               maxLength={maxLen}
               className={cn(
-                'flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-white placeholder-gray-600 focus:border-brand-accent focus:outline-none',
+                'flex-1 rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-xs text-[var(--rvz-ink)] placeholder-gray-600 focus:border-[var(--rvz-ink)] focus:outline-none',
                 readOnly && 'cursor-default opacity-90',
               )}
             />
@@ -793,7 +793,7 @@ function MultiTextCell({
           {!readOnly && safeValues.length > 1 && (
             <button
               onClick={() => remove(i)}
-              className="mt-1.5 text-gray-500 hover:text-red-400"
+              className="mt-1.5 text-[var(--rvz-ink-muted)] hover:text-red-400"
               title="Quitar variante"
             >
               <X className="h-3 w-3" />
@@ -804,7 +804,7 @@ function MultiTextCell({
       {!readOnly && safeValues.length < max && (
         <button
           onClick={add}
-          className="ml-5 text-[10px] text-brand-accent hover:underline"
+          className="ml-5 text-[10px] text-[var(--rvz-ink)] hover:underline"
         >
           + variante de {variantLabel} ({safeValues.length}/{max})
         </button>
@@ -830,7 +830,7 @@ function CampaignCell({
 }) {
   if (readOnly) {
     return (
-      <div className="rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-gray-300">
+      <div className="rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-xs text-[var(--rvz-ink-muted)]">
         {value.name || `#${value.id?.slice(-6) || '—'}`}
       </div>
     );
@@ -850,15 +850,15 @@ function CampaignCell({
         if (c) onChange({ id: c.id, name: c.name });
       }}
     >
-      <SelectTrigger className="h-8 border-gray-800 bg-[#0a0a0a] text-xs text-white">
+      <SelectTrigger className="h-8 border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-xs text-[var(--rvz-ink)]">
         <SelectValue placeholder="Selecciona…" />
       </SelectTrigger>
-      <SelectContent className="border-gray-800 bg-[#141414] text-white">
+      <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
         {campaigns.map((c) => (
           <SelectItem key={c.id} value={c.id}>
             <div className="flex items-center gap-2">
               <span className="truncate">{c.name}</span>
-              {c.status && <span className="text-[10px] text-gray-500">{c.status}</span>}
+              {c.status && <span className="text-[10px] text-[var(--rvz-ink-muted)]">{c.status}</span>}
             </div>
           </SelectItem>
         ))}
@@ -882,7 +882,7 @@ function AdSetCell({
 }) {
   if (readOnly) {
     return (
-      <div className="rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-gray-300">
+      <div className="rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-xs text-[var(--rvz-ink-muted)]">
         {value.name || `#${value.id?.slice(-6) || '—'}`}
       </div>
     );
@@ -894,7 +894,7 @@ function AdSetCell({
 
   if (!campaign.id) {
     return (
-      <div className="rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-[11px] text-gray-500">
+      <div className="rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-[11px] text-[var(--rvz-ink-muted)]">
         Selecciona una campaña
       </div>
     );
@@ -914,15 +914,15 @@ function AdSetCell({
         if (a) onChange({ id: a.id, name: a.name });
       }}
     >
-      <SelectTrigger className="h-8 border-gray-800 bg-[#0a0a0a] text-xs text-white">
+      <SelectTrigger className="h-8 border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-xs text-[var(--rvz-ink)]">
         <SelectValue placeholder="Selecciona…" />
       </SelectTrigger>
-      <SelectContent className="border-gray-800 bg-[#141414] text-white">
+      <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
         {adsetsForCampaign.map((a) => (
           <SelectItem key={a.id} value={a.id}>
             <div className="flex items-center gap-2">
               <span className="truncate">{a.name}</span>
-              {a.status && <span className="text-[10px] text-gray-500">{a.status}</span>}
+              {a.status && <span className="text-[10px] text-[var(--rvz-ink-muted)]">{a.status}</span>}
             </div>
           </SelectItem>
         ))}
@@ -955,7 +955,7 @@ function IdentityCell({
 
   if (readOnly) {
     return (
-      <div className="rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-xs text-gray-300">
+      <div className="rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-xs text-[var(--rvz-ink-muted)]">
         {effectivePage ? effectivePage.name : 'Default'}
       </div>
     );
@@ -979,40 +979,40 @@ function IdentityCell({
       <PopoverTrigger asChild>
         <button
           className={cn(
-            'flex w-full items-center justify-between rounded border bg-[#0a0a0a] px-2 py-1.5 text-xs',
+            'flex w-full items-center justify-between rounded border bg-[var(--rvz-bg)] px-2 py-1.5 text-xs',
             isOverride
-              ? 'border-brand-accent/40 text-brand-accent'
-              : 'border-gray-800 text-gray-300',
+              ? 'border-[var(--rvz-ink)]/40 text-[var(--rvz-ink)]'
+              : 'border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)]',
           )}
           title={effectivePage ? effectivePage.name : 'Sin página'}
         >
           <span className="truncate">{effectivePage ? effectivePage.name : 'Default'}</span>
-          <Settings className="h-3 w-3 shrink-0 text-gray-500" />
+          <Settings className="h-3 w-3 shrink-0 text-[var(--rvz-ink-muted)]" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 border-gray-800 bg-[#141414] text-white">
-        <p className="mb-2 text-[10px] uppercase text-gray-500">Identidad del anuncio</p>
-        <div className="max-h-64 overflow-y-auto rounded border border-gray-800">
+      <PopoverContent className="w-72 border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
+        <p className="mb-2 text-[10px] uppercase text-[var(--rvz-ink-muted)]">Identidad del anuncio</p>
+        <div className="max-h-64 overflow-y-auto rounded border border-[var(--rvz-card-border)]">
           <button
             onClick={() => handleSelect('__default__')}
             className={cn(
-              'flex w-full items-center justify-between border-b border-gray-800 px-2 py-2 text-xs hover:bg-[#0a0a0a]',
-              !isOverride && 'bg-brand-accent/10',
+              'flex w-full items-center justify-between border-b border-[var(--rvz-card-border)] px-2 py-2 text-xs hover:bg-[var(--rvz-bg)]',
+              !isOverride && 'bg-[var(--rvz-accent)]/10',
             )}
           >
             <span>Default ({pages.find((p) => p.id === defaultPageId)?.name || '—'})</span>
-            <span className="text-[10px] text-gray-500">cuenta</span>
+            <span className="text-[10px] text-[var(--rvz-ink-muted)]">cuenta</span>
           </button>
           {pages.length === 0 ? (
-            <p className="p-3 text-center text-xs text-gray-500">Cargando páginas…</p>
+            <p className="p-3 text-center text-xs text-[var(--rvz-ink-muted)]">Cargando páginas…</p>
           ) : (
             pages.map((p) => (
               <button
                 key={p.id}
                 onClick={() => handleSelect(p.id)}
                 className={cn(
-                  'flex w-full items-center justify-between border-b border-gray-800 px-2 py-2 text-xs last:border-b-0 hover:bg-[#0a0a0a]',
-                  overridePageId === p.id && 'bg-brand-accent/10',
+                  'flex w-full items-center justify-between border-b border-[var(--rvz-card-border)] px-2 py-2 text-xs last:border-b-0 hover:bg-[var(--rvz-bg)]',
+                  overridePageId === p.id && 'bg-[var(--rvz-accent)]/10',
                 )}
               >
                 <span className="flex items-center gap-2 truncate">
@@ -1022,9 +1022,9 @@ function IdentityCell({
                   <span className="truncate">{p.name}</span>
                 </span>
                 {p.instagram ? (
-                  <span className="text-[10px] text-brand-accent">@{p.instagram.username}</span>
+                  <span className="text-[10px] text-[var(--rvz-ink)]">@{p.instagram.username}</span>
                 ) : (
-                  <span className="text-[10px] text-gray-600">solo FB</span>
+                  <span className="text-[10px] text-[var(--rvz-ink)]">solo FB</span>
                 )}
               </button>
             ))
@@ -1059,8 +1059,8 @@ function BulkEditMenu({
           <Wand2 className="mr-1.5 h-3.5 w-3.5" /> Aplicar a seleccionados
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 border-gray-800 bg-[#141414] text-white">
-        <p className="mb-2 text-[10px] uppercase text-gray-500">
+      <PopoverContent className="w-80 border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
+        <p className="mb-2 text-[10px] uppercase text-[var(--rvz-ink-muted)]">
           Aplicar campo a las filas seleccionadas
         </p>
         <div className="space-y-3">
@@ -1155,13 +1155,13 @@ function BulkMultiTextField({
   const hasContent = vals.some((v) => v.trim());
 
   return (
-    <div className="rounded border border-gray-800 bg-black/30 p-2">
+    <div className="rounded border border-[var(--rvz-card-border)] bg-black/30 p-2">
       <div className="mb-1 flex items-center justify-between">
-        <label className="text-[10px] uppercase text-gray-500">{label}</label>
+        <label className="text-[10px] uppercase text-[var(--rvz-ink-muted)]">{label}</label>
         <button
           onClick={handleApply}
           disabled={!hasContent}
-          className="rounded border border-brand-accent/40 bg-brand-accent/10 px-2 py-0.5 text-[10px] text-brand-accent hover:bg-brand-accent/20 disabled:opacity-40"
+          className="rounded border border-[var(--rvz-ink)]/40 bg-[var(--rvz-accent)]/10 px-2 py-0.5 text-[10px] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/20 disabled:opacity-40"
         >
           Aplicar
         </button>
@@ -1169,7 +1169,7 @@ function BulkMultiTextField({
       <div className="space-y-1.5">
         {vals.map((v, i) => (
           <div key={i} className="flex items-start gap-1.5">
-            <span className="mt-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-gray-800 text-[9px] text-gray-400">
+            <span className="mt-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--rvz-card)] text-[9px] text-[var(--rvz-ink-muted)]">
               {i + 1}
             </span>
             {multiline ? (
@@ -1177,20 +1177,20 @@ function BulkMultiTextField({
                 value={v}
                 onChange={(e) => update(i, e.target.value)}
                 rows={2}
-                className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1 text-xs text-white"
+                className="flex-1 rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1 text-xs text-[var(--rvz-ink)]"
               />
             ) : (
               <input
                 value={v}
                 onChange={(e) => update(i, e.target.value)}
                 maxLength={maxLen}
-                className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1 text-xs text-white"
+                className="flex-1 rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1 text-xs text-[var(--rvz-ink)]"
               />
             )}
             {vals.length > 1 && (
               <button
                 onClick={() => remove(i)}
-                className="mt-1.5 text-gray-500 hover:text-red-400"
+                className="mt-1.5 text-[var(--rvz-ink-muted)] hover:text-red-400"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -1201,7 +1201,7 @@ function BulkMultiTextField({
       {vals.length < 5 && (
         <button
           onClick={add}
-          className="ml-5 mt-1 text-[10px] text-brand-accent hover:underline"
+          className="ml-5 mt-1 text-[10px] text-[var(--rvz-ink)] hover:underline"
         >
           + variante de {variantLabel} ({vals.length}/5)
         </button>
@@ -1222,20 +1222,20 @@ function BulkField({
   const [val, setVal] = useState('');
   return (
     <div>
-      <label className="block text-[10px] text-gray-500">{label}</label>
+      <label className="block text-[10px] text-[var(--rvz-ink-muted)]">{label}</label>
       <div className="flex gap-1">
         {multiline ? (
           <textarea
             value={val}
             onChange={(e) => setVal(e.target.value)}
             rows={2}
-            className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1 text-xs text-white"
+            className="flex-1 rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1 text-xs text-[var(--rvz-ink)]"
           />
         ) : (
           <input
             value={val}
             onChange={(e) => setVal(e.target.value)}
-            className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1 text-xs text-white"
+            className="flex-1 rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1 text-xs text-[var(--rvz-ink)]"
           />
         )}
         <button
@@ -1244,7 +1244,7 @@ function BulkField({
             setVal('');
           }}
           disabled={!val}
-          className="rounded border border-brand-accent/40 bg-brand-accent/10 px-2 text-[10px] text-brand-accent hover:bg-brand-accent/20 disabled:opacity-40"
+          className="rounded border border-[var(--rvz-ink)]/40 bg-[var(--rvz-accent)]/10 px-2 text-[10px] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/20 disabled:opacity-40"
         >
           Aplicar
         </button>
@@ -1265,13 +1265,13 @@ function BulkSelect({
   const [val, setVal] = useState(options[0].value);
   return (
     <div>
-      <label className="block text-[10px] text-gray-500">{label}</label>
+      <label className="block text-[10px] text-[var(--rvz-ink-muted)]">{label}</label>
       <div className="flex gap-1">
         <Select value={val} onValueChange={setVal}>
-          <SelectTrigger className="h-8 flex-1 border-gray-800 bg-[#0a0a0a] text-xs text-white">
+          <SelectTrigger className="h-8 flex-1 border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-xs text-[var(--rvz-ink)]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="border-gray-800 bg-[#141414] text-white">
+          <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
             {options.map((o) => (
               <SelectItem key={o.value} value={o.value}>
                 {o.label}
@@ -1281,7 +1281,7 @@ function BulkSelect({
         </Select>
         <button
           onClick={() => onApply(val)}
-          className="rounded border border-brand-accent/40 bg-brand-accent/10 px-2 text-[10px] text-brand-accent hover:bg-brand-accent/20"
+          className="rounded border border-[var(--rvz-ink)]/40 bg-[var(--rvz-accent)]/10 px-2 text-[10px] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/20"
         >
           Aplicar
         </button>
@@ -1301,13 +1301,13 @@ function BulkCampaignTarget({
   if (campaigns.length === 0) return null;
   return (
     <div>
-      <label className="block text-[10px] text-gray-500">Mover a campaña</label>
+      <label className="block text-[10px] text-[var(--rvz-ink-muted)]">Mover a campaña</label>
       <div className="flex gap-1">
         <Select value={val} onValueChange={setVal}>
-          <SelectTrigger className="h-8 flex-1 border-gray-800 bg-[#0a0a0a] text-xs text-white">
+          <SelectTrigger className="h-8 flex-1 border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-xs text-[var(--rvz-ink)]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="border-gray-800 bg-[#141414] text-white">
+          <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
             {campaigns.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.name}
@@ -1320,7 +1320,7 @@ function BulkCampaignTarget({
             const c = campaigns.find((x) => x.id === val);
             if (c) onApply({ id: c.id, name: c.name });
           }}
-          className="rounded border border-brand-accent/40 bg-brand-accent/10 px-2 text-[10px] text-brand-accent hover:bg-brand-accent/20"
+          className="rounded border border-[var(--rvz-ink)]/40 bg-[var(--rvz-accent)]/10 px-2 text-[10px] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/20"
         >
           Aplicar
         </button>
@@ -1340,13 +1340,13 @@ function BulkAdSetTarget({
   if (adsets.length === 0) return null;
   return (
     <div>
-      <label className="block text-[10px] text-gray-500">Mover a conjunto</label>
+      <label className="block text-[10px] text-[var(--rvz-ink-muted)]">Mover a conjunto</label>
       <div className="flex gap-1">
         <Select value={val} onValueChange={setVal}>
-          <SelectTrigger className="h-8 flex-1 border-gray-800 bg-[#0a0a0a] text-xs text-white">
+          <SelectTrigger className="h-8 flex-1 border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-xs text-[var(--rvz-ink)]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="border-gray-800 bg-[#141414] text-white">
+          <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
             {adsets.map((a) => (
               <SelectItem key={a.id} value={a.id}>
                 {a.name}
@@ -1359,7 +1359,7 @@ function BulkAdSetTarget({
             const a = adsets.find((x) => x.id === val);
             if (a) onApply({ id: a.id, name: a.name });
           }}
-          className="rounded border border-brand-accent/40 bg-brand-accent/10 px-2 text-[10px] text-brand-accent hover:bg-brand-accent/20"
+          className="rounded border border-[var(--rvz-ink)]/40 bg-[var(--rvz-accent)]/10 px-2 text-[10px] text-[var(--rvz-ink)] hover:bg-[var(--rvz-accent)]/20"
         >
           Aplicar
         </button>
@@ -1385,10 +1385,10 @@ function BulkActionsMenu({
           <ChevronDown className="ml-1 h-3.5 w-3.5" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-48 border-gray-800 bg-[#141414] p-1 text-white">
+      <PopoverContent className="w-48 border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-1 text-[var(--rvz-ink)]">
         <button
           onClick={onDuplicate}
-          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-[#0a0a0a]"
+          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-[var(--rvz-bg)]"
         >
           <Copy className="h-3.5 w-3.5" /> Duplicar seleccionados
         </button>
@@ -1482,8 +1482,8 @@ function MultiBulkEditModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-white">Edición masiva</h3>
-        <p className="text-xs text-gray-400">
+        <h3 className="text-lg font-semibold text-[var(--rvz-ink)]">Edición masiva</h3>
+        <p className="text-xs text-[var(--rvz-ink-muted)]">
           Marca los campos a aplicar y rellénalos. Se aplicarán a {selectedCount} fila
           {selectedCount === 1 ? '' : 's'} seleccionada{selectedCount === 1 ? '' : 's'}.
         </p>
@@ -1532,7 +1532,7 @@ function MultiBulkEditModal({
           <input
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
-            className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white"
+            className="w-full rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-sm text-[var(--rvz-ink)]"
           />
         </MBField>
         <MBField
@@ -1543,7 +1543,7 @@ function MultiBulkEditModal({
           <input
             value={displayUrl}
             onChange={(e) => setDisplayUrl(e.target.value)}
-            className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white"
+            className="w-full rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-sm text-[var(--rvz-ink)]"
           />
         </MBField>
         <MBField
@@ -1554,7 +1554,7 @@ function MultiBulkEditModal({
           <input
             value={urlParams}
             onChange={(e) => setUrlParams(e.target.value)}
-            className="w-full rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white font-mono text-xs"
+            className="w-full rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-sm text-[var(--rvz-ink)] font-mono text-xs"
           />
         </MBField>
         <MBField
@@ -1563,10 +1563,10 @@ function MultiBulkEditModal({
           label="CTA"
         >
           <Select value={cta} onValueChange={setCta}>
-            <SelectTrigger className="border-gray-800 bg-[#0a0a0a] text-sm text-white">
+            <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-sm text-[var(--rvz-ink)]">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="border-gray-800 bg-[#141414] text-white">
+            <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
               {CTA_OPTIONS.map((c) => (
                 <SelectItem key={c.value} value={c.value}>
                   {c.label}
@@ -1582,10 +1582,10 @@ function MultiBulkEditModal({
             label="Identidad (Página + IG)"
           >
             <Select value={pageId} onValueChange={setPageId}>
-              <SelectTrigger className="border-gray-800 bg-[#0a0a0a] text-sm text-white">
+              <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-sm text-[var(--rvz-ink)]">
                 <SelectValue placeholder="Selecciona…" />
               </SelectTrigger>
-              <SelectContent className="border-gray-800 bg-[#141414] text-white">
+              <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                 {pages.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
@@ -1603,10 +1603,10 @@ function MultiBulkEditModal({
             label="Mover a campaña"
           >
             <Select value={campaignId} onValueChange={setCampaignId}>
-              <SelectTrigger className="border-gray-800 bg-[#0a0a0a] text-sm text-white">
+              <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-sm text-[var(--rvz-ink)]">
                 <SelectValue placeholder="Selecciona…" />
               </SelectTrigger>
-              <SelectContent className="border-gray-800 bg-[#141414] text-white">
+              <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                 {campaigns.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
@@ -1623,10 +1623,10 @@ function MultiBulkEditModal({
             label="Mover a conjunto"
           >
             <Select value={adsetId} onValueChange={setAdsetId}>
-              <SelectTrigger className="border-gray-800 bg-[#0a0a0a] text-sm text-white">
+              <SelectTrigger className="border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-sm text-[var(--rvz-ink)]">
                 <SelectValue placeholder="Selecciona…" />
               </SelectTrigger>
-              <SelectContent className="border-gray-800 bg-[#141414] text-white">
+              <SelectContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                 {adsets.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.name}
@@ -1675,7 +1675,7 @@ function ModalMultiText({
     <div className="space-y-1.5">
       {values.map((v, i) => (
         <div key={i} className="flex items-start gap-1.5">
-          <span className="mt-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-gray-800 text-[9px] text-gray-400">
+          <span className="mt-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--rvz-card)] text-[9px] text-[var(--rvz-ink-muted)]">
             {i + 1}
           </span>
           {multiline ? (
@@ -1684,20 +1684,20 @@ function ModalMultiText({
               onChange={(e) => update(i, e.target.value)}
               rows={2}
               maxLength={maxLen}
-              className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white"
+              className="flex-1 rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-sm text-[var(--rvz-ink)]"
             />
           ) : (
             <input
               value={v}
               onChange={(e) => update(i, e.target.value)}
               maxLength={maxLen}
-              className="flex-1 rounded border border-gray-800 bg-[#0a0a0a] px-2 py-1.5 text-sm text-white"
+              className="flex-1 rounded border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-2 py-1.5 text-sm text-[var(--rvz-ink)]"
             />
           )}
           {values.length > 1 && (
             <button
               onClick={() => remove(i)}
-              className="mt-1.5 text-gray-500 hover:text-red-400"
+              className="mt-1.5 text-[var(--rvz-ink-muted)] hover:text-red-400"
             >
               <X className="h-3 w-3" />
             </button>
@@ -1707,7 +1707,7 @@ function ModalMultiText({
       {values.length < 5 && (
         <button
           onClick={add}
-          className="ml-5 mt-1 text-[10px] text-brand-accent hover:underline"
+          className="ml-5 mt-1 text-[10px] text-[var(--rvz-ink)] hover:underline"
         >
           + variante de {variantLabel} ({values.length}/5)
         </button>
@@ -1730,11 +1730,11 @@ function MBField({
   return (
     <div
       className={cn(
-        'rounded border border-gray-800 bg-black/30 p-2',
-        enabled && 'border-brand-accent/40',
+        'rounded border border-[var(--rvz-card-border)] bg-black/30 p-2',
+        enabled && 'border-[var(--rvz-ink)]/40',
       )}
     >
-      <label className="mb-1 flex items-center gap-2 text-xs text-white">
+      <label className="mb-1 flex items-center gap-2 text-xs text-[var(--rvz-ink)]">
         <input
           type="checkbox"
           checked={enabled}

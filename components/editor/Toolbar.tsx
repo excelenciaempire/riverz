@@ -42,7 +42,7 @@ export function Toolbar({
   canRedo,
 }: ToolbarProps) {
   return (
-    <div className="z-20 flex h-full flex-col justify-between border-r border-gray-800 bg-black p-2 w-[72px]">
+    <div className="z-20 flex h-full flex-col justify-between border-r border-[var(--rvz-card-border)] bg-black p-2 w-[72px]">
       {/* Top Tools */}
       <div className="flex flex-col gap-2">
         {/* Select Tool */}
@@ -52,7 +52,7 @@ export function Toolbar({
           onClick={() => setActiveTool('select')}
           className={cn(
             'h-12 w-12 rounded-xl transition-all',
-            activeTool === 'select' ? 'bg-brand-accent text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            activeTool === 'select' ? 'bg-[var(--rvz-accent)] text-[var(--rvz-ink)]' : 'text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]'
           )}
           title="Seleccionar"
         >
@@ -66,7 +66,7 @@ export function Toolbar({
           onClick={() => setActiveTool('brush')}
           className={cn(
             'h-12 w-12 rounded-xl transition-all',
-            activeTool === 'brush' ? 'bg-brand-accent text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            activeTool === 'brush' ? 'bg-[var(--rvz-accent)] text-[var(--rvz-ink)]' : 'text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]'
           )}
           title="Pincel"
         >
@@ -78,7 +78,7 @@ export function Toolbar({
           variant="ghost"
           size="icon"
           onClick={onAddText}
-          className="h-12 w-12 rounded-xl text-gray-400 transition-all hover:bg-gray-800 hover:text-white"
+          className="h-12 w-12 rounded-xl text-[var(--rvz-ink-muted)] transition-all hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]"
           title="Añadir Texto"
         >
           <Type className="h-5 w-5" />
@@ -89,7 +89,7 @@ export function Toolbar({
           variant="ghost"
           size="icon"
           onClick={onAddArrow}
-          className="h-12 w-12 rounded-xl text-gray-400 transition-all hover:bg-gray-800 hover:text-white"
+          className="h-12 w-12 rounded-xl text-[var(--rvz-ink-muted)] transition-all hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]"
           title="Añadir Flecha"
         >
           <MoveRight className="h-5 w-5" />
@@ -101,14 +101,14 @@ export function Toolbar({
             <Button
               variant="ghost"
               size="icon"
-              className="h-12 w-12 rounded-xl text-gray-400 transition-all hover:bg-gray-800 hover:text-white"
+              className="h-12 w-12 rounded-xl text-[var(--rvz-ink-muted)] transition-all hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]"
               title="Añadir Imagen"
             >
               <ImageIcon className="h-5 w-5" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-72 border-gray-800 bg-[#141414] p-3" side="right">
-            <h4 className="mb-3 text-sm font-medium text-white">Añadir Imagen</h4>
+          <PopoverContent className="w-72 border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-3" side="right">
+            <h4 className="mb-3 text-sm font-medium text-[var(--rvz-ink)]">Añadir Imagen</h4>
             <FileUpload
               onFilesSelected={(files) => files[0] && onImageUpload(files[0])}
               accept={{ 'image/*': ['.jpg', '.jpeg', '.png'] }}
@@ -125,7 +125,7 @@ export function Toolbar({
           onClick={() => setActiveTool('mask')}
           className={cn(
             'h-12 w-12 rounded-xl transition-all',
-            activeTool === 'mask' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            activeTool === 'mask' ? 'bg-blue-600 text-[var(--rvz-ink)]' : 'text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)]'
           )}
           title="Máscara - Pinta sobre áreas para editar con IA"
         >
@@ -140,7 +140,7 @@ export function Toolbar({
           size="icon"
           onClick={onUndo}
           disabled={!canUndo}
-          className="h-12 w-12 rounded-xl text-gray-400 transition-all hover:bg-gray-800 hover:text-white disabled:opacity-30"
+          className="h-12 w-12 rounded-xl text-[var(--rvz-ink-muted)] transition-all hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)] disabled:opacity-30"
           title="Deshacer"
         >
           <Undo2 className="h-5 w-5" />
@@ -151,7 +151,7 @@ export function Toolbar({
           size="icon"
           onClick={onRedo}
           disabled={!canRedo}
-          className="h-12 w-12 rounded-xl text-gray-400 transition-all hover:bg-gray-800 hover:text-white disabled:opacity-30"
+          className="h-12 w-12 rounded-xl text-[var(--rvz-ink-muted)] transition-all hover:bg-[var(--rvz-card)] hover:text-[var(--rvz-ink)] disabled:opacity-30"
           title="Rehacer"
         >
           <Redo2 className="h-5 w-5" />

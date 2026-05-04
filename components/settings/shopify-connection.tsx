@@ -69,8 +69,8 @@ export function ShopifyConnectionPanel() {
           <ShoppingBag className="h-5 w-5 text-emerald-400" />
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-white">Shopify</h3>
-          <p className="mt-1 text-sm text-gray-400">
+          <h3 className="text-lg font-semibold text-[var(--rvz-ink)]">Shopify</h3>
+          <p className="mt-1 text-sm text-[var(--rvz-ink-muted)]">
             Conecta tu tienda Shopify y publica tus landings creadas en Riverz como Pages,
             con todas las imágenes alojadas automáticamente en Shopify Files.
           </p>
@@ -81,8 +81,8 @@ export function ShopifyConnectionPanel() {
           enforces one Shopify store per account: to connect another the
           user must disconnect the current one first. */}
       {active.length === 0 ? (
-        <div className="rounded-lg border border-gray-800 bg-black/30 p-4">
-          <Label htmlFor="shopify-shop" className="text-sm text-gray-300">
+        <div className="rounded-lg border border-[var(--rvz-card-border)] bg-black/30 p-4">
+          <Label htmlFor="shopify-shop" className="text-sm text-[var(--rvz-ink-muted)]">
             Conectar tu tienda
           </Label>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
@@ -99,7 +99,7 @@ export function ShopifyConnectionPanel() {
               Conectar Shopify
             </Button>
           </div>
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-[var(--rvz-ink-muted)]">
             Vas a ser redirigido a Shopify para autorizar el acceso. Solo pedimos permisos para
             subir imágenes (Files) y crear páginas (Pages) — no leemos clientes ni pedidos.
           </p>
@@ -113,14 +113,14 @@ export function ShopifyConnectionPanel() {
 
       {/* Active connections */}
       {isLoading ? (
-        <div className="text-sm text-gray-400">Cargando conexiones...</div>
+        <div className="text-sm text-[var(--rvz-ink-muted)]">Cargando conexiones...</div>
       ) : active.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-700 p-6 text-center text-sm text-gray-500">
+        <div className="rounded-lg border border-dashed border-[var(--rvz-card-border)] p-6 text-center text-sm text-[var(--rvz-ink-muted)]">
           Aún no has conectado ninguna tienda Shopify.
         </div>
       ) : (
         <div className="space-y-2">
-          <div className="text-xs uppercase tracking-wider text-gray-500">Tiendas conectadas</div>
+          <div className="text-xs uppercase tracking-wider text-[var(--rvz-ink-muted)]">Tiendas conectadas</div>
           {active.map((c) => (
             <ConnectionRow key={c.id} c={c} onDisconnect={() => disconnect.mutate(c.shop_domain)} />
           ))}
@@ -129,12 +129,12 @@ export function ShopifyConnectionPanel() {
 
       {inactive.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs uppercase tracking-wider text-gray-500">Histórico</div>
+          <div className="text-xs uppercase tracking-wider text-[var(--rvz-ink-muted)]">Histórico</div>
           {inactive.map((c) => (
-            <div key={c.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-black/20 p-3 opacity-60">
+            <div key={c.id} className="flex items-center justify-between rounded-lg border border-[var(--rvz-card-border)] bg-black/20 p-3 opacity-60">
               <div>
-                <div className="text-sm text-gray-300">{c.shop_domain}</div>
-                <div className="text-xs text-gray-500">
+                <div className="text-sm text-[var(--rvz-ink-muted)]">{c.shop_domain}</div>
+                <div className="text-xs text-[var(--rvz-ink-muted)]">
                   {c.status === 'uninstalled' ? 'Desinstalada' : c.status} ·{' '}
                   {c.uninstalled_at ? new Date(c.uninstalled_at).toLocaleDateString() : '—'}
                 </div>
@@ -149,17 +149,17 @@ export function ShopifyConnectionPanel() {
 
 function ConnectionRow({ c, onDisconnect }: { c: ShopifyConnectionRow; onDisconnect: () => void }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-black/30 p-3">
+    <div className="flex items-center justify-between rounded-lg border border-[var(--rvz-card-border)] bg-black/30 p-3">
       <div className="flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white">{c.shop_domain}</span>
+          <span className="text-sm font-medium text-[var(--rvz-ink)]">{c.shop_domain}</span>
           <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-emerald-300">
             Activa
           </span>
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--rvz-ink-muted)]">
           <span>Conectada {c.installed_at ? new Date(c.installed_at).toLocaleDateString() : '—'}</span>
-          {c.scope && <span className="font-mono text-[10px] text-gray-600">scopes: {c.scope}</span>}
+          {c.scope && <span className="font-mono text-[10px] text-[var(--rvz-ink)]">scopes: {c.scope}</span>}
           {c.last_error && (
             <span className="flex items-center gap-1 text-amber-400">
               <AlertTriangle className="h-3 w-3" /> {c.last_error}
@@ -172,7 +172,7 @@ function ConnectionRow({ c, onDisconnect }: { c: ShopifyConnectionRow; onDisconn
           href={`https://${c.shop_domain}/admin`}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-gray-400 hover:text-white inline-flex items-center gap-1"
+          className="text-xs text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] inline-flex items-center gap-1"
         >
           Admin <ExternalLink className="h-3 w-3" />
         </a>

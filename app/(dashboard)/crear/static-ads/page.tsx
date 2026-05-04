@@ -646,14 +646,14 @@ export default function StaticAdsPage() {
   return (
     <div className="mx-auto max-w-[1800px] pb-24">
       {/* Tabs - Pill Style */}
-      <div className="mb-8 inline-flex gap-2 rounded-full bg-gray-900/50 p-1.5 border border-gray-800">
+      <div className="mb-8 inline-flex gap-2 rounded-full bg-[var(--rvz-card)]/50 p-1.5 border border-[var(--rvz-card-border)]">
         <button
           onClick={() => setActiveTab('plantillas')}
           className={cn(
             'px-6 py-2.5 text-sm font-medium transition-all rounded-full',
             activeTab === 'plantillas'
-              ? 'bg-brand-accent text-white shadow-lg shadow-brand-accent/20'
-              : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+              ? 'bg-[var(--rvz-accent)] text-[var(--rvz-ink)] shadow-lg shadow-brand-accent/20'
+              : 'text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] hover:bg-[var(--rvz-card)]/50'
           )}
         >
           Plantillas
@@ -663,8 +663,8 @@ export default function StaticAdsPage() {
           className={cn(
             'px-6 py-2.5 text-sm font-medium transition-all rounded-full',
             activeTab === 'ideacion'
-              ? 'bg-brand-accent text-white shadow-lg shadow-brand-accent/20'
-              : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+              ? 'bg-[var(--rvz-accent)] text-[var(--rvz-ink)] shadow-lg shadow-brand-accent/20'
+              : 'text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] hover:bg-[var(--rvz-card)]/50'
           )}
         >
           Ideación
@@ -674,8 +674,8 @@ export default function StaticAdsPage() {
           className={cn(
             'px-6 py-2.5 text-sm font-medium transition-all rounded-full',
             activeTab === 'agregar'
-              ? 'bg-brand-accent text-white shadow-lg shadow-brand-accent/20'
-              : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+              ? 'bg-[var(--rvz-accent)] text-[var(--rvz-ink)] shadow-lg shadow-brand-accent/20'
+              : 'text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] hover:bg-[var(--rvz-card)]/50'
           )}
         >
           Agregar
@@ -727,7 +727,7 @@ export default function StaticAdsPage() {
               />
             </div>
             {/* Selection info */}
-            <div className="text-sm text-gray-400 whitespace-nowrap">
+            <div className="text-sm text-[var(--rvz-ink-muted)] whitespace-nowrap">
               {isAdmin
                 ? `${selectedTemplateIds.length} seleccionadas`
                 : `${selectedTemplateIds.length}/${MAX_TEMPLATES_PER_GENERATION} seleccionadas`}
@@ -761,7 +761,7 @@ export default function StaticAdsPage() {
                   setSelectedTemplateIds([]);
                   setIsCloneBarVisible(false);
                 }}
-                className="border-gray-700 text-gray-300 hover:text-white whitespace-nowrap"
+                className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] whitespace-nowrap"
               >
                 Limpiar selección
               </Button>
@@ -777,7 +777,7 @@ export default function StaticAdsPage() {
               {Array.from({ length: 12 }).map((_, i) => (
                 <div
                   key={i}
-                  className="mb-4 break-inside-avoid rounded-lg border border-gray-800 bg-[#1a2332] animate-pulse"
+                  className="mb-4 break-inside-avoid rounded-lg border border-[var(--rvz-card-border)] bg-[#1a2332] animate-pulse"
                   style={{ aspectRatio: i % 3 === 0 ? '4 / 5' : i % 3 === 1 ? '1 / 1' : '3 / 4' }}
                 />
               ))}
@@ -805,7 +805,7 @@ export default function StaticAdsPage() {
                     key={template.id}
                     className={cn(
                       "group relative overflow-hidden rounded-lg border-2 bg-[#1a2332] transition-all mb-4 break-inside-avoid",
-                      isSelected ? "border-[#07A498] ring-2 ring-[#07A498]/30" : "border-gray-700"
+                      isSelected ? "border-[#07A498] ring-2 ring-[#07A498]/30" : "border-[var(--rvz-card-border)]"
                     )}
                   >
                     <img
@@ -834,7 +834,7 @@ export default function StaticAdsPage() {
                     {/* Selection Indicator */}
                     <div className={cn(
                       "absolute top-3 right-3 z-20 flex h-6 w-6 items-center justify-center rounded-full border transition-all pointer-events-none",
-                      isSelected ? "bg-[#07A498] border-[#07A498] text-white" : "border-white/50 bg-black/30"
+                      isSelected ? "bg-[#07A498] border-[#07A498] text-[var(--rvz-ink)]" : "border-[var(--rvz-card-hover-border)] bg-black/30"
                     )}>
                       {isSelected && <Check className="h-4 w-4" />}
                     </div>
@@ -902,19 +902,19 @@ export default function StaticAdsPage() {
               // Empty state — no concepts yet for this product.
               if (totalConcepts === 0) {
                 return (
-                  <div className="rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332] p-12 text-center">
+                  <div className="rounded-lg border-2 border-dashed border-[var(--rvz-card-border)] bg-[#1a2332] p-12 text-center">
                     <Sparkles className="mx-auto h-10 w-10 text-[#07A498]" />
-                    <h3 className="mt-4 text-lg font-semibold text-white">
+                    <h3 className="mt-4 text-lg font-semibold text-[var(--rvz-ink)]">
                       Aún no hay ideas para este producto
                     </h3>
-                    <p className="mx-auto mt-1 max-w-md text-sm text-gray-400">
+                    <p className="mx-auto mt-1 max-w-md text-sm text-[var(--rvz-ink-muted)]">
                       El sistema interno generará ideas creativas basadas en el research y la knowledge base
                       del producto, listas para convertirse en imágenes.
                     </p>
                     <Button
                       onClick={() => generateIdeas.mutate()}
                       disabled={generateIdeas.isPending}
-                      className="mt-6 bg-[#07A498] text-white hover:bg-[#068f84]"
+                      className="mt-6 bg-[#07A498] text-[var(--rvz-ink)] hover:bg-[#068f84]"
                     >
                       {generateIdeas.isPending ? (
                         <>
@@ -935,15 +935,15 @@ export default function StaticAdsPage() {
               return (
                 <div className="space-y-8 pb-32">
                   {/* Toolbar: total + Generar más */}
-                  <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0f1620] px-4 py-3">
-                    <div className="text-sm text-gray-300">
-                      <span className="font-medium text-white">{totalConcepts}</span> ideas disponibles
+                  <div className="flex items-center justify-between rounded-lg border border-[var(--rvz-card-border)] bg-[#0f1620] px-4 py-3">
+                    <div className="text-sm text-[var(--rvz-ink-muted)]">
+                      <span className="font-medium text-[var(--rvz-ink)]">{totalConcepts}</span> ideas disponibles
                     </div>
                     <Button
                       variant="outline"
                       onClick={() => generateIdeas.mutate()}
                       disabled={generateIdeas.isPending}
-                      className="border-gray-700 text-gray-300 hover:text-white"
+                      className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]"
                     >
                       {generateIdeas.isPending ? (
                         <>
@@ -965,15 +965,15 @@ export default function StaticAdsPage() {
                     return (
                       <div key={levelIndex}>
                         <div className="mb-4 flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#07A498] text-sm font-bold text-white">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#07A498] text-sm font-bold text-[var(--rvz-ink)]">
                             {levelIndex === 0 ? '💡' : levelIndex === 1 ? '⚠️' : '✨'}
                           </div>
-                          <h3 className="text-lg font-semibold text-white">{level}</h3>
-                          <span className="text-xs text-gray-500">{concepts.length} ideas</span>
+                          <h3 className="text-lg font-semibold text-[var(--rvz-ink)]">{level}</h3>
+                          <span className="text-xs text-[var(--rvz-ink-muted)]">{concepts.length} ideas</span>
                         </div>
 
                         {concepts.length === 0 ? (
-                          <div className="rounded-lg border border-dashed border-gray-700 bg-[#0f1620] p-6 text-center text-sm text-gray-500">
+                          <div className="rounded-lg border border-dashed border-[var(--rvz-card-border)] bg-[#0f1620] p-6 text-center text-sm text-[var(--rvz-ink-muted)]">
                             No hay ideas en este nivel todavía
                           </div>
                         ) : (
@@ -991,7 +991,7 @@ export default function StaticAdsPage() {
                                     !hasPrompt && 'cursor-not-allowed opacity-60',
                                     isSelected
                                       ? 'border-[#07A498] ring-2 ring-[#07A498]/30'
-                                      : 'border-gray-700 hover:border-[#07A498]/60'
+                                      : 'border-[var(--rvz-card-border)] hover:border-[#07A498]/60'
                                   )}
                                 >
                                   <div className="mb-3 flex items-start justify-between gap-2">
@@ -1011,8 +1011,8 @@ export default function StaticAdsPage() {
                                         className={cn(
                                           'flex h-5 w-5 items-center justify-center rounded-full border transition',
                                           isSelected
-                                            ? 'border-[#07A498] bg-[#07A498] text-white'
-                                            : 'border-gray-600 bg-transparent'
+                                            ? 'border-[#07A498] bg-[#07A498] text-[var(--rvz-ink)]'
+                                            : 'border-[var(--rvz-card-hover-border)] bg-transparent'
                                         )}
                                       >
                                         {isSelected && <Check className="h-3 w-3" />}
@@ -1020,7 +1020,7 @@ export default function StaticAdsPage() {
                                     </div>
                                   </div>
 
-                                  <p className="mb-3 text-xs text-gray-400 line-clamp-4">
+                                  <p className="mb-3 text-xs text-[var(--rvz-ink-muted)] line-clamp-4">
                                     {concept.description}
                                   </p>
 
@@ -1032,7 +1032,7 @@ export default function StaticAdsPage() {
                                       <span className="text-[#07A498]">CTA: {concept.cta}</span>
                                     )}
                                     <button
-                                      className="rounded bg-gray-800 px-2 py-1 text-gray-300 hover:bg-gray-700"
+                                      className="rounded bg-[var(--rvz-card)] px-2 py-1 text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-bg-soft)]"
                                       onClick={() => {
                                         const block = [
                                           concept.headline,
@@ -1059,8 +1059,8 @@ export default function StaticAdsPage() {
               );
             })()
           ) : (
-            <div className="rounded-lg border-2 border-dashed border-gray-700 bg-[#1a2332] p-12 text-center">
-              <p className="text-gray-400">
+            <div className="rounded-lg border-2 border-dashed border-[var(--rvz-card-border)] bg-[#1a2332] p-12 text-center">
+              <p className="text-[var(--rvz-ink-muted)]">
                 Selecciona un producto para generar ideas de anuncios
               </p>
             </div>
@@ -1071,10 +1071,10 @@ export default function StaticAdsPage() {
               model. Cost is computed client-side for display; the server
               re-validates and cobra atomically. */}
           {selectedIdeaIds.length > 0 && (
-            <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-800 bg-[#0a0f1a]/95 px-6 py-4 backdrop-blur">
+            <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--rvz-card-border)] bg-[#0a0f1a]/95 px-6 py-4 backdrop-blur">
               <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-                <div className="text-sm text-gray-300">
-                  <span className="font-semibold text-white">{selectedIdeaIds.length}</span> idea
+                <div className="text-sm text-[var(--rvz-ink-muted)]">
+                  <span className="font-semibold text-[var(--rvz-ink)]">{selectedIdeaIds.length}</span> idea
                   {selectedIdeaIds.length === 1 ? '' : 's'} seleccionada
                   {selectedIdeaIds.length === 1 ? '' : 's'} ·{' '}
                   <span className="text-[#07A498]">{selectedIdeaIds.length * 14} créditos</span>
@@ -1083,14 +1083,14 @@ export default function StaticAdsPage() {
                   <Button
                     variant="outline"
                     onClick={() => setSelectedIdeaIds([])}
-                    className="border-gray-700 text-gray-300"
+                    className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)]"
                   >
                     Limpiar
                   </Button>
                   <Button
                     onClick={() => setConfirmIdeasOpen(true)}
                     disabled={generateFromIdeas.isPending}
-                    className="bg-[#07A498] text-white hover:bg-[#068f84]"
+                    className="bg-[#07A498] text-[var(--rvz-ink)] hover:bg-[#068f84]"
                   >
                     {generateFromIdeas.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1112,12 +1112,12 @@ export default function StaticAdsPage() {
               onClick={() => !generateFromIdeas.isPending && setConfirmIdeasOpen(false)}
             >
               <div
-                className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#0f1620] p-6"
+                className="w-full max-w-md rounded-2xl border border-[var(--rvz-card-border)] bg-[#0f1620] p-6"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-lg font-semibold text-white">Confirmar generación</h3>
-                <p className="mt-2 text-sm text-gray-400">
-                  Vas a generar <span className="text-white">{selectedIdeaIds.length}</span> imagen
+                <h3 className="text-lg font-semibold text-[var(--rvz-ink)]">Confirmar generación</h3>
+                <p className="mt-2 text-sm text-[var(--rvz-ink-muted)]">
+                  Vas a generar <span className="text-[var(--rvz-ink)]">{selectedIdeaIds.length}</span> imagen
                   {selectedIdeaIds.length === 1 ? '' : 'es'} a partir de las ideas seleccionadas. Se
                   descontarán <span className="text-[#07A498]">{selectedIdeaIds.length * 14} créditos</span>{' '}
                   de tu cuenta.
@@ -1127,14 +1127,14 @@ export default function StaticAdsPage() {
                     variant="outline"
                     onClick={() => setConfirmIdeasOpen(false)}
                     disabled={generateFromIdeas.isPending}
-                    className="border-gray-700 text-gray-300"
+                    className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)]"
                   >
                     Cancelar
                   </Button>
                   <Button
                     onClick={() => generateFromIdeas.mutate({ ideaIds: selectedIdeaIds })}
                     disabled={generateFromIdeas.isPending}
-                    className="bg-[#07A498] text-white hover:bg-[#068f84]"
+                    className="bg-[#07A498] text-[var(--rvz-ink)] hover:bg-[#068f84]"
                   >
                     {generateFromIdeas.isPending ? (
                       <>
@@ -1157,15 +1157,15 @@ export default function StaticAdsPage() {
       {activeTab === 'agregar' && (
         <div className="mx-auto max-w-2xl space-y-6">
           <div>
-            <h2 className="text-xl font-semibold text-white">Sube tu propia plantilla</h2>
-            <p className="mt-1 text-sm text-gray-400">
+            <h2 className="text-xl font-semibold text-[var(--rvz-ink)]">Sube tu propia plantilla</h2>
+            <p className="mt-1 text-sm text-[var(--rvz-ink-muted)]">
               Sube una imagen de referencia. Riverz la analiza, la adapta a tu producto, y genera una imagen final con el mismo estilo.
             </p>
           </div>
 
           {/* Product picker */}
           <div>
-            <label className="mb-1 block text-sm text-gray-300">Producto</label>
+            <label className="mb-1 block text-sm text-[var(--rvz-ink-muted)]">Producto</label>
             <Dropdown
               options={products?.map((p) => ({ value: p.id, label: p.name })) || []}
               value={selectedProduct}
@@ -1177,13 +1177,13 @@ export default function StaticAdsPage() {
 
           {/* Project name */}
           <div>
-            <label className="mb-1 block text-sm text-gray-300">Nombre del proyecto</label>
+            <label className="mb-1 block text-sm text-[var(--rvz-ink-muted)]">Nombre del proyecto</label>
             <input
               type="text"
               value={agregarProjectName}
               onChange={(e) => setAgregarProjectName(e.target.value)}
               placeholder="Ej: Test creativo Black Friday"
-              className="w-full rounded-lg border border-gray-700 bg-[#0a0a0a] px-4 py-3 text-sm text-white focus:border-[#07A498] focus:outline-none"
+              className="w-full rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-4 py-3 text-sm text-[var(--rvz-ink)] focus:border-[#07A498] focus:outline-none"
             />
           </div>
 
@@ -1191,13 +1191,13 @@ export default function StaticAdsPage() {
               Each selected image becomes its own clone pipeline running in
               parallel under the same project. */}
           <div>
-            <label className="mb-1 block text-sm text-gray-300">
+            <label className="mb-1 block text-sm text-[var(--rvz-ink-muted)]">
               Imágenes de plantilla {agregarItems.length > 0 && `(${agregarItems.length})`}
             </label>
-            <label className="flex flex-col items-center justify-center cursor-pointer rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] py-8 hover:border-[#07A498] transition-colors">
-              <ImageIcon className="h-8 w-8 text-gray-500 mb-2" />
-              <p className="text-sm text-gray-300">Haz clic o arrastra varias imágenes</p>
-              <p className="mt-1 text-xs text-gray-500">PNG, JPG, WebP · hasta 50MB cada una · ilimitado</p>
+            <label className="flex flex-col items-center justify-center cursor-pointer rounded-xl border-2 border-dashed border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] py-8 hover:border-[#07A498] transition-colors">
+              <ImageIcon className="h-8 w-8 text-[var(--rvz-ink-muted)] mb-2" />
+              <p className="text-sm text-[var(--rvz-ink-muted)]">Haz clic o arrastra varias imágenes</p>
+              <p className="mt-1 text-xs text-[var(--rvz-ink-muted)]">PNG, JPG, WebP · hasta 50MB cada una · ilimitado</p>
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
@@ -1218,12 +1218,12 @@ export default function StaticAdsPage() {
               {agregarItems.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 rounded-lg border border-gray-700 bg-[#0a0a0a] p-3"
+                  className="flex items-center gap-3 rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] p-3"
                 >
                   <img
                     src={item.preview}
                     alt=""
-                    className="h-16 w-16 shrink-0 rounded object-cover border border-gray-800"
+                    className="h-16 w-16 shrink-0 rounded object-cover border border-[var(--rvz-card-border)]"
                   />
                   <div className="flex-1 min-w-0 space-y-1">
                     <input
@@ -1232,9 +1232,9 @@ export default function StaticAdsPage() {
                       onChange={(e) => updateAgregarItem(item.id, { name: e.target.value })}
                       placeholder="Nombre de esta plantilla"
                       disabled={isAgregarSubmitting}
-                      className="w-full rounded-md border border-gray-700 bg-[#141414] px-2 py-1 text-sm text-white focus:border-[#07A498] focus:outline-none"
+                      className="w-full rounded-md border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] px-2 py-1 text-sm text-[var(--rvz-ink)] focus:border-[#07A498] focus:outline-none"
                     />
-                    <p className="text-[11px] font-mono text-gray-500">
+                    <p className="text-[11px] font-mono text-[var(--rvz-ink-muted)]">
                       {item.dims ? `${item.dims.width}×${item.dims.height}px` : 'sin dims'}
                       {' · '}
                       {(item.file.size / 1024 / 1024).toFixed(2)}MB
@@ -1243,7 +1243,7 @@ export default function StaticAdsPage() {
                   <button
                     onClick={() => removeAgregarItem(item.id)}
                     disabled={isAgregarSubmitting}
-                    className="shrink-0 text-gray-500 hover:text-red-400 disabled:opacity-50"
+                    className="shrink-0 text-[var(--rvz-ink-muted)] hover:text-red-400 disabled:opacity-50"
                     title="Quitar"
                   >
                     <X className="h-4 w-4" />
@@ -1256,7 +1256,7 @@ export default function StaticAdsPage() {
           <Button
             onClick={handleAgregarSubmit}
             disabled={agregarItems.length === 0 || !selectedProduct || !agregarProjectName.trim() || isAgregarSubmitting}
-            className="w-full bg-[#07A498] hover:bg-[#068f84] text-white py-5"
+            className="w-full bg-[#07A498] hover:bg-[#068f84] text-[var(--rvz-ink)] py-5"
           >
             {isAgregarSubmitting ? (
               <>
@@ -1280,7 +1280,7 @@ export default function StaticAdsPage() {
               instead of being glued to the viewport edge. Glass blur +
               soft brand-accent glow at the top edge so it reads as the
               primary CTA region. */}
-          <div className="pointer-events-auto mx-auto max-w-6xl rounded-2xl border border-white/10 bg-gradient-to-b from-[#141414]/95 to-[#0a0a0a]/95 px-5 py-3 shadow-[0_-12px_48px_-12px_rgba(7,164,152,0.25)] backdrop-blur-xl">
+          <div className="pointer-events-auto mx-auto max-w-6xl rounded-2xl border border-[var(--rvz-card-border)] bg-gradient-to-b from-[#141414]/95 to-[#0a0a0a]/95 px-5 py-3 shadow-[0_-12px_48px_-12px_rgba(7,164,152,0.25)] backdrop-blur-xl">
             <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap lg:gap-5">
               {/* Selection count + estimate */}
               <div className="flex items-center gap-3">
@@ -1291,11 +1291,11 @@ export default function StaticAdsPage() {
                   <span className="absolute -top-1 -right-1 inline-flex h-2.5 w-2.5 rounded-full bg-[#07A498] opacity-80 animate-pulse" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-semibold leading-tight text-white">
+                  <p className="text-[13px] font-semibold leading-tight text-[var(--rvz-ink)]">
                     {selectedTemplateIds.length === 1 ? 'Plantilla seleccionada' : 'Plantillas seleccionadas'}
                   </p>
                   {bulkEstimate && (
-                    <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-400">
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-[var(--rvz-ink-muted)]">
                       <span className="inline-flex items-center gap-1 rounded-md bg-yellow-500/10 px-1.5 py-0.5 text-yellow-400 ring-1 ring-yellow-500/20">
                         <Zap className="h-3 w-3" />
                         {bulkEstimate.totalCredits.toLocaleString()}
@@ -1311,13 +1311,13 @@ export default function StaticAdsPage() {
 
               {/* Vertical divider — anchors the visual rhythm so the bar
                   reads as 3 distinct sections instead of a wall. */}
-              <div className="hidden h-10 w-px bg-white/10 lg:block" />
+              <div className="hidden h-10 w-px bg-[var(--rvz-bg-soft)] lg:block" />
 
               {/* Product selector */}
               <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                <Package className="h-4 w-4 shrink-0 text-gray-500" />
+                <Package className="h-4 w-4 shrink-0 text-[var(--rvz-ink-muted)]" />
                 <div className="flex-1 min-w-0">
-                  <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wider text-gray-500">
+                  <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wider text-[var(--rvz-ink-muted)]">
                     Producto
                   </p>
                   <Dropdown
@@ -1353,7 +1353,7 @@ export default function StaticAdsPage() {
               )}
 
               {/* Vertical divider before the action cluster. */}
-              <div className="hidden h-10 w-px bg-white/10 lg:block" />
+              <div className="hidden h-10 w-px bg-[var(--rvz-bg-soft)] lg:block" />
 
               {/* Actions */}
               <div className="flex items-center gap-2">
@@ -1363,7 +1363,7 @@ export default function StaticAdsPage() {
                     setSelectedTemplateIds([]);
                     setIsCloneBarVisible(false);
                   }}
-                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-gray-400 transition hover:bg-white/5 hover:text-white"
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--rvz-ink-muted)] transition hover:bg-[var(--rvz-bg-soft)] hover:text-[var(--rvz-ink)]"
                 >
                   Cancelar
                 </button>
@@ -1371,7 +1371,7 @@ export default function StaticAdsPage() {
                   type="button"
                   onClick={initiateCloneProcess}
                   disabled={cloneMutation.isPending || !selectedProduct}
-                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-br from-[#07A498] to-[#068f84] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#07A498]/30 transition-all hover:shadow-xl hover:shadow-[#07A498]/40 hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-br from-[#07A498] to-[#068f84] px-5 py-3 text-sm font-semibold text-[var(--rvz-ink)] shadow-lg shadow-[#07A498]/30 transition-all hover:shadow-xl hover:shadow-[#07A498]/40 hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
                 >
                   {/* Subtle shimmer that sweeps on hover — gives the primary
                       CTA a premium feel without being distracting. */}
@@ -1400,9 +1400,9 @@ export default function StaticAdsPage() {
       {/* Project Name Modal */}
       {isProjectModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#141414] p-6 shadow-2xl">
-            <h2 className="mb-2 text-xl font-bold text-white">Confirmar Generación Masiva</h2>
-            <p className="mb-6 text-sm text-gray-400">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6 shadow-2xl">
+            <h2 className="mb-2 text-xl font-bold text-[var(--rvz-ink)]">Confirmar Generación Masiva</h2>
+            <p className="mb-6 text-sm text-[var(--rvz-ink-muted)]">
               Vas a generar {selectedTemplateIds.length} imágenes únicas para tu producto.
             </p>
 
@@ -1412,20 +1412,20 @@ export default function StaticAdsPage() {
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
                     <p className="text-2xl font-bold text-[#07A498]">{bulkEstimate.totalCredits.toLocaleString()}</p>
-                    <p className="text-xs text-gray-400">Créditos a usar</p>
+                    <p className="text-xs text-[var(--rvz-ink-muted)]">Créditos a usar</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-white">~{bulkEstimate.estimatedMinutes} min</p>
-                    <p className="text-xs text-gray-400">Tiempo estimado</p>
+                    <p className="text-2xl font-bold text-[var(--rvz-ink)]">~{bulkEstimate.estimatedMinutes} min</p>
+                    <p className="text-xs text-[var(--rvz-ink-muted)]">Tiempo estimado</p>
                   </div>
                 </div>
-                <p className="mt-3 text-center text-xs text-gray-400">
+                <p className="mt-3 text-center text-xs text-[var(--rvz-ink-muted)]">
                   {bulkEstimate.message}
                 </p>
               </div>
             )}
             
-            <label className="mb-2 block text-sm font-medium text-gray-300">
+            <label className="mb-2 block text-sm font-medium text-[var(--rvz-ink-muted)]">
               Nombre del proyecto
             </label>
             <input
@@ -1433,20 +1433,20 @@ export default function StaticAdsPage() {
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder="Ej: Campaña Black Friday 2026"
-              className="mb-6 w-full rounded-lg border border-gray-700 bg-[#0a0a0a] px-4 py-3 text-white focus:border-[#07A498] focus:outline-none"
+              className="mb-6 w-full rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] px-4 py-3 text-[var(--rvz-ink)] focus:border-[#07A498] focus:outline-none"
               autoFocus
             />
 
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                className="flex-1 border-gray-700 hover:bg-gray-800"
+                className="flex-1 border-[var(--rvz-card-border)] hover:bg-[var(--rvz-card)]"
                 onClick={() => setIsProjectModalOpen(false)}
               >
                 Cancelar
               </Button>
               <Button
-                className="flex-1 bg-[#07A498] hover:bg-[#068f84] text-white"
+                className="flex-1 bg-[#07A498] hover:bg-[#068f84] text-[var(--rvz-ink)]"
                 onClick={confirmClone}
                 disabled={!projectName.trim()}
               >

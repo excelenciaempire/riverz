@@ -29,7 +29,7 @@ const STATUS_LABEL: Record<string, { label: string; tone: 'gray' | 'blue' | 'gre
 };
 
 const TONE_CLASS: Record<string, string> = {
-  gray: 'text-gray-400 bg-gray-500/10 border-gray-700',
+  gray: 'text-[var(--rvz-ink-muted)] bg-gray-500/10 border-[var(--rvz-card-border)]',
   blue: 'text-blue-300 bg-blue-500/10 border-blue-500/30',
   green: 'text-green-300 bg-green-500/10 border-green-500/30',
   red: 'text-red-300 bg-red-500/10 border-red-500/30',
@@ -109,38 +109,38 @@ export default function StealerLandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 lg:p-10">
+    <div className="min-h-screen bg-black text-[var(--rvz-ink)] p-6 lg:p-10">
       <div className="mx-auto max-w-5xl space-y-10">
         {/* Header */}
         <header>
           <h1 className="text-3xl font-bold">STEALER · Clonador de anuncios</h1>
-          <p className="mt-2 text-sm text-gray-400 max-w-2xl">
+          <p className="mt-2 text-sm text-[var(--rvz-ink-muted)] max-w-2xl">
             Sube un anuncio ganador. Detectamos escenas y voz, regeneramos cada plano con tu marca,
             y te devolvemos un paquete de clips listos para subir a Meta Ads.
           </p>
         </header>
 
         {/* Upload card */}
-        <section className="rounded-2xl border border-gray-800 bg-gradient-to-br from-[#141414] to-[#0a0a0a] p-6">
+        <section className="rounded-2xl border border-[var(--rvz-card-border)] bg-gradient-to-br from-[#141414] to-[#0a0a0a] p-6">
           <h2 className="mb-4 text-lg font-semibold">Nuevo proyecto</h2>
 
           <div className="grid gap-5">
             <div>
-              <Label className="text-sm text-gray-300">Nombre (opcional)</Label>
+              <Label className="text-sm text-[var(--rvz-ink-muted)]">Nombre (opcional)</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Anuncio Mascarilla Q4"
-                className="mt-1 bg-[#0a0a0a] border-gray-800"
+                className="mt-1 bg-[var(--rvz-bg)] border-[var(--rvz-card-border)]"
               />
             </div>
 
             <div>
-              <Label className="text-sm text-gray-300">Video fuente (MP4, máx. 500 MB)</Label>
+              <Label className="text-sm text-[var(--rvz-ink-muted)]">Video fuente (MP4, máx. 500 MB)</Label>
               <div
                 onClick={() => fileRef.current?.click()}
                 className={cn(
-                  'mt-1 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-700 bg-[#0a0a0a] py-10 transition hover:border-[#07A498]',
+                  'mt-1 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] py-10 transition hover:border-[#07A498]',
                   file && 'border-[#07A498]/50 bg-[#07A498]/5'
                 )}
               >
@@ -155,13 +155,13 @@ export default function StealerLandingPage() {
                   <>
                     <Film className="h-10 w-10 text-[#07A498] mb-3" />
                     <p className="text-sm font-medium">{file.name}</p>
-                    <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(1)} MB · click para cambiar</p>
+                    <p className="text-xs text-[var(--rvz-ink-muted)]">{(file.size / 1024 / 1024).toFixed(1)} MB · click para cambiar</p>
                   </>
                 ) : (
                   <>
-                    <Upload className="h-10 w-10 text-gray-500 mb-3" />
+                    <Upload className="h-10 w-10 text-[var(--rvz-ink-muted)] mb-3" />
                     <p className="text-sm">Arrastra el archivo aquí o click para seleccionar</p>
-                    <p className="text-xs text-gray-600 mt-1">Vertical 9:16 funciona mejor para Meta Ads</p>
+                    <p className="text-xs text-[var(--rvz-ink)] mt-1">Vertical 9:16 funciona mejor para Meta Ads</p>
                   </>
                 )}
               </div>
@@ -169,11 +169,11 @@ export default function StealerLandingPage() {
 
             {/* Avatar selector — only relevant for actor scenes; optional. */}
             <div>
-              <Label className="text-sm text-gray-300 flex items-center gap-2">
+              <Label className="text-sm text-[var(--rvz-ink-muted)] flex items-center gap-2">
                 <User2 className="h-3.5 w-3.5" />
                 Avatar para escenas de actor (opcional)
               </Label>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-[var(--rvz-ink-muted)]">
                 Si no eliges, las escenas de actor usan el frame original como referencia visual.
               </p>
               <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
@@ -182,7 +182,7 @@ export default function StealerLandingPage() {
                   onClick={() => setAvatarId(null)}
                   className={cn(
                     'shrink-0 flex items-center justify-center w-16 h-16 rounded-lg border text-[10px] uppercase tracking-wide',
-                    avatarId === null ? 'border-[#07A498] bg-[#07A498]/10 text-[#07A498]' : 'border-gray-800 bg-[#0a0a0a] text-gray-500'
+                    avatarId === null ? 'border-[#07A498] bg-[#07A498]/10 text-[#07A498]' : 'border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] text-[var(--rvz-ink-muted)]'
                   )}
                 >
                   Ninguno
@@ -194,14 +194,14 @@ export default function StealerLandingPage() {
                     onClick={() => setAvatarId(a.id)}
                     className={cn(
                       'shrink-0 w-16 h-16 rounded-lg border overflow-hidden relative',
-                      avatarId === a.id ? 'border-[#07A498] ring-2 ring-[#07A498]/40' : 'border-gray-800'
+                      avatarId === a.id ? 'border-[#07A498] ring-2 ring-[#07A498]/40' : 'border-[var(--rvz-card-border)]'
                     )}
                     title={a.name}
                   >
                     {a.image_url ? (
                       <img src={a.image_url} alt={a.name} className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-[10px] text-gray-500">{a.name}</span>
+                      <span className="text-[10px] text-[var(--rvz-ink-muted)]">{a.name}</span>
                     )}
                   </button>
                 ))}
@@ -210,17 +210,17 @@ export default function StealerLandingPage() {
 
             {/* Voice selector — feeds ElevenLabs TTS. Optional: if none, audio fuente. */}
             <div>
-              <Label className="text-sm text-gray-300 flex items-center gap-2">
+              <Label className="text-sm text-[var(--rvz-ink-muted)] flex items-center gap-2">
                 <Mic2 className="h-3.5 w-3.5" />
                 Voz para el audio nuevo (opcional)
               </Label>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-[var(--rvz-ink-muted)]">
                 Sin voz = mantenemos la voz del anuncio original. Con voz = re-narramos el guion con ElevenLabs.
               </p>
               <select
                 value={voiceId || ''}
                 onChange={(e) => setVoiceId(e.target.value || null)}
-                className="mt-2 w-full bg-[#0a0a0a] border border-gray-800 rounded-md px-3 py-2 text-sm text-white"
+                className="mt-2 w-full bg-[var(--rvz-bg)] border border-[var(--rvz-card-border)] rounded-md px-3 py-2 text-sm text-[var(--rvz-ink)]"
               >
                 <option value="">Sin voz (usar audio original)</option>
                 {voices?.voices?.map((v) => (
@@ -237,7 +237,7 @@ export default function StealerLandingPage() {
             <Button
               onClick={handleSubmit}
               disabled={!file || uploading}
-              className="bg-[#07A498] text-white hover:bg-[#068f84]"
+              className="bg-[#07A498] text-[var(--rvz-ink)] hover:bg-[#068f84]"
             >
               {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {uploading ? 'Subiendo...' : 'Iniciar análisis'}
@@ -249,12 +249,12 @@ export default function StealerLandingPage() {
         <section>
           <h2 className="mb-4 text-lg font-semibold">Mis proyectos</h2>
           {isLoading ? (
-            <div className="flex items-center gap-2 text-gray-400 text-sm">
+            <div className="flex items-center gap-2 text-[var(--rvz-ink-muted)] text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />
               Cargando...
             </div>
           ) : data?.projects?.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-800 p-10 text-center text-gray-500 text-sm">
+            <div className="rounded-xl border border-dashed border-[var(--rvz-card-border)] p-10 text-center text-[var(--rvz-ink-muted)] text-sm">
               No tienes proyectos todavía. Sube un video arriba para empezar.
             </div>
           ) : (
@@ -265,12 +265,12 @@ export default function StealerLandingPage() {
                   <Link
                     key={p.id}
                     href={`/crear/stealer/${p.id}`}
-                    className="group rounded-xl border border-gray-800 bg-[#141414] p-4 transition hover:border-gray-700"
+                    className="group rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-4 transition hover:border-[var(--rvz-card-border)]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="font-medium truncate">{p.name || `Proyecto ${p.id.slice(0, 6)}`}</p>
-                        <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                        <div className="mt-1 flex items-center gap-2 text-xs text-[var(--rvz-ink-muted)]">
                           <Clock className="h-3 w-3" />
                           {p.source_duration_sec ? `${Math.round(p.source_duration_sec)}s` : '—'}
                           <span>·</span>

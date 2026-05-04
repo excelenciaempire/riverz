@@ -97,7 +97,7 @@ function FlatGenerationTile({
 
   if (isCompleted) {
     return (
-      <div className="group relative mb-4 break-inside-avoid overflow-hidden rounded-xl bg-[#0a0a0a]">
+      <div className="group relative mb-4 break-inside-avoid overflow-hidden rounded-xl bg-[var(--rvz-bg)]">
         {/* Image is intentionally inert: in selectMode click toggles
             selection, otherwise nothing happens. The Editar / Comparar /
             Descargar pills in the hover overlay are the only triggers
@@ -126,8 +126,8 @@ function FlatGenerationTile({
           className={cn(
             'absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full transition-all cursor-pointer z-10',
             isSelected
-              ? 'bg-[#07A498] text-white'
-              : 'bg-black/40 text-white/40 hover:text-white hover:bg-black/70 group-hover:text-white/80 group-hover:bg-black/60',
+              ? 'bg-[#07A498] text-[var(--rvz-ink)]'
+              : 'bg-black/40 text-[var(--rvz-ink-faint)] hover:text-[var(--rvz-ink)] hover:bg-black/70 group-hover:text-[var(--rvz-ink)] group-hover:bg-black/60',
           )}
         >
           <Check className="h-3.5 w-3.5" />
@@ -140,14 +140,14 @@ function FlatGenerationTile({
           <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center justify-center gap-1.5 px-2 pt-8 pb-3 bg-gradient-to-t from-black/85 via-black/45 to-transparent opacity-0 group-hover:opacity-100 transition">
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium transition border border-white/10 whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-[var(--rvz-ink)] text-[11px] font-medium transition border border-[var(--rvz-card-border)] whitespace-nowrap"
             >
               <Edit2 className="h-3 w-3" />
               Editar
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onCompare(); }}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium transition border border-white/10 whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-black/70 hover:bg-black/90 text-[var(--rvz-ink)] text-[11px] font-medium transition border border-[var(--rvz-card-border)] whitespace-nowrap"
             >
               <Columns2 className="h-3 w-3" />
               Comparar
@@ -156,7 +156,7 @@ function FlatGenerationTile({
               onClick={(e) => { e.stopPropagation(); onDownload(); }}
               aria-label="Descargar"
               title="Descargar"
-              className="flex items-center justify-center h-[26px] w-[26px] shrink-0 rounded-md bg-black/70 hover:bg-black/90 text-white transition border border-white/10"
+              className="flex items-center justify-center h-[26px] w-[26px] shrink-0 rounded-md bg-black/70 hover:bg-black/90 text-[var(--rvz-ink)] transition border border-[var(--rvz-card-border)]"
             >
               <Download className="h-3 w-3" />
             </button>
@@ -168,11 +168,11 @@ function FlatGenerationTile({
 
   if (isPending) {
     return (
-      <div className="mb-4 break-inside-avoid relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0f0f0f] border border-gray-800">
+      <div className="mb-4 break-inside-avoid relative aspect-[3/4] overflow-hidden rounded-xl bg-[#0f0f0f] border border-[var(--rvz-card-border)]">
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center">
           <Loader2 className="h-5 w-5 animate-spin text-[#07A498]" />
-          <p className="text-[11px] text-gray-400">{STATUS_LABEL[gen.status] || 'Procesando'}</p>
-          <p className="line-clamp-2 text-[10px] text-gray-600">{label}</p>
+          <p className="text-[11px] text-[var(--rvz-ink-muted)]">{STATUS_LABEL[gen.status] || 'Procesando'}</p>
+          <p className="line-clamp-2 text-[10px] text-[var(--rvz-ink)]">{label}</p>
         </div>
       </div>
     );
@@ -423,12 +423,12 @@ export default function HistorialPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push('/crear/static-ads')}
-            className="flex items-center gap-2 text-gray-400 transition hover:text-white"
+            className="flex items-center gap-2 text-[var(--rvz-ink-muted)] transition hover:text-[var(--rvz-ink)]"
           >
             <ArrowLeft className="h-5 w-5" />
             <span className="text-sm">Volver</span>
           </button>
-          <h1 className="text-2xl font-bold text-white">Historial de Proyectos</h1>
+          <h1 className="text-2xl font-bold text-[var(--rvz-ink)]">Historial de Proyectos</h1>
         </div>
         {projects && projects.length > 0 && (
           <div className="flex items-center gap-3">
@@ -445,7 +445,7 @@ export default function HistorialPage() {
                     window.localStorage.setItem('riverz.historial.flatView', next ? '1' : '0');
                   }
                 }}
-                className="flex items-center gap-2 rounded-lg border border-gray-700 bg-[#141414] px-3 py-2 text-sm text-gray-300 transition hover:border-[#07A498] hover:text-white"
+                className="flex items-center gap-2 rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] px-3 py-2 text-sm text-[var(--rvz-ink-muted)] transition hover:border-[#07A498] hover:text-[var(--rvz-ink)]"
                 aria-pressed={flatView}
                 title={flatView ? 'Volver a ver carpetas' : 'Ver todas las imágenes sin carpetas'}
               >
@@ -454,7 +454,7 @@ export default function HistorialPage() {
                 <span
                   className={cn(
                     'relative inline-flex h-5 w-9 items-center rounded-full transition',
-                    flatView ? 'bg-[#07A498]' : 'bg-gray-700',
+                    flatView ? 'bg-[#07A498]' : 'bg-[var(--rvz-bg-soft)]',
                   )}
                   aria-hidden="true"
                 >
@@ -470,16 +470,16 @@ export default function HistorialPage() {
 
             {selectMode ? (
               <>
-                <Button variant="outline" onClick={selectAll} className="border-gray-700 text-gray-300">
+                <Button variant="outline" onClick={selectAll} className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)]">
                   {projects.length === selectedIds.size ? 'Deseleccionar todo' : 'Seleccionar todo'}
                 </Button>
-                <Button variant="outline" onClick={exitSelectMode} className="border-gray-700 text-gray-300">
+                <Button variant="outline" onClick={exitSelectMode} className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)]">
                   Cancelar
                 </Button>
               </>
             ) : (
               !flatView && (
-                <Button variant="outline" onClick={() => setSelectMode(true)} className="border-gray-700 text-gray-300 hover:text-white">
+                <Button variant="outline" onClick={() => setSelectMode(true)} className="border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]">
                   <CheckSquare className="mr-2 h-4 w-4" />
                   Seleccionar
                 </Button>
@@ -494,10 +494,10 @@ export default function HistorialPage() {
           <Loader2 className="h-8 w-8 animate-spin text-[#07A498]" />
         </div>
       ) : projects?.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-800 bg-[#141414] py-20 text-center">
-          <Folder className="mb-4 h-16 w-16 text-gray-700" />
-          <h3 className="text-lg font-medium text-white">No hay proyectos</h3>
-          <p className="mt-2 text-gray-400">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] py-20 text-center">
+          <Folder className="mb-4 h-16 w-16 text-[var(--rvz-ink)]" />
+          <h3 className="text-lg font-medium text-[var(--rvz-ink)]">No hay proyectos</h3>
+          <p className="mt-2 text-[var(--rvz-ink-muted)]">
             Crea tu primer proyecto de Static Ads para verlo aquí.
           </p>
         </div>
@@ -510,10 +510,10 @@ export default function HistorialPage() {
             <Loader2 className="h-8 w-8 animate-spin text-[#07A498]" />
           </div>
         ) : !flatGens || flatGens.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-800 bg-[#141414] py-20 text-center">
-            <ImageIcon className="mb-4 h-16 w-16 text-gray-700" />
-            <h3 className="text-lg font-medium text-white">No hay generaciones aún</h3>
-            <p className="mt-2 text-gray-400">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] py-20 text-center">
+            <ImageIcon className="mb-4 h-16 w-16 text-[var(--rvz-ink)]" />
+            <h3 className="text-lg font-medium text-[var(--rvz-ink)]">No hay generaciones aún</h3>
+            <p className="mt-2 text-[var(--rvz-ink-muted)]">
               Las imágenes aparecerán aquí en cuanto los proyectos terminen de procesar.
             </p>
           </div>
@@ -551,7 +551,7 @@ export default function HistorialPage() {
                 'group relative cursor-pointer overflow-hidden rounded-xl border bg-[#1a2332] transition',
                 isSelected
                   ? 'border-[#07A498] ring-2 ring-[#07A498]/40'
-                  : 'border-gray-800 hover:border-[#07A498] hover:shadow-lg hover:shadow-[#07A498]/10',
+                  : 'border-[var(--rvz-card-border)] hover:border-[#07A498] hover:shadow-lg hover:shadow-[#07A498]/10',
               )}
             >
               {/* Selection checkbox — visible when in select mode, on hover otherwise */}
@@ -567,8 +567,8 @@ export default function HistorialPage() {
                     ? 'opacity-100'
                     : 'opacity-0 group-hover:opacity-100',
                   isSelected
-                    ? 'bg-[#07A498] border-[#07A498] text-white'
-                    : 'bg-black/60 border-gray-600 text-gray-300 hover:border-[#07A498]',
+                    ? 'bg-[#07A498] border-[#07A498] text-[var(--rvz-ink)]'
+                    : 'bg-black/60 border-[var(--rvz-card-hover-border)] text-[var(--rvz-ink-muted)] hover:border-[#07A498]',
                 )}
                 aria-label={isSelected ? 'Deseleccionar' : 'Seleccionar'}
               >
@@ -591,13 +591,13 @@ export default function HistorialPage() {
                   className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/90 p-4"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <p className="text-sm text-white text-center mb-4">¿Eliminar este proyecto?</p>
+                  <p className="text-sm text-[var(--rvz-ink)] text-center mb-4">¿Eliminar este proyecto?</p>
                   <div className="flex gap-2">
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
-                      className="border-gray-600"
+                      className="border-[var(--rvz-card-hover-border)]"
                     >
                       <X className="h-4 w-4 mr-1" />
                       No
@@ -606,7 +606,7 @@ export default function HistorialPage() {
                       size="sm"
                       onClick={confirmDelete}
                       disabled={deleteMutation.isPending}
-                      className="bg-red-500 hover:bg-red-600 text-white"
+                      className="bg-red-500 hover:bg-red-600 text-[var(--rvz-ink)]"
                     >
                       {deleteMutation.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -621,15 +621,15 @@ export default function HistorialPage() {
                 </div>
               )}
 
-              <div className="flex h-32 items-center justify-center bg-[#0a0a0a] transition group-hover:bg-[#0f141c]">
+              <div className="flex h-32 items-center justify-center bg-[var(--rvz-bg)] transition group-hover:bg-[#0f141c]">
                 <Folder className="h-12 w-12 text-[#07A498]/50 group-hover:text-[#07A498]" />
               </div>
               <div className="p-4">
-                <h3 className="mb-1 truncate text-lg font-semibold text-white group-hover:text-[#07A498]">
+                <h3 className="mb-1 truncate text-lg font-semibold text-[var(--rvz-ink)] group-hover:text-[#07A498]">
                   {prettyName(project.name)}
                 </h3>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <div className="flex items-center gap-2 text-xs text-[var(--rvz-ink-muted)]">
                     <Calendar className="h-3 w-3" />
                     <span>
                       {format(new Date(project.created_at), "d 'de' MMMM, yyyy", {
@@ -662,27 +662,27 @@ export default function HistorialPage() {
 
       {/* Bulk action bar — visible only when in select mode with at least one item picked */}
       {selectMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-800 bg-[#0a0a0a]/95 backdrop-blur-lg p-4">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--rvz-card-border)] bg-[var(--rvz-bg)]/95 backdrop-blur-lg p-4">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#07A498]/20 text-[#07A498] font-bold">
                 {selectedIds.size}
               </div>
               <div>
-                <p className="text-sm font-medium text-white">
+                <p className="text-sm font-medium text-[var(--rvz-ink)]">
                   proyecto(s) seleccionado(s)
                 </p>
-                <p className="text-xs text-gray-400">Esta acción no se puede deshacer</p>
+                <p className="text-xs text-[var(--rvz-ink-muted)]">Esta acción no se puede deshacer</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={exitSelectMode} className="border-gray-700">
+              <Button variant="outline" onClick={exitSelectMode} className="border-[var(--rvz-card-border)]">
                 Cancelar
               </Button>
               <Button
                 onClick={() => setBulkConfirmOpen(true)}
                 disabled={isBulkDeleting}
-                className="bg-red-500 hover:bg-red-600 text-white"
+                className="bg-red-500 hover:bg-red-600 text-[var(--rvz-ink)]"
               >
                 {isBulkDeleting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -703,19 +703,19 @@ export default function HistorialPage() {
           onClick={() => !isBulkDeleting && setBulkConfirmOpen(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl border border-gray-800 bg-[#141414] p-6 shadow-2xl"
+            className="w-full max-w-sm rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="mb-2 text-lg font-bold text-white">
+            <h2 className="mb-2 text-lg font-bold text-[var(--rvz-ink)]">
               ¿Eliminar {selectedIds.size} proyecto(s)?
             </h2>
-            <p className="mb-6 text-sm text-gray-400">
+            <p className="mb-6 text-sm text-[var(--rvz-ink-muted)]">
               Esta acción borra cada proyecto y todas sus generaciones. No se puede deshacer.
             </p>
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                className="flex-1 border-gray-700"
+                className="flex-1 border-[var(--rvz-card-border)]"
                 onClick={() => setBulkConfirmOpen(false)}
                 disabled={isBulkDeleting}
               >
@@ -724,7 +724,7 @@ export default function HistorialPage() {
               <Button
                 onClick={handleBulkDelete}
                 disabled={isBulkDeleting}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                className="flex-1 bg-red-500 hover:bg-red-600 text-[var(--rvz-ink)]"
               >
                 {isBulkDeleting ? (
                   <>
@@ -748,25 +748,25 @@ export default function HistorialPage() {
           mental model stays the same: pick, then act. Download skips
           tiles that don't have a result yet; delete hits the per-id endpoint. */}
       {flatView && flatSelectMode && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-800 bg-[#0a0a0a]/95 backdrop-blur-lg p-4">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--rvz-card-border)] bg-[var(--rvz-bg)]/95 backdrop-blur-lg p-4">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#07A498]/20 text-[#07A498] font-bold">
                 {flatSelectedIds.size}
               </div>
               <div>
-                <p className="text-sm font-medium text-white">imagen(es) seleccionada(s)</p>
-                <p className="text-xs text-gray-400">Descarga en lote o elimina las elegidas</p>
+                <p className="text-sm font-medium text-[var(--rvz-ink)]">imagen(es) seleccionada(s)</p>
+                <p className="text-xs text-[var(--rvz-ink-muted)]">Descarga en lote o elimina las elegidas</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setFlatSelectedIds(new Set())} className="border-gray-700">
+              <Button variant="outline" onClick={() => setFlatSelectedIds(new Set())} className="border-[var(--rvz-card-border)]">
                 Cancelar
               </Button>
               <Button
                 onClick={bulkDownloadFlat}
                 disabled={isBulkFlatBusy !== null}
-                className="bg-[#07A498] text-white hover:bg-[#068f84]"
+                className="bg-[#07A498] text-[var(--rvz-ink)] hover:bg-[#068f84]"
               >
                 {isBulkFlatBusy === 'download' ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -778,7 +778,7 @@ export default function HistorialPage() {
               <Button
                 onClick={() => setBulkFlatDeleteOpen(true)}
                 disabled={isBulkFlatBusy !== null}
-                className="bg-red-500 hover:bg-red-600 text-white"
+                className="bg-red-500 hover:bg-red-600 text-[var(--rvz-ink)]"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Eliminar {flatSelectedIds.size}
@@ -796,19 +796,19 @@ export default function HistorialPage() {
           onClick={() => isBulkFlatBusy !== 'delete' && setBulkFlatDeleteOpen(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl border border-gray-800 bg-[#141414] p-6 shadow-2xl"
+            className="w-full max-w-sm rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="mb-2 text-lg font-bold text-white">
+            <h2 className="mb-2 text-lg font-bold text-[var(--rvz-ink)]">
               ¿Eliminar {flatSelectedIds.size} imagen(es)?
             </h2>
-            <p className="mb-6 text-sm text-gray-400">
+            <p className="mb-6 text-sm text-[var(--rvz-ink-muted)]">
               Las imágenes se borrarán de su proyecto. La acción no se puede deshacer.
             </p>
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                className="flex-1 border-gray-700"
+                className="flex-1 border-[var(--rvz-card-border)]"
                 onClick={() => setBulkFlatDeleteOpen(false)}
                 disabled={isBulkFlatBusy === 'delete'}
               >
@@ -817,7 +817,7 @@ export default function HistorialPage() {
               <Button
                 onClick={bulkDeleteFlat}
                 disabled={isBulkFlatBusy === 'delete'}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                className="flex-1 bg-red-500 hover:bg-red-600 text-[var(--rvz-ink)]"
               >
                 {isBulkFlatBusy === 'delete' ? (
                   <>

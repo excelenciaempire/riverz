@@ -213,13 +213,13 @@ function DashboardInner() {
           {/* Hero headline */}
           <h1 className="text-center text-[40px] font-bold leading-[1.05] tracking-tight sm:text-[56px]">
             Lanzá 10x más páginas.<br />
-            <span className="text-white/90">Escalá 90% más rápido.</span>
+            <span className="text-[var(--rvz-ink)]">Escalá 90% más rápido.</span>
           </h1>
 
           {/* Composer (chat) */}
           <form
             onSubmit={handleSubmit}
-            className="mt-10 rounded-2xl border border-white/10 bg-[#15181f] p-3 shadow-[0_2px_30px_rgba(0,0,0,.4)]"
+            className="mt-10 rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-3 shadow-[0_2px_30px_rgba(0,0,0,.4)]"
           >
             <textarea
               value={prompt}
@@ -227,7 +227,7 @@ function DashboardInner() {
               placeholder="Describí lo que querés crear, o elegí una categoría abajo y Riverz autocompleta el prompt…"
               rows={3}
               disabled={generating}
-              className="w-full resize-none bg-transparent px-3 py-2 text-[15px] text-white placeholder:text-white/40 focus:outline-none disabled:opacity-50"
+              className="w-full resize-none bg-transparent px-3 py-2 text-[15px] text-[var(--rvz-ink)] placeholder:text-[var(--rvz-ink-faint)] focus:outline-none disabled:opacity-50"
             />
 
             {attachments.length > 0 && (
@@ -235,14 +235,14 @@ function DashboardInner() {
                 {attachments.map((f, i) => (
                   <span
                     key={`${f.name}-${i}`}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-white/70"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-[var(--rvz-card-border)] bg-[var(--rvz-bg-soft)] px-2 py-1 text-xs text-[var(--rvz-ink-muted)]"
                   >
                     <span aria-hidden>🖼</span>
                     <span className="max-w-[140px] truncate">{f.name}</span>
                     <button
                       type="button"
                       onClick={() => removeAttachment(i)}
-                      className="ml-1 text-white/40 hover:text-white"
+                      className="ml-1 text-[var(--rvz-ink-faint)] hover:text-[var(--rvz-ink)]"
                       aria-label={`Quitar ${f.name}`}
                     >×</button>
                   </span>
@@ -262,7 +262,7 @@ function DashboardInner() {
                 type="button"
                 onClick={onAttachClick}
                 disabled={generating}
-                className="inline-flex select-none items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5 text-xs text-white/75 ring-1 ring-inset ring-white/10 hover:bg-white/[0.1] hover:text-white disabled:opacity-50"
+                className="inline-flex select-none items-center gap-1.5 rounded-full bg-[var(--rvz-bg-soft)] px-3 py-1.5 text-xs text-[var(--rvz-ink-muted)] ring-1 ring-inset ring-[var(--rvz-card-border)] hover:bg-[var(--rvz-bg-soft)] hover:text-[var(--rvz-ink)] disabled:opacity-50"
               >
                 <span aria-hidden>📎</span> Adjuntar
               </button>
@@ -282,13 +282,13 @@ function DashboardInner() {
                   disabled={generating}
                 />
                 {chosenTemplate && (
-                  <span className="inline-flex select-none items-center gap-1.5 rounded-full bg-purple-500/15 px-3 py-1.5 text-xs text-purple-200 ring-1 ring-inset ring-purple-400/30">
+                  <span className="inline-flex select-none items-center gap-1.5 rounded-full bg-[var(--rvz-accent)]/30 px-3 py-1.5 text-xs text-[var(--rvz-ink)] ring-1 ring-inset ring-[var(--rvz-ink)]/20">
                     <span aria-hidden>📐</span>
                     {chosenTemplate.name}
                     <button
                       type="button"
                       onClick={() => setChosenTemplate(null)}
-                      className="ml-1 text-purple-300/60 hover:text-purple-100"
+                      className="ml-1 text-[var(--rvz-ink-faint)] hover:text-[var(--rvz-ink)]"
                       aria-label="Quitar template"
                       disabled={generating}
                     >×</button>
@@ -298,7 +298,7 @@ function DashboardInner() {
                   type="submit"
                   aria-label="Generar"
                   disabled={submitDisabled}
-                  className="inline-flex h-9 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="app-v2-cta h-9 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {generating ? (<><Spinner /> Generando…</>) : (<>Generar →</>)}
                 </button>
@@ -306,7 +306,7 @@ function DashboardInner() {
             </div>
 
             {genError && (
-              <div className="mx-3 mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+              <div className="mx-3 mt-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
                 {genError}
               </div>
             )}
@@ -345,7 +345,7 @@ function DashboardInner() {
             <div className="flex items-end justify-between">
               <div>
                 <h2 className="text-2xl font-semibold">Descubrí templates</h2>
-                <p className="mt-1 text-sm text-white/50">
+                <p className="mt-1 text-sm text-[var(--rvz-ink-muted)]">
                   Hover sobre un template para ver el preview animado. Click para cargarlo en el chat.
                 </p>
               </div>
@@ -361,8 +361,8 @@ function DashboardInner() {
                     className={
                       'rounded-full px-4 py-1.5 text-sm transition ' +
                       (active
-                        ? 'bg-white text-black'
-                        : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white')
+                        ? 'bg-[var(--rvz-ink)] text-[var(--rvz-bg)]'
+                        : 'bg-[var(--rvz-bg-soft)] text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]')
                     }
                   >
                     {c.label}
@@ -373,12 +373,12 @@ function DashboardInner() {
                 <button
                   aria-label="Anterior"
                   onClick={() => scrollCarousel(-1)}
-                  className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10 hover:text-white"
+                  className="grid size-8 place-items-center rounded-full border border-[var(--rvz-card-border)] bg-[var(--rvz-bg-soft)] text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-bg-soft)] hover:text-[var(--rvz-ink)]"
                 >‹</button>
                 <button
                   aria-label="Siguiente"
                   onClick={() => scrollCarousel(1)}
-                  className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10 hover:text-white"
+                  className="grid size-8 place-items-center rounded-full border border-[var(--rvz-card-border)] bg-[var(--rvz-bg-soft)] text-[var(--rvz-ink-muted)] hover:bg-[var(--rvz-bg-soft)] hover:text-[var(--rvz-ink)]"
                 >›</button>
               </div>
             </div>
@@ -391,7 +391,7 @@ function DashboardInner() {
                 <TemplateCard key={t.id} template={t} onClick={() => pickTemplateFromCard(t)} />
               ))}
               {visibleTemplates.length === 0 && (
-                <div className="grid h-[260px] w-full place-items-center rounded-xl border border-dashed border-white/10 text-sm text-white/40">
+                <div className="grid h-[260px] w-full place-items-center rounded-xl border border-dashed border-[var(--rvz-card-border)] text-sm text-[var(--rvz-ink-faint)]">
                   No hay templates en esta categoría todavía.
                 </div>
               )}
@@ -439,18 +439,18 @@ function ProductChip({
           'inline-flex select-none items-center gap-1.5 rounded-full px-3 py-1.5 text-xs ring-1 ring-inset transition ' +
           (selected
             ? 'bg-emerald-500/15 text-emerald-200 ring-emerald-400/30 hover:bg-emerald-500/20'
-            : 'bg-white/[0.06] text-white/75 ring-white/10 hover:bg-white/[0.1] hover:text-white') +
+            : 'bg-[var(--rvz-bg-soft)] text-[var(--rvz-ink-muted)] ring-[var(--rvz-card-border)] hover:bg-[var(--rvz-bg-soft)] hover:text-[var(--rvz-ink)]') +
           ' disabled:opacity-50'
         }
       >
         <span aria-hidden>📦</span>
         {loading ? 'Cargando productos…' : selected ? selected.name : 'Producto'}
-        <span aria-hidden className="text-white/40">▾</span>
+        <span aria-hidden className="text-[var(--rvz-ink-faint)]">▾</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1.5 w-[260px] overflow-hidden rounded-lg border border-white/10 bg-[#15181f] shadow-xl">
+        <div className="absolute left-0 top-full z-30 mt-1.5 w-[260px] overflow-hidden rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] shadow-xl">
           {!hasProducts && (
-            <div className="p-3 text-xs text-white/55">
+            <div className="p-3 text-xs text-[var(--rvz-ink-muted)]">
               No tenés productos.{' '}
               <a href="/marcas" className="font-semibold text-purple-300 hover:text-purple-200">
                 Agregá uno
@@ -466,7 +466,7 @@ function ProductChip({
                     onClick={() => { setProductId(p.id); setOpen(false); }}
                     className={
                       'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition hover:bg-white/[0.05] ' +
-                      (productId === p.id ? 'text-white' : 'text-white/75')
+                      (productId === p.id ? 'text-[var(--rvz-ink)]' : 'text-[var(--rvz-ink-muted)]')
                     }
                   >
                     <span className="truncate">{p.name}</span>
@@ -507,14 +507,14 @@ function PageTypeChip({
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={disabled}
-        className="inline-flex select-none items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5 text-xs text-white/75 ring-1 ring-inset ring-white/10 hover:bg-white/[0.1] hover:text-white disabled:opacity-50"
+        className="inline-flex select-none items-center gap-1.5 rounded-full bg-[var(--rvz-bg-soft)] px-3 py-1.5 text-xs text-[var(--rvz-ink-muted)] ring-1 ring-inset ring-[var(--rvz-card-border)] hover:bg-[var(--rvz-bg-soft)] hover:text-[var(--rvz-ink)] disabled:opacity-50"
       >
         <span aria-hidden>📐</span>
         {value ? TYPE_LABEL[value] : 'Tipo de página'}
-        <span aria-hidden className="text-white/40">▾</span>
+        <span aria-hidden className="text-[var(--rvz-ink-faint)]">▾</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-1.5 w-[180px] overflow-hidden rounded-lg border border-white/10 bg-[#15181f] shadow-xl">
+        <div className="absolute right-0 top-full z-30 mt-1.5 w-[180px] overflow-hidden rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] shadow-xl">
           <ul className="py-1">
             {(Object.keys(TYPE_LABEL) as LandingTemplateKind[]).map((k) => (
               <li key={k}>
@@ -523,7 +523,7 @@ function PageTypeChip({
                   onClick={() => { onChange(k); setOpen(false); }}
                   className={
                     'block w-full px-3 py-2 text-left text-sm hover:bg-white/[0.05] ' +
-                    (value === k ? 'text-white' : 'text-white/75')
+                    (value === k ? 'text-[var(--rvz-ink)]' : 'text-[var(--rvz-ink-muted)]')
                   }
                 >
                   {TYPE_LABEL[k]}
@@ -543,12 +543,12 @@ function CategoryCard({
   return (
     <button
       onClick={onClick}
-      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#15181f] p-6 text-left transition hover:border-white/25 hover:bg-[#1a1e27]"
+      className="group relative overflow-hidden rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6 text-left transition hover:border-[var(--rvz-card-hover-border)] hover:bg-[var(--rvz-bg-soft)]"
     >
       <div className={`absolute inset-0 -z-10 bg-gradient-to-br ${tone} opacity-60 transition group-hover:opacity-90`} />
       <h3 className="text-xl font-bold tracking-tight">{title}</h3>
-      <p className="mt-2 max-w-[28ch] text-sm text-white/55">{subtitle}</p>
-      <span className="mt-6 inline-flex items-center gap-1 text-xs font-semibold text-white/40 transition group-hover:text-white">
+      <p className="mt-2 max-w-[28ch] text-sm text-[var(--rvz-ink-muted)]">{subtitle}</p>
+      <span className="mt-6 inline-flex items-center gap-1 text-xs font-semibold text-[var(--rvz-ink-faint)] transition group-hover:text-[var(--rvz-ink)]">
         Cargar prompt en el chat <span aria-hidden>→</span>
       </span>
     </button>
@@ -601,7 +601,7 @@ function TemplateCard({ template, onClick }: { template: LandingTemplate; onClic
       onMouseLeave={stopScrollAnim}
       onFocus={startScrollAnim}
       onBlur={stopScrollAnim}
-      className="group relative w-[300px] shrink-0 snap-start overflow-hidden rounded-xl border border-white/10 bg-[#15181f] text-left transition hover:border-white/25"
+      className="group relative w-[300px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-left transition hover:border-[var(--rvz-card-hover-border)]"
       disabled={template.comingSoon}
     >
       <div className="relative h-[210px] overflow-hidden bg-white">
@@ -623,13 +623,13 @@ function TemplateCard({ template, onClick }: { template: LandingTemplate; onClic
       </div>
       <div className="p-4">
         <div className="text-base font-semibold">{template.name}</div>
-        <div className="mt-1 text-xs uppercase tracking-wider text-white/40">
+        <div className="mt-1 text-xs uppercase tracking-wider text-[var(--rvz-ink-faint)]">
           {template.kind === 'advertorial' ? 'Advertorial'
             : template.kind === 'listicle' ? 'Listicle'
             : template.kind === 'product_page' ? 'Product page'
             : 'Landing page'}
         </div>
-        <div className="mt-2 line-clamp-2 text-sm text-white/55">{template.description}</div>
+        <div className="mt-2 line-clamp-2 text-sm text-[var(--rvz-ink-muted)]">{template.description}</div>
       </div>
     </button>
   );

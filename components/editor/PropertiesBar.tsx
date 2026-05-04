@@ -18,9 +18,9 @@ export function PropertiesBar({
   if (activeTool !== 'brush' && activeTool !== 'mask') return null;
 
   return (
-    <div className="absolute left-20 top-4 z-10 flex w-64 flex-col gap-4 rounded-xl border border-gray-800 bg-[#141414]/90 p-4 backdrop-blur-md">
+    <div className="absolute left-20 top-4 z-10 flex w-64 flex-col gap-4 rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)]/90 p-4 backdrop-blur-md">
       <div>
-        <Label className="mb-2 block text-xs font-medium text-gray-400">
+        <Label className="mb-2 block text-xs font-medium text-[var(--rvz-ink-muted)]">
           Tamaño del Pincel
         </Label>
         <div className="flex items-center gap-3">
@@ -32,7 +32,7 @@ export function PropertiesBar({
             step={1}
             className="flex-1"
           />
-          <span className="text-sm font-medium text-white w-10 text-right">{brushSize}</span>
+          <span className="text-sm font-medium text-[var(--rvz-ink)] w-10 text-right">{brushSize}</span>
         </div>
       </div>
 

@@ -27,7 +27,7 @@ import dynamic from 'next/dynamic';
 const CanvasEditor = dynamic(() => import('@/components/editor/CanvasEditor'), { 
   ssr: false,
   loading: () => (
-    <div className="h-[600px] w-full animate-pulse bg-gray-800 rounded-xl" />
+    <div className="h-[600px] w-full animate-pulse bg-[var(--rvz-card)] rounded-xl" />
   )
 });
 
@@ -172,20 +172,20 @@ export default function EditarFotoPage() {
       <div className="mx-auto w-full max-w-[1600px] mb-6">
         <button
           onClick={() => router.push('/crear')}
-          className="mb-4 flex items-center gap-2 text-gray-400 transition hover:text-white"
+          className="mb-4 flex items-center gap-2 text-[var(--rvz-ink-muted)] transition hover:text-[var(--rvz-ink)]"
         >
           <ArrowLeft className="h-4 w-4" />
           <span className="text-sm">Volver</span>
         </button>
 
-        <div className="inline-flex gap-2 rounded-full bg-gray-900/50 p-1.5 border border-gray-800">
+        <div className="inline-flex gap-2 rounded-full bg-[var(--rvz-card)]/50 p-1.5 border border-[var(--rvz-card-border)]">
           <button
             onClick={() => setActiveMode('crear')}
             className={cn(
               'px-6 py-2.5 text-sm font-medium transition-all rounded-full',
               activeMode === 'crear'
-                ? 'bg-brand-accent text-white shadow-lg shadow-brand-accent/20'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                ? 'bg-[var(--rvz-accent)] text-[var(--rvz-ink)] shadow-lg shadow-brand-accent/20'
+                : 'text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] hover:bg-[var(--rvz-card)]/50'
             )}
           >
             Generar
@@ -195,8 +195,8 @@ export default function EditarFotoPage() {
             className={cn(
               'px-6 py-2.5 text-sm font-medium transition-all rounded-full',
               activeMode === 'clonar'
-                ? 'bg-brand-accent text-white shadow-lg shadow-brand-accent/20'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                ? 'bg-[var(--rvz-accent)] text-[var(--rvz-ink)] shadow-lg shadow-brand-accent/20'
+                : 'text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] hover:bg-[var(--rvz-card)]/50'
             )}
           >
             Clonar Estilo
@@ -206,8 +206,8 @@ export default function EditarFotoPage() {
             className={cn(
               'px-6 py-2.5 text-sm font-medium transition-all rounded-full',
               activeMode === 'canvas'
-                ? 'bg-brand-accent text-white shadow-lg shadow-brand-accent/20'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                ? 'bg-[var(--rvz-accent)] text-[var(--rvz-ink)] shadow-lg shadow-brand-accent/20'
+                : 'text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)] hover:bg-[var(--rvz-card)]/50'
             )}
           >
             Editor Avanzado
@@ -222,27 +222,27 @@ export default function EditarFotoPage() {
       ) : (
         <div className="mx-auto max-w-[1600px] w-full">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[440px_1fr]">
-            <div className="space-y-5 rounded-2xl border border-gray-800 bg-gray-900/30 p-6">
+            <div className="space-y-5 rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)]/30 p-6">
               {activeMode === 'crear' && (
                 <>
                   <div>
-                    <Label className="mb-3 block text-sm font-medium text-gray-300">Instrucciones</Label>
+                    <Label className="mb-3 block text-sm font-medium text-[var(--rvz-ink-muted)]">Instrucciones</Label>
                     <Textarea
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       placeholder=""
                       rows={6}
-                      className="resize-none bg-gray-900/50 border-gray-700"
+                      className="resize-none bg-[var(--rvz-card)]/50 border-[var(--rvz-card-border)]"
                     />
                   </div>
 
                   <div>
-                    <Label className="mb-3 block text-sm font-medium text-gray-300">Imagen (Opcional)</Label>
+                    <Label className="mb-3 block text-sm font-medium text-[var(--rvz-ink-muted)]">Imagen (Opcional)</Label>
                     
                     {images.length > 0 && (
                       <div className="grid grid-cols-4 gap-2">
                         {images.map((img, index) => (
-                          <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-700 bg-gray-900">
+                          <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-card)]">
                             <img
                               src={URL.createObjectURL(img)}
                               alt={`Ref ${index + 1}`}
@@ -250,7 +250,7 @@ export default function EditarFotoPage() {
                             />
                             <button
                               onClick={() => setImages(images.filter((_, i) => i !== index))}
-                              className="absolute right-1.5 top-1.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/70 text-white opacity-0 backdrop-blur-sm transition hover:bg-red-500 group-hover:opacity-100"
+                              className="absolute right-1.5 top-1.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/70 text-[var(--rvz-ink)] opacity-0 backdrop-blur-sm transition hover:bg-red-500 group-hover:opacity-100"
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -259,10 +259,10 @@ export default function EditarFotoPage() {
                         {images.length < 8 && (
                           <button
                             onClick={() => document.getElementById('add-more-images')?.click()}
-                            className="aspect-square flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-700 bg-gray-900/50 transition-all hover:border-gray-600 hover:bg-gray-900"
+                            className="aspect-square flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[var(--rvz-card-border)] bg-[var(--rvz-card)]/50 transition-all hover:border-[var(--rvz-card-hover-border)] hover:bg-[var(--rvz-card)]"
                           >
-                            <Upload className="h-5 w-5 text-gray-400 mb-1" />
-                            <span className="text-[10px] text-gray-400 text-center px-1">Agregar<br />(máx. 8)</span>
+                            <Upload className="h-5 w-5 text-[var(--rvz-ink-muted)] mb-1" />
+                            <span className="text-[10px] text-[var(--rvz-ink-muted)] text-center px-1">Agregar<br />(máx. 8)</span>
                             <input
                               id="add-more-images"
                               type="file"
@@ -298,7 +298,7 @@ export default function EditarFotoPage() {
                   </div>
 
                   <div>
-                    <Label className="mb-3 block text-sm font-medium text-gray-300">Formato</Label>
+                    <Label className="mb-3 block text-sm font-medium text-[var(--rvz-ink-muted)]">Formato</Label>
                     <Dropdown
                       options={formatOptions}
                       value={format}
@@ -308,7 +308,7 @@ export default function EditarFotoPage() {
 
                   <Button
                     onClick={handleGenerate}
-                    className="w-full rounded-2xl bg-brand-accent py-6 hover:bg-brand-accent/90"
+                    className="w-full rounded-2xl bg-[var(--rvz-accent)] py-6 hover:bg-[var(--rvz-accent)]/90"
                     size="lg"
                     disabled={isGenerating}
                   >
@@ -328,7 +328,7 @@ export default function EditarFotoPage() {
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="mb-3 block text-sm font-medium text-gray-300">Referencia</Label>
+                      <Label className="mb-3 block text-sm font-medium text-[var(--rvz-ink-muted)]">Referencia</Label>
                       <div className="aspect-[3/4] overflow-hidden rounded-lg">
                         {referenceImage ? (
                           <div className="relative h-full w-full group">
@@ -341,7 +341,7 @@ export default function EditarFotoPage() {
                               onClick={() => setReferenceImage(null)}
                               className="absolute top-2 right-2 rounded-full bg-black/80 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                             >
-                              <X className="h-4 w-4 text-white" />
+                              <X className="h-4 w-4 text-[var(--rvz-ink)]" />
                             </button>
                           </div>
                         ) : (
@@ -356,7 +356,7 @@ export default function EditarFotoPage() {
                     </div>
 
                     <div>
-                      <Label className="mb-3 block text-sm font-medium text-gray-300">Producto</Label>
+                      <Label className="mb-3 block text-sm font-medium text-[var(--rvz-ink-muted)]">Producto</Label>
                       <div className="aspect-[3/4] overflow-hidden rounded-lg">
                         {productImage ? (
                           <div className="relative h-full w-full group">
@@ -369,7 +369,7 @@ export default function EditarFotoPage() {
                               onClick={() => setProductImage(null)}
                               className="absolute top-2 right-2 rounded-full bg-black/80 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                             >
-                              <X className="h-4 w-4 text-white" />
+                              <X className="h-4 w-4 text-[var(--rvz-ink)]" />
                             </button>
                           </div>
                         ) : (
@@ -385,12 +385,12 @@ export default function EditarFotoPage() {
                   </div>
                   
                   <div>
-                    <Label className="mb-3 block text-sm font-medium text-gray-300">Producto Existente <span className="text-gray-500 text-xs font-normal">(Opcional)</span></Label>
+                    <Label className="mb-3 block text-sm font-medium text-[var(--rvz-ink-muted)]">Producto Existente <span className="text-[var(--rvz-ink-muted)] text-xs font-normal">(Opcional)</span></Label>
                     <Select value={selectedProductId} onValueChange={setSelectedProductId}>
-                      <SelectTrigger className="w-full bg-gray-900/50 border-gray-700 text-white">
+                      <SelectTrigger className="w-full bg-[var(--rvz-card)]/50 border-[var(--rvz-card-border)] text-[var(--rvz-ink)]">
                         <SelectValue placeholder="Seleccionar producto..." />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#141414] border-gray-800 text-gray-300">
+                      <SelectContent className="bg-[var(--rvz-card)] border-[var(--rvz-card-border)] text-[var(--rvz-ink-muted)]">
                         <SelectItem value="none">Ninguno</SelectItem>
                         {products?.map(product => (
                           <SelectItem key={product.id} value={product.id}>
@@ -402,19 +402,19 @@ export default function EditarFotoPage() {
                   </div>
 
                   <div>
-                    <Label className="mb-3 block text-sm font-medium text-gray-300">Indicaciones Adicionales <span className="text-gray-500 text-xs font-normal">(Opcional)</span></Label>
+                    <Label className="mb-3 block text-sm font-medium text-[var(--rvz-ink-muted)]">Indicaciones Adicionales <span className="text-[var(--rvz-ink-muted)] text-xs font-normal">(Opcional)</span></Label>
                     <Textarea
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       placeholder=""
                       rows={3}
-                      className="text-sm resize-none bg-gray-900/50 border-gray-700"
+                      className="text-sm resize-none bg-[var(--rvz-card)]/50 border-[var(--rvz-card-border)]"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="mb-3 block text-sm font-medium text-gray-300">Formato</Label>
+                      <Label className="mb-3 block text-sm font-medium text-[var(--rvz-ink-muted)]">Formato</Label>
                       <Dropdown
                         options={formatOptions}
                         value={format}
@@ -423,7 +423,7 @@ export default function EditarFotoPage() {
                     </div>
 
                     <div>
-                      <Label className="mb-3 block text-sm font-medium text-gray-300">Variantes</Label>
+                      <Label className="mb-3 block text-sm font-medium text-[var(--rvz-ink-muted)]">Variantes</Label>
                       <Dropdown
                         options={variantOptions}
                         value={numVariants}
@@ -434,7 +434,7 @@ export default function EditarFotoPage() {
 
                   <Button
                     onClick={handleGenerate}
-                    className="w-full rounded-2xl bg-brand-accent py-6 hover:bg-brand-accent/90"
+                    className="w-full rounded-2xl bg-[var(--rvz-accent)] py-6 hover:bg-[var(--rvz-accent)]/90"
                     size="lg"
                     disabled={isGenerating}
                   >
@@ -452,10 +452,10 @@ export default function EditarFotoPage() {
             </div>
 
             <div className="relative flex flex-col">
-              <div className="flex-1 rounded-2xl border border-gray-800 bg-gray-900/30 p-8 flex items-center justify-center min-h-[600px]">
+              <div className="flex-1 rounded-2xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)]/30 p-8 flex items-center justify-center min-h-[600px]">
                 {isGenerating ? (
                   <div className="w-full space-y-4">
-                    <h3 className="text-center text-xl font-semibold text-white">
+                    <h3 className="text-center text-xl font-semibold text-[var(--rvz-ink)]">
                       Generando imagen...
                     </h3>
                     <ProgressBar progress={progress} />
@@ -470,22 +470,22 @@ export default function EditarFotoPage() {
                             alt={`Result ${index + 1}`}
                             className="w-full rounded-lg"
                           />
-                          <button className="absolute bottom-2 right-2 rounded-lg bg-brand-accent p-2 opacity-0 group-hover:opacity-100 transition">
-                            <Download className="h-4 w-4 text-white" />
+                          <button className="absolute bottom-2 right-2 rounded-lg bg-[var(--rvz-accent)] p-2 opacity-0 group-hover:opacity-100 transition">
+                            <Download className="h-4 w-4 text-[var(--rvz-ink)]" />
                           </button>
                         </div>
                       ))}
                     </div>
 
                     <div className="flex gap-4 justify-center">
-                      <Button className="bg-brand-accent hover:bg-brand-accent/90">
+                      <Button className="bg-[var(--rvz-accent)] hover:bg-[var(--rvz-accent)]/90">
                         <Download className="mr-2 h-4 w-4" />
                         Descargar
                       </Button>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center text-gray-500">
+                  <div className="flex items-center justify-center text-[var(--rvz-ink-muted)]">
                     <p>
                       {activeMode === 'crear' && 'La imagen creada aparecerá aquí'}
                       {activeMode === 'clonar' && 'Las variaciones aparecerán aquí'}

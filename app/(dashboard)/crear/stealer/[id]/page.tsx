@@ -148,17 +148,17 @@ export default function StealerProjectPage() {
   const inProgress = scenes.length - completed - failed;
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 lg:p-10">
+    <div className="min-h-screen bg-black text-[var(--rvz-ink)] p-6 lg:p-10">
       <div className="mx-auto max-w-6xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link href="/crear/stealer" className="text-gray-400 hover:text-white">
+            <Link href="/crear/stealer" className="text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
               <h1 className="text-2xl font-bold">{prettyName(project.name) !== 'Sin título' ? prettyName(project.name) : `Proyecto ${project.id.slice(0, 6)}`}</h1>
-              <p className="text-xs text-gray-500">{STATUS_HINT[project.status] || project.status}</p>
+              <p className="text-xs text-[var(--rvz-ink-muted)]">{STATUS_HINT[project.status] || project.status}</p>
             </div>
           </div>
 
@@ -166,7 +166,7 @@ export default function StealerProjectPage() {
             <Button
               onClick={() => startGeneration.mutate()}
               disabled={startGeneration.isPending}
-              className="bg-[#07A498] text-white hover:bg-[#068f84]"
+              className="bg-[#07A498] text-[var(--rvz-ink)] hover:bg-[#068f84]"
             >
               {startGeneration.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               Aprobar y generar
@@ -179,7 +179,7 @@ export default function StealerProjectPage() {
           <video
             src={project.source_video_path_signed_url}
             controls
-            className="w-full max-w-3xl rounded-xl border border-gray-800"
+            className="w-full max-w-3xl rounded-xl border border-[var(--rvz-card-border)]"
           />
         )}
 
@@ -203,7 +203,7 @@ export default function StealerProjectPage() {
           <section>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Escenas detectadas ({scenes.length})</h2>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[var(--rvz-ink-muted)]">
                 {editable
                   ? 'Marca cada escena como Actor o B-Roll, ajusta tiempos si quieres, luego aprueba.'
                   : `${completed} listas · ${inProgress} en proceso · ${failed} con error`}
@@ -220,8 +220,8 @@ export default function StealerProjectPage() {
                 const sceneAsset = data?.assets?.find((a) => a.scene_id === scene.id && (a.kind === 'actor_clip' || a.kind === 'broll_clip' || a.kind === 'lipsync_clip'));
 
                 return (
-                  <div key={scene.id} className="rounded-xl border border-gray-800 bg-[#141414] overflow-hidden">
-                    <div className="relative aspect-[9/16] bg-[#0a0a0a]">
+                  <div key={scene.id} className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] overflow-hidden">
+                    <div className="relative aspect-[9/16] bg-[var(--rvz-bg)]">
                       {sceneAsset?.storage_path_signed_url ? (
                         <video
                           src={sceneAsset.storage_path_signed_url}
@@ -236,7 +236,7 @@ export default function StealerProjectPage() {
                         />
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                          <Loader2 className="h-6 w-6 animate-spin text-[var(--rvz-ink-muted)]" />
                         </div>
                       )}
                       <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/60 text-[10px] font-mono">
@@ -254,7 +254,7 @@ export default function StealerProjectPage() {
                             'flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition border',
                             type === 'actor'
                               ? 'bg-purple-500/20 text-purple-200 border-purple-500/40'
-                              : 'bg-[#0a0a0a] text-gray-400 border-gray-800',
+                              : 'bg-[var(--rvz-bg)] text-[var(--rvz-ink-muted)] border-[var(--rvz-card-border)]',
                             !editable && 'opacity-60 cursor-not-allowed'
                           )}
                         >
@@ -268,7 +268,7 @@ export default function StealerProjectPage() {
                             'flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition border',
                             type === 'broll'
                               ? 'bg-amber-500/20 text-amber-200 border-amber-500/40'
-                              : 'bg-[#0a0a0a] text-gray-400 border-gray-800',
+                              : 'bg-[var(--rvz-bg)] text-[var(--rvz-ink-muted)] border-[var(--rvz-card-border)]',
                             !editable && 'opacity-60 cursor-not-allowed'
                           )}
                         >
@@ -305,7 +305,7 @@ export default function StealerProjectPage() {
                           'font-medium',
                           scene.status === 'completed' && 'text-green-400',
                           scene.status === 'failed' && 'text-red-400',
-                          scene.status === 'pending' && 'text-gray-500',
+                          scene.status === 'pending' && 'text-[var(--rvz-ink-muted)]',
                         )}>
                           {scene.status}
                         </span>
@@ -314,7 +314,7 @@ export default function StealerProjectPage() {
                             onClick={() => {
                               if (confirm('Eliminar esta escena?')) deleteScene.mutate(scene.id);
                             }}
-                            className="text-gray-500 hover:text-red-400 transition"
+                            className="text-[var(--rvz-ink-muted)] hover:text-red-400 transition"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -330,17 +330,17 @@ export default function StealerProjectPage() {
 
         {/* Jobs (debug-ish; helpful while the pipeline is being built out) */}
         {data?.jobs && data.jobs.length > 0 && (
-          <details className="rounded-xl border border-gray-800 bg-[#0a0a0a] p-4 text-xs">
-            <summary className="cursor-pointer text-gray-400">Jobs internos ({data.jobs.length})</summary>
+          <details className="rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-bg)] p-4 text-xs">
+            <summary className="cursor-pointer text-[var(--rvz-ink-muted)]">Jobs internos ({data.jobs.length})</summary>
             <div className="mt-3 space-y-1 font-mono text-[11px]">
               {data.jobs.map((j) => (
                 <div key={j.id} className="flex justify-between gap-3">
-                  <span className="text-gray-300">{j.kind}</span>
+                  <span className="text-[var(--rvz-ink-muted)]">{j.kind}</span>
                   <span className={cn(
                     j.status === 'succeeded' && 'text-green-400',
                     j.status === 'failed' && 'text-red-400',
                     j.status === 'running' && 'text-blue-400',
-                    j.status === 'pending' && 'text-gray-500',
+                    j.status === 'pending' && 'text-[var(--rvz-ink-muted)]',
                   )}>
                     {j.status}
                   </span>
@@ -371,7 +371,7 @@ function SecondsField({
 }) {
   return (
     <label className="block">
-      <span className="text-[9px] uppercase tracking-wider text-gray-500">{label}</span>
+      <span className="text-[9px] uppercase tracking-wider text-[var(--rvz-ink-muted)]">{label}</span>
       <input
         type="number"
         step={0.1}
@@ -383,7 +383,7 @@ function SecondsField({
           const v = Math.min(max, Math.max(min, Number(e.target.value)));
           onCommit(v);
         }}
-        className="mt-0.5 w-full bg-[#0a0a0a] border border-gray-800 rounded px-2 py-1 text-xs text-white"
+        className="mt-0.5 w-full bg-[var(--rvz-bg)] border border-[var(--rvz-card-border)] rounded px-2 py-1 text-xs text-[var(--rvz-ink)]"
       />
     </label>
   );
