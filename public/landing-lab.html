@@ -152,6 +152,18 @@ body{color:#E2E4EF;font-family:'Instrument Sans',sans-serif;font-size:13px;displ
 #sidebar{display:none!important}
 #sb-toggle{display:none!important}
 .t-sep:has(+ #sb-toggle){display:none!important}
+/* Block palette — left rail of editor, drag-source for adding new blocks */
+#block-palette{flex:0 0 96px;width:96px;background:#0D0E14;border-right:1px solid #181B27;display:flex;flex-direction:column;padding:12px 6px;gap:3px;overflow-y:auto}
+#block-palette .bp-head{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.5);padding:4px 6px 0;font-weight:700;text-align:center}
+#block-palette .bp-help{font-size:9px;color:rgba(255,255,255,.35);padding:0 6px 8px;text-align:center;line-height:1.3}
+.bp-item{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 4px;background:transparent;border:1px solid transparent;border-radius:7px;color:#B5B8C2;font-family:'Instrument Sans',sans-serif;cursor:grab;transition:background .15s,border-color .15s,color .15s}
+.bp-item:hover{background:#181B27;border-color:#2a2e38;color:#fff}
+.bp-item:active{cursor:grabbing;opacity:.6}
+.bp-icon{font-size:18px;line-height:1;font-weight:700}
+.bp-label{font-size:10px;font-weight:600;letter-spacing:.02em}
+/* Drop indicator — pulsing border when palette item drags over a slot */
+[data-section-id].riverz-palette-target{outline:2px dashed #07A498!important;outline-offset:3px;background:rgba(7,164,152,.05)}
+#page-wrap.riverz-palette-canvas{outline:2px dashed rgba(7,164,152,.4);outline-offset:-2px}
 .sb-head{padding:12px 12px 8px;border-bottom:1px solid #181B27;flex-shrink:0}
 .sb-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#3E4560;font-weight:600;margin-bottom:8px}
 .sb-new{width:100%;padding:8px 10px;background:transparent;border:1px dashed #252840;border-radius:6px;color:#5B6490;font-size:11px;font-weight:500;cursor:pointer;font-family:'Instrument Sans',sans-serif;transition:all .15s;display:flex;align-items:center;gap:5px}
@@ -439,6 +451,18 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
     <div class="sb-list" id="sb-list"></div>
     <div class="sb-count" id="sb-count">0 landings</div>
   </div>
+  <aside id="block-palette" aria-label="Bloques">
+    <div class="bp-head">Bloques</div>
+    <div class="bp-help">Arrastrá a la página</div>
+    <button class="bp-item" draggable="true" data-block-type="text" type="button" title="Texto"><span class="bp-icon">¶</span><span class="bp-label">Texto</span></button>
+    <button class="bp-item" draggable="true" data-block-type="heading" type="button" title="Encabezado"><span class="bp-icon">H</span><span class="bp-label">Título</span></button>
+    <button class="bp-item" draggable="true" data-block-type="image" type="button" title="Imagen"><span class="bp-icon">🖼</span><span class="bp-label">Imagen</span></button>
+    <button class="bp-item" draggable="true" data-block-type="quote" type="button" title="Cita"><span class="bp-icon">❝</span><span class="bp-label">Cita</span></button>
+    <button class="bp-item" draggable="true" data-block-type="list_ok" type="button" title="Lista con ✓"><span class="bp-icon">✅</span><span class="bp-label">Lista ✓</span></button>
+    <button class="bp-item" draggable="true" data-block-type="list_no" type="button" title="Lista con ✗"><span class="bp-icon">❌</span><span class="bp-label">Lista ✗</span></button>
+    <button class="bp-item" draggable="true" data-block-type="cta" type="button" title="Botón CTA"><span class="bp-icon">▶</span><span class="bp-label">Botón</span></button>
+    <button class="bp-item" draggable="true" data-block-type="section" type="button" title="Sección vacía"><span class="bp-icon">▭</span><span class="bp-label">Sección</span></button>
+  </aside>
   <div id="editor">
     <div class="ed-toolbar" id="ed-toolbar" style="display:none">
       <div class="ed-name"><input id="proj-name-in" placeholder="Nombre..." oninput="updateProjMeta()"></div>
@@ -1228,6 +1252,8 @@ function applyTemplateContent(tpl){
   if (typeof initEdit === 'function') initEdit();
   // Tag + wire drag-and-drop on the new sections.
   if (typeof makeSectionsDraggable === 'function') makeSectionsDraggable();
+  // Wire the block palette so users can drag new blocks into the canvas.
+  if (typeof wireBlockPalette === 'function') wireBlockPalette();
 }
 
 // Restore the inline Vitalu HTML when switching from a dynamic template
@@ -1390,6 +1416,94 @@ function tagAllReorderable(){
   });
 }
 var _dragSrc = null;
+// Block palette state — set when user starts dragging from #block-palette,
+// cleared on dragend or after a successful drop.
+var _paletteSrc = null;
+var BLOCK_TEMPLATES = {
+  text: '<p data-v-text="auto-{slug}">Hacé click acá para editar este párrafo. Podés agregar tantos como necesites.</p>',
+  heading: '<h2 data-v-text="auto-{slug}">Nuevo encabezado</h2>',
+  image: '<div class="reason-img" data-v-img="auto-{slug}"><img src="https://placehold.co/900x506/eef0f3/9ca3af?text=Imagen" alt="Imagen"></div>',
+  quote: '<div class="quote"><span data-v-text="auto-{slug}">"Aquí va una cita o testimonio que respalde tu producto."</span><span class="attr" data-v-text="auto-{slug}-a">— Atribución</span></div>',
+  list_ok: '<ul class="checks"><li data-v-text="auto-{slug}-1">Beneficio o argumento positivo uno</li><li data-v-text="auto-{slug}-2">Beneficio dos</li><li data-v-text="auto-{slug}-3">Beneficio tres</li></ul>',
+  list_no: '<ul class="crosses"><li data-v-text="auto-{slug}-1">Lo que tu producto NO tiene (problema común)</li><li data-v-text="auto-{slug}-2">Otro problema que evita</li></ul>',
+  cta: '<div style="text-align:center;margin:24px 0"><a href="#" class="cta-btn" data-v-text="auto-{slug}" style="display:inline-block;background:var(--ink,#0a0a0a);color:#fff;padding:14px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;letter-spacing:.04em;text-transform:uppercase">Comprar ahora →</a></div>',
+  section: '<section><h2 data-v-text="auto-{slug}-h">Nueva sección</h2><p data-v-text="auto-{slug}-p">Cuerpo de la sección. Podés arrastrar bloques desde la izquierda para llenarla, o editar este texto directamente.</p></section>'
+};
+function nextAutoSlug(){
+  var max = 0;
+  document.querySelectorAll('#page-wrap [data-v-text^="auto-"], #page-wrap [data-v-img^="auto-"]').forEach(function(el){
+    var attr = el.getAttribute('data-v-text') || el.getAttribute('data-v-img') || '';
+    var m = attr.match(/^auto-(\d+)/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  });
+  return String(max + 1);
+}
+function spawnBlockFromPalette(blockType, parent, beforeEl){
+  var html = BLOCK_TEMPLATES[blockType];
+  if (!html || !parent) return null;
+  html = html.replace(/\{slug\}/g, nextAutoSlug());
+  var tmp = document.createElement('div');
+  tmp.innerHTML = html.trim();
+  var newEl = tmp.firstElementChild;
+  if (!newEl) return null;
+  if (beforeEl && beforeEl.parentNode === parent) parent.insertBefore(newEl, beforeEl);
+  else parent.appendChild(newEl);
+  // Re-run all the wiring so the new block gets contentEditable, image
+  // overlays, drag handles, and shows up in IMG_KEYS / DEFAULT_TEXTS.
+  rebuildSlotTables();
+  decorateImageSlots();
+  if (typeof initEdit === 'function') initEdit();
+  if (typeof makeSectionsDraggable === 'function') makeSectionsDraggable();
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  saveAll();
+  toast('+ Bloque agregado');
+  return newEl;
+}
+function wireBlockPalette(){
+  var palette = document.getElementById('block-palette');
+  if (!palette || palette.dataset.wired) return;
+  palette.dataset.wired = '1';
+  palette.querySelectorAll('.bp-item').forEach(function(item){
+    item.addEventListener('dragstart', function(e){
+      _paletteSrc = item.dataset.blockType || null;
+      try { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', 'palette:' + _paletteSrc); } catch(err){}
+      item.style.opacity = '.5';
+      // Hint canvas dropability
+      var pw = g('page-wrap'); if (pw) pw.classList.add('riverz-palette-canvas');
+    });
+    item.addEventListener('dragend', function(){
+      _paletteSrc = null;
+      item.style.opacity = '';
+      var pw = g('page-wrap'); if (pw) pw.classList.remove('riverz-palette-canvas');
+      document.querySelectorAll('[data-section-id].riverz-palette-target').forEach(function(el){
+        el.classList.remove('riverz-palette-target');
+      });
+    });
+  });
+  // Make page-wrap a fallback drop target — drop in dead space adds the
+  // new block at the end of the section parent (or page-wrap itself).
+  var pw = g('page-wrap');
+  if (pw && !pw.dataset.paletteWired) {
+    pw.dataset.paletteWired = '1';
+    pw.addEventListener('dragover', function(e){
+      if (!_paletteSrc) return;
+      e.preventDefault();
+      try { e.dataTransfer.dropEffect = 'copy'; } catch(err){}
+    });
+    pw.addEventListener('drop', function(e){
+      if (!_paletteSrc) return;
+      e.preventDefault();
+      // If the drop landed directly on page-wrap (not on a child), append
+      // to the section parent (or page-wrap itself for a brand-new section).
+      var parent = (typeof findSectionParent === 'function' && findSectionParent()) || pw;
+      // For a "section" block always go to the top-level parent
+      if (_paletteSrc === 'section' && typeof findSectionParent === 'function') parent = findSectionParent() || pw;
+      spawnBlockFromPalette(_paletteSrc, parent, null);
+      _paletteSrc = null;
+      pw.classList.remove('riverz-palette-canvas');
+    });
+  }
+}
 function makeSectionsDraggable(){
   tagAllReorderable();
   var pw = g('page-wrap'); if (!pw) return;
@@ -1437,9 +1551,18 @@ function _onSecDragStart(e){
   e.stopPropagation(); // don't let parent containers also see this drag
 }
 function _onSecDragOver(e){
+  // Palette drag → highlight the target so user sees where the new block
+  // will land. Drop position is decided in _onSecDrop based on cursor Y.
+  if (_paletteSrc) {
+    e.preventDefault();
+    try { e.dataTransfer.dropEffect = 'copy'; } catch(err){}
+    this.classList.add('riverz-palette-target');
+    return;
+  }
   if (!_dragSrc || _dragSrc === this) return;
-  // Only accept drops between siblings in the SAME container — moving a
-  // benefits card into the reviews row would break the layout.
+  // Reorder drag → only accept drops between siblings in the same
+  // container. Moving a benefits card into the reviews row would break
+  // the layout.
   if (_dragSrc.parentNode !== this.parentNode) return;
   e.preventDefault();
   try { e.dataTransfer.dropEffect = 'move'; } catch(err){}
@@ -1448,10 +1571,21 @@ function _onSecDragOver(e){
 }
 function _onSecDragLeave(){
   this.style.outline = '';
+  this.classList.remove('riverz-palette-target');
 }
 function _onSecDrop(e){
   e.preventDefault();
   this.style.outline = '';
+  this.classList.remove('riverz-palette-target');
+  // Palette drop → spawn a new block before/after this target.
+  if (_paletteSrc) {
+    var pRect = this.getBoundingClientRect();
+    var pBefore = (e.clientY - pRect.top) < pRect.height / 2;
+    spawnBlockFromPalette(_paletteSrc, this.parentNode, pBefore ? this : this.nextSibling);
+    _paletteSrc = null;
+    e.stopPropagation();
+    return;
+  }
   if (!_dragSrc || _dragSrc === this) return;
   if (_dragSrc.parentNode !== this.parentNode) return;
   // Insert before or after based on cursor position. Use horizontal axis
@@ -2324,6 +2458,10 @@ function initKeys(){
 
 document.addEventListener('DOMContentLoaded',function(){
   initEdit(); initKeys(); loadAll(); initStickyScroll();
+  // Wire the block palette once on first paint — even before a template
+  // mounts, so the drag-source items are immediately interactive. The
+  // palette items themselves don't need template-specific state.
+  if (typeof wireBlockPalette === 'function') wireBlockPalette();
   window.addEventListener('dragover',function(e){e.preventDefault();});
   window.addEventListener('drop',function(e){e.preventDefault();});
 });
