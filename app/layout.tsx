@@ -35,6 +35,13 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
+        {/* Theme bootstrap — runs before React hydrates so the saved
+            preference paints on first frame instead of flashing the
+            default. Stored under rvz_theme by ThemeProvider. */}
+        <Script id="rvz-theme-init" strategy="beforeInteractive">
+          {`(function(){try{var t=localStorage.getItem('rvz_theme');if(t!=='light'&&t!=='dark'){t='light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`}
+        </Script>
+
         {/* Google Analytics */}
         {process.env.NEXT_PUBLIC_GA_ID && (
           <>

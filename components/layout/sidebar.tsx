@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCredits } from '@/hooks/useCredits';
+import { useTheme } from '@/components/theme/theme-provider';
+import { Moon, Sun } from 'lucide-react';
 
 const navigationGroups = [
   {
@@ -68,6 +70,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { credits } = useCredits();
   const { signOut } = useClerk();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <>
@@ -76,7 +79,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <button
           onClick={onToggle}
           aria-label="Mostrar menú"
-          className="fixed left-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-[#1a1a22] bg-[#0e0e13] text-[#fafaf7]/70 backdrop-blur-md transition-colors hover:border-[#f7ff9e] hover:text-white"
+          className="fixed left-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--rvz-sidebar-border)] bg-[var(--rvz-sidebar-bg)] text-[var(--rvz-sidebar-fg-muted)] backdrop-blur-md transition-colors hover:border-[var(--rvz-accent)] hover:text-[var(--rvz-sidebar-fg)]"
         >
           <PanelLeftOpen className="h-4 w-4" />
         </button>
@@ -91,7 +94,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* Logo + collapse button */}
         <div className="flex h-14 items-center justify-between px-4">
           <Link href="/crear" className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-[#f7ff9e] text-[12px] font-bold text-black">
+            <span className="grid h-7 w-7 place-items-center rounded-md bg-[var(--rvz-accent)] text-[12px] font-bold text-black">
               R
             </span>
             <span className="text-[15px] font-semibold tracking-tight">Riverz</span>
@@ -99,7 +102,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <button
             onClick={onToggle}
             aria-label="Ocultar menú"
-            className="rounded-md p-1 text-[#fafaf7]/40 transition-colors hover:bg-white/5 hover:text-[#fafaf7]"
+            className="rounded-md p-1 text-[var(--rvz-sidebar-fg-faint)] transition-colors hover:bg-[var(--rvz-sidebar-hover)] hover:text-[var(--rvz-sidebar-fg)]"
           >
             <PanelLeftClose className="h-4 w-4" />
           </button>
@@ -135,7 +138,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           ))}
         </nav>
 
-        <div className="space-y-0.5 border-t border-[#1a1a22] px-3 py-2">
+        <div className="space-y-0.5 border-t border-[var(--rvz-sidebar-border)] px-3 py-2">
           <Link
             href="/configuracion"
             className={cn(
@@ -148,7 +151,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </Link>
 
           <button
-            onClick={() => signOut(() => (window.location.href = '/'))}
+            onClick={() => {
+              void signOut().then(() => {
+                window.location.href = '/';
+              });
+            }}
             className="app-v2-sidebar-link w-full text-left hover:!bg-red-500/10 hover:!text-red-300"
           >
             <LogOut className="h-3.5 w-3.5 shrink-0" />
@@ -156,14 +163,25 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </button>
         </div>
 
-        <div className="border-t border-[#1a1a22] p-3">
+        <div className="border-t border-[var(--rvz-sidebar-border)] p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="origin-left scale-90">
               <UserButton afterSignOutUrl="/sign-in" />
             </div>
-            <div className="text-right">
-              <p className="text-[9px] uppercase tracking-[0.16em] text-[#fafaf7]/40">Créditos</p>
-              <p className="text-[13px] font-bold text-[#f7ff9e]">{credits ?? 0}</p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                aria-label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+                className="grid h-7 w-7 place-items-center rounded-md border border-[var(--rvz-sidebar-border)] text-[var(--rvz-sidebar-fg-muted)] transition hover:border-[var(--rvz-accent)] hover:text-[var(--rvz-accent)]"
+              >
+                {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              </button>
+              <div className="text-right">
+                <p className="text-[9px] uppercase tracking-[0.16em] text-[var(--rvz-sidebar-fg-faint)]">
+                  Créditos
+                </p>
+                <p className="text-[13px] font-bold text-[var(--rvz-accent)]">{credits ?? 0}</p>
+              </div>
             </div>
           </div>
         </div>

@@ -10,9 +10,7 @@ interface SectionHeaderProps {
 }
 
 /**
- * Editorial section header. Used across the app — title falls back to
- * the editorial display sizing automatically when the parent has the
- * `app-v2` class on it (i.e. anywhere inside the dashboard layout).
+ * Editorial section header. Honours the active theme automatically.
  */
 export function SectionHeader({
   title,
@@ -32,14 +30,14 @@ export function SectionHeader({
     <div className={cn('app-v2-section-head', sizes[size].spacing, className)}>
       <div className="flex items-center gap-3">
         {icon && (
-          <div className="grid h-10 w-10 place-items-center rounded-lg bg-[#0a0a0a] text-[#f7ff9e]">
+          <div className="grid h-10 w-10 place-items-center rounded-lg bg-[var(--rvz-ink)] text-[var(--rvz-accent)]">
             {icon}
           </div>
         )}
         <div>
           <h2
             className={cn(
-              'font-medium tracking-tight text-black leading-[1.1]',
+              'font-medium tracking-tight text-[var(--rvz-ink)] leading-[1.1]',
               sizes[size].title,
             )}
             style={{ letterSpacing: '-0.025em' }}
@@ -47,7 +45,9 @@ export function SectionHeader({
             {title}
           </h2>
           {description && (
-            <p className={cn('text-black/55 mt-1', sizes[size].description)}>{description}</p>
+            <p className={cn('text-[var(--rvz-ink-muted)] mt-1', sizes[size].description)}>
+              {description}
+            </p>
           )}
         </div>
       </div>

@@ -56,20 +56,20 @@ export function NextStepCard() {
   return (
     <Link
       href={step.href}
-      className="card-dark group flex flex-col gap-5 overflow-hidden p-6 transition hover:border-[#f7ff9e]/30 md:flex-row md:items-center md:justify-between md:p-7"
+      className="card-dark group flex flex-col gap-5 overflow-hidden p-6 transition hover:border-[var(--rvz-accent)]/30 md:flex-row md:items-center md:justify-between md:p-7"
     >
       <div className="flex items-start gap-4">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[#f7ff9e] text-black">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[var(--rvz-accent)] text-[var(--rvz-accent-fg)]">
           <Compass className="h-5 w-5" />
         </span>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#f7ff9e]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--rvz-accent)]">
             {step.eyebrow}
           </p>
-          <h3 className="mt-1.5 text-[22px] font-medium tracking-tight md:text-[26px]">
+          <h3 className="mt-1.5 text-[22px] font-medium tracking-tight md:text-[26px] text-[var(--rvz-card-dark-fg)]">
             {step.title}
           </h3>
-          <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-white/65">
+          <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-[var(--rvz-card-dark-muted)]">
             {step.description}
           </p>
         </div>

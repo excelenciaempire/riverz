@@ -9,23 +9,29 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loading } from '@/components/ui/loading';
 import { toast } from 'sonner';
-import { Check, Crown, CreditCard, User, Globe, Bell, Plug } from 'lucide-react';
+import { Check, Crown, CreditCard, User, Globe, Bell, Plug, Palette, Moon, Sun } from 'lucide-react';
 import { SUBSCRIPTION_PLANS } from '@/types';
 import { ShopifyConnectionPanel } from '@/components/settings/shopify-connection';
 import { AiProviderPanel } from '@/components/settings/ai-provider-panel';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
+import { useTheme } from '@/components/theme/theme-provider';
 
-type TabType = 'billing' | 'account' | 'notifications' | 'integrations';
+type TabType = 'billing' | 'account' | 'appearance' | 'notifications' | 'integrations';
 
 function ConfiguracionContent() {
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState<TabType>('billing');
   const searchParams = useSearchParams();
 
-  // Allow `/configuracion?tab=integrations` deep links + the OAuth callback
-  // bouncing back here on success/error so the user lands on the right pane.
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab === 'integrations' || tab === 'billing' || tab === 'account' || tab === 'notifications') {
+    if (
+      tab === 'integrations' ||
+      tab === 'billing' ||
+      tab === 'account' ||
+      tab === 'appearance' ||
+      tab === 'notifications'
+    ) {
       setActiveTab(tab as TabType);
     }
     const shopify = searchParams.get('shopify');
@@ -40,20 +46,16 @@ function ConfiguracionContent() {
   const [language, setLanguage] = useState<'es' | 'en'>('es');
   const queryClient = useQueryClient();
 
-  // Fetch user data
   const { data: userData, isLoading } = useQuery({
     queryKey: ['user', user?.id],
     queryFn: async () => {
       const response = await fetch('/api/user');
-      
-      // Si el usuario no existe (error 406 o 404), inicializarlo
       if (!response.ok && (response.status === 406 || response.status === 404)) {
         const initResponse = await fetch('/api/user/init', { method: 'POST' });
         if (!initResponse.ok) throw new Error('Failed to initialize user');
         const initData = await initResponse.json();
         return initData.data;
       }
-      
       if (!response.ok) throw new Error('Failed to fetch user');
       return response.json();
     },
@@ -61,7 +63,6 @@ function ConfiguracionContent() {
     retry: 1,
   });
 
-  // Update language
   const updateLanguage = useMutation({
     mutationFn: async (lang: 'es' | 'en') => {
       const response = await fetch('/api/user', {
@@ -69,7 +70,6 @@ function ConfiguracionContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ language: lang }),
       });
-
       if (!response.ok) throw new Error('Failed to update language');
       return response.json();
     },
@@ -79,61 +79,41 @@ function ConfiguracionContent() {
     },
   });
 
-  // Create checkout session
   const createCheckout = async (planType: string) => {
     try {
-      // Obtener el priceId del plan
       const plan = SUBSCRIPTION_PLANS[planType as keyof typeof SUBSCRIPTION_PLANS];
-      
-      console.log('Plan:', plan);
-      console.log('Price ID:', plan?.priceId);
-      
-      if (!plan || !plan.priceId) {
+      if (!plan || !('priceId' in plan) || !plan.priceId) {
         toast.error('Plan no configurado. Por favor contacta al administrador.');
-        console.error('Plan configuration missing:', { planType, plan });
         return;
       }
-
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          priceId: plan.priceId,
-          planType 
-        }),
+        body: JSON.stringify({ priceId: plan.priceId, planType }),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Checkout error:', errorData);
         throw new Error(errorData.error || 'Failed to create checkout');
       }
-
       const { url } = await response.json();
       window.location.href = url;
     } catch (error: any) {
-      console.error('Error creating checkout:', error);
       toast.error(error.message || 'Error al crear sesión de pago');
     }
   };
 
-  // Buy credits
   const buyCredits = async () => {
     try {
-      // Mínimo $5 USD
       const amount = 5;
-      
       const response = await fetch('/api/stripe/buy-credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount }), // $5 USD = 500 créditos
+        body: JSON.stringify({ amount }),
       });
-
       if (!response.ok) throw new Error('Failed to create checkout');
-
       const { url } = await response.json();
       window.location.href = url;
-    } catch (error) {
+    } catch {
       toast.error('Error al crear sesión de pago');
     }
   };
@@ -142,175 +122,172 @@ function ConfiguracionContent() {
     return <Loading text="Cargando configuración..." />;
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-white">Configuración</h1>
-        <p className="mt-2 text-gray-400">
-          Gestiona tu cuenta, plan y preferencias
-        </p>
-      </div>
+  const tabs: Array<{ id: TabType; label: string; icon: typeof CreditCard }> = [
+    { id: 'billing', label: 'Plan & Créditos', icon: CreditCard },
+    { id: 'account', label: 'Cuenta', icon: User },
+    { id: 'appearance', label: 'Apariencia', icon: Palette },
+    { id: 'integrations', label: 'Integraciones', icon: Plug },
+    { id: 'notifications', label: 'Notificaciones', icon: Bell },
+  ];
 
-      {/* Tabs */}
-      <div className="border-b border-gray-700">
-        <div className="flex gap-8">
-          <button
-            onClick={() => setActiveTab('billing')}
-            className={`flex items-center gap-2 pb-4 ${
-              activeTab === 'billing'
-                ? 'border-b-2 border-brand-accent text-white'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <CreditCard className="h-5 w-5" />
-            Billing & Planes
-          </button>
-          <button
-            onClick={() => setActiveTab('account')}
-            className={`flex items-center gap-2 pb-4 ${
-              activeTab === 'account'
-                ? 'border-b-2 border-brand-accent text-white'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <User className="h-5 w-5" />
-            Cuenta
-          </button>
-          <button
-            onClick={() => setActiveTab('integrations')}
-            className={`flex items-center gap-2 pb-4 ${
-              activeTab === 'integrations'
-                ? 'border-b-2 border-brand-accent text-white'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <Plug className="h-5 w-5" />
-            Integraciones
-          </button>
-          <button
-            onClick={() => setActiveTab('notifications')}
-            className={`flex items-center gap-2 pb-4 ${
-              activeTab === 'notifications'
-                ? 'border-b-2 border-brand-accent text-white'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <Bell className="h-5 w-5" />
-            Notificaciones
-          </button>
+  return (
+    <div className="space-y-8">
+      <section className="page-hero">
+        <p className="app-v2-eyebrow">Configuración</p>
+        <h1 className="app-v2-page-h1 mt-2">
+          Tu cuenta,
+          <br />
+          <span className="text-[var(--rvz-ink-muted)]">tu estudio.</span>
+        </h1>
+        <p className="mt-4 max-w-xl text-[14px] leading-relaxed text-[var(--rvz-ink-muted)]">
+          Gestioná plan, créditos, integraciones y apariencia. Lo que cambies acá afecta a
+          todos los agentes y a la app entera.
+        </p>
+      </section>
+
+      <div className="border-b border-[var(--rvz-section-rule)]">
+        <div className="-mb-px flex flex-wrap gap-6">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 border-b-2 pb-3 pt-1 text-[12px] font-semibold uppercase tracking-[0.08em] transition ${
+                  isActive
+                    ? 'border-[var(--rvz-ink)] text-[var(--rvz-ink)]'
+                    : 'border-transparent text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Integrations Tab */}
       {activeTab === 'integrations' && (
-        <div className="space-y-6">
-          <div className="rounded-xl border border-gray-800 bg-black/20 p-6">
+        <div className="grid gap-6 md:grid-cols-1">
+          <div className="card-cream p-6 md:p-8">
             <AiProviderPanel />
           </div>
-          <div className="rounded-xl border border-gray-800 bg-black/20 p-6">
+          <div className="card-cream p-6 md:p-8">
             <ShopifyConnectionPanel />
           </div>
         </div>
       )}
 
-      {/* Billing Tab */}
       {activeTab === 'billing' && (
-        <div className="mx-auto max-w-4xl space-y-8">
-          {/* Current Plan */}
-      <div className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-6">
-        <h2 className="mb-4 text-xl font-semibold text-white">Plan Actual</h2>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-lg font-medium capitalize text-brand-accent">
-              {SUBSCRIPTION_PLANS[userData?.plan_type as keyof typeof SUBSCRIPTION_PLANS]?.name || 'Free'}
-            </p>
-            <p className="text-sm text-gray-400">
-              {userData?.credits || 0} créditos disponibles
-            </p>
-          </div>
-          <Button onClick={buyCredits}>Comprar Créditos</Button>
-        </div>
-      </div>
-
-      {/* Subscription Plans */}
-      <div>
-        <h2 className="mb-4 text-xl font-semibold text-white">
-          Planes de Suscripción
-        </h2>
-
-        <div className="grid gap-6 md:grid-cols-3">
-          {Object.entries(SUBSCRIPTION_PLANS)
-            .filter(([key]) => key !== 'free')
-            .map(([key, plan]) => (
-              <div
-                key={key}
-                className={`rounded-lg border p-6 ${
-                  userData?.plan_type === key
-                    ? 'border-brand-accent bg-brand-accent/10'
-                    : 'border-gray-700 bg-brand-dark-secondary'
-                }`}
-              >
-                <div className="mb-4">
-                  <h3 className="text-lg font-semibold text-white">
-                    {plan.name}
-                  </h3>
-                  <p className="mt-2">
-                    <span className="text-3xl font-bold text-white">
-                      ${plan.price}
-                    </span>
-                    <span className="text-gray-400">/mes</span>
-                  </p>
-                </div>
-
-                <ul className="mb-6 space-y-2">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-gray-300">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-accent" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                {userData?.plan_type === key ? (
-                  <Button variant="outline" className="w-full" disabled>
-                    <Crown className="mr-2 h-4 w-4" />
-                    Plan Actual
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => createCheckout(key)}
-                    className="w-full"
-                  >
-                    {userData?.plan_type === 'free' ? 'Comenzar' : 'Cambiar Plan'}
-                  </Button>
-                )}
+        <div className="space-y-6">
+          <div className="card-cream p-6 md:p-8">
+            <p className="app-v2-eyebrow">Plan actual</p>
+            <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="app-v2-page-h2">
+                  {SUBSCRIPTION_PLANS[userData?.plan_type as keyof typeof SUBSCRIPTION_PLANS]
+                    ?.name || 'Free'}
+                </p>
+                <p className="mt-1 text-[13px] text-[var(--rvz-ink-muted)]">
+                  {userData?.credits || 0} créditos disponibles
+                </p>
               </div>
-            ))}
-        </div>
-      </div>
+              <Button onClick={buyCredits}>Comprar Créditos</Button>
+            </div>
+          </div>
 
-          {/* Billing History */}
-          <div className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-6">
-            <h2 className="mb-4 text-xl font-semibold text-white">
-              Historial de Facturación
-            </h2>
-            <p className="text-sm text-gray-400">
-              Próximamente podrás ver tu historial de pagos y facturas aquí.
+          <div>
+            <p className="app-v2-eyebrow">Planes</p>
+            <h2 className="app-v2-page-h2 mt-2">Elegí el que te queda</h2>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {Object.entries(SUBSCRIPTION_PLANS)
+                .filter(([key]) => key !== 'free')
+                .map(([key, plan]) => {
+                  const isCurrent = userData?.plan_type === key;
+                  return (
+                    <div
+                      key={key}
+                      className={`card-cream flex flex-col p-6 transition ${
+                        isCurrent ? 'border-[var(--rvz-ink)] ring-2 ring-[var(--rvz-accent)]' : ''
+                      }`}
+                    >
+                      <h3 className="text-[20px] font-medium tracking-tight">{plan.name}</h3>
+                      <p className="mt-2 flex items-baseline gap-1.5">
+                        <span className="text-[36px] font-medium leading-none tracking-tight">
+                          ${plan.price}
+                        </span>
+                        <span className="text-[13px] text-[var(--rvz-ink-muted)]">/mes</span>
+                      </p>
+
+                      <ul className="mt-5 flex-1 space-y-2.5">
+                        {plan.features.map((feature, index) => (
+                          <li
+                            key={index}
+                            className="flex items-start gap-2 text-[13px] text-[var(--rvz-ink-muted)]"
+                          >
+                            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--rvz-ink)]" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+
+                      {isCurrent ? (
+                        <Button variant="outline" className="mt-6 w-full" disabled>
+                          <Crown className="mr-1.5 h-3.5 w-3.5" />
+                          Plan Actual
+                        </Button>
+                      ) : (
+                        <Button onClick={() => createCheckout(key)} className="mt-6 w-full">
+                          {userData?.plan_type === 'free' ? 'Comenzar' : 'Cambiar Plan'}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+
+          <div className="card-cream p-6 md:p-8">
+            <p className="app-v2-eyebrow">Historial</p>
+            <h3 className="mt-2 text-[18px] font-medium tracking-tight">Facturación</h3>
+            <p className="mt-2 text-[13px] text-[var(--rvz-ink-muted)]">
+              Próximamente vas a poder ver acá tu historial de pagos y descargar las facturas.
             </p>
           </div>
         </div>
       )}
 
-      {/* Account Tab */}
-      {activeTab === 'account' && (
-        <div className="mx-auto max-w-2xl space-y-6">
-          {/* Personal Information */}
-          <div className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-6">
-            <h2 className="mb-6 text-xl font-semibold text-white">
-              Información Personal
-            </h2>
+      {activeTab === 'appearance' && (
+        <div className="space-y-6">
+          <div className="card-cream p-6 md:p-8">
+            <p className="app-v2-eyebrow">Tema</p>
+            <h3 className="mt-2 text-[22px] font-medium tracking-tight">
+              Claro u oscuro — vos elegís.
+            </h3>
+            <p className="mt-2 max-w-lg text-[13px] text-[var(--rvz-ink-muted)]">
+              El tema se guarda en tu navegador y se aplica a toda la app, incluido Landing Lab.
+              Cambialo cuando quieras desde acá.
+            </p>
+            <div className="mt-5">
+              <ThemeToggle size="md" />
+            </div>
 
-            <div className="space-y-4">
+            <div className="mt-8 grid gap-3 md:grid-cols-2">
+              <ThemePreview mode="light" />
+              <ThemePreview mode="dark" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'account' && (
+        <div className="space-y-6">
+          <div className="card-cream p-6 md:p-8">
+            <p className="app-v2-eyebrow">Personal</p>
+            <h3 className="mt-2 text-[22px] font-medium tracking-tight">Información de cuenta</h3>
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
               <div>
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -318,13 +295,12 @@ function ConfiguracionContent() {
                   type="email"
                   value={user?.emailAddresses[0]?.emailAddress || ''}
                   disabled
-                  className="bg-gray-800"
+                  className="mt-1"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  El email se gestiona a través de tu cuenta de autenticación
+                <p className="mt-1.5 text-[11px] text-[var(--rvz-ink-faint)]">
+                  Se gestiona desde tu cuenta de autenticación.
                 </p>
               </div>
-
               <div>
                 <Label htmlFor="name">Nombre</Label>
                 <Input
@@ -332,147 +308,105 @@ function ConfiguracionContent() {
                   type="text"
                   value={user?.fullName || ''}
                   disabled
-                  className="bg-gray-800"
+                  className="mt-1"
                 />
               </div>
             </div>
           </div>
 
-          {/* Language Settings */}
-          <div className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-6">
-            <h2 className="mb-4 text-xl font-semibold text-white">
-              <Globe className="mb-2 inline h-5 w-5" /> Idioma
-            </h2>
-            <p className="mb-4 text-sm text-gray-400">
-              Selecciona el idioma de la interfaz
+          <div className="card-cream p-6 md:p-8">
+            <p className="app-v2-eyebrow flex items-center gap-1.5">
+              <Globe className="h-3.5 w-3.5" />
+              Idioma
             </p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => {
-                  setLanguage('es');
-                  updateLanguage.mutate('es');
-                }}
-                className={`rounded-lg px-6 py-3 ${
-                  userData?.language === 'es'
-                    ? 'bg-brand-accent text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                🇪🇸 Español
-              </button>
-              <button
-                onClick={() => {
-                  setLanguage('en');
-                  updateLanguage.mutate('en');
-                }}
-                className={`rounded-lg px-6 py-3 ${
-                  userData?.language === 'en'
-                    ? 'bg-brand-accent text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                🇬🇧 English
-              </button>
+            <h3 className="mt-2 text-[22px] font-medium tracking-tight">Cómo te hablamos</h3>
+            <div className="mt-5 inline-flex items-center gap-0.5 rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-bg-soft)] p-0.5">
+              {(['es', 'en'] as const).map((lang) => {
+                const isActive = (userData?.language || language) === lang;
+                return (
+                  <button
+                    key={lang}
+                    onClick={() => {
+                      setLanguage(lang);
+                      updateLanguage.mutate(lang);
+                    }}
+                    className={`rounded-md px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.06em] transition ${
+                      isActive
+                        ? 'bg-[var(--rvz-accent)] text-[var(--rvz-accent-fg)]'
+                        : 'text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]'
+                    }`}
+                  >
+                    {lang === 'es' ? 'Español' : 'English'}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Account Actions */}
-          <div className="rounded-lg border border-red-900 bg-red-900/10 p-6">
-            <h2 className="mb-4 text-xl font-semibold text-red-400">
-              Zona de Peligro
-            </h2>
-            <p className="mb-4 text-sm text-gray-400">
-              Acciones irreversibles relacionadas con tu cuenta
+          <div className="card-cream border-red-300/40 p-6 md:p-8">
+            <p className="app-v2-eyebrow text-red-500">Zona de peligro</p>
+            <h3 className="mt-2 text-[18px] font-medium tracking-tight text-red-600">
+              Eliminar cuenta
+            </h3>
+            <p className="mt-2 text-[13px] text-[var(--rvz-ink-muted)]">
+              Esto borra tus marcas, generaciones y plan. No se puede deshacer.
             </p>
-            <Button variant="destructive">
+            <Button variant="destructive" className="mt-4">
               Eliminar Cuenta
             </Button>
           </div>
         </div>
       )}
 
-      {/* Notifications Tab */}
       {activeTab === 'notifications' && (
-        <div className="mx-auto max-w-2xl space-y-6">
-          <div className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-6">
-            <h2 className="mb-6 text-xl font-semibold text-white">
-              Preferencias de Notificaciones
-            </h2>
+        <div className="card-cream p-6 md:p-8">
+          <p className="app-v2-eyebrow">Notificaciones</p>
+          <h3 className="mt-2 text-[22px] font-medium tracking-tight">¿Cuándo te avisamos?</h3>
 
-            <div className="space-y-6">
-              {/* Email Notifications */}
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-medium text-white">
-                    Notificaciones por Email
-                  </h3>
-                  <p className="text-sm text-gray-400">
-                    Recibe actualizaciones sobre tus generaciones y cuenta
-                  </p>
+          <div className="mt-6 space-y-4">
+            {[
+              {
+                title: 'Notificaciones por Email',
+                hint: 'Recibí actualizaciones sobre tus generaciones y cuenta',
+                checked: true,
+              },
+              {
+                title: 'Generación Completada',
+                hint: 'Avisar cuando un video o imagen esté listo',
+                checked: true,
+              },
+              {
+                title: 'Créditos Bajos',
+                hint: 'Alertar cuando tus créditos estén por agotarse',
+                checked: true,
+              },
+              {
+                title: 'Novedades y Ofertas',
+                hint: 'Información sobre nuevas funciones y promociones',
+                checked: false,
+              },
+            ].map((row) => (
+              <div
+                key={row.title}
+                className="flex items-start justify-between gap-4 border-b border-[var(--rvz-section-rule)] pb-4 last:border-b-0 last:pb-0"
+              >
+                <div>
+                  <h4 className="text-[14px] font-medium">{row.title}</h4>
+                  <p className="mt-0.5 text-[12px] text-[var(--rvz-ink-muted)]">{row.hint}</p>
                 </div>
                 <input
                   type="checkbox"
-                  className="h-5 w-5 rounded border-gray-600 bg-gray-700"
-                  defaultChecked
+                  className="h-5 w-5 rounded border-[var(--rvz-card-border)] accent-[var(--rvz-ink)]"
+                  defaultChecked={row.checked}
                 />
               </div>
+            ))}
+          </div>
 
-              {/* Generation Complete */}
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-medium text-white">
-                    Generación Completada
-                  </h3>
-                  <p className="text-sm text-gray-400">
-                    Notificar cuando un video o imagen esté listo
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 rounded border-gray-600 bg-gray-700"
-                  defaultChecked
-                />
-              </div>
-
-              {/* Low Credits */}
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-medium text-white">
-                    Créditos Bajos
-                  </h3>
-                  <p className="text-sm text-gray-400">
-                    Alertar cuando tus créditos estén por agotarse
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 rounded border-gray-600 bg-gray-700"
-                  defaultChecked
-                />
-              </div>
-
-              {/* Marketing */}
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-medium text-white">
-                    Novedades y Ofertas
-                  </h3>
-                  <p className="text-sm text-gray-400">
-                    Recibir información sobre nuevas funciones y promociones
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 rounded border-gray-600 bg-gray-700"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <Button onClick={() => toast.success('Preferencias guardadas')}>
-                Guardar Preferencias
-              </Button>
-            </div>
+          <div className="mt-6 flex justify-end">
+            <Button onClick={() => toast.success('Preferencias guardadas')}>
+              Guardar Preferencias
+            </Button>
           </div>
         </div>
       )}
@@ -480,10 +414,60 @@ function ConfiguracionContent() {
   );
 }
 
-// Next 15 prerender requires useSearchParams to live under a Suspense
-// boundary; otherwise `next build` fails with a CSR-bailout error on the
-// /configuracion route. Wrapping the body keeps the deep-link behaviour
-// (?tab=..., ?shopify=connected) without breaking static generation.
+function ThemePreview({ mode }: { mode: 'light' | 'dark' }) {
+  const { theme, setTheme } = useTheme();
+  const isActive = theme === mode;
+  const Icon = mode === 'dark' ? Moon : Sun;
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(mode)}
+      className={`group relative overflow-hidden rounded-xl border-2 transition ${
+        isActive
+          ? 'border-[var(--rvz-ink)]'
+          : 'border-[var(--rvz-card-border)] hover:border-[var(--rvz-card-hover-border)]'
+      }`}
+      style={{
+        background: mode === 'dark' ? '#0a0a0a' : '#fafaf7',
+        color: mode === 'dark' ? '#fafaf7' : '#0a0a0a',
+      }}
+    >
+      <div className="flex aspect-[4/3] flex-col p-4 text-left">
+        <div className="flex items-center justify-between">
+          <span
+            className="grid h-6 w-6 place-items-center rounded-md text-[11px] font-bold"
+            style={{
+              background: mode === 'dark' ? '#fafaf7' : '#0a0a0a',
+              color: mode === 'dark' ? '#0a0a0a' : '#f7ff9e',
+            }}
+          >
+            R
+          </span>
+          <Icon className="h-4 w-4 opacity-60" />
+        </div>
+        <div className="mt-auto">
+          <div className="text-[20px] font-medium leading-none tracking-tight">
+            {mode === 'dark' ? 'Oscuro' : 'Claro'}
+          </div>
+          <div
+            className="mt-1 text-[11px]"
+            style={{ color: mode === 'dark' ? 'rgba(250,250,247,0.55)' : 'rgba(10,10,10,0.55)' }}
+          >
+            {mode === 'dark' ? 'Negro profundo + acento amarillo' : 'Cream editorial + tinta'}
+          </div>
+        </div>
+      </div>
+      <div className="absolute right-2.5 top-2.5">
+        {isActive && (
+          <span className="flex h-5 items-center gap-1 rounded-full bg-[#f7ff9e] px-2 text-[9px] font-bold uppercase tracking-[0.1em] text-black">
+            Activo
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
 export default function ConfiguracionPage() {
   return (
     <Suspense fallback={<Loading text="Cargando configuración..." />}>

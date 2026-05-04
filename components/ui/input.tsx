@@ -5,9 +5,8 @@ export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {}
 
 /**
- * Editorial input. Cream surface inside a white card by default, with
- * an ink border on focus instead of teal. Pages still on the legacy
- * dark theme can pass their own dark classes via `className`.
+ * Editorial input. Picks up theme tokens automatically — surface goes
+ * cream in light mode and inky in dark mode without any caller change.
  */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
@@ -15,9 +14,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         type={type}
         className={cn(
-          'flex h-11 w-full rounded-lg border border-[#e3e0d5] bg-white px-3.5 py-2',
-          'text-[14px] text-black placeholder:text-black/35',
-          'focus:outline-none focus:border-black focus:ring-2 focus:ring-black/[0.08]',
+          'flex h-11 w-full rounded-lg border bg-[var(--rvz-input-bg)] border-[var(--rvz-input-border)] px-3.5 py-2',
+          'text-[14px] text-[var(--rvz-ink)] placeholder:text-[var(--rvz-ink-faint)]',
+          'focus:outline-none focus:border-[var(--rvz-ink)] focus:ring-2 focus:ring-[var(--rvz-focus-ring)]',
           'disabled:cursor-not-allowed disabled:opacity-50',
           'transition-colors',
           className,

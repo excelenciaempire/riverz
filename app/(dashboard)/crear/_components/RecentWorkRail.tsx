@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 const STATUS_TONE: Record<Generation['status'], { dot: string; label: string }> = {
   completed: { dot: 'bg-emerald-400', label: 'Listo' },
   processing: { dot: 'bg-amber-300 animate-pulse', label: 'En proceso' },
-  pending: { dot: 'bg-white/40 animate-pulse', label: 'En cola' },
+  pending: { dot: 'bg-[var(--rvz-ink-faint)] animate-pulse', label: 'En cola' },
   failed: { dot: 'bg-rose-400', label: 'Falló' },
 };
 
@@ -56,7 +56,7 @@ export function RecentWorkRail() {
         </div>
         <Link
           href="/historial"
-          className="inline-flex items-center gap-1 text-[12px] font-medium text-black/60 transition hover:text-black"
+          className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--rvz-ink-muted)] transition hover:text-[var(--rvz-ink)]"
         >
           Ver todo
           <ArrowRight className="h-3 w-3" />
@@ -86,9 +86,9 @@ function RecentCard({ item }: { item: Generation }) {
   return (
     <Link
       href={href}
-      className="card-cream group relative flex w-[200px] shrink-0 flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:border-black/30"
+      className="card-cream group relative flex w-[200px] shrink-0 flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:border-[var(--rvz-card-hover-border)]"
     >
-      <div className="relative aspect-square overflow-hidden bg-[#f5f3ec]">
+      <div className="relative aspect-square overflow-hidden bg-[var(--rvz-bg-soft)]">
         {item.result_url ? (
           isVideoType(item.type) ? (
             <video
@@ -106,23 +106,23 @@ function RecentCard({ item }: { item: Generation }) {
             />
           )
         ) : (
-          <div className="flex h-full items-center justify-center text-black/30">
+          <div className="flex h-full items-center justify-center text-[var(--rvz-ink-faint)]">
             <Clock className="h-6 w-6" />
           </div>
         )}
 
-        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-black/10 bg-white/95 px-2 py-0.5 text-[10px] font-medium backdrop-blur">
-          <span className="h-1.5 w-1.5 rounded-full bg-black" />
-          <span className="text-black/85">{getTypeLabel(item.type)}</span>
+        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] px-2 py-0.5 text-[10px] font-medium backdrop-blur">
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--rvz-ink)]" />
+          <span className="text-[var(--rvz-ink)]">{getTypeLabel(item.type)}</span>
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-        <div className="flex items-center gap-1.5 text-[10px] text-black/55">
+        <div className="flex items-center gap-1.5 text-[10px] text-[var(--rvz-ink-muted)]">
           <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} />
           {tone.label}
         </div>
-        <p className="truncate text-[10px] text-black/45">{created}</p>
+        <p className="truncate text-[10px] text-[var(--rvz-ink-faint)]">{created}</p>
       </div>
     </Link>
   );

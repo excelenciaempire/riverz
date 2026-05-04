@@ -55,7 +55,7 @@ export function StudioHero() {
     planType === 'free' || (subscriptionStatus !== 'active' && planType !== 'free');
 
   return (
-    <section className="relative -mx-6 -mt-6 border-b border-[#eee5d6] px-6 pb-10 pt-8 md:-mx-9 md:-mt-9 md:px-9 md:pt-12">
+    <section className="page-hero relative pb-10">
       <div className="grid items-end gap-6 md:grid-cols-[1.2fr_minmax(320px,420px)]">
         <div>
           <p className="app-v2-eyebrow">
@@ -65,9 +65,9 @@ export function StudioHero() {
             {greeting}
             {firstName ? `, ${firstName}` : ''}.
             <br />
-            <span className="text-black/55">¿Qué creamos hoy?</span>
+            <span className="text-[var(--rvz-ink-muted)]">¿Qué creamos hoy?</span>
           </h1>
-          <p className="mt-4 max-w-xl text-[14px] leading-relaxed text-black/60">
+          <p className="mt-4 max-w-xl text-[14px] leading-relaxed text-[var(--rvz-ink-muted)]">
             Tu estudio creativo está montado. Activá una marca, asigná un agente y entregá
             piezas listas para Meta, TikTok y tu tienda — sin set, sin freelancers.
           </p>
@@ -130,10 +130,10 @@ function StatTile({
   return (
     <Link
       href={href}
-      className="card-cream group relative flex items-center justify-between p-5 transition hover:border-black/30"
+      className="card-cream group relative flex items-center justify-between p-5 transition hover:border-[var(--rvz-card-hover-border)]"
     >
       <div className="flex items-center gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#0a0a0a] text-[#f7ff9e]">
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--rvz-ink)] text-[var(--rvz-accent)]">
           {icon}
         </span>
         <div>
@@ -141,13 +141,13 @@ function StatTile({
             <p className="app-v2-eyebrow">{label}</p>
             {badge}
           </div>
-          <p className="mt-1 text-[26px] font-medium leading-none tracking-tight text-black">
+          <p className="mt-1 text-[26px] font-medium leading-none tracking-tight text-[var(--rvz-ink)]">
             {value}
           </p>
-          <p className="mt-1.5 text-[11px] text-black/45">{hint}</p>
+          <p className="mt-1.5 text-[11px] text-[var(--rvz-ink-faint)]">{hint}</p>
         </div>
       </div>
-      <ArrowUpRight className="h-4 w-4 text-black/30 transition group-hover:translate-x-0.5 group-hover:text-black" />
+      <ArrowUpRight className="h-4 w-4 text-[var(--rvz-ink-faint)] transition group-hover:translate-x-0.5 group-hover:text-[var(--rvz-ink)]" />
     </Link>
   );
 }
