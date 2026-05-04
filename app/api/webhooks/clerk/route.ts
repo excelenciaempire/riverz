@@ -1,8 +1,17 @@
 import { Webhook } from 'svix';
 import { headers } from 'next/headers';
-import { WebhookEvent } from '@clerk/nextjs/server';
+import { WebhookEvent, clerkClient } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { getAdminEmails } from '@/lib/admin-emails';
+
+function getRegistrationAllowlist(): Set<string> {
+  const fromEnv = (process.env.REGISTRATION_ALLOWED_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return new Set([...getAdminEmails(), ...fromEnv]);
+}
 
 export async function POST(req: Request) {
   // Crear cliente de Supabase con service_role para bypass RLS
@@ -64,9 +73,31 @@ export async function POST(req: Request) {
 
   if (eventType === 'user.created') {
     const { id, email_addresses, first_name, last_name } = evt.data;
-    
+
     const email = email_addresses[0]?.email_address || '';
     const fullName = `${first_name || ''} ${last_name || ''}`.trim();
+
+    // Registrations closed: only allow admins + REGISTRATION_ALLOWED_EMAILS.
+    // Anyone else gets deleted from Clerk and added to the waitlist.
+    const allowlist = getRegistrationAllowlist();
+    if (email && !allowlist.has(email.toLowerCase())) {
+      try {
+        const client = await clerkClient();
+        await client.users.deleteUser(id);
+        console.log('[clerk-webhook] blocked sign-up, deleted user:', email);
+      } catch (delErr) {
+        console.error('[clerk-webhook] failed to delete blocked user:', delErr);
+      }
+      try {
+        await supabaseAdmin
+          .from('waitlist')
+          .insert({ email: email.toLowerCase(), source: 'clerk-blocked-signup' });
+      } catch (wlErr) {
+        // ignore unique-violation; we don't surface it
+        console.warn('[clerk-webhook] waitlist insert skipped:', wlErr);
+      }
+      return NextResponse.json({ blocked: true, reason: 'registrations_closed' });
+    }
 
     try {
       // Crear entrada en user_credits

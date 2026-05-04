@@ -5,10 +5,10 @@ import { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 
 const links = [
-  { href: '#estudio', label: 'Por qué Riverz' },
-  { href: '#equipo', label: 'Tu equipo IA' },
-  { href: '#flujo', label: 'Cómo funciona' },
-  { href: '#contenido', label: 'Contenido' },
+  { href: '#estudio', label: 'Estudio' },
+  { href: '#modelos', label: 'Modelos' },
+  { href: '#agentes', label: 'Agentes' },
+  { href: '#flujos', label: 'Flujos' },
   { href: '#planes', label: 'Planes' },
 ];
 
@@ -24,29 +24,32 @@ export function LandingNav() {
   }, []);
 
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled ? 'backdrop-blur-xl bg-black/40 border-b border-white/5' : 'bg-transparent'
-      }`}
-    >
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3 md:px-8">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#14E0CC] via-[#07A498] to-[#0a0a0a] shadow-[0_0_24px_rgba(20,224,204,0.4)]">
-            <span className="absolute inset-0 rounded-xl ring-1 ring-white/15" />
-            <span className="text-sm font-bold text-black">R</span>
+    <header className="sticky top-0 z-40">
+      <div className="lv2-announce">
+        <span>Riverz · Estudio creativo IA para marcas de e-commerce. </span>
+        <Link href="/sign-up" className="ml-2 underline underline-offset-2 hover:text-[#f7ff9e]">
+          Únete a la lista de espera →
+        </Link>
+      </div>
+
+      <nav
+        className={`flex items-center gap-6 px-5 md:px-9 transition-all ${
+          scrolled ? 'border-b border-black/10 bg-[#fafaf7]/95 backdrop-blur-md py-3' : 'py-4'
+        }`}
+      >
+        <Link href="/" className="flex items-center gap-2">
+          <span className="grid h-8 w-8 place-items-center rounded-md bg-[#0a0a0a] text-[12px] font-bold text-[#f7ff9e]">
+            R
           </span>
-          <span className="font-display text-lg font-semibold tracking-tight">Riverz</span>
-          <span className="ml-1 hidden rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-white/60 sm:inline">
-            Studio para marcas
-          </span>
+          <span className="font-editorial text-[18px] font-semibold tracking-tight">Riverz</span>
         </Link>
 
-        <ul className="hidden items-center gap-7 md:flex">
+        <ul className="ml-auto hidden items-center gap-6 md:flex">
           {links.map((l) => (
             <li key={l.href}>
               <a
                 href={l.href}
-                className="text-[13px] font-medium text-white/65 transition hover:text-white"
+                className="editorial-eyebrow text-black/70 transition hover:text-black"
               >
                 {l.label}
               </a>
@@ -54,26 +57,23 @@ export function LandingNav() {
           ))}
         </ul>
 
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-3 md:ml-0">
           <Link
             href="/sign-in"
-            className="hidden rounded-full px-4 py-2 text-[13px] font-medium text-white/75 transition hover:text-white sm:inline-block"
+            className="editorial-eyebrow hidden text-black/70 transition hover:text-black sm:inline"
           >
-            Iniciar sesión
+            Sign in
           </Link>
           <Link
             href="/sign-up"
-            className="group relative inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black shadow-[0_8px_24px_-8px_rgba(20,224,204,0.6)] transition hover:bg-[#14E0CC]"
+            className="lv2-yellow editorial-eyebrow inline-flex items-center gap-1.5 rounded-md px-4 py-2.5 font-bold transition"
           >
             Lista de espera
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:translate-x-0.5">
-              <path d="M5 12h14M13 5l7 7-7 7" />
-            </svg>
           </Link>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="ml-1 grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/5 text-white/80 md:hidden"
+            className="grid h-9 w-9 place-items-center rounded-md border border-black/15 text-black/70 md:hidden"
             aria-label="Abrir menú"
           >
             {open ? <X size={18} /> : <Menu size={18} />}
@@ -82,22 +82,22 @@ export function LandingNav() {
       </nav>
 
       {open && (
-        <div className="border-t border-white/5 bg-black/85 backdrop-blur-xl md:hidden">
-          <ul className="flex flex-col px-6 py-4">
+        <div className="border-b border-black/10 bg-[#fafaf7] md:hidden">
+          <ul className="flex flex-col px-5 py-3">
             {links.map((l) => (
               <li key={l.href}>
                 <a
                   href={l.href}
                   onClick={() => setOpen(false)}
-                  className="block py-3 text-[15px] font-medium text-white/80"
+                  className="editorial-eyebrow block py-3 text-black/80"
                 >
                   {l.label}
                 </a>
               </li>
             ))}
-            <li className="mt-2 border-t border-white/5 pt-3">
-              <Link href="/sign-in" className="block py-2 text-[15px] font-medium text-white/80">
-                Iniciar sesión
+            <li className="border-t border-black/10 pt-3">
+              <Link href="/sign-in" className="editorial-eyebrow block py-2 text-black/80">
+                Sign in
               </Link>
             </li>
           </ul>
