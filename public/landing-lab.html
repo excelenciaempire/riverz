@@ -202,7 +202,15 @@ body{color:#E2E4EF;font-family:'Instrument Sans',sans-serif;font-size:13px;displ
 #page-area::-webkit-scrollbar-thumb{background:#1E2130;border-radius:2px}
 #page-wrap{width:100%;min-height:100%;background:var(--ink,#0E0A06);color:var(--cream,#F5EDD8);font-family:'Instrument Sans',sans-serif;line-height:1.7;overflow-x:hidden;display:block}
 body.mob-mode #page-area{background:#0D0D12;text-align:center}
-body.mob-mode #page-wrap{width:390px;max-width:390px;margin:20px auto;text-align:left;display:inline-block;min-height:auto;box-shadow:0 0 0 8px #1A1D28,0 0 0 9px #252840}
+body.mob-mode:not(.riverz-tpl-active) #page-wrap{width:390px;max-width:390px;margin:20px auto;text-align:left;display:inline-block;min-height:auto;box-shadow:0 0 0 8px #1A1D28,0 0 0 9px #252840}
+/* Templates render mobile preview as a clean phone-shaped sheet, no dark frame */
+body.mob-mode.riverz-tpl-active #page-area{background:#1a1d28!important}
+body.mob-mode.riverz-tpl-active #page-wrap{width:390px;max-width:390px;margin:24px auto;text-align:left;display:inline-block;min-height:auto;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.04)}
+/* Sticky bar inside the editor — Pilar / product-page templates have
+   transform:translateY(110%) until .show is added by their script (which
+   we strip on mount). Force it visible so the user sees it while editing. */
+body.riverz-tpl-active #page-wrap .sticky-bar,
+body.riverz-tpl-active #page-wrap aside#sticky{transform:none!important;position:absolute!important;left:0;right:0;bottom:0}
 body.mob-mode .hero{grid-template-columns:1fr!important;min-height:auto}
 body.mob-mode .hero-txt{padding:40px 20px 32px!important;order:2}
 body.mob-mode .hero-img-col{order:1}
@@ -265,6 +273,11 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
 .riverz-move-banner{position:fixed;left:50%;top:60px;transform:translateX(-50%);background:#07A498;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;z-index:99998;box-shadow:0 4px 18px rgba(7,164,152,.4);display:flex;align-items:center;gap:10px;font-family:'Instrument Sans',sans-serif}
 .riverz-move-banner button{background:rgba(255,255,255,.18);border:0;color:#fff;padding:3px 9px;border-radius:11px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600}
 .riverz-move-banner button:hover{background:rgba(255,255,255,.3)}
+/* FAQ accordion polish — block-template version */
+.riverz-faq:hover{border-color:#d0d4da!important;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+.riverz-faq[open]{border-color:#0d0f12!important;background:#fafbfc!important}
+.riverz-faq[open] summary span{transform:rotate(45deg);background:#0d0f12!important;color:#fff!important}
+.riverz-faq summary::-webkit-details-marker{display:none}
 #font-size-val{font-size:10px;color:#5B6490;min-width:28px;text-align:center;font-family:'Instrument Sans',sans-serif}
 #sticky-panel{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#0D0E14;border:1px solid #252840;border-radius:8px;padding:10px 14px;z-index:201;display:none;align-items:center;gap:10px;font-family:'Instrument Sans',sans-serif;box-shadow:0 -4px 20px rgba(0,0,0,.5)}
 #sticky-panel.show{display:flex}
@@ -461,6 +474,7 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
     <button class="tb tb-ghost" onclick="openVersionsModal()" title="Historial de versiones">&#x1F570; Versiones</button>
     <button class="tb tb-ghost" onclick="openSettings()" title="Ajustes de la página">&#x2699; Ajustes</button>
     <button class="tb tb-blue" onclick="exportCurrent()">&#x2B07; Exportar HTML</button>
+    <button class="tb tb-acc" onclick="saveDraftNow()" title="Guardar el borrador actual (Ctrl+S)">&#x1F4BE; Guardar</button>
     <button class="tb tb-grn" onclick="publishToShopify()" title="Publicar como página en tu Shopify">&#x1F6D2; Publicar en Shopify</button>
     <input type="file" id="file-in" accept="image/*" style="display:none" onchange="onFilePick(event)">
   </div>
@@ -973,15 +987,6 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         </label>
       </div>
 
-      <div class="set-section">
-        <h3>Versiones</h3>
-        <p class="set-help">Guardá una versión antes de cambios grandes para poder volver atrás.</p>
-        <div class="ver-save">
-          <button class="tb tb-acc" onclick="saveVersion()" type="button">+ Guardar versión actual</button>
-        </div>
-        <div id="versions-list" class="versions-list"></div>
-      </div>
-
     </div>
   </div>
 </div>
@@ -1468,9 +1473,9 @@ var BLOCK_TEMPLATES = {
   list_ok: '<ul class="checks" style="list-style:none;padding:0;margin:18px 0"><li data-v-text="auto-{slug}-1" style="padding-left:32px;position:relative;margin:10px 0;font-size:16px;line-height:1.5">Beneficio o argumento positivo uno</li><li data-v-text="auto-{slug}-2" style="padding-left:32px;position:relative;margin:10px 0;font-size:16px;line-height:1.5">Beneficio dos</li><li data-v-text="auto-{slug}-3" style="padding-left:32px;position:relative;margin:10px 0;font-size:16px;line-height:1.5">Beneficio tres</li></ul>',
   list_no: '<ul class="crosses" style="list-style:none;padding:0;margin:18px 0"><li data-v-text="auto-{slug}-1" style="padding-left:32px;position:relative;margin:10px 0;font-size:16px;line-height:1.5">Lo que tu producto NO tiene (problema común)</li><li data-v-text="auto-{slug}-2" style="padding-left:32px;position:relative;margin:10px 0;font-size:16px;line-height:1.5">Otro problema que evita</li></ul>',
   cta: '<div style="text-align:center;margin:32px 0"><a href="#" class="cta-btn" data-v-text="auto-{slug}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:14px 32px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;letter-spacing:.05em;text-transform:uppercase">Comprar ahora →</a></div>',
-  gallery: '<div class="bp-gallery" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0"><div class="reason-img" data-v-img="auto-{slug}-1" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen+1" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div><div class="reason-img" data-v-img="auto-{slug}-2" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen+2" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div><div class="reason-img" data-v-img="auto-{slug}-3" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen+3" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div></div>',
+  gallery: '<div class="bp-gallery" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0"><div class="reason-img" data-v-img="auto-{slug}-1" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div><div class="reason-img" data-v-img="auto-{slug}-2" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div><div class="reason-img" data-v-img="auto-{slug}-3" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div></div>',
   review: '<div style="background:#f6f7f9;border-radius:12px;padding:20px 22px;margin:18px 0"><div style="color:#f5a623;font-size:15px;letter-spacing:2px;margin-bottom:10px">★★★★★</div><div data-v-text="auto-{slug}-body" style="font-size:15px;line-height:1.5;color:#1c1f24;font-style:italic">"Una reseña genuina del cliente. Editá esto con un testimonio real que conecte con tu audiencia."</div><div style="margin-top:14px;padding-top:14px;border-top:1px solid #e6e8eb;font-size:13px;display:flex;gap:8px;align-items:center"><div style="width:32px;height:32px;border-radius:50%;background:#e0e3e8;flex:0 0 32px"></div><div><strong data-v-text="auto-{slug}-name" style="display:block;font-weight:700">Nombre Cliente</strong><span data-v-text="auto-{slug}-meta" style="color:#5a6068;font-size:12px">Cliente verificado</span></div></div></div>',
-  faq: '<details style="border:1px solid #e6e8eb;border-radius:8px;margin:8px 0;background:#fff;overflow:hidden"><summary data-v-text="auto-{slug}-q" style="padding:16px 18px;font-weight:700;cursor:pointer;list-style:none;font-size:15px;display:flex;justify-content:space-between;align-items:center">¿Pregunta frecuente sobre tu producto?</summary><div data-v-text="auto-{slug}-a" style="padding:0 18px 16px;font-size:14px;color:#1c1f24;line-height:1.6">Respuesta detallada que aclara la duda del cliente y reduce fricción para comprar.</div></details>'
+  faq: '<details class="riverz-faq" style="border:1px solid #e6e8eb;border-radius:12px;margin:10px 0;background:#fff;overflow:hidden;transition:border-color .2s,box-shadow .2s"><summary data-v-text="auto-{slug}-q" style="padding:18px 22px;font-weight:600;cursor:pointer;list-style:none;font-size:16px;display:flex;justify-content:space-between;align-items:center;color:#0d0f12;-webkit-tap-highlight-color:transparent">¿Pregunta frecuente sobre tu producto?<span style="flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#f3f4f5;display:inline-flex;align-items:center;justify-content:center;font-size:18px;font-weight:300;color:#5a6068;transition:transform .25s ease,background .2s">+</span></summary><div data-v-text="auto-{slug}-a" style="padding:0 22px 20px;font-size:15px;color:#3a414c;line-height:1.65">Respuesta detallada que aclara la duda del cliente y reduce fricción para comprar.</div></details>'
 };
 function nextAutoSlug(){
   var max = 0;
@@ -2130,8 +2135,25 @@ function delImg(e,key){e.stopPropagation();e.preventDefault();var proj=getActive
 
 // ── UNDO/REDO ─────────────────────────────────────────────────
 function snapshot(){if(isRestoring||!activeId)return;collectTexts();var proj=getActive();if(!proj)return;var snap={texts:JSON.parse(JSON.stringify(proj.texts)),images:JSON.parse(JSON.stringify(proj.images)),layoutOrder:proj.layoutOrder?JSON.parse(JSON.stringify(proj.layoutOrder)):null};if(!histMap[activeId]){histMap[activeId]=[];histIdx[activeId]=-1;}histMap[activeId].splice(histIdx[activeId]+1);histMap[activeId].push(snap);if(histMap[activeId].length>60)histMap[activeId].shift();histIdx[activeId]=histMap[activeId].length-1;updateUR();}
-function doUndo(){if(!activeId||(histIdx[activeId]||0)<=0)return;histIdx[activeId]--;applySnap(histMap[activeId][histIdx[activeId]]);updateUR();toast('Deshecho');}
-function doRedo(){var h=histMap[activeId]||[];if(!activeId||(histIdx[activeId]||0)>=h.length-1)return;histIdx[activeId]++;applySnap(h[histIdx[activeId]]);updateUR();toast('Rehecho');}
+function doUndo(){
+  if(!activeId){ toast('Sin proyecto activo',1); return; }
+  var idx = histIdx[activeId];
+  if (idx === undefined || idx <= 0) { toast('Nada que deshacer',0); return; }
+  histIdx[activeId]--;
+  applySnap(histMap[activeId][histIdx[activeId]]);
+  updateUR();
+  toast('↶ Deshecho');
+}
+function doRedo(){
+  if(!activeId){ toast('Sin proyecto activo',1); return; }
+  var h=histMap[activeId]||[];
+  var idx = histIdx[activeId];
+  if (idx === undefined || idx >= h.length-1) { toast('Nada que rehacer',0); return; }
+  histIdx[activeId]++;
+  applySnap(h[histIdx[activeId]]);
+  updateUR();
+  toast('↷ Rehecho');
+}
 function applySnap(snap){isRestoring=true;var proj=getActive();if(!proj){isRestoring=false;return;}proj.texts=JSON.parse(JSON.stringify(snap.texts||{}));proj.images=JSON.parse(JSON.stringify(snap.images||{}));if(snap.layoutOrder){proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));if(typeof applyLayoutOrder==='function')applyLayoutOrder(proj);}applyTexts(proj.texts);IMG_KEYS.forEach(function(k){var v=proj.images[k];if(v===null){collapseSlot(k);return;}if(typeof v==='string'&&v){setSlot(k,v);return;}if(TEMPLATE_DEFAULT_IMAGES[k])setSlot(k,TEMPLATE_DEFAULT_IMAGES[k]);else resetSlot(k);});saveAll();isRestoring=false;}
 function updateUR(){var id=activeId;var u=g('btn-undo'),r=g('btn-redo');if(u)u.disabled=!id||(histIdx[id]||0)<=0;if(r)r.disabled=!id||(histIdx[id]||0)>=((histMap[id]||[]).length-1);}
 
@@ -2388,7 +2410,6 @@ function openSettings(){
   byId('set-cta').value = proj.ctaUrl || '';
   byId('set-seo-title').value = proj.seoTitle || '';
   byId('set-seo-desc').value = proj.metaDescription || '';
-  renderVersionsList();
   byId('settings-modal').classList.add('on');
 }
 function closeSettings(){
@@ -2410,6 +2431,46 @@ function setSetting(key, value){
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.setSetting = setSetting;
+
+// ── DRAFT PERSISTENCE ─────────────────────────────────────────
+// qSave() debounces writes for 700 ms — fine for normal typing but a
+// small window where unsaved keystrokes can be lost on refresh / tab
+// close. saveDraftNow() forces an immediate flush, used by the toolbar
+// "💾 Guardar" button + Ctrl+S + beforeunload guard.
+function saveDraftNow(){
+  if (typeof collectTexts === 'function') collectTexts();
+  if (typeof saveAll === 'function') saveAll();
+  isDirty = false;
+  if (typeof dot === 'function') dot('ok');
+  toast('💾 Borrador guardado');
+}
+window.saveDraftNow = saveDraftNow;
+
+// Ctrl+S / Cmd+S triggers an explicit save without waiting for the
+// debounce. Stops the browser's "Save Page As" default.
+document.addEventListener('keydown', function(e){
+  var meta = e.metaKey || e.ctrlKey;
+  if (meta && (e.key === 's' || e.key === 'S')) {
+    e.preventDefault();
+    saveDraftNow();
+  }
+}, true);
+
+// beforeunload guard — prompts only when there are pending changes the
+// debounced qSave hasn't flushed yet. localStorage already has every
+// confirmed edit, so this just protects the last 0-700 ms of typing.
+window.addEventListener('beforeunload', function(e){
+  // Force a final save synchronously so even if the user dismisses the
+  // prompt and leaves, the latest state persists. localStorage writes
+  // are sync so this works in beforeunload.
+  try { if (typeof collectTexts === 'function') collectTexts(); if (typeof saveAll === 'function') saveAll(); } catch(_){}
+  if (isDirty) {
+    var msg = '¿Salir sin guardar? Tenés cambios sin confirmar.';
+    e.preventDefault();
+    e.returnValue = msg;
+    return msg;
+  }
+});
 
 // ── VERSION CONTROL ──────────────────────────────────────────
 // Lightweight per-project version history: snapshot of texts + images
