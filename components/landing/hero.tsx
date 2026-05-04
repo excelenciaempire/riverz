@@ -48,7 +48,7 @@ export function Hero() {
               href="/sign-up"
               className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-white px-6 py-3.5 text-[14px] font-semibold text-black shadow-[0_18px_40px_-12px_rgba(20,224,204,0.55)] transition hover:translate-y-[-1px]"
             >
-              <span className="relative z-10">Empieza a producir gratis</span>
+              <span className="relative z-10">Únete a la lista de espera</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 transition group-hover:translate-x-0.5">
                 <path d="M5 12h14M13 5l7 7-7 7" />
               </svg>

@@ -10,6 +10,7 @@ const isPublicRoute = createRouteMatcher([
   '/landing-lab',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/api/waitlist',
   '/api/webhooks(.*)',
   '/api/shopify/webhooks(.*)',
   '/api/shopify/callback',

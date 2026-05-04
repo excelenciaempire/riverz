@@ -25,7 +25,7 @@ const plans: Plan[] = [
       'Edición y catálogo de producto',
       'Identidad de marca memorizada',
     ],
-    cta: 'Empezar ahora',
+    cta: 'Unirme a la lista de espera',
   },
   {
     name: 'Pro',
@@ -40,7 +40,7 @@ const plans: Plan[] = [
       'Performance loop con A/B test',
       'Onboarding asistido',
     ],
-    cta: 'Probar Pro',
+    cta: 'Unirme a la lista de espera',
     highlight: true,
   },
   {
@@ -56,7 +56,7 @@ const plans: Plan[] = [
       'Manager creativo dedicado',
       'API y workflows custom',
     ],
-    cta: 'Hablar con ventas',
+    cta: 'Unirme a la lista de espera',
   },
 ];
 

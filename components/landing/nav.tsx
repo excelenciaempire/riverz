@@ -65,7 +65,7 @@ export function LandingNav() {
             href="/sign-up"
             className="group relative inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black shadow-[0_8px_24px_-8px_rgba(20,224,204,0.6)] transition hover:bg-[#14E0CC]"
           >
-            Empezar gratis
+            Lista de espera
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:translate-x-0.5">
               <path d="M5 12h14M13 5l7 7-7 7" />
             </svg>

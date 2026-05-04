@@ -21,8 +21,8 @@ export function FinalCTA() {
             <span className="text-gradient-primary">empieza hoy.</span>
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-white/60 md:text-[17px]">
-            Crea tu primera campaña con Riverz en menos de 10 minutos. Sin tarjeta,
-            sin shootings, sin esperar.
+            Estamos cerrando registros para preparar la próxima oleada. Únete a la
+            lista de espera y te avisaremos en cuanto abramos cupos.
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -30,7 +30,7 @@ export function FinalCTA() {
               href="/sign-up"
               className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-[15px] font-semibold text-black shadow-[0_22px_50px_-12px_rgba(20,224,204,0.55)] transition hover:translate-y-[-1px] sm:w-auto"
             >
-              Empieza gratis
+              Únete a la lista de espera
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="transition group-hover:translate-x-0.5">
                 <path d="M5 12h14M13 5l7 7-7 7" />
               </svg>
