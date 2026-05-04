@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title data-v-text="page-title">Producto — Tu Marca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+/* ─── RESET / TOKENS ─────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+:root{
+  --ink:#0a0a0a;
+  --ink-2:#1f2024;
+  --muted:#6b7280;
+  --rule:#e6e8eb;
+  --rule-dark:rgba(255,255,255,.10);
+  --bg:#ffffff;
+  --bg-cream:#f5edd9;
+  --bg-cream-2:#faf3e0;
+  --bg-soft:#f6f7f9;
+  --bg-dark:#0a0a0a;
+  --bg-dark-2:#141414;
+  --gold:#e8b923;
+  --gold-2:#f5c518;
+  --gold-soft:#fff3c4;
+  --gold-deep:#7a5a00;
+  --olive:#3a3122;
+  --on-dark:#ffffff;
+  --on-dark-soft:rgba(255,255,255,.78);
+  --on-dark-mute:rgba(255,255,255,.55);
+  --x-red:#dc2626;
+  --green:#16a34a;
+  --price:#0a0a0a;
+  --strike:#9aa0a8;
+  --r-sm:6px;
+  --r-md:12px;
+  --r-lg:18px;
+}
+body{font-family:'Inter',system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:var(--bg);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+img{max-width:100%;display:block;height:auto}
+button{font-family:inherit;cursor:pointer}
+a{color:inherit;text-decoration:none}
+p{margin:0 0 1em}
+h1,h2,h3,h4{margin:0 0 .4em;line-height:1.15;letter-spacing:-0.01em;font-weight:800;color:var(--ink);text-transform:uppercase}
+ul{margin:0;padding:0;list-style:none}
+
+/* ─── PAGE WRAPPER ───────────────────────────────────────────── */
+.pp{max-width:1240px;margin:0 auto;padding:0 20px}
+@media (min-width:760px){ .pp{padding:0 32px} }
+.pp-narrow{max-width:1080px;margin:0 auto;padding:0 20px}
+@media (min-width:760px){ .pp-narrow{padding:0 32px} }
+
+/* ─── 1. ANNOUNCEMENT BAR ────────────────────────────────────── */
+.pp-announce{background:var(--olive);color:#fff;text-align:center;padding:11px 16px;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
+.pp-announce a{color:var(--gold-2);text-decoration:underline;text-underline-offset:2px}
+.pp-announce .bolt{color:var(--gold-2);margin:0 6px}
+
+/* ─── 2. HEADER ──────────────────────────────────────────────── */
+.pp-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;background:#fff;border-bottom:1px solid var(--rule)}
+@media (min-width:760px){ .pp-header{padding:20px 32px} }
+.pp-header .nav-toggle{background:none;border:0;padding:0;display:flex;flex-direction:column;gap:5px;width:26px}
+.pp-header .nav-toggle span{display:block;width:100%;height:2px;background:var(--ink)}
+.pp-brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:22px;letter-spacing:0.01em}
+.pp-brand .brand-mark{display:inline-block;width:26px;height:22px;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-2) 50%,var(--gold-deep) 100%);clip-path:polygon(0% 100%, 18% 60%, 32% 80%, 50% 30%, 68% 70%, 82% 50%, 100% 100%)}
+.pp-nav{display:none;gap:28px;font-size:14.5px;font-weight:500;color:var(--ink-2)}
+@media (min-width:1020px){ .pp-nav{display:flex} }
+.pp-nav a:hover{color:var(--ink)}
+.pp-actions{display:flex;align-items:center;gap:18px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.pp-cart{position:relative;width:24px;height:24px;display:inline-block}
+.pp-cart::before{content:"";position:absolute;left:1px;right:1px;bottom:0;height:14px;border:2px solid var(--ink);border-top:0;border-radius:0 0 4px 4px}
+.pp-cart::after{content:"";position:absolute;left:5px;right:5px;top:1px;height:8px;border:2px solid var(--ink);border-bottom:0;border-radius:8px 8px 0 0}
+
+/* ─── 3. HERO: gallery + buy box ─────────────────────────────── */
+.pp-hero{display:grid;grid-template-columns:1fr;gap:32px;padding:24px 0 40px}
+@media (min-width:980px){ .pp-hero{grid-template-columns:1.05fr .95fr;gap:48px;padding:32px 0 56px} }
+
+/* Gallery — UltimaPeak style: big stat-overlay images on dark + thumbs */
+.pp-gallery{display:flex;flex-direction:column;gap:12px}
+.gallery-main{aspect-ratio:1/1;background:#000;border-radius:var(--r-md);overflow:hidden;position:relative}
+.gallery-main img{width:100%;height:100%;object-fit:cover}
+.gallery-arrows{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);display:flex;justify-content:space-between;padding:0 12px;pointer-events:none}
+.gallery-arrows button{pointer-events:auto;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.55);border:0;font-size:18px;color:var(--ink);font-weight:600;backdrop-filter:blur(4px)}
+.gallery-arrows button:hover{background:rgba(255,255,255,.78)}
+.gallery-thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (min-width:760px){ .gallery-thumbs{grid-template-columns:repeat(6,1fr)} }
+.thumb{aspect-ratio:1/1;background:#0e0e0e;border:2px solid transparent;border-radius:var(--r-sm);overflow:hidden;padding:0;transition:border-color .15s}
+.thumb:hover,.thumb.is-active{border-color:var(--ink)}
+.thumb img{width:100%;height:100%;object-fit:cover}
+
+/* Buy box */
+.pp-info{display:flex;flex-direction:column;gap:14px}
+
+.tp-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-2);flex-wrap:wrap}
+.tp-stars{display:inline-flex;gap:2px;color:#ff6b1a;font-size:18px;line-height:1}
+.tp-rating-text{color:var(--ink-2)}
+.tp-rating-text strong{color:var(--ink);font-weight:700}
+
+.prod-name{font-family:'Inter',sans-serif;font-size:30px;font-weight:900;line-height:1.1;letter-spacing:-0.02em;margin:0;text-transform:uppercase}
+@media (min-width:760px){ .prod-name{font-size:36px} }
+
+/* 4-bullet feature list with circular gold icons */
+.feat-list{display:flex;flex-direction:column;gap:14px;margin:6px 0 8px}
+.feat-item{display:flex;gap:12px;align-items:flex-start}
+.feat-icon{flex:0 0 32px;width:32px;height:32px;border-radius:50%;background:var(--gold-2);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800}
+.feat-body h4{margin:0 0 2px;font-size:14.5px;font-weight:800;text-transform:none;letter-spacing:0;color:var(--ink)}
+.feat-body p{margin:0;font-size:13.5px;color:var(--ink-2);line-height:1.5}
+
+.supp-link{display:inline-block;font-size:14px;font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px;margin-top:2px}
+
+/* Bundle picker (radio-style) */
+.bundles-label{font-size:15px;font-weight:800;color:var(--ink);margin:6px 0 4px;text-transform:none;letter-spacing:0}
+.bundles{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--ink);padding-top:14px}
+.bundle{position:relative;display:flex;align-items:center;gap:14px;border:1.5px solid var(--rule);border-radius:var(--r-md);padding:12px 16px;cursor:pointer;transition:border-color .15s,background .15s}
+.bundle:hover{border-color:var(--ink-2)}
+.bundle.is-active{border-color:var(--gold);background:#fff8e1;box-shadow:0 0 0 1px var(--gold) inset}
+.bundle-radio{flex:0 0 22px;width:22px;height:22px;border:1.5px solid var(--ink-2);border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff}
+.bundle.is-active .bundle-radio::after{content:"";width:11px;height:11px;border-radius:50%;background:var(--ink)}
+.bundle-img{flex:0 0 56px;width:56px;height:56px;border-radius:var(--r-sm);overflow:hidden;background:#111}
+.bundle-img img{width:100%;height:100%;object-fit:cover}
+.bundle-text{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.bundle-name{font-size:15px;font-weight:800;color:var(--ink);text-transform:none;letter-spacing:0}
+.bundle-sub{font-size:12.5px;color:var(--ink-2)}
+.bundle-prices{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:0 0 auto}
+.bundle-price{font-size:17px;font-weight:800;color:var(--ink)}
+.bundle-compare{font-size:13px;color:var(--strike);text-decoration:line-through;font-weight:500}
+.bundle-ribbon{position:absolute;top:-10px;right:18px;background:var(--olive);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:0.08em;padding:4px 10px;border-radius:6px;text-transform:uppercase}
+.bundle-ribbon.gold{background:var(--gold);color:var(--ink)}
+
+/* Big gold CTA */
+.cta-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;background:linear-gradient(180deg,#f0c530 0%,var(--gold) 100%);color:var(--ink);font-weight:900;font-size:15px;letter-spacing:0.06em;padding:18px 22px;border-radius:8px;border:0;text-transform:uppercase;transition:transform .12s,filter .12s;text-align:center;box-shadow:0 1px 0 rgba(0,0,0,.05),0 4px 14px rgba(232,185,35,.32)}
+.cta-btn:hover{filter:brightness(1.04)}
+.cta-btn:active{transform:translateY(1px)}
+.cta-btn.is-soldout{background:#cdd2d8;color:#fff;cursor:not-allowed;box-shadow:none}
+
+/* Trust bullets row */
+.trust-row{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:8px;font-size:12.5px;color:var(--ink-2);font-weight:600}
+@media (min-width:520px){ .trust-row{grid-template-columns:1fr 1fr 1fr} }
+.trust-row span{display:flex;align-items:center;gap:6px}
+.trust-row span::before{content:"";flex:0 0 18px;width:18px;height:18px;border-radius:50%;background:var(--gold-2) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='2 6.5 5 9 10 3.5'/></svg>") center/12px no-repeat}
+
+/* Money-back guarantee box */
+.guarantee-box{display:flex;gap:12px;align-items:flex-start;background:var(--bg-cream-2);border-radius:var(--r-md);padding:14px 16px;border:1px solid #e9d8a8}
+.guarantee-icon{flex:0 0 36px;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--ink);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;background:#fff;color:var(--ink)}
+.guarantee-box p{font-size:13.5px;color:var(--ink-2);line-height:1.5;margin:0}
+.guarantee-box strong{color:var(--ink)}
+
+/* Stock + delivery */
+.stock-row{display:flex;align-items:center;gap:24px;font-size:13.5px;color:var(--ink-2);flex-wrap:wrap}
+.stock-row .in-stock{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--ink)}
+.stock-row .in-stock::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(22,163,74,.18)}
+.stock-row .delivery{display:flex;align-items:center;gap:8px}
+.stock-row .delivery::before{content:"🚚";font-size:16px}
+
+/* Doctor quote card */
+.doc-card{display:flex;gap:18px;align-items:flex-start;background:var(--bg-cream-2);border-radius:var(--r-md);padding:20px;margin-top:10px}
+.doc-photo{flex:0 0 64px;width:64px;height:64px;border-radius:50%;overflow:hidden;background:#eee}
+.doc-photo img{width:100%;height:100%;object-fit:cover}
+.doc-quote{font-size:14px;color:var(--ink-2);font-style:italic;line-height:1.55;margin:0 0 8px}
+.doc-name{font-size:14.5px;font-weight:800;color:var(--ink)}
+.doc-role{font-size:12.5px;color:var(--ink-2);margin-top:1px}
+
+/* Naturally-supports 4 icon row */
+.naturally{background:var(--bg-cream-2);border-radius:var(--r-md);padding:24px 16px;margin-top:12px;text-align:center}
+.naturally h3{font-size:18px;font-weight:800;letter-spacing:0;margin:0 0 18px;color:var(--ink);text-transform:uppercase;line-height:1.25}
+.naturally h3 em{color:var(--gold-deep);font-style:normal}
+.nat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px 12px}
+@media (min-width:520px){ .nat-grid{grid-template-columns:repeat(4,1fr)} }
+.nat-item{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--ink-2);line-height:1.35;text-align:center;padding:0 4px}
+.nat-icon{width:42px;height:42px;border-radius:50%;background:var(--gold-2);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--ink)}
+
+/* UGC section under buy box */
+.ugc{margin-top:8px}
+.ugc-title{font-size:18px;font-weight:800;margin:0 0 12px;letter-spacing:0;text-transform:none}
+.ugc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ugc-card{aspect-ratio:9/16;background:#0e0e0e;border-radius:var(--r-md);overflow:hidden;position:relative}
+.ugc-card img{width:100%;height:100%;object-fit:cover}
+.ugc-card::after{content:"";position:absolute;left:50%;top:50%;width:40px;height:40px;border-radius:50%;background:rgba(232,185,35,.92);transform:translate(-50%,-50%);box-shadow:0 4px 14px rgba(0,0,0,.28)}
+.ugc-card::before{content:"";position:absolute;left:50%;top:50%;width:0;height:0;border:8px solid transparent;border-left-color:var(--ink);transform:translate(-30%,-50%);z-index:1}
+
+/* Mini-accordion (Product details / Ingredients / Shipping) */
+.mini-acc{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+.mini-acc-item{background:var(--bg-cream-2);border-radius:var(--r-md);overflow:hidden}
+.mini-acc-item summary{padding:16px 18px;font-weight:700;font-size:14.5px;list-style:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;color:var(--ink);text-transform:none}
+.mini-acc-item summary::-webkit-details-marker{display:none}
+.mini-acc-item summary::after{content:"";width:11px;height:11px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:rotate(45deg);transition:transform .2s}
+.mini-acc-item[open] summary::after{transform:rotate(-135deg)}
+.mini-acc-body{padding:0 18px 16px;font-size:13.5px;color:var(--ink-2);line-height:1.6}
+
+/* ─── 4. PRESS STRIP (dark) ──────────────────────────────────── */
+.press-strip{background:var(--bg-dark);color:#fff;padding:34px 24px;text-align:center}
+.press-title{font-size:13.5px;font-weight:500;color:rgba(255,255,255,.85);letter-spacing:0.04em;margin:0 0 18px;text-transform:none}
+.press-marquee{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:36px;max-width:1080px;margin:0 auto}
+.press-logo{font-family:'Times New Roman',Georgia,serif;font-style:italic;font-size:24px;font-weight:700;letter-spacing:0.01em;color:#fff;text-transform:none;opacity:.96}
+.press-logo.bold{font-family:'Inter',sans-serif;font-style:normal;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;font-size:18px}
+@media (min-width:760px){ .press-marquee{gap:54px} .press-logo{font-size:28px} .press-logo.bold{font-size:22px} }
+
+/* ─── SECTION GENERIC ────────────────────────────────────────── */
+.section{padding:72px 0}
+@media (min-width:760px){ .section{padding:96px 0} }
+.section-cream{background:var(--bg-cream)}
+.section-dark{background:var(--bg-dark);color:#fff}
+.section-dark h2,.section-dark h3,.section-dark h4{color:#fff}
+.section-h2{font-size:30px;font-weight:900;text-align:center;letter-spacing:-0.01em;margin:0;text-transform:uppercase;line-height:1.1}
+@media (min-width:760px){ .section-h2{font-size:42px} }
+.section-h2 em{color:var(--gold-deep);font-style:normal}
+.section-dark .section-h2 em{color:var(--gold-2)}
+.section-sub{font-size:15.5px;color:var(--ink-2);text-align:center;max-width:640px;margin:14px auto 0;line-height:1.55;text-transform:none;font-weight:500}
+.section-dark .section-sub{color:rgba(255,255,255,.78)}
+.section-cta{display:flex;justify-content:center;margin-top:40px}
+.section-cta .cta-btn{display:inline-flex;width:auto;max-width:360px;padding:18px 32px}
+
+/* ─── 5. RESULTS TIMELINE (cream) ────────────────────────────── */
+.timeline-bar{position:relative;margin:48px 0 0;padding:0 12px}
+.timeline-bar::before{content:"";position:absolute;left:8%;right:8%;top:36px;height:2px;background:var(--ink-2)}
+.timeline-bar::after{content:"";position:absolute;left:8%;width:8px;height:8px;border-radius:50%;background:var(--ink);top:33px}
+.timeline-bar .end-dot{position:absolute;right:8%;top:33px;width:8px;height:8px;border-radius:50%;background:var(--ink)}
+.timeline-cards{display:grid;grid-template-columns:1fr;gap:28px;margin-top:60px}
+@media (min-width:760px){ .timeline-cards{grid-template-columns:repeat(3,1fr);gap:32px} }
+.tline-card{display:flex;flex-direction:column;gap:14px}
+.tline-head{display:flex;gap:12px;align-items:center}
+.tline-icon{flex:0 0 50px;width:50px;height:50px;border-radius:50%;background:var(--gold-2);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--ink)}
+.tline-h{display:flex;flex-direction:column;gap:2px}
+.tline-pill{font-size:11.5px;font-weight:800;color:var(--ink-2);letter-spacing:0.08em;text-transform:uppercase}
+.tline-h h3{font-size:18px;font-weight:800;margin:0;text-transform:none;letter-spacing:0;line-height:1.25}
+.tline-list{display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--ink-2);line-height:1.45;padding-left:18px}
+.tline-list li{position:relative;padding-left:6px}
+.tline-list li::before{content:"";position:absolute;left:-12px;top:8px;width:5px;height:5px;border-radius:50%;background:var(--ink-2)}
+
+/* ─── 6. WHY (dark) — 4 gold-bordered cards ──────────────────── */
+.why-grid{display:grid;grid-template-columns:1fr;gap:18px;margin-top:40px}
+@media (min-width:760px){ .why-grid{grid-template-columns:repeat(2,1fr);gap:22px} }
+.why-card{display:flex;gap:18px;align-items:flex-start;border:1.5px solid var(--gold);border-radius:var(--r-md);padding:24px;background:rgba(255,255,255,.02)}
+.why-icon{flex:0 0 56px;width:56px;height:56px;border-radius:50%;background:var(--gold-2);display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--ink)}
+.why-card h3{font-size:17px;font-weight:900;color:var(--gold-2);margin:0 0 8px;letter-spacing:0.02em}
+.why-card p{font-size:14px;color:rgba(255,255,255,.82);margin:0;line-height:1.55;text-transform:none}
+
+/* ─── 7. COMPARISON TABLE (dark) — 3 columns ─────────────────── */
+.cmp3{display:grid;grid-template-columns:1fr;gap:14px;margin-top:40px;position:relative}
+@media (min-width:880px){ .cmp3{grid-template-columns:repeat(3,1fr);gap:14px} }
+.cmp3-col{border-radius:var(--r-md);padding:22px 20px;display:flex;flex-direction:column;gap:14px}
+.cmp3-col.us{border:1.5px solid var(--gold);background:#000}
+.cmp3-col.them{border:1.5px solid rgba(255,255,255,.16);background:rgba(255,255,255,.04)}
+.cmp3-h{display:flex;flex-direction:column;align-items:center;gap:8px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.14);text-align:center}
+.cmp3-mark{width:84px;height:84px;border-radius:50%;background:#222;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cmp3-mark img{width:88%;height:88%;object-fit:contain}
+.cmp3-h h3{font-size:17px;font-weight:900;margin:0;letter-spacing:0.02em;color:#fff;text-transform:uppercase}
+.cmp3-col.us .cmp3-h h3{color:#fff}
+.cmp3-col.us .cmp3-h .brand{display:inline-flex;align-items:center;gap:6px;color:#fff;font-weight:900;font-size:18px;letter-spacing:0}
+.cmp3-col.us .cmp3-h .brand .brand-mark{display:inline-block;width:22px;height:18px;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-2) 50%,var(--gold-deep) 100%);clip-path:polygon(0% 100%, 18% 60%, 32% 80%, 50% 30%, 68% 70%, 82% 50%, 100% 100%)}
+.cmp3-list{display:flex;flex-direction:column;gap:14px}
+.cmp3-list li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.45}
+.cmp3-list li .ck{flex:0 0 22px;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;margin-top:1px}
+.cmp3-col.us .cmp3-list li .ck{background:var(--gold-2);color:var(--ink)}
+.cmp3-col.us .cmp3-list li{color:rgba(255,255,255,.92)}
+.cmp3-col.them .cmp3-list li .ck{background:#dc2626;color:#fff}
+.cmp3-col.them .cmp3-list li{color:rgba(255,255,255,.62)}
+
+/* ─── 8. RECOMMENDED BY (cream) ─────────────────────────────── */
+.spec-wrap{display:grid;grid-template-columns:1fr;gap:32px;margin-top:32px;align-items:center}
+@media (min-width:880px){ .spec-wrap{grid-template-columns:.4fr .6fr;gap:48px} }
+.spec-photo{aspect-ratio:1/1;max-width:340px;justify-self:center;border-radius:50%;overflow:hidden;background:#eee}
+.spec-photo img{width:100%;height:100%;object-fit:cover}
+.spec-name{font-size:22px;font-weight:800;letter-spacing:0;text-transform:none;margin:0 0 4px}
+.spec-role{font-size:14px;color:var(--ink-2);font-weight:500;margin:0 0 18px}
+.spec-quote{font-size:15.5px;color:var(--ink-2);line-height:1.65;font-style:italic;position:relative;padding-left:20px;border-left:3px solid var(--gold)}
+.spec-quote::before{content:"";position:absolute;left:-3px;top:0;width:6px;height:24px;background:var(--gold)}
+
+/* ─── 9. SURVEY STATS (dark) ─────────────────────────────────── */
+.survey-wrap{display:grid;grid-template-columns:1fr;gap:32px;margin-top:32px;align-items:center}
+@media (min-width:880px){ .survey-wrap{grid-template-columns:.45fr .55fr;gap:56px} }
+.survey-img{border-radius:var(--r-md);overflow:hidden;background:#111;aspect-ratio:4/5}
+.survey-img img{width:100%;height:100%;object-fit:cover}
+.survey-stats{display:flex;flex-direction:column;gap:14px}
+.stat-card{display:flex;align-items:center;gap:18px;border:1.5px solid var(--gold);border-radius:var(--r-md);padding:18px 22px}
+.stat-num{font-size:42px;font-weight:900;color:var(--gold-2);letter-spacing:-0.02em;line-height:1;flex:0 0 auto}
+.stat-text{font-size:15px;color:rgba(255,255,255,.92);line-height:1.45;font-weight:500}
+.survey-foot{font-size:12px;color:rgba(255,255,255,.55);margin-top:6px;font-style:italic}
+
+/* ─── 10. RIGHT FOR YOU (cream) ──────────────────────────────── */
+.rfy-wrap{display:grid;grid-template-columns:1fr;gap:32px;align-items:center}
+@media (min-width:880px){ .rfy-wrap{grid-template-columns:1fr 1fr;gap:60px} }
+.rfy-list{display:flex;flex-direction:column;gap:14px;margin-top:18px}
+.rfy-item{display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;color:var(--ink-2)}
+.rfy-item::before{content:"";flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:var(--gold-2) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='2.5 7.5 6 11 11.5 4'/></svg>") center/14px no-repeat;margin-top:1px}
+.rfy-item strong{color:var(--ink);font-weight:700}
+.rfy-img{aspect-ratio:1/1;border-radius:var(--r-md);overflow:hidden;background:#111}
+.rfy-img img{width:100%;height:100%;object-fit:cover}
+
+/* ─── 11. INGREDIENTS GRID (white) ───────────────────────────── */
+.ing-grid{display:grid;grid-template-columns:1fr;gap:20px;margin-top:40px}
+@media (min-width:600px){ .ing-grid{grid-template-columns:repeat(2,1fr)} }
+@media (min-width:980px){ .ing-grid{grid-template-columns:repeat(4,1fr)} }
+.ing-card{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
+.ing-img{width:140px;height:140px;border-radius:50%;background:var(--bg-cream-2);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.ing-img img{width:100%;height:100%;object-fit:cover}
+.ing-card h3{font-size:18px;font-weight:800;margin:6px 0 0;text-transform:none;letter-spacing:0}
+.ing-card p{font-size:13.5px;color:var(--ink-2);line-height:1.55;margin:0;max-width:240px}
+
+.shop-trust{display:flex;justify-content:center;gap:28px;margin-top:18px;font-size:13.5px;color:var(--ink-2);font-weight:600;flex-wrap:wrap}
+.shop-trust span{display:inline-flex;align-items:center;gap:8px}
+.shop-trust span::before{content:"";flex:0 0 18px;width:18px;height:18px;border-radius:50%;background:var(--ink) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='2 6.5 5 9 10 3.5'/></svg>") center/10px no-repeat}
+
+/* ─── 12. CUSTOMER REVIEWS (white) — photo cards ─────────────── */
+.reviews-grid{display:grid;grid-template-columns:1fr;gap:18px;margin-top:36px}
+@media (min-width:600px){ .reviews-grid{grid-template-columns:repeat(2,1fr)} }
+@media (min-width:980px){ .reviews-grid{grid-template-columns:repeat(4,1fr)} }
+.review{display:flex;flex-direction:column;border-radius:var(--r-md);overflow:hidden;background:#fff;border:1px solid var(--rule)}
+.review-img{aspect-ratio:1/1;background:#111}
+.review-img img{width:100%;height:100%;object-fit:cover}
+.review-body{padding:14px 16px 18px;display:flex;flex-direction:column;gap:8px}
+.review-row{display:flex;align-items:center;gap:8px;font-size:13px}
+.review-name{font-weight:700;color:var(--ink)}
+.review-verified{display:inline-flex;align-items:center;gap:4px;color:var(--green);font-weight:600;font-size:12px}
+.review-verified::before{content:"";width:13px;height:13px;border-radius:50%;background:var(--green) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='2 6.5 5 9 10 3.5'/></svg>") center/8px no-repeat}
+.review-stars{color:#ff6b1a;font-size:15px;letter-spacing:1px}
+.review-tag{display:inline-block;background:var(--olive);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;width:fit-content}
+.review-text{font-size:13.5px;color:var(--ink-2);line-height:1.55;margin:2px 0 0}
+.review-text em{font-style:italic;color:var(--ink)}
+
+/* ─── 13. BIG FAQ ────────────────────────────────────────────── */
+.faq{display:flex;flex-direction:column;gap:10px;max-width:780px;margin:32px auto 0}
+.faq-item{background:#fff;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--rule)}
+.faq-item summary{padding:18px 22px;font-weight:600;font-size:14.5px;color:var(--ink);list-style:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;text-transform:none}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary::after{content:"";width:11px;height:11px;border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);transform:rotate(45deg);transition:transform .2s}
+.faq-item[open] summary::after{transform:rotate(-135deg)}
+.faq-body{padding:0 22px 20px;font-size:13.5px;color:var(--ink-2);line-height:1.65}
+
+/* ─── 14. FOOTER (dark) ──────────────────────────────────────── */
+.pp-footer{background:var(--bg-dark);color:rgba(255,255,255,.7);padding:64px 0 24px}
+.foot-grid{display:grid;grid-template-columns:1fr;gap:36px}
+@media (min-width:760px){ .foot-grid{grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:32px} }
+.foot-brand{display:flex;align-items:center;gap:8px;color:#fff;font-weight:900;font-size:24px;margin:0 0 14px}
+.foot-about{font-size:13.5px;line-height:1.6;color:rgba(255,255,255,.62);max-width:380px}
+.foot-mail{display:flex;align-items:center;gap:8px;background:transparent;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:6px 6px 6px 16px;margin-top:18px;max-width:380px}
+.foot-mail input{flex:1;background:transparent;border:0;color:#fff;font-size:14px;padding:8px 0;font-family:inherit}
+.foot-mail input::placeholder{color:rgba(255,255,255,.42)}
+.foot-mail input:focus{outline:none}
+.foot-mail button{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.06);border:0;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center}
+.foot-col h4{color:#fff;font-size:15px;font-weight:800;margin:0 0 14px;text-transform:none;letter-spacing:0}
+.foot-col ul{display:flex;flex-direction:column;gap:10px;font-size:13.5px;color:rgba(255,255,255,.7)}
+.foot-col a:hover{color:#fff}
+.foot-col p{font-size:13.5px;line-height:1.55;margin:0 0 10px;color:rgba(255,255,255,.7)}
+.foot-col p strong{color:#fff;font-weight:700}
+.foot-col a.mail{color:rgba(255,255,255,.86);text-decoration:underline;text-underline-offset:2px}
+.foot-bottom{margin-top:48px;padding-top:24px;border-top:1px solid rgba(255,255,255,.10);font-size:12px;color:rgba(255,255,255,.5);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.foot-disclaimer{max-width:880px;margin:32px auto 0;text-align:center;font-size:12px;color:var(--ink-2);line-height:1.6;padding:0 24px}
+
+/* ─── STICKY BUY BAR ─────────────────────────────────────────── */
+.sticky-bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--rule);padding:10px 16px;display:flex;align-items:center;gap:12px;z-index:50;transform:translateY(110%);transition:transform .25s ease;box-shadow:0 -4px 18px rgba(0,0,0,.08)}
+.sticky-bar.show{transform:translateY(0)}
+.sticky-info{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.sticky-img{width:42px;height:42px;border-radius:var(--r-sm);overflow:hidden;flex:0 0 42px;background:#111}
+.sticky-img img{width:100%;height:100%;object-fit:cover}
+.sticky-text{font-size:13px;line-height:1.3;flex:1;min-width:0}
+.sticky-text strong{display:block;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sticky-text span{color:var(--muted)}
+.sticky-text s{color:var(--strike)}
+.sticky-bar .cta-btn{flex:0 0 auto;padding:12px 18px;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;width:auto;box-shadow:none}
+
+/* ─── REVEAL ON SCROLL ───────────────────────────────────────── */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease}
+.rv.on{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<div id="page-wrap">
+
+  <!-- 1. Announcement -->
+  <div class="pp-announce" data-v-text="announce">
+    Comprá hoy y llevate hasta <span class="bolt">⚡</span><a href="#bundles" data-v-text="announce-link">70% OFF AHORA</a><span class="bolt">⚡</span>
+  </div>
+
+  <!-- 2. Header -->
+  <header class="pp-header">
+    <button class="nav-toggle" aria-label="Menú" type="button"><span></span><span></span><span></span></button>
+    <div class="pp-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span data-v-text="brand-name">UltimaPeak</span>
+    </div>
+    <nav class="pp-nav">
+      <a href="#" data-v-text="nav-1">Inicio</a>
+      <a href="#" data-v-text="nav-2">Tienda</a>
+      <a href="#" data-v-text="nav-3">Seguir Pedido</a>
+      <a href="#" data-v-text="nav-4">Contacto</a>
+      <a href="#" data-v-text="nav-5">Blog</a>
+    </nav>
+    <div class="pp-actions">
+      <span data-v-text="lang">ES</span>
+      <span class="pp-cart" aria-label="Carrito"></span>
+    </div>
+  </header>
+
+  <div class="pp">
+
+    <!-- 3. Hero (gallery + buy box) -->
+    <section class="pp-hero">
+
+      <div class="pp-gallery">
+        <div class="gallery-main" data-v-img="prod-main">
+          <img src="https://placehold.co/900x900/0a0a0a/e8b923?text=Hero+Producto" alt="Foto principal del producto">
+          <div class="gallery-arrows">
+            <button type="button" aria-label="Anterior">‹</button>
+            <button type="button" aria-label="Siguiente">›</button>
+          </div>
+        </div>
+        <div class="gallery-thumbs">
+          <button class="thumb is-active" data-v-img="prod-thumb-1" type="button"><img src="https://placehold.co/200x200/141414/e8b923?text=1" alt="Vista 1"></button>
+          <button class="thumb" data-v-img="prod-thumb-2" type="button"><img src="https://placehold.co/200x200/141414/e8b923?text=2" alt="Vista 2"></button>
+          <button class="thumb" data-v-img="prod-thumb-3" type="button"><img src="https://placehold.co/200x200/141414/e8b923?text=3" alt="Vista 3"></button>
+          <button class="thumb" data-v-img="prod-thumb-4" type="button"><img src="https://placehold.co/200x200/141414/e8b923?text=4" alt="Vista 4"></button>
+          <button class="thumb" data-v-img="prod-thumb-5" type="button"><img src="https://placehold.co/200x200/141414/e8b923?text=5" alt="Vista 5"></button>
+          <button class="thumb" data-v-img="prod-thumb-6" type="button"><img src="https://placehold.co/200x200/141414/e8b923?text=6" alt="Vista 6"></button>
+        </div>
+      </div>
+
+      <div class="pp-info">
+
+        <div class="tp-row">
+          <span class="tp-stars" aria-hidden="true">★★★★★</span>
+          <span class="tp-rating-text">
+            <span data-v-text="rating-prefix">Calificado</span>
+            <strong data-v-text="rating">4.8/5</strong>
+            <span data-v-text="rating-suffix">por 110.500+ clientes felices</span>
+          </span>
+        </div>
+
+        <h1 class="prod-name" data-v-text="product-name">PERFORMANCE GUMMIES.<br>TU SOPORTE 6-EN-1.</h1>
+
+        <ul class="feat-list">
+          <li class="feat-item">
+            <span class="feat-icon" aria-hidden="true">💪</span>
+            <div class="feat-body">
+              <h4 data-v-text="feat-1-title">Energía y Vitalidad Diaria</h4>
+              <p data-v-text="feat-1-desc">Activa tu energía diaria y resistencia física con 2000mg de Shilajit puro.</p>
+            </div>
+          </li>
+          <li class="feat-item">
+            <span class="feat-icon" aria-hidden="true">🌿</span>
+            <div class="feat-body">
+              <h4 data-v-text="feat-2-title">Ingredientes Herbales para Hombres</h4>
+              <p data-v-text="feat-2-desc">Botánicos potentes como Ashwagandha y Maca apoyan la fuerza masculina.</p>
+            </div>
+          </li>
+          <li class="feat-item">
+            <span class="feat-icon" aria-hidden="true">⚡</span>
+            <div class="feat-body">
+              <h4 data-v-text="feat-3-title">Foco Natural y Resistencia</h4>
+              <p data-v-text="feat-3-desc">Adaptógenos que controlan el estrés diario y mejoran claridad mental y ánimo.</p>
+            </div>
+          </li>
+          <li class="feat-item">
+            <span class="feat-icon" aria-hidden="true">🔬</span>
+            <div class="feat-body">
+              <h4 data-v-text="feat-4-title">Fórmula Limpia, Probada Clínicamente</h4>
+              <p data-v-text="feat-4-desc">Plant-based y testeado por terceros para asegurar pureza y confianza.</p>
+            </div>
+          </li>
+        </ul>
+
+        <a href="#" class="supp-link" data-v-text="supp-link">Hechos del suplemento</a>
+
+        <div class="bundles-label" data-v-text="bundles-label">Elegí tu pack:</div>
+        <div class="bundles" id="bundles">
+
+          <label class="bundle">
+            <span class="bundle-radio" aria-hidden="true"></span>
+            <span class="bundle-img" data-v-img="bundle-1-img"><img src="https://placehold.co/120x120/0a0a0a/e8b923?text=1" alt=""></span>
+            <span class="bundle-text">
+              <span class="bundle-name" data-v-text="bundle-1-name">Comprar 1</span>
+              <span class="bundle-sub" data-v-text="bundle-1-sub">1 Pack</span>
+            </span>
+            <span class="bundle-prices">
+              <span class="bundle-price" data-v-text="bundle-1-price">$39.00</span>
+              <span class="bundle-compare" data-v-text="bundle-1-compare">$98.00</span>
+            </span>
+          </label>
+
+          <label class="bundle is-active">
+            <span class="bundle-ribbon" data-v-text="bundle-2-ribbon">Más popular</span>
+            <span class="bundle-radio" aria-hidden="true"></span>
+            <span class="bundle-img" data-v-img="bundle-2-img"><img src="https://placehold.co/120x120/0a0a0a/e8b923?text=3" alt=""></span>
+            <span class="bundle-text">
+              <span class="bundle-name" data-v-text="bundle-2-name">Comprar 2 Llevá 1 GRATIS</span>
+              <span class="bundle-sub" data-v-text="bundle-2-sub">3 Packs</span>
+            </span>
+            <span class="bundle-prices">
+              <span class="bundle-price" data-v-text="bundle-2-price">$78.00</span>
+              <span class="bundle-compare" data-v-text="bundle-2-compare">$196.00</span>
+            </span>
+          </label>
+
+          <label class="bundle">
+            <span class="bundle-ribbon gold" data-v-text="bundle-3-ribbon">Mejor precio</span>
+            <span class="bundle-radio" aria-hidden="true"></span>
+            <span class="bundle-img" data-v-img="bundle-3-img"><img src="https://placehold.co/120x120/0a0a0a/e8b923?text=5" alt=""></span>
+            <span class="bundle-text">
+              <span class="bundle-name" data-v-text="bundle-3-name">Comprar 3 Llevá 2 GRATIS</span>
+              <span class="bundle-sub" data-v-text="bundle-3-sub">5 Packs</span>
+            </span>
+            <span class="bundle-prices">
+              <span class="bundle-price" data-v-text="bundle-3-price">$117.00</span>
+              <span class="bundle-compare" data-v-text="bundle-3-compare">$294.00</span>
+            </span>
+          </label>
+
+        </div>
+
+        <a href="#" class="cta-btn" data-v-text="cta-text">Agregar al carrito — $78.00</a>
+
+        <div class="trust-row">
+          <span data-v-text="trust-1">Reabastecimiento cada 30 días</span>
+          <span data-v-text="trust-2">Pausá, saltá o cancelá cuando quieras</span>
+          <span data-v-text="trust-3">Resultados en 60 días garantizados</span>
+        </div>
+
+        <div class="guarantee-box">
+          <span class="guarantee-icon" aria-hidden="true">✓</span>
+          <p>
+            <strong data-v-text="guarantee-strong">Menos del 1%</strong>
+            <span data-v-text="guarantee-text"> de nuestros clientes pide la Garantía de Devolución de 60 Días.</span>
+          </p>
+        </div>
+
+        <div class="stock-row">
+          <span class="in-stock" data-v-text="stock-text">En stock</span>
+          <span class="delivery" data-v-text="delivery-text">Llega en 3 a 6 días hábiles</span>
+        </div>
+
+        <div class="doc-card">
+          <div class="doc-photo" data-v-img="doc-photo">
+            <img src="https://placehold.co/180x180/eef0f3/9ca3af?text=Dr." alt="Foto del doctor">
+          </div>
+          <div>
+            <p class="doc-quote" data-v-text="doc-quote">"Para hombres que buscan potenciar su energía y vitalidad, recomiendo un enfoque natural. Esta combinación de Shilajit puro y hierbas adaptógenas mejora la resistencia y bienestar para máximo rendimiento."</p>
+            <div class="doc-name" data-v-text="doc-name">Dr. Marcus Thorne, M.D.</div>
+            <div class="doc-role" data-v-text="doc-role">Médico Certificado y Especialista en Salud Masculina</div>
+          </div>
+        </div>
+
+        <div class="naturally">
+          <h3 data-v-text="naturally-title">Combustible para tu <em>cuerpo y mente</em>, naturalmente</h3>
+          <div class="nat-grid">
+            <div class="nat-item">
+              <span class="nat-icon" aria-hidden="true">❤️</span>
+              <span data-v-text="nat-1">Apoya vitalidad y bienestar</span>
+            </div>
+            <div class="nat-item">
+              <span class="nat-icon" aria-hidden="true">⚡</span>
+              <span data-v-text="nat-2">Promueve energía estable</span>
+            </div>
+            <div class="nat-item">
+              <span class="nat-icon" aria-hidden="true">🎯</span>
+              <span data-v-text="nat-3">Apoya foco y recuperación</span>
+            </div>
+            <div class="nat-item">
+              <span class="nat-icon" aria-hidden="true">🙌</span>
+              <span data-v-text="nat-4">Eleva la confianza</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ugc">
+          <h3 class="ugc-title" data-v-text="ugc-title">Amado por miles</h3>
+          <div class="ugc-grid">
+            <div class="ugc-card" data-v-img="ugc-1"><img src="https://placehold.co/360x640/141414/e8b923?text=Video" alt=""></div>
+            <div class="ugc-card" data-v-img="ugc-2"><img src="https://placehold.co/360x640/141414/e8b923?text=Video" alt=""></div>
+            <div class="ugc-card" data-v-img="ugc-3"><img src="https://placehold.co/360x640/141414/e8b923?text=Video" alt=""></div>
+          </div>
+        </div>
+
+        <div class="mini-acc">
+          <details class="mini-acc-item">
+            <summary data-v-text="acc-1-q">Detalles del producto</summary>
+            <div class="mini-acc-body" data-v-text="acc-1-a">Cada pack contiene 30 gomitas premium con la fórmula completa 6-en-1. Una dosis diaria para apoyar testosterona, energía, libido y rendimiento general.</div>
+          </details>
+          <details class="mini-acc-item">
+            <summary data-v-text="acc-2-q">Ingredientes</summary>
+            <div class="mini-acc-body" data-v-text="acc-2-a">Shilajit (2000mg), Ashwagandha KSM-66, Maca, Ginger Root, L-Arginine, Horny Goat Weed. Sin colorantes artificiales, sin gluten, sin OMG.</div>
+          </details>
+          <details class="mini-acc-item">
+            <summary data-v-text="acc-3-q">Envío y devoluciones</summary>
+            <div class="mini-acc-body" data-v-text="acc-3-a">Envío gratis a partir de la orden de 3 packs. Llega en 3 a 6 días hábiles. Garantía de devolución del dinero por 60 días si no estás satisfecho.</div>
+          </details>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- 4. Press strip (dark) -->
+  <section class="press-strip rv">
+    <p class="press-title" data-v-text="press-title">Como se vio en:</p>
+    <div class="press-marquee">
+      <span class="press-logo" data-v-text="press-1">Forbes</span>
+      <span class="press-logo bold" data-v-text="press-2">Shark Tank</span>
+      <span class="press-logo bold" data-v-text="press-3">Buzzfeed</span>
+      <span class="press-logo bold" data-v-text="press-4">GQ</span>
+      <span class="press-logo" data-v-text="press-5">Men's Health</span>
+    </div>
+  </section>
+
+  <!-- 5. Results timeline (cream) -->
+  <section class="section section-cream rv">
+    <div class="pp-narrow">
+      <h2 class="section-h2" data-v-text="time-title">Qué esperar: tu línea de tiempo de resultados</h2>
+      <div class="timeline-bar"><span class="end-dot"></span></div>
+      <div class="timeline-cards">
+        <div class="tline-card">
+          <div class="tline-head">
+            <span class="tline-icon" aria-hidden="true">⚡</span>
+            <div class="tline-h">
+              <span class="tline-pill" data-v-text="time-1-pill">Semana 1</span>
+              <h3 data-v-text="time-1-h">Reset de Estrés y Energía</h3>
+            </div>
+          </div>
+          <ul class="tline-list">
+            <li data-v-text="time-1-li-1">El cortisol baja, se levanta la niebla mental</li>
+            <li data-v-text="time-1-li-2">Mejora el sueño, las mañanas se sienten distintas</li>
+            <li data-v-text="time-1-li-3">El humor se estabiliza, el estrés es manejable</li>
+            <li data-v-text="time-1-li-4">Primeras señales de energía y foco renovados</li>
+          </ul>
+        </div>
+        <div class="tline-card">
+          <div class="tline-head">
+            <span class="tline-icon" aria-hidden="true">🙌</span>
+            <div class="tline-h">
+              <span class="tline-pill" data-v-text="time-2-pill">Mes 1</span>
+              <h3 data-v-text="time-2-h">Hormonas y Libido Volviendo</h3>
+            </div>
+          </div>
+          <ul class="tline-list">
+            <li data-v-text="time-2-li-1">El soporte de testosterona se nota más</li>
+            <li data-v-text="time-2-li-2">Libido y deseo regresan de forma consistente</li>
+            <li data-v-text="time-2-li-3">Flujo sanguíneo y circulación mejoran cada día</li>
+            <li data-v-text="time-2-li-4">Vuelve la confianza y el drive natural</li>
+          </ul>
+        </div>
+        <div class="tline-card">
+          <div class="tline-head">
+            <span class="tline-icon" aria-hidden="true">❤️</span>
+            <div class="tline-h">
+              <span class="tline-pill" data-v-text="time-3-pill">Mes 3+</span>
+              <h3 data-v-text="time-3-h">Performance y Vitalidad Pico</h3>
+            </div>
+          </div>
+          <ul class="tline-list">
+            <li data-v-text="time-3-li-1">Los 6 ingredientes en sinergia total</li>
+            <li data-v-text="time-3-li-2">Equilibrio hormonal restaurado y sostenido</li>
+            <li data-v-text="time-3-li-3">Energía y resistencia como tu nueva línea base</li>
+            <li data-v-text="time-3-li-4">Tu pareja lo nota. Vos lo notás. Todos lo notan.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Why men choose (dark) -->
+  <section class="section section-dark rv">
+    <div class="pp-narrow">
+      <h2 class="section-h2" data-v-text="why-title">Por qué los hombres eligen <em>UltimaPeak</em></h2>
+      <p class="section-sub" data-v-text="why-sub">La única fórmula de rendimiento masculino diseñada para atacar estrés, hormonas y flujo sanguíneo, todo a la vez.</p>
+      <div class="why-grid">
+        <div class="why-card">
+          <span class="why-icon" aria-hidden="true">⚡</span>
+          <div>
+            <h3 data-v-text="why-1-title">Cortisol Bajo Control</h3>
+            <p data-v-text="why-1-desc">Ashwagandha KSM-66® a 450mg — el adaptógeno más estudiado clínicamente para reducir cortisol. Cuando el estrés baja, la testosterona sube naturalmente.</p>
+          </div>
+        </div>
+        <div class="why-card">
+          <span class="why-icon" aria-hidden="true">🧪</span>
+          <div>
+            <h3 data-v-text="why-2-title">Fórmula 6-en-1</h3>
+            <p data-v-text="why-2-desc">Ataca las tres causas raíz del declive masculino simultáneamente — estrés, desequilibrio hormonal y mala circulación. Nada queda sin atender.</p>
+          </div>
+        </div>
+        <div class="why-card">
+          <span class="why-icon" aria-hidden="true">🔥</span>
+          <div>
+            <h3 data-v-text="why-3-title">Testosterona y Libido Restauradas</h3>
+            <p data-v-text="why-3-desc">Shilajit, Maca y Horny Goat Weed trabajan juntos para reconstruir tu base hormonal y reencender deseo, drive y vitalidad desde adentro.</p>
+          </div>
+        </div>
+        <div class="why-card">
+          <span class="why-icon" aria-hidden="true">💪</span>
+          <div>
+            <h3 data-v-text="why-4-title">Flujo Sanguíneo y Óxido Nítrico</h3>
+            <p data-v-text="why-4-desc">L-Arginina y Ginger Root promueven circulación saludable y producción de óxido nítrico — la base física de la resistencia y rendimiento.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Comparison 3-column (dark) -->
+  <section class="section section-dark rv" style="padding-top:0">
+    <div class="pp-narrow">
+      <h2 class="section-h2" data-v-text="cmp-title">Performance Gummies vs las opciones <em>habituales</em></h2>
+      <p class="section-sub" data-v-text="cmp-sub">Ingredientes clínicamente estudiados, sin rellenos artificiales, y cada lote testeado por pureza y calidad.</p>
+
+      <div class="cmp3">
+        <div class="cmp3-col us">
+          <div class="cmp3-h">
+            <span class="brand"><span class="brand-mark" aria-hidden="true"></span><span data-v-text="cmp-us-name">UltimaPeak</span></span>
+          </div>
+          <ul class="cmp3-list">
+            <li><span class="ck">✓</span><span data-v-text="cmp-us-1">Aborda estrés, hormonas y circulación juntos</span></li>
+            <li><span class="ck">✓</span><span data-v-text="cmp-us-2">Ingredientes clínicamente estudiados</span></li>
+            <li><span class="ck">✓</span><span data-v-text="cmp-us-3">Apoya testosterona y libido naturales</span></li>
+            <li><span class="ck">✓</span><span data-v-text="cmp-us-4">Eleva óxido nítrico y flujo sanguíneo sano</span></li>
+            <li><span class="ck">✓</span><span data-v-text="cmp-us-5">Sin receta. Sin dependencia. Sin caída.</span></li>
+            <li><span class="ck">✓</span><span data-v-text="cmp-us-6">Fabricado en GMP, testeado por terceros</span></li>
+          </ul>
+        </div>
+        <div class="cmp3-col them">
+          <div class="cmp3-h">
+            <h3 data-v-text="cmp-rx-name">Pastillas con Receta</h3>
+          </div>
+          <ul class="cmp3-list">
+            <li><span class="ck">✕</span><span data-v-text="cmp-rx-1">Fuerza una respuesta física temporal</span></li>
+            <li><span class="ck">✕</span><span data-v-text="cmp-rx-2">Cero impacto en testosterona o libido</span></li>
+            <li><span class="ck">✕</span><span data-v-text="cmp-rx-3">Ignora estrés, hormonas y la causa raíz</span></li>
+            <li><span class="ck">✕</span><span data-v-text="cmp-rx-4">Requiere una pastilla cada vez</span></li>
+            <li><span class="ck">✕</span><span data-v-text="cmp-rx-5">Efectos secundarios y dependencia a largo plazo</span></li>
+            <li><span class="ck">✕</span><span data-v-text="cmp-rx-6">No hace nada por energía o vitalidad</span></li>
+          </ul>
+        </div>
+        <div class="cmp3-col them">
+          <div class="cmp3-h">
+            <h3 data-v-text="cmp-gen-name">Suplementos Genéricos</h3>
+          </div>
+          <ul class="cmp3-list">
+            <li><span class="ck">✕</span><span data-v-text="cmp-gen-1">Subdosificados y sin verificación clínica</span></li>
+            <li><span class="ck">✕</span><span data-v-text="cmp-gen-2">Atacan una sola vía e ignoran el resto</span></li>
+            <li><span class="ck">✕</span><span data-v-text="cmp-gen-3">Formas incorrectas y mala absorción</span></li>
+            <li><span class="ck">✕</span><span data-v-text="cmp-gen-4">Contienen rellenos, aglutinantes y aditivos baratos</span></li>
+            <li><span class="ck">✕</span><span data-v-text="cmp-gen-5">Resultados de corta duración que se desvanecen</span></li>
+            <li><span class="ck">✕</span><span data-v-text="cmp-gen-6">Diseñados para la etiqueta, no para tu cuerpo</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Recommended by specialist (cream) -->
+  <section class="section section-cream rv">
+    <div class="pp-narrow">
+      <h2 class="section-h2" data-v-text="spec-title">Recomendado por especialistas en salud masculina</h2>
+      <div class="spec-wrap">
+        <div class="spec-photo" data-v-img="spec-photo">
+          <img src="https://placehold.co/600x600/eef0f3/9ca3af?text=Dr." alt="Foto del especialista">
+        </div>
+        <div>
+          <h3 class="spec-name" data-v-text="spec-name">Dr. Ethan Caldwell</h3>
+          <p class="spec-role" data-v-text="spec-role">Médico certificado en Medicina Preventiva</p>
+          <blockquote class="spec-quote" data-v-text="spec-quote">"Lo clínicamente interesante de combinar Maca, Shilajit y Horny Goat Weed es que cada uno apunta a una pieza distinta del rompecabezas. La Maca apoya equilibrio hormonal y deseo sexual, el Shilajit reabastece minerales traza críticos para metabolismo energético, y la Icariína del Horny Goat Weed apoya flujo sanguíneo saludable, fundamental para libido y rendimiento."</blockquote>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. Survey stats (dark) -->
+  <section class="section section-dark rv">
+    <div class="pp-narrow">
+      <h2 class="section-h2" data-v-text="survey-title">Lo que los hombres nos dijeron en nuestra encuesta</h2>
+      <p class="section-sub" data-v-text="survey-sub">Combinamos sabiduría ancestral con investigación moderna para ayudar a los hombres a verse, sentirse y rendir al máximo.</p>
+      <div class="survey-wrap">
+        <div class="survey-img" data-v-img="survey-img">
+          <img src="https://placehold.co/700x900/141414/e8b923?text=Modelo" alt="">
+        </div>
+        <div>
+          <div class="survey-stats">
+            <div class="stat-card">
+              <span class="stat-num" data-v-text="stat-1-num">93%</span>
+              <span class="stat-text" data-v-text="stat-1-text">Sintieron más energía y se sintieron como su versión más joven con UltimaPeak</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-num" data-v-text="stat-2-num">90%</span>
+              <span class="stat-text" data-v-text="stat-2-text">Notaron mejor vitalidad con UltimaPeak</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-num" data-v-text="stat-3-num">98%</span>
+              <span class="stat-text" data-v-text="stat-3-text">Reportaron un boost significativo en su rendimiento de cama</span>
+            </div>
+          </div>
+          <p class="survey-foot" data-v-text="survey-foot">*Según respuestas de encuesta de 5.000+ clientes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. Right for you (cream) -->
+  <section class="section section-cream rv">
+    <div class="pp-narrow">
+      <div class="rfy-wrap">
+        <div>
+          <h2 class="section-h2" style="text-align:left" data-v-text="rfy-title">UltimaPeak es para vos si...</h2>
+          <ul class="rfy-list">
+            <li class="rfy-item" data-v-text="rfy-1">Sentís <strong>menos drive y deseo</strong> que antes — y viene pasando hace más de lo que querrías admitir.</li>
+            <li class="rfy-item" data-v-text="rfy-2">Tu energía cae durante el día y te despertás ya sintiéndote agotado.</li>
+            <li class="rfy-item" data-v-text="rfy-3">Tu rendimiento es inconsistente y nunca sabés qué esperar de vos mismo.</li>
+            <li class="rfy-item" data-v-text="rfy-4">El estrés y el bajón de ánimo están matando silenciosamente tu confianza y motivación.</li>
+            <li class="rfy-item" data-v-text="rfy-5">Probaste pastillas u otros suplementos y o no funcionaron o dejaron de hacerlo.</li>
+            <li class="rfy-item" data-v-text="rfy-6">Querés <strong>arreglar la causa raíz</strong> — no solo tapar el síntoma una sola noche.</li>
+          </ul>
+        </div>
+        <div class="rfy-img" data-v-img="rfy-img">
+          <img src="https://placehold.co/800x800/0a0a0a/e8b923?text=Producto" alt="">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. Powerful ingredients (white) -->
+  <section class="section rv">
+    <div class="pp-narrow">
+      <h2 class="section-h2" data-v-text="ingredients-title"><em>Ingredientes Potentes</em> para Rendimiento Pico</h2>
+      <div class="ing-grid">
+        <div class="ing-card">
+          <div class="ing-img" data-v-img="ing-img-1"><img src="https://placehold.co/400x400/f5edd9/3a3122?text=Ing+1" alt=""></div>
+          <h3 data-v-text="ing-1-name">Ashwagandha</h3>
+          <p data-v-text="ing-1-desc">Reduce el cortisol, eleva la testosterona libre, mejora la resiliencia al estrés.</p>
+        </div>
+        <div class="ing-card">
+          <div class="ing-img" data-v-img="ing-img-2"><img src="https://placehold.co/400x400/f5edd9/3a3122?text=Ing+2" alt=""></div>
+          <h3 data-v-text="ing-2-name">Shilajit</h3>
+          <p data-v-text="ing-2-desc">Aumenta testosterona total y libre, potencia el ATP mitocondrial.</p>
+        </div>
+        <div class="ing-card">
+          <div class="ing-img" data-v-img="ing-img-3"><img src="https://placehold.co/400x400/f5edd9/3a3122?text=Ing+3" alt=""></div>
+          <h3 data-v-text="ing-3-name">Raíz de Jengibre</h3>
+          <p data-v-text="ing-3-desc">Aumenta producción de LH, flujo sanguíneo, antiinflamatorio natural.</p>
+        </div>
+        <div class="ing-card">
+          <div class="ing-img" data-v-img="ing-img-4"><img src="https://placehold.co/400x400/f5edd9/3a3122?text=Ing+4" alt=""></div>
+          <h3 data-v-text="ing-4-name">Horny Goat Weed</h3>
+          <p data-v-text="ing-4-desc">La Icariína inhibe PDE5, aumenta NO → erecciones más fuertes.</p>
+        </div>
+      </div>
+
+      <div class="section-cta">
+        <a href="#bundles" class="cta-btn" data-v-text="ing-cta">Comprar ahora</a>
+      </div>
+      <div class="shop-trust">
+        <span data-v-text="shop-trust-1">Testeado por terceros</span>
+        <span data-v-text="shop-trust-2">Solución pura y natural</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12. Customer photo reviews -->
+  <section class="section rv" style="padding-top:0">
+    <div class="pp-narrow">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="tp-stars" aria-hidden="true" style="font-size:20px">★★★★★</span>
+        <span style="font-size:14px;color:var(--ink-2)" data-v-text="reviews-rating">Calificado 4.9/5 por 12.500+ clientes</span>
+      </div>
+      <h2 class="section-h2" data-v-text="reviews-title">Tantos hombres están reclamando sus vidas con <em>UltimaPeak</em></h2>
+
+      <div class="reviews-grid">
+        <div class="review">
+          <div class="review-img" data-v-img="rev-1-img"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Foto" alt=""></div>
+          <div class="review-body">
+            <div class="review-row">
+              <span class="review-name" data-v-text="rev-1-name">Andy G.</span>
+              <span class="review-verified" data-v-text="rev-1-verified">Verificado</span>
+            </div>
+            <span class="review-stars" aria-hidden="true">★★★★★</span>
+            <span class="review-tag" data-v-text="rev-1-tag">Solución increíble</span>
+            <p class="review-text" data-v-text="rev-1-text">"Soy entrenador y le recomiendo UltimaPeak shilajit a todos mis clientes. Da energía, construye músculo, eleva la T, magia en una bolsa."</p>
+          </div>
+        </div>
+        <div class="review">
+          <div class="review-img" data-v-img="rev-2-img"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Foto" alt=""></div>
+          <div class="review-body">
+            <div class="review-row">
+              <span class="review-name" data-v-text="rev-2-name">Chris T.</span>
+              <span class="review-verified" data-v-text="rev-2-verified">Verificado</span>
+            </div>
+            <span class="review-stars" aria-hidden="true">★★★★★</span>
+            <span class="review-tag" data-v-text="rev-2-tag">Es esencial para mí</span>
+            <p class="review-text" data-v-text="rev-2-text">"Todo lo que necesito: puro, holístico y testeado en laboratorio. Perfecto antes de trabajar o entrenar. Lo recomiendo a todos."</p>
+          </div>
+        </div>
+        <div class="review">
+          <div class="review-img" data-v-img="rev-3-img"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Foto" alt=""></div>
+          <div class="review-body">
+            <div class="review-row">
+              <span class="review-name" data-v-text="rev-3-name">Brian P.</span>
+              <span class="review-verified" data-v-text="rev-3-verified">Verificado</span>
+            </div>
+            <span class="review-stars" aria-hidden="true">★★★★★</span>
+            <span class="review-tag" data-v-text="rev-3-tag">Poderoso</span>
+            <p class="review-text" data-v-text="rev-3-text">"Quién diría que una gomita podría hacer tanto. Piel limpia, pérdida de peso, libido aumentada. Es como una poción mágica para el bienestar general. Obsesionado."</p>
+          </div>
+        </div>
+        <div class="review">
+          <div class="review-img" data-v-img="rev-4-img"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Foto" alt=""></div>
+          <div class="review-body">
+            <div class="review-row">
+              <span class="review-name" data-v-text="rev-4-name">Oliver M.</span>
+              <span class="review-verified" data-v-text="rev-4-verified">Verificado</span>
+            </div>
+            <span class="review-stars" aria-hidden="true">★★★★★</span>
+            <span class="review-tag" data-v-text="rev-4-tag">Solución increíble</span>
+            <p class="review-text" data-v-text="rev-4-text">"Subió mi testosterona en menos de 10 semanas, me limpió la piel, me siento más enérgico que nunca."</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13. Big FAQ -->
+  <section class="section rv" style="padding-top:0">
+    <div class="pp-narrow">
+      <h2 class="section-h2" data-v-text="faq-title">Preguntas Frecuentes</h2>
+      <div class="faq">
+        <details class="faq-item" open>
+          <summary data-v-text="faq-1-q">¿Cuántas gomitas tomo por día?</summary>
+          <div class="faq-body" data-v-text="faq-1-a">Recomendamos tomar una gomita por día. Cada gomita contiene un blend de rendimiento potente con ingredientes como Shilajit, Ashwagandha, Maca, Raíz de Jengibre, L-Arginina y Horny Goat Weed, diseñado para apoyar testosterona, flujo sanguíneo, resistencia y libido. Como la fórmula está altamente concentrada, una gomita es suficiente para apoyar tu rendimiento, energía y vitalidad diarias.</div>
+        </details>
+        <details class="faq-item">
+          <summary data-v-text="faq-2-q">¿Me van a dar nervios o caídas de energía?</summary>
+          <div class="faq-body" data-v-text="faq-2-a">No. Nuestra fórmula sin estimulantes da energía estable durante todo el día sin nervios, sin sacudida y sin caída.</div>
+        </details>
+        <details class="faq-item">
+          <summary data-v-text="faq-3-q">¿Cuál es el mejor momento para tomar mi gomita?</summary>
+          <div class="faq-body" data-v-text="faq-3-a">A la mañana, con o sin comida. Esto le da a tu cuerpo el día completo para absorber los ingredientes activos.</div>
+        </details>
+        <details class="faq-item">
+          <summary data-v-text="faq-4-q">¿Qué tan rápido sentiré los efectos?</summary>
+          <div class="faq-body" data-v-text="faq-4-a">La mayoría de los hombres reportan más energía y mejor humor en la primera semana. Los resultados completos en testosterona, libido y rendimiento aparecen entre los días 30 y 90.</div>
+        </details>
+        <details class="faq-item">
+          <summary data-v-text="faq-5-q">¿Cómo sé que estas gomitas son de alta calidad?</summary>
+          <div class="faq-body" data-v-text="faq-5-a">Cada lote es testeado por laboratorios externos por pureza y potencia, fabricado en instalaciones GMP, y formulado con ingredientes clínicamente estudiados a las dosis correctas.</div>
+        </details>
+        <details class="faq-item">
+          <summary data-v-text="faq-6-q">¿Puedo tomar Performance Gummies con otros suplementos?</summary>
+          <div class="faq-body" data-v-text="faq-6-a">Sí. La fórmula es compatible con la mayoría de multivitamínicos y proteínas. Si tomás medicación, consultá a tu médico antes de empezar.</div>
+        </details>
+        <details class="faq-item">
+          <summary data-v-text="faq-7-q">¿Es seguro para uso prolongado?</summary>
+          <div class="faq-body" data-v-text="faq-7-a">Sí. Está formulada para uso diario continuo sin desarrollar tolerancia ni dependencia. Todos los ingredientes son naturales y bien tolerados.</div>
+        </details>
+      </div>
+      <div class="section-cta">
+        <a href="#bundles" class="cta-btn" data-v-text="faq-cta">Empezar mi tratamiento</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14. Footer (dark) -->
+  <footer class="pp-footer">
+    <div class="pp-narrow">
+      <div class="foot-grid">
+        <div>
+          <div class="foot-brand">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <span data-v-text="foot-brand-name">UltimaPeak</span>
+          </div>
+          <p class="foot-about" data-v-text="foot-about">En UltimaPeak, calidad y confiabilidad son nuestras prioridades. Nuestros productos están testeados con cuidado y vienen directo de la fuente natural, asegurando que puedas contar con los mejores resultados. ¿Tenés preguntas? Estamos para ayudarte.</p>
+          <form class="foot-mail" onsubmit="event.preventDefault()">
+            <input type="email" placeholder="E-mail" data-v-text="foot-mail-placeholder" aria-label="Email">
+            <button type="submit" aria-label="Suscribirme">›</button>
+          </form>
+        </div>
+        <div class="foot-col">
+          <h4 data-v-text="foot-col-1-title">Nuestras políticas</h4>
+          <ul>
+            <li><a href="#" data-v-text="foot-col-1-1">Términos y Condiciones</a></li>
+            <li><a href="#" data-v-text="foot-col-1-2">Política de Reembolsos</a></li>
+            <li><a href="#" data-v-text="foot-col-1-3">Política de Privacidad</a></li>
+            <li><a href="#" data-v-text="foot-col-1-4">Política de Envíos</a></li>
+            <li><a href="#" data-v-text="foot-col-1-5">Cancelar membresía</a></li>
+          </ul>
+        </div>
+        <div class="foot-col">
+          <h4 data-v-text="foot-col-2-title">Enlaces útiles</h4>
+          <ul>
+            <li><a href="#" data-v-text="foot-col-2-1">Sobre nosotros</a></li>
+            <li><a href="#" data-v-text="foot-col-2-2">Contacto</a></li>
+            <li><a href="#" data-v-text="foot-col-2-3">Métodos de pago</a></li>
+            <li><a href="#" data-v-text="foot-col-2-4">Seguir tu pedido</a></li>
+            <li><a href="#" data-v-text="foot-col-2-5">FAQs</a></li>
+            <li><a href="#" data-v-text="foot-col-2-6">Blog</a></li>
+          </ul>
+        </div>
+        <div class="foot-col">
+          <h4 data-v-text="foot-col-3-title">Contacto</h4>
+          <p><strong data-v-text="foot-dba-label">DBA:</strong> <span data-v-text="foot-dba">UltimaPeak</span></p>
+          <p data-v-text="foot-mail-label">Escribinos por e-mail:</p>
+          <p><a class="mail" href="mailto:soporte@ultimapeak.com" data-v-text="foot-mail-addr">soporte@ultimapeak.com</a></p>
+          <p data-v-text="foot-address">614 North Dupont Highway, Dover, DE 19901, EE.UU.</p>
+        </div>
+      </div>
+      <div class="foot-bottom">
+        <span data-v-text="foot-copyright">© 2026, ULTIMAPEAK. Todos los derechos reservados.</span>
+        <span data-v-text="foot-lang">Español</span>
+      </div>
+    </div>
+    <p class="foot-disclaimer" data-v-text="foot-disclaimer">DESCARGO MÉDICO Y DE SALUD: Los resultados pueden variar. El contenido y los productos presentados aquí no están destinados a diagnosticar, tratar, curar o prevenir ninguna enfermedad. Esta oferta no reemplaza ningún medicamento o tratamiento prescrito por un médico o profesional de la salud. Recomendamos consultar a un médico antes de usar cualquier producto o aplicar cualquier recomendación mencionada en esta página. La FDA no ha evaluado estas declaraciones.</p>
+  </footer>
+
+  <!-- Sticky buy bar -->
+  <aside id="sticky" class="sticky-bar">
+    <div class="sticky-info">
+      <div class="sticky-img" data-v-img="sticky-img">
+        <img src="https://placehold.co/120x120/0a0a0a/e8b923?text=Producto" alt="">
+      </div>
+      <div class="sticky-text">
+        <strong data-v-text="sticky-name">Performance Gummies</strong>
+        <span><span data-v-text="sticky-price">$78.00</span> <s data-v-text="sticky-compare">$196.00</s></span>
+      </div>
+    </div>
+    <a href="#bundles" class="cta-btn sticky-btn" data-v-text="sticky-cta">Agregar →</a>
+  </aside>
+
+</div>
+
+<script>
+(function(){
+  // Reveal-on-scroll
+  var rv = document.querySelectorAll('.rv');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); }
+      });
+    }, {threshold:.07, rootMargin:'0px 0px -20px 0px'});
+    rv.forEach(function(el){ io.observe(el); });
+  } else {
+    rv.forEach(function(el){ el.classList.add('on'); });
+  }
+
+  // Sticky bar after 24% scroll
+  var sticky = document.getElementById('sticky');
+  function onScroll(){
+    var doc = document.documentElement;
+    var ratio = doc.scrollTop / Math.max(1, (doc.scrollHeight - doc.clientHeight));
+    if (sticky) sticky.classList.toggle('show', ratio >= 0.24);
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+
+  // Gallery thumb click → swap main image
+  var thumbs = document.querySelectorAll('.thumb');
+  var main = document.querySelector('.gallery-main img');
+  thumbs.forEach(function(t){
+    t.addEventListener('click', function(){
+      var img = t.querySelector('img');
+      if (!img || !main) return;
+      main.src = img.src;
+      thumbs.forEach(function(x){ x.classList.remove('is-active'); });
+      t.classList.add('is-active');
+    });
+  });
+
+  // Bundle picker (radio-style)
+  var bundles = document.querySelectorAll('.bundle');
+  bundles.forEach(function(b){
+    b.addEventListener('click', function(){
+      bundles.forEach(function(x){ x.classList.remove('is-active'); });
+      b.classList.add('is-active');
+      // sync CTA price to selected bundle's price (if available)
+      var price = b.querySelector('.bundle-price');
+      var cta = document.querySelector('.pp-info > .cta-btn');
+      if (price && cta) {
+        var label = (cta.getAttribute('data-cta-prefix') || 'Agregar al carrito');
+        cta.textContent = label + ' — ' + price.textContent;
+      }
+    });
+  });
+
+  // FAQ — close other items when one opens (single-open behavior on big FAQ block only)
+  document.querySelectorAll('.faq').forEach(function(group){
+    var items = group.querySelectorAll('details');
+    items.forEach(function(d){
+      d.addEventListener('toggle', function(){
+        if (d.open) items.forEach(function(o){ if (o !== d) o.removeAttribute('open'); });
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

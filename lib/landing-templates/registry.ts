@@ -45,6 +45,14 @@ export const LANDING_TEMPLATES: LandingTemplate[] = [
       'Hero con galería + buy box (Trustpilot, bullets, variantes, garantía, UGC), tira de prensa, rutina en 4 pasos, ingredientes, dolores, comparativo, timeline y FAQ. El estándar DTC moderno.',
     htmlUrl: '/templates/product-page-default.html',
   },
+  {
+    id: 'product-page-bold',
+    kind: 'product_page',
+    name: 'Product Page — Bold Supplement (UltimaPeak)',
+    description:
+      'Estética masculina premium negro + dorado. Bundle picker (Buy 1 / 2+1 / 3+2), buy box con bullets y trust bar, doctor card, timeline de resultados (Semana 1 / Mes 1 / Mes 3+), 4 cards "Why" con borde dorado, comparativo de 3 columnas (Nosotros vs Receta vs Genéricos), encuesta con stats, "Right for you if", ingredientes en círculos, reviews con foto y FAQ. Inspirado en suplementos masculinos como UltimaPeak.',
+    htmlUrl: '/templates/product-page-bold.html',
+  },
 ];
 
 export const TEMPLATE_CATEGORIES: Array<{
