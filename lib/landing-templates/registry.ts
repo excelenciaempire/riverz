@@ -42,7 +42,7 @@ export const LANDING_TEMPLATES: LandingTemplate[] = [
     kind: 'product_page',
     name: 'Product Page — Hero & Buy Box',
     description:
-      'Galería de fotos + precio (con tachado de precio anterior) + variantes + reseñas + FAQ. El estándar DTC moderno.',
+      'Hero con galería + buy box (Trustpilot, bullets, variantes, garantía, UGC), tira de prensa, rutina en 4 pasos, ingredientes, dolores, comparativo, timeline y FAQ. El estándar DTC moderno.',
     htmlUrl: '/templates/product-page-default.html',
   },
 ];
