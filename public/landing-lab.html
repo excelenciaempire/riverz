@@ -278,6 +278,24 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
 .riverz-faq[open]{border-color:#0d0f12!important;background:#fafbfc!important}
 .riverz-faq[open] summary span{transform:rotate(45deg);background:#0d0f12!important;color:#fff!important}
 .riverz-faq summary::-webkit-details-marker{display:none}
+/* Precise drop indicator — a teal line ABOVE or BELOW the hover target,
+   showing exactly where the dragged block will land. Replaces the
+   full-element outline so the user sees an inserts-here-not-replaces
+   gesture. */
+.riverz-drop-line{position:absolute;height:3px;background:#07A498;border-radius:2px;pointer-events:none;z-index:1000;box-shadow:0 0 8px rgba(7,164,152,.6),0 0 0 1px rgba(7,164,152,.3);transition:top .08s ease,left .08s ease,width .08s ease}
+.riverz-drop-line::before{content:"";position:absolute;left:-5px;top:-3.5px;width:9px;height:9px;border-radius:50%;background:#07A498;box-shadow:0 0 8px rgba(7,164,152,.7)}
+/* Comment indicator — yellow dot top-right of any block with a saved
+   comment. Click the comment toolbar button to view/edit. */
+[data-section-id][data-has-comment]{position:relative}
+[data-section-id][data-has-comment]::after{content:"💬";position:absolute;top:-6px;right:-6px;width:22px;height:22px;background:#FFC857;color:#0d0f12;font-size:11px;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:18;box-shadow:0 2px 6px rgba(255,200,87,.4);pointer-events:none}
+.riverz-comment-modal{position:fixed;background:#15181f;border:1px solid #2a2e38;border-radius:10px;padding:14px;z-index:99998;min-width:280px;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.5);font-family:'Instrument Sans',sans-serif;color:#fff}
+.riverz-comment-modal textarea{width:100%;min-height:80px;background:#0e1015;border:1px solid #2a2e38;color:#fff;padding:9px 11px;border-radius:6px;font-size:13px;font-family:inherit;line-height:1.45;resize:vertical}
+.riverz-comment-modal .rcm-actions{display:flex;justify-content:space-between;gap:8px;margin-top:10px}
+.riverz-comment-modal .rcm-btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600}
+.riverz-comment-modal .rcm-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.riverz-comment-modal .rcm-btn.rcm-save{background:#07A498;border-color:#07A498;color:#fff}
+.riverz-comment-modal .rcm-btn.rcm-save:hover{background:#08b5a8}
+.riverz-comment-modal .rcm-btn.rcm-del:hover{border-color:#E85555;color:#E85555}
 #font-size-val{font-size:10px;color:#5B6490;min-width:28px;text-align:center;font-family:'Instrument Sans',sans-serif}
 #sticky-panel{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#0D0E14;border:1px solid #252840;border-radius:8px;padding:10px 14px;z-index:201;display:none;align-items:center;gap:10px;font-family:'Instrument Sans',sans-serif;box-shadow:0 -4px 20px rgba(0,0,0,.5)}
 #sticky-panel.show{display:flex}
@@ -489,9 +507,6 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
     <div class="sb-count" id="sb-count">0 landings</div>
   </div>
   <aside id="block-palette" aria-label="Bloques">
-    <div class="bp-head">Bloques</div>
-    <div class="bp-help">Arrastrá a la página</div>
-
     <div class="bp-group-label">Texto</div>
     <button class="bp-item" draggable="true" data-block-type="heading" type="button" title="Título grande (H2)"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><text x="10" y="14" text-anchor="middle" font-family="Inter,serif" font-weight="900" font-size="13" fill="currentColor">H</text></svg></span><span class="bp-label">Título</span></button>
     <button class="bp-item" draggable="true" data-block-type="text" type="button" title="Párrafo de texto"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><line x1="3" y1="6" x2="17" y2="6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="14" x2="12" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="bp-label">Texto</span></button>
@@ -874,6 +889,8 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
   <span id="font-size-val">16px</span>
   <button onclick="changeFontSize(1)" title="Más grande">A&#x207A;</button>
   <span class="fc-sep"></span>
+  <button class="fc-act" onclick="duplicateSelectedBlock()" title="Duplicar este bloque">&#x29C9;</button>
+  <button class="fc-act" onclick="commentSelectedBlock()" title="Comentar / nota interna">&#x1F4AC;</button>
   <button class="fc-act" onclick="moveSelectedBlock()" title="Mover este bloque a otra ubicación">&#x21F5;</button>
   <button class="fc-act fc-danger" onclick="deleteSelectedBlock()" title="Eliminar este bloque">&#x1F5D1;</button>
 </div>
@@ -969,6 +986,16 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
           <span>CTA URL</span>
           <input id="set-cta" type="text" oninput="setSetting('ctaUrl', this.value)" placeholder="https://tu-tienda.com/products/...">
           <small>A dónde van todos los botones de "Comprar".</small>
+        </label>
+      </div>
+
+      <div class="set-section">
+        <h3>Sticky CTA</h3>
+        <p class="set-help">El botón sticky aparece cuando el usuario scrollea más del % indicado.</p>
+        <label class="set-field">
+          <span>Aparecer al <strong id="set-sticky-pct-val">22</strong>% de scroll</span>
+          <input type="range" id="set-sticky-pct" min="0" max="80" value="22" oninput="setStickyPct(this.value)" style="width:100%;margin-top:6px;accent-color:#07A498">
+          <small>0 = siempre visible · 80 = solo al final</small>
         </label>
       </div>
 
@@ -1596,55 +1623,72 @@ function _onSecDragStart(e){
   try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', this.dataset.sectionId || ''); } catch(err){}
   e.stopPropagation(); // don't let parent containers also see this drag
 }
-function _onSecDragOver(e){
-  // Palette drag → highlight the target so user sees where the new block
-  // will land. Drop position is decided in _onSecDrop based on cursor Y.
-  if (_paletteSrc) {
-    e.preventDefault();
-    try { e.dataTransfer.dropEffect = 'copy'; } catch(err){}
-    this.classList.add('riverz-palette-target');
-    return;
+// Single shared drop-line indicator — a thin teal bar that snaps to the
+// top or bottom edge of whichever block the cursor is currently over.
+// Tells the user EXACTLY where their drop will land instead of just
+// outlining the whole target.
+var _dropLine = null;
+function _showDropLine(target, before){
+  if (!_dropLine) {
+    _dropLine = document.createElement('div');
+    _dropLine.className = 'riverz-drop-line';
+    _dropLine.style.display = 'none';
+    document.body.appendChild(_dropLine);
   }
-  if (!_dragSrc || _dragSrc === this) return;
-  // Reorder drag → only accept drops between siblings in the same
-  // container. Moving a benefits card into the reviews row would break
-  // the layout.
-  if (_dragSrc.parentNode !== this.parentNode) return;
+  var r = target.getBoundingClientRect();
+  _dropLine.style.display = 'block';
+  _dropLine.style.top = (before ? r.top - 1.5 : r.bottom - 1.5) + window.scrollY + 'px';
+  _dropLine.style.left = r.left + window.scrollX + 'px';
+  _dropLine.style.width = r.width + 'px';
+  _dropLine.dataset.before = before ? '1' : '0';
+}
+function _hideDropLine(){
+  if (_dropLine) _dropLine.style.display = 'none';
+}
+function _onSecDragOver(e){
+  // Both palette drags and reorder drags are accepted now. Cross-parent
+  // drops are allowed too — moving a paragraph from intro to a reason
+  // section is a legitimate gesture, not a layout break.
+  if (!_paletteSrc && (!_dragSrc || _dragSrc === this)) return;
+  if (_dragSrc && _dragSrc.contains && _dragSrc.contains(this)) return;
   e.preventDefault();
-  try { e.dataTransfer.dropEffect = 'move'; } catch(err){}
-  this.style.outline = '2px dashed #4A90E2';
-  this.style.outlineOffset = '2px';
+  try { e.dataTransfer.dropEffect = _paletteSrc ? 'copy' : 'move'; } catch(err){}
+  // Decide before/after based on cursor's vertical (or horizontal for
+  // flex-row containers) position relative to the target's midpoint.
+  var rect = this.getBoundingClientRect();
+  var parentCs = getComputedStyle(this.parentNode);
+  var horizontal = parentCs.display === 'flex' && (parentCs.flexDirection || 'row').indexOf('row') === 0;
+  var before = horizontal
+    ? (e.clientX - rect.left) < rect.width / 2
+    : (e.clientY - rect.top) < rect.height / 2;
+  _showDropLine(this, before);
 }
 function _onSecDragLeave(){
-  this.style.outline = '';
-  this.classList.remove('riverz-palette-target');
+  // Don't hide the line on leave — it'll snap to the next target's
+  // dragover. Hiding here flickers across element boundaries.
 }
 function _onSecDrop(e){
   e.preventDefault();
+  _hideDropLine();
   this.style.outline = '';
   this.classList.remove('riverz-palette-target');
-  // Palette drop → spawn a new block before/after this target.
+  var rect = this.getBoundingClientRect();
+  var parentCs = getComputedStyle(this.parentNode);
+  var horizontal = parentCs.display === 'flex' && (parentCs.flexDirection || 'row').indexOf('row') === 0;
+  var before = horizontal
+    ? (e.clientX - rect.left) < rect.width / 2
+    : (e.clientY - rect.top) < rect.height / 2;
+  // Palette drop → spawn a new block at the precise insertion point.
   if (_paletteSrc) {
-    var pRect = this.getBoundingClientRect();
-    var pBefore = (e.clientY - pRect.top) < pRect.height / 2;
-    spawnBlockFromPalette(_paletteSrc, this.parentNode, pBefore ? this : this.nextSibling);
+    spawnBlockFromPalette(_paletteSrc, this.parentNode, before ? this : this.nextSibling);
     _paletteSrc = null;
     e.stopPropagation();
     return;
   }
+  // Reorder drop → move the dragged block. Cross-parent allowed; a
+  // contentEditable text dragged into a flex/grid container will wrap
+  // correctly because the source element keeps its own intrinsic layout.
   if (!_dragSrc || _dragSrc === this) return;
-  if (_dragSrc.parentNode !== this.parentNode) return;
-  // Insert before or after based on cursor position. Use horizontal axis
-  // for row containers, vertical for columns — auto-detected from the
-  // parent's flex-direction / grid layout.
-  var rect = this.getBoundingClientRect();
-  var parentCs = getComputedStyle(this.parentNode);
-  var horizontal = false;
-  if (parentCs.display === 'flex') horizontal = (parentCs.flexDirection || 'row').indexOf('row') === 0;
-  else if (parentCs.display === 'grid') horizontal = parseFloat(parentCs.gridTemplateColumns) > 0 && rect.height < rect.width * 2;
-  var before = horizontal
-    ? (e.clientX - rect.left) < rect.width / 2
-    : (e.clientY - rect.top) < rect.height / 2;
   this.parentNode.insertBefore(_dragSrc, before ? this : this.nextSibling);
   saveLayoutOrder();
   if (typeof snapshot === 'function' && !isRestoring) snapshot();
@@ -1653,6 +1697,7 @@ function _onSecDrop(e){
 function _onSecDragEnd(){
   this.style.opacity = '';
   this.style.outline = '';
+  _hideDropLine();
   _dragSrc = null;
 }
 function saveLayoutOrder(){
@@ -1770,6 +1815,112 @@ function deleteSelectedBlock(){
   toast('🗑 Bloque eliminado · Ctrl+Z para deshacer');
 }
 window.deleteSelectedBlock = deleteSelectedBlock;
+
+// Duplicate the selected block immediately after the original. Uses
+// cloneNode(true) so all inner state (text, images, nested edits) comes
+// along. New auto-N slots get suffixed with -copy<n> to avoid stomping
+// the original's persisted edits in proj.texts / proj.images.
+function duplicateSelectedBlock(){
+  if (!curEditEl) { toast('Seleccioná un texto o bloque primero',1); return; }
+  var src = _movableParentOf(curEditEl);
+  if (!src || !src.parentNode) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  var clone = src.cloneNode(true);
+  // Reset wired flags so makeSectionsDraggable rebinds events on the
+  // clone (otherwise the inherited dataset.dragWired blocks them).
+  clone.removeAttribute('data-drag-wired');
+  clone.removeAttribute('data-section-id');
+  clone.querySelectorAll('[data-drag-wired]').forEach(function(el){ el.removeAttribute('data-drag-wired'); el.removeAttribute('data-section-id'); });
+  // Strip editor overlays inherited from the source (they'll be re-added
+  // by decorateImageSlots / makeSectionsDraggable below).
+  clone.querySelectorAll('.riverz-img-edit, .riverz-img-del, .riverz-section-handle').forEach(function(el){ el.remove(); });
+  // Bump auto-N keys on the clone so undo + saved state don't collide.
+  var stamp = '-c' + Date.now().toString(36).slice(-4);
+  clone.querySelectorAll('[data-v-text^="auto-"], [data-v-img^="auto-"]').forEach(function(el){
+    if (el.hasAttribute('data-v-text')) el.setAttribute('data-v-text', el.getAttribute('data-v-text') + stamp);
+    if (el.hasAttribute('data-v-img')) el.setAttribute('data-v-img', el.getAttribute('data-v-img') + stamp);
+  });
+  src.parentNode.insertBefore(clone, src.nextSibling);
+  rebuildSlotTables();
+  decorateImageSlots();
+  if (typeof initEdit === 'function') initEdit();
+  if (typeof makeSectionsDraggable === 'function') makeSectionsDraggable();
+  saveLayoutOrder();
+  saveAll();
+  toast('⧉ Bloque duplicado');
+}
+window.duplicateSelectedBlock = duplicateSelectedBlock;
+
+// Per-block comments. Stored on proj.blockComments keyed by
+// data-section-id. Block gets a yellow "💬" badge when a comment exists
+// (CSS rule above). Comments are EDITOR-ONLY — stripped on publish.
+function commentSelectedBlock(){
+  if (!curEditEl) { toast('Seleccioná un bloque primero',1); return; }
+  var target = _movableParentOf(curEditEl);
+  if (!target) return;
+  // Make sure we have a stable id to key the comment off of
+  if (!target.dataset.sectionId) {
+    target.dataset.sectionId = 'manual-' + Date.now().toString(36);
+  }
+  var key = target.dataset.sectionId;
+  var proj = getActive();
+  if (!proj.blockComments) proj.blockComments = {};
+  // Build modal next to the target
+  var existing = document.querySelector('.riverz-comment-modal');
+  if (existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.className = 'riverz-comment-modal';
+  var rect = target.getBoundingClientRect();
+  modal.style.top = (rect.top + window.scrollY) + 'px';
+  modal.style.left = Math.min(window.innerWidth - 360, rect.right + 12) + 'px';
+  var current = proj.blockComments[key] || '';
+  modal.innerHTML =
+    '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5);font-weight:700;margin-bottom:8px">💬 Nota interna</div>' +
+    '<textarea placeholder="Comentario sobre este bloque (no se publica)…">' + (current.replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];})) + '</textarea>' +
+    '<div class="rcm-actions">' +
+    '<button class="rcm-btn rcm-del" type="button">Borrar</button>' +
+    '<div style="display:flex;gap:8px"><button class="rcm-btn" type="button" data-act="cancel">Cancelar</button><button class="rcm-btn rcm-save" type="button" data-act="save">Guardar</button></div>' +
+    '</div>';
+  document.body.appendChild(modal);
+  var ta = modal.querySelector('textarea'); ta.focus();
+  modal.querySelector('[data-act="cancel"]').onclick = function(){ modal.remove(); };
+  modal.querySelector('.rcm-del').onclick = function(){
+    delete proj.blockComments[key];
+    target.removeAttribute('data-has-comment');
+    saveAll(); modal.remove();
+    toast('Comentario borrado');
+  };
+  modal.querySelector('[data-act="save"]').onclick = function(){
+    var v = ta.value.trim();
+    if (v) {
+      proj.blockComments[key] = v;
+      target.setAttribute('data-has-comment', '1');
+    } else {
+      delete proj.blockComments[key];
+      target.removeAttribute('data-has-comment');
+    }
+    saveAll(); modal.remove();
+    toast(v ? '💬 Comentario guardado' : 'Comentario borrado');
+  };
+  // Close on outside click
+  setTimeout(function(){
+    document.addEventListener('mousedown', function _close(e){
+      if (!modal.contains(e.target)) { modal.remove(); document.removeEventListener('mousedown', _close); }
+    });
+  }, 50);
+}
+window.commentSelectedBlock = commentSelectedBlock;
+
+// On project load, re-apply data-has-comment on tagged elements so the
+// yellow 💬 badge shows where comments live.
+function reapplyBlockComments(){
+  var proj = getActive(); if (!proj || !proj.blockComments) return;
+  Object.keys(proj.blockComments).forEach(function(key){
+    var el = document.querySelector('#page-wrap [data-section-id="'+key+'"]');
+    if (el) el.setAttribute('data-has-comment', '1');
+  });
+}
+window.reapplyBlockComments = reapplyBlockComments;
 
 // Click-to-pick + click-to-place. Lighter-weight than dragging when the
 // user just wants to move one block across a long page.
@@ -2031,6 +2182,7 @@ function activateProject(id){
     else resetSlot(k);
   });
   applyCTA(proj.ctaUrl);
+  if (typeof reapplyBlockComments === 'function') reapplyBlockComments();
   isRestoring=false;
   setTimeout(function(){document.querySelectorAll('#page-wrap [data-v-text]').forEach(function(el){el.contentEditable='true';});},30);
   g('proj-name-in').value=proj.name; g('proj-angle-in').value=proj.angle||'';
@@ -2232,7 +2384,7 @@ function buildHTML(proj){
   collectTexts();var pw=g('page-wrap'),clone=pw.cloneNode(true);
   clone.querySelectorAll('.iov,.idel,#font-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
   clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
-  clone.querySelectorAll('[data-section-id],[data-section-handle]').forEach(function(el){ el.removeAttribute('data-section-id'); el.removeAttribute('data-section-handle'); });
+  clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired'].forEach(function(a){ el.removeAttribute(a); }); });
   clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
   clone.querySelectorAll('[data-v-text],[data-v-img]').forEach(function(el){el.removeAttribute('data-v-text');el.removeAttribute('data-v-img');});
   clone.classList.remove('edit-mode');clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
@@ -2258,7 +2410,7 @@ function buildPublishPayload(proj){
   var pw=g('page-wrap'),clone=pw.cloneNode(true);
   clone.querySelectorAll('.iov,.idel,#font-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
   clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
-  clone.querySelectorAll('[data-section-id],[data-section-handle]').forEach(function(el){ el.removeAttribute('data-section-id'); el.removeAttribute('data-section-handle'); });
+  clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired'].forEach(function(a){ el.removeAttribute(a); }); });
   clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
   clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
   clone.classList.remove('edit-mode');
@@ -2322,7 +2474,12 @@ function buildPublishPayload(proj){
   // GraphQL API; the admin UI strips it on manual edit but our publish flow
   // never round-trips through the admin editor.
   var SO='<'+'scri'+'pt>',SC='<'+'/scri'+'pt>';
-  var stickyCode='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh=0.22;function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
+  // Substitute the per-project sticky scroll threshold (0..0.8) into the
+  // published page's script. Defaults to 0.22 if the user never opened
+  // Settings → Sticky CTA on this project.
+  var thresh = (typeof proj.stickyThresh === 'number' ? proj.stickyThresh : 0.22);
+  thresh = Math.max(0, Math.min(0.95, thresh));
+  var stickyCode='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh='+thresh+';function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
   var body_html =
     fontsLink +
     '<style>'+allCSS+'</style>' +
@@ -2410,6 +2567,9 @@ function openSettings(){
   byId('set-cta').value = proj.ctaUrl || '';
   byId('set-seo-title').value = proj.seoTitle || '';
   byId('set-seo-desc').value = proj.metaDescription || '';
+  var stickyPct = (typeof proj.stickyThresh === 'number' ? proj.stickyThresh : 0.22) * 100;
+  var stickyEl = byId('set-sticky-pct'); if (stickyEl) stickyEl.value = String(Math.round(stickyPct));
+  var stickyValEl = byId('set-sticky-pct-val'); if (stickyValEl) stickyValEl.textContent = String(Math.round(stickyPct));
   byId('settings-modal').classList.add('on');
 }
 function closeSettings(){
@@ -2431,6 +2591,22 @@ function setSetting(key, value){
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.setSetting = setSetting;
+
+// Slider in Settings → write percentage as a 0-1 fraction on the
+// project so initStickyScroll picks it up immediately, and the publish
+// flow can substitute it into the published page's sticky script.
+function setStickyPct(value){
+  var proj = getActive(); if (!proj) return;
+  var pct = Math.max(0, Math.min(80, parseInt(value, 10) || 22));
+  proj.stickyThresh = pct / 100;
+  var lbl = document.getElementById('set-sticky-pct-val');
+  if (lbl) lbl.textContent = String(pct);
+  // Hot-update the editor's live scroll handler so the user sees the
+  // change without leaving the modal.
+  if (typeof window.stickyThresh !== 'undefined') window.stickyThresh = proj.stickyThresh;
+  qSave();
+}
+window.setStickyPct = setStickyPct;
 
 // ── DRAFT PERSISTENCE ─────────────────────────────────────────
 // qSave() debounces writes for 700 ms — fine for normal typing but a
