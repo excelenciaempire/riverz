@@ -27,7 +27,7 @@ export default function TemplatePreviewPage() {
 
   if (!template) {
     return (
-      <div className="fixed inset-0 z-[9999] flex bg-[#0b0d12] text-white">
+      <div className="app-v2 fixed inset-0 z-[9999] flex">
         <SideNav />
         <div className="ml-0 flex h-full flex-1 items-center justify-center sm:ml-56">
           <div className="text-center">
@@ -63,7 +63,7 @@ export default function TemplatePreviewPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex bg-[#0b0d12] text-white">
+    <div className="app-v2 fixed inset-0 z-[9999] flex">
       <SideNav active="inicio" />
 
       <div className="ml-0 flex h-full flex-1 flex-col sm:ml-56">

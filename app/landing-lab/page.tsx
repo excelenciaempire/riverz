@@ -204,7 +204,7 @@ function DashboardInner() {
   const submitDisabled = generating || (!prompt.trim() && !productId && !chosenTemplate);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#0b0d12] text-white">
+    <div className="app-v2 fixed inset-0 z-[9999]">
       <SideNav active="inicio" />
 
       <div className="ml-0 h-full overflow-y-auto sm:ml-56">

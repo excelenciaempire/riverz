@@ -5,7 +5,7 @@ import { SideNav } from '../_side-nav';
 
 export default function LandingLabTiendaPage() {
   return (
-    <div className="fixed inset-0 z-[9999] flex bg-[#0b0d12] text-white">
+    <div className="app-v2 fixed inset-0 z-[9999] flex">
       <SideNav active="tienda" />
       <div className="ml-0 h-full flex-1 overflow-y-auto sm:ml-56">
         <main className="mx-auto max-w-[760px] px-6 pt-12 pb-24 sm:px-8">

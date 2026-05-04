@@ -102,14 +102,15 @@ export default function MisPaginasPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#0b0d12] text-white">
+    <div className="app-v2 fixed inset-0 z-[9999]">
       <SideNav active="mis-paginas" />
       <div className="ml-0 h-full overflow-y-auto sm:ml-56">
         <main className="mx-auto max-w-[960px] px-6 pt-10 pb-24 sm:px-8">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Mis páginas</h1>
-              <p className="mt-1 text-sm text-white/55">
+              <p className="app-v2-eyebrow">Landing Lab</p>
+              <h1 className="app-v2-page-h1 mt-2">Mis páginas</h1>
+              <p className="mt-3 text-[14px] text-[var(--rvz-ink-muted)]">
                 {editMode
                   ? `${selectedCount} seleccionada${selectedCount === 1 ? '' : 's'}.`
                   : 'Continuá donde lo dejaste.'}
@@ -121,20 +122,20 @@ export default function MisPaginasPage() {
                   <>
                     <button
                       onClick={toggleSelectAll}
-                      className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:border-white/30 hover:text-white"
+                      className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)]"
                     >
                       {allSelected ? 'Quitar todas' : 'Seleccionar todas'}
                     </button>
                     <button
                       onClick={() => setPendingDelete(true)}
                       disabled={selectedCount === 0}
-                      className="rounded-lg bg-red-500/90 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-red-500/30"
+                      className="rounded-lg bg-red-500 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-500/40"
                     >
                       Eliminar{selectedCount ? ` (${selectedCount})` : ''}
                     </button>
                     <button
                       onClick={exitEditMode}
-                      className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:border-white/30 hover:text-white"
+                      className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)]"
                     >
                       Listo
                     </button>
@@ -142,7 +143,7 @@ export default function MisPaginasPage() {
                 ) : (
                   <button
                     onClick={() => setEditMode(true)}
-                    className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:border-white/30 hover:text-white"
+                    className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)]"
                   >
                     Seleccionar
                   </button>
@@ -152,11 +153,15 @@ export default function MisPaginasPage() {
           </div>
 
           {loaded && projects.length === 0 && (
-            <div className="mt-10 rounded-xl border border-dashed border-white/10 bg-[#15181f] p-8 text-center text-white/55">
+            <div className="card-cream mt-10 p-12 text-center text-[var(--rvz-ink-muted)]">
               Todavía no creaste ninguna página.{' '}
-              <a href="/landing-lab" className="font-semibold text-purple-300 hover:text-purple-200">
+              <a
+                href="/landing-lab"
+                className="font-semibold text-[var(--rvz-ink)] underline underline-offset-2 hover:text-[var(--rvz-ink)]"
+              >
                 Empezá una desde el inicio
-              </a>.
+              </a>
+              .
             </div>
           )}
 
@@ -167,10 +172,10 @@ export default function MisPaginasPage() {
                 return (
                   <div
                     key={p.id}
-                    className={`group relative rounded-xl border p-4 text-left transition cursor-pointer ${
+                    className={`card-cream group relative cursor-pointer p-5 transition ${
                       isSelected
-                        ? 'border-purple-400/70 bg-[#1d1830]'
-                        : 'border-white/10 bg-[#15181f] hover:border-white/25 hover:bg-[#1a1e27]'
+                        ? 'border-[var(--rvz-ink)] ring-2 ring-[var(--rvz-accent)]/50'
+                        : 'hover:-translate-y-0.5 hover:border-[var(--rvz-card-hover-border)]'
                     }`}
                     onClick={() => openProject(p.id)}
                   >
@@ -178,8 +183,8 @@ export default function MisPaginasPage() {
                       <div
                         className={`absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded border-2 transition ${
                           isSelected
-                            ? 'border-purple-400 bg-purple-400 text-[#0b0d12]'
-                            : 'border-white/30 bg-transparent'
+                            ? 'border-[var(--rvz-ink)] bg-[var(--rvz-accent)] text-[var(--rvz-accent-fg)]'
+                            : 'border-[var(--rvz-card-border)] bg-transparent'
                         }`}
                       >
                         {isSelected && (
@@ -191,19 +196,23 @@ export default function MisPaginasPage() {
                     )}
                     <div className="flex items-start justify-between gap-3 pr-6">
                       <div className="min-w-0">
-                        <div className="truncate text-base font-semibold">{p.name}</div>
+                        <div className="truncate text-[15px] font-medium tracking-tight text-[var(--rvz-ink)]">
+                          {p.name}
+                        </div>
                         {p.angle && (
-                          <div className="mt-1 line-clamp-2 text-sm text-white/50">{p.angle}</div>
+                          <div className="mt-1 line-clamp-2 text-[13px] text-[var(--rvz-ink-muted)]">
+                            {p.angle}
+                          </div>
                         )}
                       </div>
                       {!editMode && activeId === p.id && (
-                        <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                        <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
                           Activo
                         </span>
                       )}
                     </div>
                     {!editMode && (
-                      <div className="mt-4 flex items-center gap-2 text-xs text-white/40 group-hover:text-white/70">
+                      <div className="mt-4 flex items-center gap-2 text-[11px] uppercase tracking-[0.06em] text-[var(--rvz-ink-faint)] group-hover:text-[var(--rvz-ink)]">
                         Editar <span aria-hidden>→</span>
                       </div>
                     )}
@@ -221,26 +230,26 @@ export default function MisPaginasPage() {
           onClick={() => setPendingDelete(false)}
         >
           <div
-            className="w-full max-w-sm rounded-xl border border-white/10 bg-[#15181f] p-6 shadow-2xl"
+            className="w-full max-w-sm rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6 text-[var(--rvz-ink)] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-[18px] font-medium tracking-tight">
               ¿Eliminar {selectedCount} {selectedCount === 1 ? 'página' : 'páginas'}?
             </h2>
-            <p className="mt-2 text-sm text-white/60">
+            <p className="mt-2 text-[13px] text-[var(--rvz-ink-muted)]">
               Esto borra los proyectos de tu navegador. Las páginas ya publicadas en Shopify
               no se ven afectadas.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setPendingDelete(false)}
-                className="rounded-lg border border-white/15 px-3 py-2 text-sm font-semibold text-white/80 hover:border-white/30"
+                className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)]"
               >
                 Cancelar
               </button>
               <button
                 onClick={deleteSelected}
-                className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white hover:bg-red-400"
+                className="rounded-lg bg-red-500 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-white hover:bg-red-600"
               >
                 Eliminar
               </button>

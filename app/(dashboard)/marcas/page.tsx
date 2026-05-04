@@ -201,17 +201,28 @@ export default function MarcasPage() {
 
   // Show products grid
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="space-y-8">
+      <section className="page-hero">
+        <p className="app-v2-eyebrow">Tus marcas</p>
+        <h1 className="app-v2-page-h1 mt-2">
+          Marcas y productos.
+          <br />
+          <span className="text-[var(--rvz-ink-muted)]">El research que alimenta todo.</span>
+        </h1>
+        <p className="mt-4 max-w-xl text-[14px] leading-relaxed text-[var(--rvz-ink-muted)]">
+          Cada marca alimenta a los 8 agentes con su voz, audiencia y ángulos. Subí fotos,
+          precio y beneficios — el Investigador hace el resto.
+        </p>
+      </section>
 
-      <div className="grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {/* Existing Products */}
         {products?.map((product) => (
           <div
             key={product.id}
-            className="group relative cursor-pointer overflow-hidden rounded-xl border border-gray-800 bg-[#141414] transition hover:border-gray-700 hover:shadow-lg"
+            className="card-cream group relative cursor-pointer overflow-hidden p-0 transition hover:-translate-y-0.5 hover:border-[var(--rvz-card-hover-border)]"
             onClick={() => router.push(`/marcas/${product.id}`)}
           >
-             {/* Delete Button (Visible on Hover) */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -219,29 +230,31 @@ export default function MarcasPage() {
                   deleteProduct.mutate(product.id);
                 }
               }}
-              className="absolute right-2 top-2 z-10 rounded-full bg-black/60 p-2 text-white opacity-0 backdrop-blur-sm transition-all hover:bg-red-500/80 group-hover:opacity-100"
+              className="absolute right-2 top-2 z-10 rounded-full border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-1.5 text-[var(--rvz-ink-muted)] opacity-0 backdrop-blur-sm transition-all hover:border-red-400 hover:text-red-500 group-hover:opacity-100"
               title="Eliminar producto"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
             </button>
 
-            <div className="aspect-square overflow-hidden bg-[#0a0a0a]">
+            <div className="aspect-square overflow-hidden bg-[var(--rvz-bg-soft)]">
               {product.images && product.images.length > 0 ? (
                 <img
                   src={product.images[0]}
                   alt={product.name}
-                  className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
+                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                 />
               ) : (
-                <div className="flex h-full items-center justify-center">
-                  <Package className="h-10 w-10 text-gray-700" />
+                <div className="flex h-full items-center justify-center text-[var(--rvz-ink-faint)]">
+                  <Package className="h-10 w-10" />
                 </div>
               )}
             </div>
-            
-            <div className="p-4">
-              <h3 className="mb-1 truncate text-base font-semibold text-white">{product.name}</h3>
-              <p className="text-sm font-medium text-brand-accent">
+
+            <div className="p-3">
+              <h3 className="mb-0.5 truncate text-[14px] font-medium tracking-tight">
+                {product.name}
+              </h3>
+              <p className="text-[13px] text-[var(--rvz-ink-muted)]">
                 {formatPrice(product.price, (product as any).currency)}
               </p>
             </div>
@@ -251,12 +264,14 @@ export default function MarcasPage() {
         {/* Add New Button */}
         <button
           onClick={handleAddProduct}
-          className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-800 bg-[#141414]/50 p-4 transition hover:border-brand-accent hover:bg-brand-accent/5"
+          className="group flex flex-col items-center justify-center rounded-[14px] border-2 border-dashed border-[var(--rvz-card-border)] bg-[var(--rvz-bg-soft)] p-4 transition hover:border-[var(--rvz-ink)] hover:bg-[var(--rvz-card)]"
         >
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-accent/10">
-             <Plus className="h-6 w-6 text-brand-accent" />
+          <div className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-[var(--rvz-ink)] text-[var(--rvz-accent)]">
+            <Plus className="h-5 w-5" />
           </div>
-          <p className="text-sm font-semibold text-gray-400 group-hover:text-white">Agregar Nuevo</p>
+          <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] group-hover:text-[var(--rvz-ink)]">
+            Agregar producto
+          </p>
         </button>
       </div>
 
@@ -338,20 +353,19 @@ export default function MarcasPage() {
           </div>
 
           <div>
-            <Label className="mb-2 block text-sm font-medium text-gray-300">Nombre del Producto</Label>
+            <Label className="mb-2 block text-[12px] font-medium text-[var(--rvz-ink-muted)]">Nombre del producto</Label>
             <Input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Ej: iPhone 15 Pro"
-              className="bg-gray-900/50 border-gray-700"
             />
           </div>
 
           <div>
-            <Label className="mb-2 block text-sm font-medium text-gray-300">Precio de Venta</Label>
+            <Label className="mb-2 block text-[12px] font-medium text-[var(--rvz-ink-muted)]">Precio de venta</Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+                <span className="absolute left-3 top-2.5 text-[var(--rvz-ink-faint)]">$</span>
                 <Input
                   type="number"
                   step="0.01"
@@ -364,20 +378,20 @@ export default function MarcasPage() {
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="min-w-[100px] border-gray-700 bg-[#0a0a0a] text-white hover:bg-[#1a1a1a]">
+                  <Button variant="outline" className="min-w-[100px]">
                     <span className="mr-2">{formData.currency}</span>
                     <ChevronDown className="h-4 w-4 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="border-gray-800 bg-[#141414] text-gray-300">
+                <DropdownMenuContent className="border-[var(--rvz-card-border)] bg-[var(--rvz-card)] text-[var(--rvz-ink)]">
                   {CURRENCIES.map((c) => (
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       key={c.code}
                       onClick={() => setFormData({ ...formData, currency: c.code })}
-                      className="cursor-pointer hover:bg-white/10 hover:text-white"
+                      className="cursor-pointer hover:bg-[var(--rvz-bg-soft)]"
                     >
                       <span className="w-8 font-bold">{c.code}</span>
-                      <span className="text-gray-400">{c.name}</span>
+                      <span className="text-[var(--rvz-ink-muted)]">{c.name}</span>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -386,7 +400,7 @@ export default function MarcasPage() {
           </div>
 
           <div>
-            <Label className="mb-2 block text-sm font-medium">Sitio web</Label>
+            <Label className="mb-2 block text-[12px] font-medium text-[var(--rvz-ink-muted)]">Sitio web</Label>
             <Input
               value={formData.website}
               onChange={(e) => setFormData({ ...formData, website: e.target.value })}
@@ -395,19 +409,19 @@ export default function MarcasPage() {
           </div>
 
           <div>
-            <Label className="mb-2 block text-sm font-medium text-gray-300">Beneficios del Producto</Label>
+            <Label className="mb-2 block text-[12px] font-medium text-[var(--rvz-ink-muted)]">Beneficios del producto</Label>
             <Textarea
               value={formData.benefits}
               onChange={(e) => setFormData({ ...formData, benefits: e.target.value })}
               placeholder="Lista los beneficios principales: calidad, garantía, entrega rápida..."
               rows={3}
-              className="bg-gray-900/50 border-gray-700 resize-none"
+              className="resize-none"
             />
           </div>
 
           <Button
             onClick={() => createProduct.mutate(formData)}
-            className="w-full bg-brand-accent hover:bg-brand-accent/90"
+            className="w-full"
             disabled={createProduct.isPending || !formData.name || !formData.price}
           >
             {createProduct.isPending ? (

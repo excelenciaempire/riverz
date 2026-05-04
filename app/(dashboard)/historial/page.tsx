@@ -117,61 +117,54 @@ export default function HistorialPage() {
     return <Loading text="Cargando historial..." />;
   }
 
-  return (
-    <div className="space-y-6 pb-24">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">Historial</h1>
+  const filterTabs: Array<{ id: FilterType; label: string }> = [
+    { id: 'all', label: 'Todos' },
+    { id: 'images', label: 'Imágenes' },
+    { id: 'videos', label: 'Videos' },
+  ];
 
-        {/* Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-2">
-          {data && data.items.length > 0 && (
+  return (
+    <div className="space-y-8 pb-24">
+      <section className="page-hero">
+        <p className="app-v2-eyebrow">Historial</p>
+        <h1 className="app-v2-page-h1 mt-2">
+          Tu trabajo,
+          <br />
+          <span className="text-[var(--rvz-ink-muted)]">en un solo lugar.</span>
+        </h1>
+        <p className="mt-4 max-w-xl text-[14px] leading-relaxed text-[var(--rvz-ink-muted)]">
+          Cada pieza generada, lista para descargar, regenerar o subir directo a Meta Ads.
+        </p>
+      </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex items-center gap-0.5 rounded-lg border border-[var(--rvz-card-border)] bg-[var(--rvz-bg-soft)] p-0.5">
+          {filterTabs.map((tab) => (
             <button
-              onClick={togglePage}
-              className="rounded-lg border border-gray-700 bg-brand-dark-secondary px-3 py-2 text-xs text-gray-300 hover:border-brand-accent hover:text-white"
+              key={tab.id}
+              onClick={() => {
+                setFilter(tab.id);
+                setPage(1);
+              }}
+              className={`rounded-md px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.06em] transition ${
+                filter === tab.id
+                  ? 'bg-[var(--rvz-accent)] text-[var(--rvz-accent-fg)]'
+                  : 'text-[var(--rvz-ink-muted)] hover:text-[var(--rvz-ink)]'
+              }`}
             >
-              {allOnPageSelected ? 'Deseleccionar página' : 'Seleccionar página'}
+              {tab.label}
             </button>
-          )}
-          <button
-            onClick={() => {
-              setFilter('all');
-              setPage(1);
-            }}
-            className={`rounded-lg px-4 py-2 ${
-              filter === 'all'
-                ? 'bg-brand-accent text-white'
-                : 'bg-brand-dark-secondary text-gray-400 hover:text-white'
-            }`}
-          >
-            Todos
-          </button>
-          <button
-            onClick={() => {
-              setFilter('videos');
-              setPage(1);
-            }}
-            className={`rounded-lg px-4 py-2 ${
-              filter === 'videos'
-                ? 'bg-brand-accent text-white'
-                : 'bg-brand-dark-secondary text-gray-400 hover:text-white'
-            }`}
-          >
-            Videos
-          </button>
-          <button
-            onClick={() => {
-              setFilter('images');
-              setPage(1);
-            }}
-            className={`rounded-lg px-4 py-2 ${
-              filter === 'images'
-                ? 'bg-brand-accent text-white'
-                : 'bg-brand-dark-secondary text-gray-400 hover:text-white'
-            }`}
-          >
-            Imágenes
-          </button>
+          ))}
         </div>
+
+        {data && data.items.length > 0 && (
+          <button
+            onClick={togglePage}
+            className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)]"
+          >
+            {allOnPageSelected ? 'Deseleccionar página' : 'Seleccionar página'}
+          </button>
+        )}
       </div>
 
       {/* Content Grid */}
@@ -183,12 +176,11 @@ export default function HistorialPage() {
               return (
                 <div
                   key={item.id}
-                  className={`group overflow-hidden rounded-lg border bg-brand-dark-secondary transition ${
-                    isSelected ? 'border-brand-accent ring-2 ring-brand-accent/40' : 'border-gray-700 hover:border-brand-accent'
+                  className={`card-cream group overflow-hidden p-0 transition ${
+                    isSelected ? 'border-[var(--rvz-ink)] ring-2 ring-[var(--rvz-accent)]/50' : 'hover:border-[var(--rvz-card-hover-border)]'
                   }`}
                 >
-                  {/* Thumbnail */}
-                  <div className="relative aspect-square bg-gray-800">
+                  <div className="relative aspect-square bg-[var(--rvz-bg-soft)]">
                     {item.result_url && (
                       <>
                         {item.type.includes('video') || item.type === 'ugc' || item.type === 'face_swap' || item.type === 'clips' ? (
@@ -217,8 +209,8 @@ export default function HistorialPage() {
                       aria-label={isSelected ? 'Deseleccionar' : 'Seleccionar'}
                       className={`absolute left-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md border transition ${
                         isSelected
-                          ? 'border-brand-accent bg-brand-accent text-white'
-                          : 'border-gray-500 bg-black/60 text-transparent hover:border-white hover:text-white'
+                          ? 'border-[var(--rvz-ink)] bg-[var(--rvz-accent)] text-[var(--rvz-accent-fg)]'
+                          : 'border-[var(--rvz-card-border)] bg-[var(--rvz-card)]/90 text-transparent hover:border-[var(--rvz-ink)] hover:text-[var(--rvz-ink)]'
                       }`}
                     >
                       <Check className="h-4 w-4" />
@@ -242,15 +234,14 @@ export default function HistorialPage() {
                     </div>
                   </div>
 
-                  {/* Info */}
-                  <div className="p-4">
-                    <p className="mb-1 text-sm font-medium capitalize text-white">
+                  <div className="p-3">
+                    <p className="mb-0.5 text-[13px] font-medium capitalize text-[var(--rvz-ink)]">
                       {item.type.replace(/_/g, ' ')}
                     </p>
-                    <p className="mb-2 text-xs text-gray-400">
+                    <p className="mb-1.5 text-[11px] text-[var(--rvz-ink-faint)]">
                       {format(new Date(item.created_at), 'PPP', { locale: es })}
                     </p>
-                    <p className="text-xs text-brand-accent">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)]">
                       {item.cost} créditos
                     </p>
                   </div>
@@ -259,21 +250,14 @@ export default function HistorialPage() {
             })}
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-              >
+            <div className="flex items-center justify-center gap-3">
+              <Button variant="outline" onClick={() => setPage(page - 1)} disabled={page === 1}>
                 Anterior
               </Button>
-
-              <span className="text-sm text-gray-400">
+              <span className="text-[12px] uppercase tracking-[0.08em] text-[var(--rvz-ink-muted)]">
                 Página {page} de {totalPages}
               </span>
-
               <Button
                 variant="outline"
                 onClick={() => setPage(page + 1)}
@@ -285,33 +269,33 @@ export default function HistorialPage() {
           )}
         </>
       ) : (
-        <div className="rounded-lg border border-gray-700 bg-brand-dark-secondary p-12 text-center">
-          <p className="text-gray-400">No hay contenido en el historial</p>
+        <div className="card-cream p-12 text-center text-[var(--rvz-ink-muted)]">
+          No hay contenido en el historial
         </div>
       )}
 
       {/* Sticky bulk actions toolbar */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2">
-          <div className="flex items-center gap-3 rounded-2xl border border-gray-700 bg-[#0a0a0a]/95 px-4 py-3 shadow-2xl backdrop-blur">
-            <span className="text-sm text-gray-300">
-              <span className="font-semibold text-white">{selectedIds.size}</span> seleccionado{selectedIds.size === 1 ? '' : 's'}
+          <div className="flex items-center gap-3 rounded-xl border border-[var(--rvz-card-dark-border)] bg-[var(--rvz-card-dark)] px-4 py-3 text-[var(--rvz-card-dark-fg)] shadow-2xl backdrop-blur">
+            <span className="text-[13px] text-[var(--rvz-card-dark-muted)]">
+              <span className="font-semibold text-[var(--rvz-card-dark-fg)]">{selectedIds.size}</span>{' '}
+              seleccionado{selectedIds.size === 1 ? '' : 's'}
             </span>
-            <Button
-              size="sm"
-              variant="ghost"
+            <button
+              type="button"
               onClick={clearSelection}
-              className="text-gray-400 hover:text-white"
+              className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-card-dark-muted)] transition hover:text-[var(--rvz-card-dark-fg)]"
             >
-              <X className="mr-1 h-3 w-3" />
+              <X className="mr-1 inline h-3 w-3" />
               Limpiar
-            </Button>
+            </button>
             <Button
               size="sm"
               onClick={() => setIsUploadModalOpen(true)}
               disabled={selectedGenerations.length === 0}
             >
-              <Upload className="mr-2 h-4 w-4" />
+              <Upload className="mr-1.5 h-3.5 w-3.5" />
               Subir a Meta Ads
             </Button>
           </div>
