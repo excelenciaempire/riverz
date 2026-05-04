@@ -77,30 +77,39 @@ export function ShopifyConnectionPanel() {
         </div>
       </div>
 
-      {/* Connect form */}
-      <div className="rounded-lg border border-gray-800 bg-black/30 p-4">
-        <Label htmlFor="shopify-shop" className="text-sm text-gray-300">
-          Conectar una nueva tienda
-        </Label>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-          <Input
-            id="shopify-shop"
-            value={shopInput}
-            onChange={(e) => setShopInput(e.target.value)}
-            placeholder="tu-tienda.myshopify.com"
-            onKeyDown={(e) => e.key === 'Enter' && startInstall()}
-            className="flex-1"
-          />
-          <Button onClick={startInstall} className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            Conectar Shopify
-          </Button>
+      {/* Connect form — hidden once a store is connected. Riverz now
+          enforces one Shopify store per account: to connect another the
+          user must disconnect the current one first. */}
+      {active.length === 0 ? (
+        <div className="rounded-lg border border-gray-800 bg-black/30 p-4">
+          <Label htmlFor="shopify-shop" className="text-sm text-gray-300">
+            Conectar tu tienda
+          </Label>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <Input
+              id="shopify-shop"
+              value={shopInput}
+              onChange={(e) => setShopInput(e.target.value)}
+              placeholder="tu-tienda.myshopify.com"
+              onKeyDown={(e) => e.key === 'Enter' && startInstall()}
+              className="flex-1"
+            />
+            <Button onClick={startInstall} className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              Conectar Shopify
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Vas a ser redirigido a Shopify para autorizar el acceso. Solo pedimos permisos para
+            subir imágenes (Files) y crear páginas (Pages) — no leemos clientes ni pedidos.
+          </p>
         </div>
-        <p className="mt-2 text-xs text-gray-500">
-          Vas a ser redirigido a Shopify para autorizar el acceso. Solo pedimos permisos para
-          subir imágenes (Files) y crear páginas (Pages) — no leemos clientes ni pedidos.
-        </p>
-      </div>
+      ) : (
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-emerald-200">
+          Tu cuenta de Riverz está conectada a una tienda. Para conectar una distinta,
+          desconectá primero la actual abajo.
+        </div>
+      )}
 
       {/* Active connections */}
       {isLoading ? (

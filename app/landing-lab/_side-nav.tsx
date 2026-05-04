@@ -68,7 +68,7 @@ export function SideNav({ active }: { active?: 'inicio' | 'mis-paginas' | 'tiend
           </h3>
           <div className="space-y-0.5">
             <NavItem
-              href="/configuracion?tab=integrations"
+              href="/landing-lab/tienda"
               icon={Store}
               label="Tienda"
               active={active === 'tienda'}
