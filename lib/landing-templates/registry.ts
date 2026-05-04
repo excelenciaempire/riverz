@@ -1,12 +1,10 @@
 /**
  * Registry of landing-lab templates available in the dashboard.
  *
- * Today the registry is hand-curated — every template ships either as a
- * standalone file under `public/templates/` (new templates) or as an
- * inline Vitalu layout already baked into `public/landing-lab.html`
- * (legacy projects). When the editor refactor lands and every template
- * is loaded dynamically from disk, this file becomes the only place that
- * needs touching to add a new template.
+ * Today the registry is hand-curated — every template ships as a
+ * standalone file under `public/templates/`. When the editor refactor
+ * lands and every template is loaded dynamically from disk, this file
+ * becomes the only place that needs touching to add a new template.
  *
  * Categories match the dashboard filter tabs. Don't rename them without
  * also updating the filter component.
@@ -26,12 +24,6 @@ export interface LandingTemplate {
   htmlUrl: string;
   /** Optional static thumbnail under /public; falls back to the live iframe preview. */
   thumbnailUrl?: string;
-  /**
-   * For Vitalu A/B layouts that were authored inline in landing-lab.html
-   * before the registry existed. The editor recognises this string and
-   * boots the corresponding hard-coded layout instead of fetching htmlUrl.
-   */
-  inlineSource?: 'vitalu-frustracion' | 'vitalu-ancestral';
   /** Tag for the "Coming soon" badge — read-only previews. */
   comingSoon?: boolean;
 }
@@ -44,24 +36,6 @@ export const LANDING_TEMPLATES: LandingTemplate[] = [
     description:
       'Listicle largo con autoridad médica, antes/después, escasez y oferta. Gran para cold traffic.',
     htmlUrl: '/templates/advertorial-listicle.html',
-  },
-  {
-    id: 'vitalu-frustracion',
-    kind: 'advertorial',
-    name: 'Vitalú — Frustración',
-    description:
-      'Narrativa problema → revelación → solución. Ingrediente "enterrado" + ciencia.',
-    htmlUrl: '/landing-lab.html',
-    inlineSource: 'vitalu-frustracion',
-  },
-  {
-    id: 'vitalu-ancestral',
-    kind: 'advertorial',
-    name: 'Vitalú — Ancestral',
-    description:
-      'Misma estructura que Frustración pero con ángulo histórico/abuelas.',
-    htmlUrl: '/landing-lab.html',
-    inlineSource: 'vitalu-ancestral',
   },
   {
     id: 'product-page-default',

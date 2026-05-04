@@ -97,13 +97,6 @@ function DashboardInner() {
 
   function pickTemplateFromCard(t: LandingTemplate) {
     if (t.comingSoon) return;
-    // Vitalu inline templates open straight in the editor (legacy seed
-    // projects); everything else routes to the preview screen where the
-    // user picks "Usar esta plantilla" or "Personalizar con IA".
-    if (t.inlineSource) {
-      router.push(`/landing-lab/edit?template=${encodeURIComponent(t.inlineSource)}`);
-      return;
-    }
     router.push(`/landing-lab/template/${encodeURIComponent(t.id)}`);
   }
 
@@ -115,7 +108,7 @@ function DashboardInner() {
     const tplId = searchParams.get('template');
     if (!tplId) return;
     const t = LANDING_TEMPLATES.find((x) => x.id === tplId);
-    if (t && !t.inlineSource && !t.comingSoon) {
+    if (t && !t.comingSoon) {
       setChosenTemplate(t);
       setPageType(t.kind);
       setPrompt((p) => p.trim() ? p : TYPE_STARTER_PROMPT[t.kind]);
