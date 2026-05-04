@@ -40,11 +40,15 @@ export function getShopifyEnv(): ShopifyEnv {
       'Shopify OAuth no está configurado: faltan SHOPIFY_API_KEY, SHOPIFY_API_SECRET o SHOPIFY_OAUTH_REDIRECT_URI.',
     );
   }
-  // Minimal scopes for the publish flow:
+  // Minimal scopes for the publish flow + product picker:
   //   write_files   → Files API (image uploads via stagedUploadsCreate)
   //   write_content → Online Store Pages (pageCreate / pageUpdate)
-  // read_* counterparts are implied by the write ones for these resources.
-  const scopes = process.env.SHOPIFY_SCOPES || 'write_files,write_content';
+  //   read_products → list products in the editor's "Elegir producto" picker
+  //                   so users can wire the published page's CTA / variants
+  //                   to a real product without typing a handle by hand.
+  // Existing connections won't have read_products until the user reconnects;
+  // the products API surfaces a "Reconnect Shopify" hint when the call 403s.
+  const scopes = process.env.SHOPIFY_SCOPES || 'write_files,write_content,read_products';
   const apiVersion = process.env.SHOPIFY_API_VERSION || '2025-10';
   return { apiKey, apiSecret, redirectUri, scopes, apiVersion };
 }

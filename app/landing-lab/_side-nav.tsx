@@ -16,7 +16,10 @@ import { cn } from '@/lib/utils';
  *   Mis Páginas   → /landing-lab/mis-paginas
  *   Tienda        → /configuracion?tab=integrations (reuses existing UI)
  *
- * "Volver" at the very top exits the Lab back to the main /dashboard.
+ * "Volver" at the very top exits the Lab back to the user's main Riverz
+ * dashboard (/crear — same target as the post-login redirect). Don't link
+ * /dashboard here: that route is the admin panel and bounces non-admins to
+ * /unauthorized.
  * Footer carries the UserButton + credits counter, same as the main
  * sidebar, so the user always knows their plan state.
  */
@@ -28,7 +31,7 @@ export function SideNav({ active }: { active?: 'inicio' | 'mis-paginas' | 'tiend
       {/* Volver row */}
       <div className="flex h-12 items-center px-3">
         <Link
-          href="/dashboard"
+          href="/crear"
           className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-medium text-gray-400 transition-all hover:bg-gray-900 hover:text-white"
         >
           <ArrowLeft className="h-3 w-3 shrink-0" />

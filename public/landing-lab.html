@@ -994,8 +994,11 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         <p class="set-help">Conectá un producto de tu Shopify y los botones "Comprar", el selector de cantidad, las variantes y el precio quedan funcionales en la página publicada — sin instalar ningún tema. Si lo dejás vacío, los botones llevan a "CTA URL".</p>
         <label class="set-field">
           <span>Handle del producto</span>
-          <input id="set-shopify-handle" type="text" oninput="setSetting('shopifyProductHandle', this.value)" placeholder="gomitas-shilajit-himalaya">
-          <small>Podés pegar la URL completa del producto (<code>tu-tienda.com/products/gomitas-shilajit-himalaya</code>) y extraemos el handle automáticamente.</small>
+          <div style="display:flex;gap:8px;align-items:stretch">
+            <input id="set-shopify-handle" type="text" oninput="setSetting('shopifyProductHandle', this.value)" placeholder="gomitas-shilajit-himalaya" style="flex:1">
+            <button type="button" onclick="openProductPicker()" style="flex:0 0 auto;background:#07A498;color:#fff;border:0;padding:0 14px;border-radius:8px;font-weight:700;font-size:12px;letter-spacing:.02em;cursor:pointer;white-space:nowrap;font-family:inherit">Elegir producto →</button>
+          </div>
+          <small>Podés pegar la URL completa del producto (<code>tu-tienda.com/products/gomitas-shilajit-himalaya</code>) y extraemos el handle automáticamente, o usar el botón para buscar uno de tu tienda conectada.</small>
         </label>
       </div>
 
@@ -1024,6 +1027,30 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         </label>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- Shopify product picker — opens from Settings → Producto Shopify -->
+<div id="pp-modal" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);display:none;align-items:flex-start;justify-content:center;padding:48px 16px;overflow-y:auto" onclick="closeProductPicker()">
+  <div onclick="event.stopPropagation()" style="background:#15181f;border:1px solid #2a2f3a;border-radius:14px;width:100%;max-width:680px;color:#fff;font-family:'Instrument Sans','Inter',system-ui,sans-serif;display:flex;flex-direction:column;max-height:calc(100vh - 96px);overflow:hidden">
+    <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid #2a2f3a;flex-shrink:0">
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;letter-spacing:-.01em">Elegí un producto de Shopify</div>
+        <div style="font-size:12px;color:#9aa0a8;margin-top:2px" id="pp-shop">Cargando tienda…</div>
+      </div>
+      <button onclick="closeProductPicker()" style="background:transparent;border:0;color:#9aa0a8;font-size:20px;cursor:pointer;padding:4px 8px">✕</button>
+    </div>
+    <div style="padding:14px 18px;border-bottom:1px solid #2a2f3a;flex-shrink:0">
+      <input id="pp-search" type="text" placeholder="Buscar por título, SKU, vendor…" oninput="onProductSearch(this.value)" style="width:100%;padding:10px 12px;background:#0e1015;border:1px solid #2a2f3a;border-radius:8px;color:#fff;font-size:13px;font-family:inherit;outline:none">
+    </div>
+    <div id="pp-list" style="overflow-y:auto;flex:1;padding:8px 12px"></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid #2a2f3a;flex-shrink:0">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cdd2d8;cursor:pointer;flex:1">
+        <input type="checkbox" id="pp-autofill" checked style="accent-color:#07A498">
+        Auto-rellenar título, precio e imagen principal de la landing
+      </label>
+      <button onclick="closeProductPicker()" style="background:transparent;border:1px solid #2a2f3a;color:#cdd2d8;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
     </div>
   </div>
 </div>
@@ -2624,6 +2651,193 @@ function setSetting(key, value){
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.setSetting = setSetting;
+
+// ── SHOPIFY PRODUCT PICKER ───────────────────────────────────
+// Opens a modal that lists products from the user's connected Shopify
+// store via /api/shopify/products and lets them pick one. The pick
+// writes proj.shopifyProductHandle (so the published page wires up
+// /cart/add.js) and — when the "auto-rellenar" toggle is on — also
+// pushes the product's title, prices and featured image into the
+// matching template slots so the editor preview already reflects the
+// real product.
+var ppDebounce = null;
+var ppLastQuery = '';
+function openProductPicker(){
+  var m = document.getElementById('pp-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+  document.getElementById('pp-search').value = '';
+  ppLastQuery = '';
+  loadProducts('');
+}
+function closeProductPicker(){
+  var m = document.getElementById('pp-modal');
+  if (m) m.style.display = 'none';
+}
+function onProductSearch(q){
+  clearTimeout(ppDebounce);
+  ppDebounce = setTimeout(function(){
+    if (q === ppLastQuery) return;
+    ppLastQuery = q;
+    loadProducts(q);
+  }, 220);
+}
+function ppSetList(html){
+  var l = document.getElementById('pp-list');
+  if (l) l.innerHTML = html;
+}
+async function loadProducts(query){
+  ppSetList('<div style="padding:36px 0;text-align:center;color:#7a8290;font-size:13px">Cargando productos…</div>');
+  try {
+    var url = '/api/shopify/products?first=24';
+    if (query) url += '&q=' + encodeURIComponent(query);
+    var res = await fetch(url, { credentials: 'same-origin' });
+    var data = await res.json();
+    if (!res.ok) {
+      if (data.requiresReconnect) {
+        ppSetList(
+          '<div style="padding:24px 12px;text-align:center;color:#cdd2d8;font-size:13px;line-height:1.6">' +
+            (data.error || 'Necesitás reconectar tu Shopify') +
+            '<div style="margin-top:14px"><button onclick="goToShopifySettings()" style="background:#07A498;color:#fff;border:0;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Ir a Tienda</button></div>' +
+          '</div>'
+        );
+        return;
+      }
+      throw new Error(data.error || ('HTTP ' + res.status));
+    }
+    var shopEl = document.getElementById('pp-shop');
+    if (shopEl && data.shop) shopEl.textContent = data.shop;
+    var items = data.products || [];
+    if (!items.length) {
+      ppSetList('<div style="padding:36px 0;text-align:center;color:#7a8290;font-size:13px">' +
+        (query ? 'Sin productos para "'+escapeHtml(query)+'"' : 'No encontramos productos activos en esta tienda.') +
+        '</div>');
+      return;
+    }
+    var html = items.map(function(p){
+      var img = p.image ? '<img src="'+p.image+'" alt="" style="width:56px;height:56px;border-radius:8px;object-fit:cover;background:#0e1015;flex:0 0 56px">' :
+        '<div style="width:56px;height:56px;border-radius:8px;background:#0e1015;flex:0 0 56px"></div>';
+      var price = formatMoney(p.priceMin, p.currencyCode);
+      var maxPrice = p.priceMax && p.priceMax !== p.priceMin ? ' – ' + formatMoney(p.priceMax, p.currencyCode) : '';
+      var compare = (p.compareAtMin && parseFloat(p.compareAtMin) > parseFloat(p.priceMin || '0')) ? '<span style="text-decoration:line-through;color:#7a8290;margin-left:6px;font-size:11px">'+formatMoney(p.compareAtMin, p.currencyCode)+'</span>' : '';
+      var inv = p.totalInventory != null ? '<span style="margin-left:8px;color:#7a8290;font-size:11px">stock: '+p.totalInventory+'</span>' : '';
+      var json = JSON.stringify(p).replace(/"/g, '&quot;');
+      return '<button type="button" onclick="selectProduct(this)" data-product="'+json+'" ' +
+        'style="display:flex;gap:12px;align-items:center;width:100%;padding:10px;background:transparent;border:1px solid transparent;border-radius:10px;cursor:pointer;text-align:left;color:#fff;font-family:inherit;transition:background .15s,border-color .15s" ' +
+        'onmouseover="this.style.background=\'#1a1e27\';this.style.borderColor=\'#2a2f3a\'" onmouseout="this.style.background=\'transparent\';this.style.borderColor=\'transparent\'">' +
+          img +
+          '<div style="min-width:0;flex:1">' +
+            '<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(p.title||'Sin título')+'</div>' +
+            '<div style="font-size:11px;color:#9aa0a8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(p.handle||'')+'</div>' +
+            '<div style="font-size:12px;color:#cdd2d8;margin-top:4px">'+price+maxPrice+compare+inv+'</div>' +
+          '</div>' +
+        '</button>';
+    }).join('');
+    ppSetList(html);
+  } catch (e) {
+    ppSetList('<div style="padding:24px;text-align:center;color:#f87171;font-size:13px">'+escapeHtml(e.message||'Error al cargar productos')+'</div>');
+  }
+}
+function selectProduct(btn){
+  var raw = btn.getAttribute('data-product');
+  if (!raw) return;
+  var p;
+  try { p = JSON.parse(raw.replace(/&quot;/g, '"')); } catch(e){ return; }
+  var proj = getActive(); if (!proj) { closeProductPicker(); return; }
+  // 1) Always set the handle — runtime cart wiring keys off this.
+  setSetting('shopifyProductHandle', p.handle || '');
+  var inp = document.getElementById('set-shopify-handle');
+  if (inp) inp.value = p.handle || '';
+  // 2) Optionally auto-fill the visible content slots so the editor
+  //    preview matches the real product before publish.
+  var autofill = document.getElementById('pp-autofill');
+  if (autofill && autofill.checked) {
+    autofillFromProduct(p);
+  }
+  closeProductPicker();
+  toast('✓ Producto vinculado: ' + (p.title || p.handle));
+}
+function autofillFromProduct(p){
+  var pw = document.getElementById('page-wrap'); if (!pw) return;
+  function setText(slot, value){
+    var el = pw.querySelector('[data-v-text="'+slot+'"]');
+    if (!el || value == null) return;
+    el.textContent = value;
+  }
+  // Title (works for both prod-name slot and the sticky bar)
+  if (p.title) {
+    setText('product-name', p.title);
+    setText('sticky-name', p.title);
+  }
+  // Price + compare-at — currency formatted like the editor preview.
+  if (p.priceMin) {
+    var price = formatMoney(p.priceMin, p.currencyCode);
+    setText('price', price);
+    setText('sticky-price', price);
+  }
+  if (p.compareAtMin && parseFloat(p.compareAtMin) > parseFloat(p.priceMin||'0')) {
+    var cmp = formatMoney(p.compareAtMin, p.currencyCode);
+    setText('compare-at', cmp);
+    setText('sticky-compare', cmp);
+    // Discount %
+    var minPrice = parseFloat(p.priceMin), minCmp = parseFloat(p.compareAtMin);
+    if (minPrice > 0 && minCmp > minPrice) {
+      var pct = Math.round((1 - (minPrice / minCmp)) * 100);
+      setText('discount', pct + '% OFF');
+    }
+  }
+  // Variant button labels (opt-1, opt-2, opt-3 …) — only override the
+  // first N where N matches the variant count, leave extras alone.
+  if (Array.isArray(p.variants) && p.variants.length > 1) {
+    p.variants.forEach(function(v, i){
+      if (i >= 6) return;
+      setText('opt-'+(i+1), v.title || ('Opción '+(i+1)));
+    });
+  }
+  // Featured image → main gallery slot
+  if (p.image) {
+    var slot = 'prod-main';
+    if (typeof setSlot === 'function') {
+      setSlot(slot, p.image);
+      var proj = getActive();
+      if (proj) {
+        proj.images = proj.images || {};
+        proj.images[slot] = p.image;
+      }
+    }
+  }
+  // Persist + flush
+  if (typeof collectTexts === 'function') collectTexts();
+  if (typeof saveAll === 'function') saveAll();
+}
+function formatMoney(amount, code){
+  if (amount == null) return '';
+  var n = parseFloat(amount);
+  if (!isFinite(n)) return '';
+  var sym = '$';
+  if (code === 'EUR') sym = '€';
+  else if (code === 'GBP') sym = '£';
+  else if (code === 'COP' || code === 'ARS' || code === 'MXN' || code === 'CLP') sym = '$';
+  // Locale-friendly thousands separator. We don't ship a per-shop locale
+  // so es-AR is a safe default for the LATAM-heavy user base.
+  try { return sym + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+  catch(e){ return sym + n.toFixed(2); }
+}
+function escapeHtml(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function goToShopifySettings(){
+  closeProductPicker();
+  try { (window.top || window.parent || window).location.href = '/landing-lab/tienda'; }
+  catch(e) { window.location.href = '/landing-lab/tienda'; }
+}
+window.openProductPicker = openProductPicker;
+window.closeProductPicker = closeProductPicker;
+window.onProductSearch = onProductSearch;
+window.selectProduct = selectProduct;
+window.goToShopifySettings = goToShopifySettings;
 
 // Slider in Settings → write percentage as a 0-1 fraction on the
 // project so initStickyScroll picks it up immediately, and the publish
