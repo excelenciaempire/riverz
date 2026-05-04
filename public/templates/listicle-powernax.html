@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title data-v-text="page-title">7 señales de que tu rendimiento en la cama está cayendo — Salud Masculina Argentina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;800&display=swap" rel="stylesheet">
+<style>
+/* ─── RESET / TOKENS ─────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+:root{
+  --ink:#0f1115;
+  --ink-2:#1c1f24;
+  --muted:#5a6068;
+  --rule:#e6e8eb;
+  --bg:#ffffff;
+  --navy:#0f1a2b;
+  --navy-2:#1a2842;
+  --cream:#f5edd9;
+  --cream-deep:#a87f1f;
+  --cream-line:#d8b059;
+  --rose:#c2331e;
+  --gold:#d8b059;
+  --green:#1ca25a;
+  --max:760px;
+  --gap:20px;
+  --r-md:10px;
+  --r-lg:16px;
+  --shadow:0 2px 12px rgba(15,17,21,.06);
+}
+body{font-family:'Inter',system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:var(--bg);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+img{max-width:100%;display:block;height:auto}
+a{color:inherit}
+p{margin:0 0 1em}
+h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:800;color:var(--ink)}
+
+/* ─── PAGE CONTAINER ─────────────────────────────────────────── */
+.adv{max-width:var(--max);margin:0 auto;padding:0 22px 80px}
+@media (min-width:760px){ .adv{padding:0 32px 120px} }
+
+/* ─── 1. TOP BAR + HERO ──────────────────────────────────────── */
+.adv-top-bar{background:var(--navy);height:56px;width:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;letter-spacing:0.06em;text-transform:uppercase}
+.adv-top-bar span{opacity:.78}
+.adv-top-bar strong{margin-left:8px;color:var(--gold)}
+.adv-hero{padding-top:36px}
+.adv-hero .kicker{display:inline-block;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--rose);margin-bottom:14px}
+.adv-hero h1{font-size:32px;line-height:1.08;letter-spacing:-0.02em;font-weight:900}
+@media (min-width:760px){ .adv-hero h1{font-size:44px} }
+.adv-hero .subline{display:block;color:var(--muted);font-weight:600;font-size:18px;margin-top:14px}
+.adv-hero hr{border:0;border-top:1px solid var(--rule);margin:28px 0}
+
+/* byline */
+.byline{display:flex;align-items:center;gap:14px;margin-bottom:32px}
+.byline-avatar{width:60px;height:60px;border-radius:50%;flex:0 0 60px;background:#eee;overflow:hidden}
+.byline-avatar img{width:100%;height:100%;object-fit:cover}
+.byline-text{font-size:15px;line-height:1.4}
+.byline-text strong{font-weight:700}
+.byline-text .updated{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+
+/* ─── 2. INTRO ───────────────────────────────────────────────── */
+.adv-intro{margin-bottom:40px}
+.adv-intro p{font-size:18px}
+.adv-intro p.lead{font-size:21px;font-weight:600;color:var(--ink)}
+
+/* ─── 3-9. SIGN BLOCKS ───────────────────────────────────────── */
+.reason{margin:48px 0}
+.reason-img{margin-bottom:20px;border-radius:8px;overflow:hidden;background:#f3f4f5}
+.reason-img img{width:100%}
+.reason h2{font-size:25px;font-weight:800;margin-bottom:14px;line-height:1.2}
+@media (min-width:760px){ .reason h2{font-size:30px} }
+.reason h2 .num{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;background:var(--rose);color:#fff;border-radius:50%;font-size:16px;font-weight:900;margin-right:10px;vertical-align:middle}
+@media (min-width:760px){ .reason h2 .num{width:40px;height:40px;font-size:18px} }
+.reason p{margin:0 0 1em}
+
+/* quote callout */
+.quote{font-style:italic;color:var(--ink-2);border-left:3px solid var(--gold);padding:10px 0 10px 18px;margin:18px 0;font-size:18px;background:linear-gradient(90deg,rgba(216,176,89,.08),transparent);}
+.quote .attr{display:block;font-style:normal;margin-top:8px;font-size:14px;color:var(--muted)}
+
+/* check / cross lists */
+.checks{list-style:none;padding:0;margin:18px 0}
+.checks li{display:flex;align-items:flex-start;gap:10px;margin:10px 0;font-size:16px;line-height:1.45}
+.checks li::before{content:"";flex:0 0 22px;width:22px;height:22px;border-radius:5px;background:var(--green) center/14px no-repeat;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>");margin-top:2px}
+.crosses{list-style:none;padding:0;margin:14px 0}
+.crosses li{display:flex;align-items:flex-start;gap:10px;margin:10px 0;font-size:16px;line-height:1.45}
+.crosses li::before{content:"";flex:0 0 22px;width:22px;height:22px;border-radius:5px;background:var(--rose) center/12px no-repeat;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>");margin-top:2px}
+
+/* small image inside reason */
+.inline-img{margin:24px 0;border-radius:8px;overflow:hidden}
+.inline-img img{width:100%}
+
+/* ─── BRIDGE / WHY-IT-HAPPENS section ────────────────────────── */
+.bridge{margin:64px 0;padding:32px 24px;background:var(--navy);color:#fff;border-radius:var(--r-lg)}
+.bridge h2{color:#fff;font-size:26px;line-height:1.2}
+@media (min-width:760px){ .bridge h2{font-size:32px} }
+.bridge p{font-size:17px;color:rgba(255,255,255,.88);line-height:1.6}
+.bridge p strong{color:var(--gold)}
+.bridge .brand-mark{display:inline-block;font-weight:900;letter-spacing:0.02em;color:var(--gold);font-size:22px;margin-top:6px}
+
+/* ─── INGREDIENTS GRID ───────────────────────────────────────── */
+.ingredients{margin:56px 0}
+.ingredients h3{font-size:14px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;text-align:center}
+.ingredients h2{font-size:26px;text-align:center;margin-bottom:8px}
+@media (min-width:760px){ .ingredients h2{font-size:32px} }
+.ing-list{display:flex;flex-direction:column;gap:14px;margin-top:28px}
+.ing-row{display:flex;gap:16px;align-items:flex-start;padding:18px 18px;background:#fbf7ec;border:1px solid rgba(216,176,89,.35);border-radius:var(--r-md)}
+.ing-icon{flex:0 0 44px;width:44px;height:44px;border-radius:50%;background:var(--cream);display:flex;align-items:center;justify-content:center;color:var(--cream-deep);font-weight:900;font-size:14px;letter-spacing:0.02em}
+.ing-row h4{margin:0 0 6px;font-size:17px;font-weight:800;line-height:1.25}
+.ing-row h4 .dose{font-weight:600;color:var(--cream-deep);font-size:14px;letter-spacing:0;margin-left:6px}
+.ing-row p{margin:0;font-size:14.5px;color:var(--ink-2);line-height:1.5}
+
+/* ─── 9. OFFER BOX ───────────────────────────────────────────── */
+.offer{margin:56px 0;padding:22px;background:var(--cream);border:2px dashed var(--cream-line);border-radius:var(--r-lg);text-align:center;position:relative}
+.offer-tag{font-weight:800;font-size:18px;color:var(--ink);margin-bottom:14px;letter-spacing:0.02em}
+.offer-img-wrap{position:relative;border-radius:10px;overflow:hidden;margin:0 auto 0;background:#fff}
+.offer-img-wrap img{width:100%;display:block}
+.offer-badge{position:absolute;top:18px;right:18px;width:78px;height:78px;border-radius:50%;background:var(--rose);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;letter-spacing:-0.01em;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.offer-installments{background:var(--ink);color:#fff;padding:14px;font-weight:700;font-size:14px;letter-spacing:0.02em;margin:0;text-transform:uppercase}
+.offer-bullets{list-style:none;padding:18px 6px 6px;margin:0;text-align:left}
+.offer-bullets li{display:flex;align-items:flex-start;gap:10px;margin:10px 0;font-size:15px;line-height:1.45}
+.offer-bullets li::before{content:"";flex:0 0 20px;width:20px;height:20px;border-radius:50%;background:var(--green) center/12px no-repeat;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>");margin-top:2px}
+.offer-cta{display:block;width:100%;background:var(--ink);color:#fff;font-weight:700;font-size:16px;letter-spacing:0.04em;text-transform:uppercase;text-align:center;padding:16px;border-radius:6px;text-decoration:none;margin-top:18px;border:0;cursor:pointer}
+.offer-cta:hover{background:#000}
+.offer-trust{display:flex;justify-content:center;gap:14px;margin-top:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);font-weight:600}
+.offer-trust span{display:inline-flex;align-items:center;gap:6px}
+.offer-trust span::before{content:"●";color:var(--green);font-size:10px}
+
+/* ─── 10. REVIEWS ────────────────────────────────────────────── */
+.reviews{margin:56px 0}
+.reviews-h{font-size:14px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;text-align:center}
+.review{display:flex;gap:12px;margin:18px 0;align-items:flex-start}
+.review-avatar{width:48px;height:48px;border-radius:50%;flex:0 0 48px;background:#eee;overflow:hidden}
+.review-avatar img{width:100%;height:100%;object-fit:cover}
+.review-bubble{flex:1;background:#f0f2f5;border-radius:18px;padding:12px 14px;position:relative;font-size:15px;line-height:1.4}
+.review-bubble strong{display:block;font-weight:700;margin-bottom:4px}
+.review-react{display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #e4e6eb;border-radius:14px;padding:2px 8px 2px 6px;font-size:13px;color:#65676b;margin-top:8px;font-weight:600}
+.review-react::before{content:"😮 ❤️ 👍";font-size:11px;letter-spacing:-2px}
+
+/* ─── 11. FAQ ────────────────────────────────────────────────── */
+.faq{margin:56px 0}
+.faq-heading{text-align:center;font-size:20px;font-weight:800;letter-spacing:0.08em;margin-bottom:22px}
+.faq-item{border:1px solid #d9dde3;border-radius:10px;margin:12px 0;overflow:hidden;background:#fff}
+.faq-item summary{padding:18px 20px;font-weight:700;font-size:16px;list-style:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;color:var(--navy)}
+.faq-item summary::after{content:"";width:22px;height:22px;border:1.5px solid var(--rose);border-radius:50%;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c2331e' stroke-width='2' stroke-linecap='round'><line x1='12' y1='5' x2='12' y2='19'/><line x1='5' y1='12' x2='19' y2='12'/></svg>") center/14px no-repeat;flex:0 0 22px;transition:transform .2s ease}
+.faq-item[open] summary::after{transform:rotate(45deg)}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-body{padding:0 20px 18px;font-size:15px;color:var(--ink-2);line-height:1.55}
+
+/* ─── 12. FINAL CTA ──────────────────────────────────────────── */
+.final{margin:64px 0 24px;text-align:center}
+.final-logo{font-family:'Inter',sans-serif;font-weight:300;font-size:64px;letter-spacing:-0.04em;line-height:1;margin-bottom:8px}
+.final-logo .reg{font-size:26px;vertical-align:top;margin-left:4px;font-weight:400}
+@media (min-width:760px){ .final-logo{font-size:84px} }
+.final-q{font-size:22px;font-weight:300;color:var(--ink);margin-bottom:28px}
+.final-cta{display:inline-block;width:100%;max-width:420px;background:var(--ink);color:#fff;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:0.04em;text-transform:uppercase;padding:16px 24px;border-radius:4px;margin:0 auto}
+
+/* ─── 13. STICKY BAR ─────────────────────────────────────────── */
+.sticky-bar{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:50;transform:translateY(100%);transition:transform .25s ease;box-shadow:0 -4px 18px rgba(0,0,0,.15)}
+.sticky-bar.show{transform:translateY(0)}
+.sticky-text{font-size:13px;line-height:1.3;flex:1;min-width:0}
+.sticky-text strong{display:block;font-weight:700;font-size:14px}
+.sticky-bar .sticky-cta{flex:0 0 auto;background:var(--gold);color:var(--ink);font-weight:700;font-size:13px;padding:10px 14px;border-radius:4px;text-decoration:none;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap}
+.sticky-close{position:absolute;top:-12px;right:8px;width:24px;height:24px;background:#fff;color:var(--ink);border-radius:50%;border:0;font-size:14px;line-height:24px;text-align:center;cursor:pointer;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+
+/* ─── REVEAL ON SCROLL ───────────────────────────────────────── */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease}
+.rv.on{opacity:1;transform:none}
+
+/* ─── PROGRESS BAR ───────────────────────────────────────────── */
+.prog-wrap{position:fixed;top:0;left:0;right:0;height:3px;background:transparent;z-index:60}
+.prog{height:100%;background:var(--rose);width:0;transition:width .12s linear}
+</style>
+</head>
+<body>
+
+<div class="prog-wrap"><div id="prog" class="prog"></div></div>
+
+<div id="page-wrap">
+
+  <!-- 1. TOP BAR -->
+  <div class="adv-top-bar"><span data-v-text="topbar-pre">Publicado en</span><strong data-v-text="topbar-strong">Salud Masculina Argentina</strong></div>
+
+  <article class="adv">
+
+    <!-- HERO -->
+    <header class="adv-hero">
+      <span class="kicker" data-v-text="hero-kicker">Salud masculina · Lectura de 6 min</span>
+      <h1 data-v-text="headline">7 señales de que tu rendimiento en la cama está cayendo (y no es la edad, es química)</h1>
+      <div class="subline" data-v-text="subline">Lo que casi nadie te explica sobre el cortisol, la testosterona y el deseo — y por qué el azulito no toca la causa.</div>
+      <hr>
+
+      <div class="byline">
+        <div class="byline-avatar" data-v-img="author-avatar"><img src="https://placehold.co/200x200/0f1a2b/d8b059?text=Autor" alt="Avatar autor"></div>
+        <div class="byline-text">
+          Por <strong data-v-text="author-name">Dr. Tomás Reyes</strong>, <span data-v-text="author-role">médico clínico — salud masculina</span>
+          <span class="updated">Última actualización: <strong data-v-text="updated-date">4 de Mayo de 2026</strong></span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 2. INTRO -->
+    <section class="adv-intro rv">
+      <p class="lead" data-v-text="intro-lead">Hay una conversación que ningún hombre quiere tener.</p>
+      <p data-v-text="intro-1">No con su médico. No con sus amigos. Y mucho menos con su pareja.</p>
+      <p data-v-text="intro-2">Es esa conversación silenciosa que pasa en la cama cuando algo no sale como debería y los dos hacen como que no pasó nada. Ella mira para otro lado. Vos mirás el techo. Y al día siguiente ninguno dice nada.</p>
+      <p data-v-text="intro-3">Si eso te suena conocido, esto es para vos.</p>
+      <p data-v-text="intro-4">No porque estés roto. Sino porque lo que te está pasando tiene una causa concreta, tiene nombre, y tiene solución. <strong>Y no es el azulito.</strong></p>
+    </section>
+
+    <!-- 3. SIGN 1 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r1-img"><img src="https://placehold.co/900x558/eef0f3/9ca3af?text=Imagen+1" alt="Imagen señal 1"></div>
+      <h2><span class="num">1</span><span data-v-text="r1-title">Ella está fingiendo y vos ya lo sabés</span></h2>
+      <p data-v-text="r1-p1">No hace falta que te lo diga. Lo notás.</p>
+      <p data-v-text="r1-p2">Lo notás en sus ojos, en cómo actúa, en cómo el momento pasa demasiado rápido y los dos se dan vuelta a dormir sin decir nada.</p>
+      <p data-v-text="r1-p3">Fingir no es algo que las mujeres hacen por maldad. Lo hacen para protegerte. Para no hacerte sentir peor de lo que ya te sentís. Y eso, paradójicamente, es lo que más duele.</p>
+      <p data-v-text="r1-p4"><strong>El problema no es tu pareja.</strong> El problema es que tu cuerpo dejó de responder como antes y vos no sabés por qué ni cómo revertirlo.</p>
+    </section>
+
+    <!-- 4. SIGN 2 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r2-img"><img src="https://placehold.co/900x558/eef0f3/9ca3af?text=Imagen+2" alt="Imagen señal 2"></div>
+      <h2><span class="num">2</span><span data-v-text="r2-title">El soldadito no siempre responde cuando tiene que responder</span></h2>
+      <p data-v-text="r2-p1">Una vez puede ser el cansancio. Dos veces puede ser el estrés.</p>
+      <p data-v-text="r2-p2">Cuando empieza a pasar con regularidad, ya no es ninguna de esas cosas. Es una señal de que algo en tu sistema hormonal está funcionando por debajo de lo que debería.</p>
+      <p data-v-text="r2-p3">El <strong>cortisol elevado</strong> — la hormona que fabrica tu cuerpo cuando está bajo presión constante — bloquea activamente la producción de testosterona. No es metáfora. Es química.</p>
+      <p data-v-text="r2-p4">El hombre moderno vive en estado de alerta permanente: trabajo, deudas, poco sueño. Y el cuerpo responde apagando todo lo que considera no urgente.</p>
+      <div class="quote">
+        <span data-v-text="r2-quote">El sexo es lo primero que apaga.</span>
+      </div>
+    </section>
+
+    <!-- 5. SIGN 3 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r3-img"><img src="https://placehold.co/900x558/eef0f3/9ca3af?text=Imagen+3" alt="Imagen señal 3"></div>
+      <h2><span class="num">3</span><span data-v-text="r3-title">Terminás antes de lo que querías</span></h2>
+      <p data-v-text="r3-p1">Y después viene esa mezcla de vergüenza y frustración que no le contás a nadie.</p>
+      <p data-v-text="r3-p2">Esto pasa porque la <strong>ansiedad de rendimiento</strong> dispara cortisol, el cortisol sube la respuesta del sistema nervioso, y el cuerpo acelera todo antes de que puedas controlarlo.</p>
+      <p data-v-text="r3-p3">Es un círculo que se cierra solo. Cuanto más lo pensás, peor sale. Cuanto peor sale, más lo pensás.</p>
+      <p data-v-text="r3-p4">Y no se rompe con voluntad. <strong>Se rompe reequilibrando la química que lo generó.</strong></p>
+    </section>
+
+    <!-- 6. SIGN 4 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r4-img"><img src="https://placehold.co/900x558/eef0f3/9ca3af?text=Imagen+4" alt="Imagen señal 4"></div>
+      <h2><span class="num">4</span><span data-v-text="r4-title">Perdiste el aguante de antes</span></h2>
+      <p data-v-text="r4-p1">Antes podías bancar. Ahora hay un momento donde el cuerpo simplemente dice que no.</p>
+      <p data-v-text="r4-p2">El aguante no es solo físico. Es hormonal y neurológico. La <strong>testosterona</strong> regula la resistencia y la energía sostenida. La <strong>dopamina</strong> regula el deseo de seguir. Cuando las dos caen, el aguante cae con ellas.</p>
+      <p data-v-text="r4-p3">Lo que muchos hombres no saben es que la dopamina baja es tan responsable del problema como la testosterona baja. <strong>Perdés las ganas antes de perder la capacidad.</strong></p>
+    </section>
+
+    <!-- 7. SIGN 5 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r5-img"><img src="https://placehold.co/900x558/eef0f3/9ca3af?text=Imagen+5" alt="Imagen señal 5"></div>
+      <h2><span class="num">5</span><span data-v-text="r5-title">Dejaste de buscarla</span></h2>
+      <p data-v-text="r5-p1">No porque dejaste de quererla. Sino porque en algún punto fue más fácil evitar la situación que atravesarla y arriesgarte a quedar en evidencia.</p>
+      <p data-v-text="r5-p2">Te vas a dormir antes. Llegás tarde a propósito. Encontrás excusas que suenan razonables: el trabajo, el cansancio, mañana.</p>
+      <p data-v-text="r5-p3">Tu pareja lo nota. No siempre lo dice. Pero lo nota.</p>
+      <p data-v-text="r5-p4">Y vos sabés que algo se está deteriorando en silencio y no sabés cómo parar esa caída.</p>
+    </section>
+
+    <!-- 8. SIGN 6 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r6-img"><img src="https://placehold.co/900x558/eef0f3/9ca3af?text=Imagen+6" alt="Imagen señal 6"></div>
+      <h2><span class="num">6</span><span data-v-text="r6-title">Probaste el azulito y no es la solución que buscabas</span></h2>
+      <p data-v-text="r6-p1">Funciona esa noche. El corazón a mil, la jaqueca al día siguiente, y el lunes el problema sigue siendo exactamente el mismo.</p>
+      <p data-v-text="r6-p2">Porque <strong>el azulito no toca la causa.</strong> Es un vasodilatador. Abre el flujo sanguíneo por unas horas y listo. No regula hormonas. No baja el cortisol. No reconstruye el deseo real.</p>
+      <p data-v-text="r6-p3">Y además tenés que planearlo, lo cual mata completamente cualquier espontaneidad. Sin mencionar la cola en la farmacia mirando para abajo esperando que no te vea nadie conocido.</p>
+    </section>
+
+    <!-- 9. SIGN 7 -->
+    <section class="reason rv">
+      <div class="reason-img" data-v-img="r7-img"><img src="https://placehold.co/900x558/eef0f3/9ca3af?text=Imagen+7" alt="Imagen señal 7"></div>
+      <h2><span class="num">7</span><span data-v-text="r7-title">Compraste suplementos por Instagram y no funcionaron</span></h2>
+      <p data-v-text="r7-p1">Llegaron en una caja sin etiqueta en español. O con un prospecto que no entendiste. O directamente no había forma de saber qué había adentro.</p>
+      <p data-v-text="r7-p2">El mercado de suplementos masculinos en Argentina está lleno de productos que prometen todo y entregan nada. Resinas importadas de origen dudoso, cápsulas sin certificación, polvos que viajan desde un depósito en China sin ningún control de calidad.</p>
+      <p data-v-text="r7-p3"><strong>Y el resultado siempre es el mismo: tiraste la plata y seguís igual.</strong></p>
+    </section>
+
+    <!-- 10. BRIDGE — why this happens / how to fix it -->
+    <section class="bridge rv">
+      <h2 data-v-text="bridge-title">Por qué pasa todo esto — y cómo se revierte</h2>
+      <p data-v-text="bridge-p1">La causa raíz de los siete puntos anteriores es casi siempre la misma: el cortisol elevado suprimió tu testosterona, la dopamina cayó con ella, y tu cuerpo quedó atrapado en ese estado sin recibir la señal de salir.</p>
+      <p data-v-text="bridge-p2">La solución no es un estimulante de una noche. Es <strong>reequilibrar el sistema desde adentro</strong>, todos los días, hasta que el cuerpo vuelva a funcionar como debería.</p>
+      <p data-v-text="bridge-p3">Para eso trabaja <span class="brand-mark" data-v-text="bridge-brand">Powernax</span>.</p>
+      <p data-v-text="bridge-p4">Una gomita por día. Ocho ingredientes con respaldo científico. Certificada GMP, ANMAT, ISO y FINCS.</p>
+    </section>
+
+    <!-- 11. INGREDIENTS -->
+    <section class="ingredients rv">
+      <h3 data-v-text="ingredients-eyebrow">La fórmula completa</h3>
+      <h2 data-v-text="ingredients-title">Así funciona cada ingrediente</h2>
+      <div class="ing-list">
+        <div class="ing-row">
+          <span class="ing-icon" data-v-text="ing-1-num">01</span>
+          <div>
+            <h4><span data-v-text="ing-1-name">Shilajit del Himalaya</span><span class="dose" data-v-text="ing-1-dose">— 3000mg</span></h4>
+            <p data-v-text="ing-1-desc">Dosis clínica real, no los 250mg simbólicos de la mayoría. Activa la producción de energía celular desde adentro. No estimula los nervios como el café — trabaja a nivel mitocondrial para darte combustible real y sostenido, sin pico ni bajón.</p>
+          </div>
+        </div>
+        <div class="ing-row">
+          <span class="ing-icon" data-v-text="ing-2-num">02</span>
+          <div>
+            <h4><span data-v-text="ing-2-name">Ashwagandha</span></h4>
+            <p data-v-text="ing-2-desc">El adaptógeno más estudiado del mundo para reducir cortisol. Cuando el cortisol baja, la testosterona tiene espacio para volver. Es la pieza que rompe el círculo vicioso del estrés.</p>
+          </div>
+        </div>
+        <div class="ing-row">
+          <span class="ing-icon" data-v-text="ing-3-num">03</span>
+          <div>
+            <h4><span data-v-text="ing-3-name">Mucuna Pruriens</span></h4>
+            <p data-v-text="ing-3-desc">Precursora directa de dopamina. El neurotransmisor del deseo, la motivación, el querer. Si perdiste las ganas de buscar a tu pareja, esto trabaja exactamente ahí.</p>
+          </div>
+        </div>
+        <div class="ing-row">
+          <span class="ing-icon" data-v-text="ing-4-num">04</span>
+          <div>
+            <h4><span data-v-text="ing-4-name">Gokshura</span></h4>
+            <p data-v-text="ing-4-desc">Apoya la hormona luteinizante, la señal que le dice al cuerpo que produzca testosterona. No la fuerza artificialmente — le devuelve al sistema la señal que había dejado de mandar.</p>
+          </div>
+        </div>
+        <div class="ing-row">
+          <span class="ing-icon" data-v-text="ing-5-num">05</span>
+          <div>
+            <h4><span data-v-text="ing-5-name">Black Musli</span></h4>
+            <p data-v-text="ing-5-desc">Cinco mil años de uso en Ayurveda específicamente para vitalidad masculina y rendimiento sexual. Una de las plantas con más historia documentada en este terreno.</p>
+          </div>
+        </div>
+        <div class="ing-row">
+          <span class="ing-icon" data-v-text="ing-6-num">06</span>
+          <div>
+            <h4><span data-v-text="ing-6-name">Panax Ginseng</span></h4>
+            <p data-v-text="ing-6-desc">Resistencia, claridad mental y aguante. Para estar presente no solo físicamente sino en el momento completo.</p>
+          </div>
+        </div>
+        <div class="ing-row">
+          <span class="ing-icon" data-v-text="ing-7-num">07</span>
+          <div>
+            <h4><span data-v-text="ing-7-name">Zingiber (Jengibre)</span></h4>
+            <p data-v-text="ing-7-desc">Mejora la circulación y potencia la absorción de todos los demás ingredientes. Sin él, el resto entra a la mitad de su capacidad.</p>
+          </div>
+        </div>
+        <div class="ing-row">
+          <span class="ing-icon" data-v-text="ing-8-num">08</span>
+          <div>
+            <h4><span data-v-text="ing-8-name">Akarkara</span></h4>
+            <p data-v-text="ing-8-desc">Estimulante natural del sistema nervioso, usado en medicina tradicional para vitalidad y energía masculina.</p>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:24px;text-align:center;font-size:15px;color:var(--ink-2)" data-v-text="ingredients-foot"><strong>Ocho ingredientes. Cada uno con un rol específico. Ninguno de relleno.</strong> Y lo que dice la etiqueta es exactamente lo que hay adentro.</p>
+    </section>
+
+    <!-- 12. OFFER BOX -->
+    <section class="offer rv">
+      <div class="offer-tag" data-v-text="offer-tag">⚡ 60% OFF + ENVÍO GRATIS A TODO EL PAÍS ⚡</div>
+      <div class="offer-img-wrap" data-v-img="offer-img">
+        <img src="https://placehold.co/900x558/0f1a2b/d8b059?text=Powernax" alt="Producto en oferta">
+        <div class="offer-badge" data-v-text="offer-badge">60% OFF</div>
+      </div>
+      <div class="offer-installments" data-v-text="offer-installments">3 cuotas sin interés · Envío gratis · Garantía 30 días</div>
+      <ul class="offer-bullets">
+        <li data-v-text="offer-bullet-1">Una gomita por día. Sin horario fijo. Sin tragar cápsulas gigantes.</li>
+        <li data-v-text="offer-bullet-2">Resultados notables entre la 2ª y la 3ª semana</li>
+        <li data-v-text="offer-bullet-3">Ocho ingredientes con respaldo científico</li>
+        <li data-v-text="offer-bullet-4">Certificada GMP, ANMAT, ISO y FINCS</li>
+        <li data-v-text="offer-bullet-5">Sin receta. Sin médico. Sin farmacia. Sin explicar nada.</li>
+        <li data-v-text="offer-bullet-6">Si en 30 días no notás la diferencia, te devuelven el dinero</li>
+      </ul>
+      <a href="#" class="offer-cta cta-btn" data-v-text="offer-cta">Ver oferta — Stock limitado</a>
+      <div class="offer-trust">
+        <span data-v-text="offer-trust-1">GMP certificado</span>
+        <span data-v-text="offer-trust-2">ANMAT</span>
+        <span data-v-text="offer-trust-3">Garantía 30 días</span>
+      </div>
+    </section>
+
+    <!-- 13. REVIEWS — "Lo que dicen los que lo tomaron" -->
+    <section class="reviews rv">
+      <div class="reviews-h" data-v-text="reviews-h">Lo que dicen los que lo tomaron</div>
+      <div class="review">
+        <div class="review-avatar" data-v-img="review-1-avatar"><img src="https://placehold.co/120x120/eef0f3/9ca3af?text=R" alt="Avatar"></div>
+        <div class="review-bubble">
+          <strong data-v-text="review-1-name">Rodrigo, 44, Córdoba</strong>
+          <span data-v-text="review-1-text">Tres semanas y mi mujer me preguntó qué me había pasado. Le dije que nada. Pero los dos sabíamos.</span>
+          <div class="review-react" data-v-text="review-1-react">12</div>
+        </div>
+      </div>
+      <div class="review">
+        <div class="review-avatar" data-v-img="review-2-avatar"><img src="https://placehold.co/120x120/eef0f3/9ca3af?text=M" alt="Avatar"></div>
+        <div class="review-bubble">
+          <strong data-v-text="review-2-name">Martín, 39, CABA</strong>
+          <span data-v-text="review-2-text">Dejé de evitar las situaciones. Eso solo ya cambió todo.</span>
+          <div class="review-react" data-v-text="review-2-react">9</div>
+        </div>
+      </div>
+      <div class="review">
+        <div class="review-avatar" data-v-img="review-3-avatar"><img src="https://placehold.co/120x120/eef0f3/9ca3af?text=D" alt="Avatar"></div>
+        <div class="review-bubble">
+          <strong data-v-text="review-3-name">Diego, 47, Rosario</strong>
+          <span data-v-text="review-3-text">El efecto no baja con los días. Eso es lo que más me sorprendió. No es un pico, es un piso nuevo.</span>
+          <div class="review-react" data-v-text="review-3-react">14</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 14. FAQ -->
+    <section class="faq rv">
+      <h3 class="faq-heading" data-v-text="faq-heading">PREGUNTAS FRECUENTES</h3>
+      <details class="faq-item">
+        <summary data-v-text="faq-1-q">¿Cómo lo tomo?</summary>
+        <div class="faq-body" data-v-text="faq-1-a">Una gomita por día. Sin horario fijo. Sin mezclar nada. Sin tragar cápsulas gigantes. Idealmente con el desayuno o lo primero de la mañana, pero el efecto se sostiene igual a cualquier hora.</div>
+      </details>
+      <details class="faq-item">
+        <summary data-v-text="faq-2-q">¿En cuánto tiempo voy a notar resultados?</summary>
+        <div class="faq-body" data-v-text="faq-2-a">Los primeros cambios los notás entre la segunda y la tercera semana — más energía, mejor humor, ganas que vuelven solas. A los 30 días el cuerpo ya opera desde otro lugar.</div>
+      </details>
+      <details class="faq-item">
+        <summary data-v-text="faq-3-q">¿Necesito receta médica?</summary>
+        <div class="faq-body" data-v-text="faq-3-a">No. Es un suplemento natural, no un medicamento. Sin receta, sin médico, sin farmacia. Llega a tu casa en una caja discreta y sin etiqueta exterior.</div>
+      </details>
+      <details class="faq-item">
+        <summary data-v-text="faq-4-q">¿Es seguro? ¿Tiene contraindicaciones?</summary>
+        <div class="faq-body" data-v-text="faq-4-a">Cada lote pasa controles GMP, ANMAT, ISO y FINCS. Si tomás medicación o tenés alguna condición médica, consultá con tu médico antes de empezar.</div>
+      </details>
+      <details class="faq-item">
+        <summary data-v-text="faq-5-q">¿Qué pasa si no me funciona?</summary>
+        <div class="faq-body" data-v-text="faq-5-a">Tenés 30 días para probarlo. Si no notás la diferencia, te devuelven el 100% del dinero. Sin preguntas, sin formularios, sin trampa.</div>
+      </details>
+      <details class="faq-item">
+        <summary data-v-text="faq-6-q">¿Cómo es el envío?</summary>
+        <div class="faq-body" data-v-text="faq-6-a">Envío gratis a todo el país. Llega entre 3 y 6 días hábiles, en una caja discreta sin nombre del producto ni de la marca afuera.</div>
+      </details>
+    </section>
+
+    <!-- 15. FINAL CTA -->
+    <section class="final rv">
+      <div class="final-logo"><span data-v-text="brand-name">POWERNAX</span><span class="reg">®</span></div>
+      <div class="final-q" data-v-text="final-q">¿Listo para volver a sentirte vos?</div>
+      <a href="#" class="final-cta cta-btn" data-v-text="final-cta">Ver oferta — 60% OFF</a>
+    </section>
+
+  </article>
+
+  <!-- 16. STICKY -->
+  <aside id="sticky" class="sticky-bar">
+    <button id="sticky-close" class="sticky-close" aria-label="Cerrar">×</button>
+    <div class="sticky-text">
+      <strong data-v-text="sticky-h">Powernax — 60% OFF</strong>
+      <span data-v-text="sticky-sub">Envío gratis · Garantía 30 días</span>
+    </div>
+    <a href="#" class="sticky-cta cta-btn" data-v-text="sticky-cta">Lo quiero</a>
+  </aside>
+
+</div>
+
+<script>
+(function(){
+  // Reveal-on-scroll
+  var rv = document.querySelectorAll('.rv');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); }
+      });
+    }, {threshold:.07, rootMargin:'0px 0px -20px 0px'});
+    rv.forEach(function(el){ io.observe(el); });
+  } else {
+    rv.forEach(function(el){ el.classList.add('on'); });
+  }
+
+  // Progress bar + sticky bar (after 22% scroll)
+  var prog = document.getElementById('prog');
+  var sticky = document.getElementById('sticky');
+  var stickyClose = document.getElementById('sticky-close');
+  var dismissed = false;
+  function onScroll(){
+    var doc = document.documentElement;
+    var ratio = doc.scrollTop / Math.max(1, (doc.scrollHeight - doc.clientHeight));
+    if (prog) prog.style.width = (ratio * 100) + '%';
+    if (sticky && !dismissed) sticky.classList.toggle('show', ratio >= 0.22);
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  if (stickyClose) stickyClose.addEventListener('click', function(){
+    dismissed = true; sticky.classList.remove('show');
+  });
+})();
+</script>
+
+</body>
+</html>

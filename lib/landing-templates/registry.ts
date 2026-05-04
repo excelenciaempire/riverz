@@ -38,6 +38,14 @@ export const LANDING_TEMPLATES: LandingTemplate[] = [
     htmlUrl: '/templates/advertorial-listicle.html',
   },
   {
+    id: 'listicle-powernax',
+    kind: 'listicle',
+    name: 'Listicle — 7 Señales (Powernax)',
+    description:
+      'Listicle masculino largo con 7 señales numeradas, sección puente "por qué pasa esto", grid de 8 ingredientes con dosis, oferta con garantía, reviews y FAQ. Inspirado en suplementos de testosterona/rendimiento. Paleta navy + gold + rojo.',
+    htmlUrl: '/templates/listicle-powernax.html',
+  },
+  {
     id: 'product-page-default',
     kind: 'product_page',
     name: 'Product Page — Hero & Buy Box',
