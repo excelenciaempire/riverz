@@ -25,7 +25,7 @@ export default function SignUpPage() {
         setErrorMsg(
           data?.error === 'invalid_email'
             ? 'Por favor introduce un correo válido.'
-            : 'No pudimos guardarte. Intenta de nuevo en unos segundos.'
+            : 'No pudimos guardarte. Intenta de nuevo en unos segundos.',
         );
         return;
       }
@@ -39,18 +39,27 @@ export default function SignUpPage() {
   const success = status === 'success' || status === 'already';
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#000000]">
-      <div className="w-full max-w-sm px-4">
+    <div className="app-v2 flex min-h-screen items-center justify-center bg-[var(--rvz-bg)] px-4">
+      <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-[#07A498] tracking-wider">RIVERZ</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Estamos cerrando registros — únete a la lista de espera
+          <Link href="/" className="inline-flex items-center gap-2">
+            <span className="grid h-9 w-9 place-items-center rounded-md bg-[var(--rvz-ink)] text-[var(--rvz-accent)] text-[14px] font-bold">
+              R
+            </span>
+            <span className="text-[20px] font-semibold tracking-tight text-[var(--rvz-ink)]">
+              Riverz
+            </span>
+          </Link>
+          <p className="app-v2-eyebrow mt-4">Lista de espera</p>
+          <h1 className="app-v2-page-h2 mt-2">Únete al estudio</h1>
+          <p className="mt-3 text-[13px] text-[var(--rvz-ink-muted)]">
+            Estamos cerrando registros. Te avisamos en cuanto abramos cupos.
           </p>
         </div>
 
         {success ? (
-          <div className="rounded-2xl border border-[#07A498]/40 bg-[#07A498]/5 p-6 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#07A498]/20 text-[#07A498]">
+          <div className="card-cream p-6 text-center">
+            <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-[var(--rvz-accent)] text-[var(--rvz-accent-fg)]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -59,23 +68,23 @@ export default function SignUpPage() {
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="h-6 w-6"
+                className="h-5 w-5"
               >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-[18px] font-medium tracking-tight">
               {status === 'already' ? 'Ya estás en la lista' : '¡Estás dentro!'}
             </h2>
-            <p className="mt-2 text-sm text-gray-400">
-              Te avisaremos a <span className="text-gray-200">{email}</span> en cuanto abramos
-              nuevos cupos.
+            <p className="mt-2 text-[13px] text-[var(--rvz-ink-muted)]">
+              Te avisamos a <span className="font-medium text-[var(--rvz-ink)]">{email}</span> en
+              cuanto abramos nuevos cupos.
             </p>
             <Link
               href="/sign-in"
-              className="mt-5 inline-block text-sm font-medium text-[#07A498] hover:text-[#068f84]"
+              className="mt-5 inline-block text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:text-[var(--rvz-ink)]"
             >
-              ¿Ya tienes cuenta? Inicia sesión
+              ¿Ya tenés cuenta? Iniciar sesión →
             </Link>
           </div>
         ) : (
@@ -83,7 +92,7 @@ export default function SignUpPage() {
             <div>
               <label
                 htmlFor="waitlist-email"
-                className="ml-1 mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-400"
+                className="ml-1 mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--rvz-ink-muted)]"
               >
                 Correo electrónico
               </label>
@@ -96,26 +105,29 @@ export default function SignUpPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={status === 'loading'}
-                className="w-full rounded-xl border border-gray-800 bg-[#0a0a0a] px-4 py-3 text-white outline-none transition-all focus:border-[#07A498] focus:ring-1 focus:ring-[#07A498] disabled:opacity-60"
+                className="w-full rounded-lg border border-[var(--rvz-input-border)] bg-[var(--rvz-input-bg)] px-3.5 py-3 text-[var(--rvz-ink)] placeholder:text-[var(--rvz-ink-faint)] outline-none transition-all focus:border-[var(--rvz-ink)] focus:ring-2 focus:ring-[var(--rvz-focus-ring)] disabled:opacity-60"
               />
             </div>
 
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="mt-2 w-full rounded-xl bg-[#07A498] py-3 font-medium text-white shadow-lg shadow-[#07A498]/20 transition-all hover:bg-[#068f84] disabled:cursor-not-allowed disabled:opacity-60"
+              className="app-v2-cta mt-2 w-full justify-center py-3 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {status === 'loading' ? 'Enviando…' : 'Unirme a la lista de espera'}
             </button>
 
             {status === 'error' && (
-              <p className="text-sm text-red-500">{errorMsg}</p>
+              <p className="text-[13px] text-red-500">{errorMsg}</p>
             )}
 
-            <p className="pt-2 text-center text-sm text-gray-500">
-              ¿Ya tienes cuenta?{' '}
-              <Link href="/sign-in" className="font-medium text-[#07A498] hover:text-[#068f84]">
-                Inicia sesión
+            <p className="pt-2 text-center text-[13px] text-[var(--rvz-ink-muted)]">
+              ¿Ya tenés cuenta?{' '}
+              <Link
+                href="/sign-in"
+                className="font-semibold text-[var(--rvz-ink)] underline underline-offset-2 hover:opacity-80"
+              >
+                Iniciar sesión
               </Link>
             </p>
           </form>

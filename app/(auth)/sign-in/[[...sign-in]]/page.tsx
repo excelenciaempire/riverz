@@ -3,11 +3,19 @@ import Link from 'next/link';
 
 export default function SignInPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#000000]">
-      <div className="w-full max-w-sm px-4">
+    <div className="app-v2 flex min-h-screen items-center justify-center bg-[var(--rvz-bg)] px-4">
+      <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-[#07A498] tracking-wider">RIVERZ</h1>
-          <p className="mt-2 text-sm text-gray-500">Bienvenido de nuevo</p>
+          <Link href="/" className="inline-flex items-center gap-2">
+            <span className="grid h-9 w-9 place-items-center rounded-md bg-[var(--rvz-ink)] text-[var(--rvz-accent)] text-[14px] font-bold">
+              R
+            </span>
+            <span className="text-[20px] font-semibold tracking-tight text-[var(--rvz-ink)]">
+              Riverz
+            </span>
+          </Link>
+          <p className="app-v2-eyebrow mt-4">Acceso al estudio</p>
+          <h1 className="app-v2-page-h2 mt-2">Bienvenido de nuevo</h1>
         </div>
         <SignIn
           appearance={{
@@ -21,17 +29,23 @@ export default function SignInPage() {
               dividerRow: 'hidden',
               footer: 'hidden',
               footerAction: 'hidden',
-              formFieldLabel: 'text-gray-400 text-xs uppercase tracking-wide font-medium ml-1 mb-1.5',
-              formFieldInput: 'bg-[#0a0a0a] border border-gray-800 text-white rounded-xl px-4 py-3 focus:border-[#07A498] focus:ring-1 focus:ring-[#07A498] transition-all outline-none',
-              formButtonPrimary: 'bg-[#07A498] hover:bg-[#068f84] text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-[#07A498]/20 mt-4',
-              footerActionLink: 'text-[#07A498] hover:text-[#068f84] font-medium text-sm',
-              footerActionText: 'text-gray-500 text-sm',
-              identityPreviewText: 'text-gray-300',
-              identityPreviewEditButton: 'text-[#07A498] ml-2',
-              formFieldInputShowPasswordButton: 'text-gray-500 hover:text-white',
-              otpCodeFieldInput: 'bg-[#0a0a0a] border-gray-800 text-white rounded-lg',
-              formResendCodeLink: 'text-[#07A498] hover:text-[#068f84]',
-              errorMessage: 'text-red-500 text-sm mt-2',
+              formFieldLabel:
+                'text-[var(--rvz-ink-muted)] text-[10px] uppercase tracking-[0.16em] font-semibold ml-1 mb-1.5',
+              formFieldInput:
+                'bg-[var(--rvz-input-bg)] border border-[var(--rvz-input-border)] text-[var(--rvz-ink)] rounded-lg px-3.5 py-3 focus:border-[var(--rvz-ink)] focus:ring-2 focus:ring-[var(--rvz-focus-ring)] transition-all outline-none',
+              formButtonPrimary:
+                'bg-[var(--rvz-accent)] hover:bg-[var(--rvz-accent-hover)] text-[var(--rvz-accent-fg)] font-bold uppercase tracking-[0.04em] text-[12px] py-3 rounded-md transition-all mt-4',
+              footerActionLink:
+                'text-[var(--rvz-ink)] hover:opacity-80 font-medium text-[13px]',
+              footerActionText: 'text-[var(--rvz-ink-muted)] text-[13px]',
+              identityPreviewText: 'text-[var(--rvz-ink)]',
+              identityPreviewEditButton: 'text-[var(--rvz-ink)] ml-2',
+              formFieldInputShowPasswordButton:
+                'text-[var(--rvz-ink-faint)] hover:text-[var(--rvz-ink)]',
+              otpCodeFieldInput:
+                'bg-[var(--rvz-input-bg)] border-[var(--rvz-input-border)] text-[var(--rvz-ink)] rounded-lg',
+              formResendCodeLink: 'text-[var(--rvz-ink)] hover:opacity-80',
+              errorMessage: 'text-red-500 text-[13px] mt-2',
             },
             layout: {
               socialButtonsPlacement: 'bottom',
@@ -44,11 +58,11 @@ export default function SignInPage() {
           afterSignInUrl="/crear"
         />
 
-        <p className="mt-6 text-center text-sm text-gray-500">
-          ¿Aún no tienes cuenta?{' '}
+        <p className="mt-6 text-center text-[13px] text-[var(--rvz-ink-muted)]">
+          ¿Aún no tenés cuenta?{' '}
           <Link
             href="/sign-up"
-            className="font-medium text-[#07A498] hover:text-[#068f84]"
+            className="font-semibold text-[var(--rvz-ink)] underline underline-offset-2 hover:opacity-80"
           >
             Únete a la lista de espera
           </Link>
@@ -57,4 +71,3 @@ export default function SignInPage() {
     </div>
   );
 }
-
