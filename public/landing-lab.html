@@ -242,6 +242,17 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
 #font-ctrl{position:fixed;z-index:9999;background:#0D0E14;border:1px solid #252840;border-radius:7px;padding:4px 6px;display:none;align-items:center;gap:4px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #font-ctrl button{width:24px;height:24px;border:1px solid #252840;background:#111420;color:#9AA3C0;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:'Instrument Sans',sans-serif;transition:all .15s}
 #font-ctrl button:hover{background:#1E2436;color:#C8CAD8}
+#font-ctrl .fc-sep{width:1px;height:18px;background:#252840;margin:0 2px}
+#font-ctrl .fc-act{font-size:13px}
+#font-ctrl .fc-danger:hover{background:rgba(228,78,58,.15);color:#ff7a64;border-color:rgba(228,78,58,.4)}
+/* Move-mode: every potential drop target gets a teal outline so the
+   user knows where they can click to land the block they picked up. */
+body.riverz-move-mode [data-section-id]{outline:2px dashed rgba(7,164,152,.55);outline-offset:3px;cursor:copy}
+body.riverz-move-mode [data-section-id]:hover{outline-color:#07A498;background:rgba(7,164,152,.08)}
+body.riverz-move-mode #page-wrap *{cursor:copy}
+.riverz-move-banner{position:fixed;left:50%;top:60px;transform:translateX(-50%);background:#07A498;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;z-index:99998;box-shadow:0 4px 18px rgba(7,164,152,.4);display:flex;align-items:center;gap:10px;font-family:'Instrument Sans',sans-serif}
+.riverz-move-banner button{background:rgba(255,255,255,.18);border:0;color:#fff;padding:3px 9px;border-radius:11px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600}
+.riverz-move-banner button:hover{background:rgba(255,255,255,.3)}
 #font-size-val{font-size:10px;color:#5B6490;min-width:28px;text-align:center;font-family:'Instrument Sans',sans-serif}
 #sticky-panel{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#0D0E14;border:1px solid #252840;border-radius:8px;padding:10px 14px;z-index:201;display:none;align-items:center;gap:10px;font-family:'Instrument Sans',sans-serif;box-shadow:0 -4px 20px rgba(0,0,0,.5)}
 #sticky-panel.show{display:flex}
@@ -823,9 +834,12 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
   </div>
 </div>
 <div id="font-ctrl">
-  <button onclick="changeFontSize(-1)">A&#x207B;</button>
+  <button onclick="changeFontSize(-1)" title="Más chico">A&#x207B;</button>
   <span id="font-size-val">16px</span>
-  <button onclick="changeFontSize(1)">A&#x207A;</button>
+  <button onclick="changeFontSize(1)" title="Más grande">A&#x207A;</button>
+  <span class="fc-sep"></span>
+  <button class="fc-act" onclick="moveSelectedBlock()" title="Mover este bloque a otra ubicación">&#x21F5;</button>
+  <button class="fc-act fc-danger" onclick="deleteSelectedBlock()" title="Eliminar este bloque">&#x1F5D1;</button>
 </div>
 <div id="sticky-panel">
   <label style="font-size:10px;color:#5B6490;white-space:nowrap">Sticky aparece al:</label>
@@ -1696,6 +1710,95 @@ function changeFontFamily(value){
   if (typeof qSave === 'function') qSave();
 }
 window.changeFontFamily = changeFontFamily;
+
+// ── DELETE / MOVE selected block ──────────────────────────────
+// curEditEl is the [data-v-text] element the user clicked into for
+// inline editing. Both actions walk up to its closest "movable" parent
+// (the [data-section-id] element) so we delete/move whole blocks, not
+// just the inner text node.
+function _movableParentOf(el){
+  if (!el) return null;
+  var p = el.closest('[data-section-id]');
+  return p || el;
+}
+function deleteSelectedBlock(){
+  if (!curEditEl) { toast('Seleccioná un texto o bloque primero',1); return; }
+  var target = _movableParentOf(curEditEl);
+  if (!target || !target.parentNode) return;
+  // For a top-level section, ask before nuking it — dragging a whole
+  // section out by accident would be costly. For inline blocks just go.
+  var isTop = target.dataset.sectionId && target.dataset.sectionId.indexOf('top-') === 0;
+  if (isTop && !confirm('¿Eliminar esta sección entera? Podés deshacerlo con Ctrl+Z.')) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  target.parentNode.removeChild(target);
+  hideFontCtrl();
+  rebuildSlotTables();
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
+  saveAll();
+  toast('🗑 Bloque eliminado · Ctrl+Z para deshacer');
+}
+window.deleteSelectedBlock = deleteSelectedBlock;
+
+// Click-to-pick + click-to-place. Lighter-weight than dragging when the
+// user just wants to move one block across a long page.
+var _moveSrc = null;
+var _moveBanner = null;
+function moveSelectedBlock(){
+  if (!curEditEl) { toast('Seleccioná un texto o bloque primero',1); return; }
+  _moveSrc = _movableParentOf(curEditEl);
+  if (!_moveSrc) return;
+  document.body.classList.add('riverz-move-mode');
+  hideFontCtrl();
+  // Floating banner with cancel
+  _moveBanner = document.createElement('div');
+  _moveBanner.className = 'riverz-move-banner';
+  _moveBanner.innerHTML = 'Click donde querés mover este bloque <button type="button" id="riverz-move-cancel">Cancelar</button>';
+  document.body.appendChild(_moveBanner);
+  document.getElementById('riverz-move-cancel').onclick = cancelMove;
+  // ESC also cancels
+  document.addEventListener('keydown', _moveKeyHandler, true);
+  // Click on a target lands the block there
+  setTimeout(function(){
+    document.addEventListener('click', _moveClickHandler, true);
+  }, 50);
+}
+function _moveKeyHandler(e){
+  if (e.key === 'Escape') { e.preventDefault(); cancelMove(); }
+}
+function _moveClickHandler(e){
+  if (!_moveSrc) return;
+  var target = e.target.closest('[data-section-id]');
+  if (!target || target === _moveSrc || _moveSrc.contains(target)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  // Prefer same-container placement (same parent → reorder). If different
+  // parent, also allow it — the user clicked deliberately.
+  var rect = target.getBoundingClientRect();
+  var horizontal = false;
+  var parentCs = getComputedStyle(target.parentNode);
+  if (parentCs.display === 'flex') horizontal = (parentCs.flexDirection || 'row').indexOf('row') === 0;
+  var before = horizontal
+    ? (e.clientX - rect.left) < rect.width / 2
+    : (e.clientY - rect.top) < rect.height / 2;
+  target.parentNode.insertBefore(_moveSrc, before ? target : target.nextSibling);
+  finishMove();
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
+  saveAll();
+  toast('✓ Bloque movido');
+}
+function cancelMove(){
+  finishMove();
+  toast('Movimiento cancelado');
+}
+function finishMove(){
+  document.removeEventListener('click', _moveClickHandler, true);
+  document.removeEventListener('keydown', _moveKeyHandler, true);
+  document.body.classList.remove('riverz-move-mode');
+  if (_moveBanner) { try { _moveBanner.remove(); } catch(e){} _moveBanner = null; }
+  _moveSrc = null;
+}
+window.moveSelectedBlock = moveSelectedBlock;
 
 // Wraps every [data-v-img] with always-visible "Cambiar imagen" + delete
 // buttons so the user never has to guess where to click to swap an image.
