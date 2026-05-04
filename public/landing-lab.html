@@ -1200,7 +1200,8 @@ var IMG_KEYS = ['img-1','img-2','img-3','img-4','img-5a','img-5b','img-5c','img-
 // this file and don't need fetching.
 var TEMPLATE_FILES = {
   'pilar-listicle': '/templates/advertorial-listicle.html',
-  'product-page-default': '/templates/product-page-default.html'
+  'product-page-default': '/templates/product-page-default.html',
+  'product-page-bold': '/templates/product-page-bold.html'
 };
 // Tracks which template's HTML is currently mounted in #page-wrap. null =
 // the inline Vitalu layout that ships with this file.
@@ -2208,17 +2209,11 @@ function activateProject(id){
   if (typeof applyLayoutOrder === 'function') applyLayoutOrder(proj);
   var texts=Object.keys(proj.texts).length>0?proj.texts:DEFAULT_TEXTS;
   applyTexts(texts);
-  // For each slot, prefer the user's saved image; fall back to the
-  // template's default; if neither, clear the slot. We don't blindly
-  // resetSlot first anymore — that wiped the placeholder images that
-  // ship with templates like Pilar before any user value got applied.
-  IMG_KEYS.forEach(function(k){
-    var v = proj.images[k];
-    if (v === null) { collapseSlot(k); return; }
-    if (typeof v === 'string' && v) { setSlot(k, v); return; }
-    if (TEMPLATE_DEFAULT_IMAGES[k]) setSlot(k, TEMPLATE_DEFAULT_IMAGES[k]);
-    else resetSlot(k);
-  });
+  // For each slot, prefer the user's saved image (resolving per-viewport
+  // overrides); fall back to the template's default; if neither, clear it.
+  // We don't blindly resetSlot first — that wiped the placeholder images
+  // that ship with templates like Pilar before any user value got applied.
+  applySlotsForViewport(proj, vp);
   applyCTA(proj.ctaUrl);
   if (typeof reapplyBlockComments === 'function') reapplyBlockComments();
   isRestoring=false;
@@ -2250,9 +2245,81 @@ function imgEl(k){
 function resetSlot(k){var el=imgEl(k);if(!el)return;el.src='';var ph=el.closest('.img-ph');if(ph)ph.classList.remove('loaded','collapsed');}
 function setSlot(k,src){var el=imgEl(k);if(!el)return;el.src=src;var ph=el.closest('.img-ph');if(ph){ph.classList.add('loaded');ph.classList.remove('collapsed');}}
 function collapseSlot(k){var el=imgEl(k);if(!el)return;el.src='';var ph=el.closest('.img-ph');if(ph){ph.classList.remove('loaded');ph.classList.add('collapsed');}}
+
+// ── PER-VIEWPORT IMAGE OVERRIDES ─────────────────────────────
+// proj.images[k] can be one of three shapes:
+//   string                       → applies to both desktop and mobile (legacy
+//                                  shape; what every project saved before
+//                                  this change still uses).
+//   { d: 'url', m: 'url'|null }  → desktop URL + optional mobile-only override.
+//                                  When .m is a string, mobile view shows it
+//                                  and desktop keeps showing .d.
+//   null                         → slot intentionally cleared.
+//
+// UX rule (matches what the user asked for):
+//   • Uploading in DESKTOP replaces the whole entry → applies to both views
+//     (any prior mobile override is wiped, so the user gets the "shared
+//     image" mental model by default).
+//   • Uploading in MOBILE only writes .m, leaving desktop untouched →
+//     creates the responsive split.
+function imgEntryGet(entry, viewport){
+  if (entry === null || entry === undefined) return null;
+  if (typeof entry === 'string') return entry;
+  if (typeof entry === 'object'){
+    if (viewport === 'mobile' && typeof entry.m === 'string' && entry.m) return entry.m;
+    if (typeof entry.d === 'string' && entry.d) return entry.d;
+    return null;
+  }
+  return null;
+}
+function imgEntryDesktop(entry){
+  if (entry === null || entry === undefined) return null;
+  if (typeof entry === 'string') return entry;
+  if (typeof entry === 'object' && typeof entry.d === 'string') return entry.d || null;
+  return null;
+}
+function imgEntryMobile(entry){
+  if (entry && typeof entry === 'object' && typeof entry.m === 'string' && entry.m) return entry.m;
+  return null;
+}
+function setProjImage(proj, k, url, viewport){
+  if (!proj) return;
+  if (viewport === 'mobile'){
+    var existing = proj.images[k];
+    var d = (typeof existing === 'string') ? existing
+          : (existing && typeof existing.d === 'string') ? existing.d : '';
+    proj.images[k] = { d: d || '', m: url };
+  } else {
+    // Desktop upload: collapse to a flat string so both views share it.
+    proj.images[k] = url;
+  }
+}
+function clearProjImage(proj, k, viewport){
+  if (!proj) return;
+  var existing = proj.images[k];
+  if (viewport === 'mobile' && existing && typeof existing === 'object' && existing.m){
+    // Mobile-only delete: revert to the desktop image, keep that visible.
+    proj.images[k] = existing.d || null;
+    return;
+  }
+  proj.images[k] = null;
+}
+// Re-apply every slot's <img src> for the given viewport. Used by setVP and
+// after restore/undo so the canvas reflects the active viewport's image.
+function applySlotsForViewport(proj, viewport){
+  if (!proj) return;
+  IMG_KEYS.forEach(function(k){
+    var entry = proj.images[k];
+    if (entry === null){ collapseSlot(k); return; }
+    var url = imgEntryGet(entry, viewport);
+    if (url){ setSlot(k, url); return; }
+    if (TEMPLATE_DEFAULT_IMAGES[k]) setSlot(k, TEMPLATE_DEFAULT_IMAGES[k]);
+    else resetSlot(k);
+  });
+}
 function pickImg(key){ if(typeof openImgGen==='function'){openImgGen(key);return;} curImgKey=key; var m=g('img-modal');if(m)m.classList.add('on'); }
 function closeImgModal(){var m=g('img-modal');if(m)m.classList.remove('on');curImgKey=null;}
-function applyUrl(){var inp=g('im-url-in');if(!inp)return;var v=inp.value.trim();if(!v){toast('Pega una URL primero',1);return;}setSlot(curImgKey,v);var proj=getActive();if(proj)proj.images[curImgKey]=v;snapshot();saveAll();closeImgModal();toast('Imagen aplicada');}
+function applyUrl(){var inp=g('im-url-in');if(!inp)return;var v=inp.value.trim();if(!v){toast('Pega una URL primero',1);return;}setSlot(curImgKey,v);var proj=getActive();if(proj)setProjImage(proj,curImgKey,v,vp);snapshot();saveAll();closeImgModal();toast(vp==='mobile'?'Imagen aplicada solo en mobile':'Imagen aplicada');}
 // Upload images straight to the merchant's own Shopify Files. Each user
 // stores their landing assets in their connected store from day one — no
 // intermediate Supabase hop, no re-upload at publish time. The flow:
@@ -2316,12 +2383,30 @@ async function onFilePick(e){
     var blob=await compressImageFile(file,1920,0.85);
     var url=await uploadImageToShopifyFiles(blob,file.name,curImgKey);
     setSlot(curImgKey,url);
-    var proj=getActive();if(proj)proj.images[curImgKey]=url;
-    snapshot();saveAll();closeImgModal();toast('Imagen cargada');
+    var proj=getActive();if(proj)setProjImage(proj,curImgKey,url,vp);
+    snapshot();saveAll();closeImgModal();toast(vp==='mobile'?'Imagen cargada solo en mobile':'Imagen cargada');
   }catch(err){console.error('onFilePick',err);toast('Error: '+(err.message||'no se pudo subir'),1);}
   finally{ if(e&&e.target) e.target.value=''; }
 }
-function delImg(e,key){e.stopPropagation();e.preventDefault();var proj=getActive();if(proj)proj.images[key]=null;collapseSlot(key);snapshot();saveAll();toast('Imagen eliminada');}
+function delImg(e,key){
+  e.stopPropagation();e.preventDefault();
+  var proj=getActive();if(!proj)return;
+  var entry=proj.images[key];
+  var hadMobile=entry && typeof entry==='object' && entry.m;
+  clearProjImage(proj,key,vp);
+  // After clearing, re-resolve what should now show in this viewport.
+  // Mobile-only delete reverts to the desktop image; full delete collapses.
+  var nextEntry=proj.images[key];
+  if (nextEntry===null){ collapseSlot(key); }
+  else {
+    var url=imgEntryGet(nextEntry,vp);
+    if (url) setSlot(key,url);
+    else if (TEMPLATE_DEFAULT_IMAGES[key]) setSlot(key,TEMPLATE_DEFAULT_IMAGES[key]);
+    else collapseSlot(key);
+  }
+  snapshot();saveAll();
+  toast(vp==='mobile' && hadMobile ? 'Override mobile eliminado' : 'Imagen eliminada');
+}
 
 // ── UNDO/REDO ─────────────────────────────────────────────────
 function snapshot(){if(isRestoring||!activeId)return;collectTexts();var proj=getActive();if(!proj)return;var snap={texts:JSON.parse(JSON.stringify(proj.texts)),images:JSON.parse(JSON.stringify(proj.images)),layoutOrder:proj.layoutOrder?JSON.parse(JSON.stringify(proj.layoutOrder)):null};if(!histMap[activeId]){histMap[activeId]=[];histIdx[activeId]=-1;}histMap[activeId].splice(histIdx[activeId]+1);histMap[activeId].push(snap);if(histMap[activeId].length>60)histMap[activeId].shift();histIdx[activeId]=histMap[activeId].length-1;updateUR();}
@@ -2344,7 +2429,7 @@ function doRedo(){
   updateUR();
   toast('↷ Rehecho');
 }
-function applySnap(snap){isRestoring=true;var proj=getActive();if(!proj){isRestoring=false;return;}proj.texts=JSON.parse(JSON.stringify(snap.texts||{}));proj.images=JSON.parse(JSON.stringify(snap.images||{}));if(snap.layoutOrder){proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));if(typeof applyLayoutOrder==='function')applyLayoutOrder(proj);}applyTexts(proj.texts);IMG_KEYS.forEach(function(k){var v=proj.images[k];if(v===null){collapseSlot(k);return;}if(typeof v==='string'&&v){setSlot(k,v);return;}if(TEMPLATE_DEFAULT_IMAGES[k])setSlot(k,TEMPLATE_DEFAULT_IMAGES[k]);else resetSlot(k);});saveAll();isRestoring=false;}
+function applySnap(snap){isRestoring=true;var proj=getActive();if(!proj){isRestoring=false;return;}proj.texts=JSON.parse(JSON.stringify(snap.texts||{}));proj.images=JSON.parse(JSON.stringify(snap.images||{}));if(snap.layoutOrder){proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));if(typeof applyLayoutOrder==='function')applyLayoutOrder(proj);}applyTexts(proj.texts);applySlotsForViewport(proj,vp);saveAll();isRestoring=false;}
 function updateUR(){var id=activeId;var u=g('btn-undo'),r=g('btn-redo');if(u)u.disabled=!id||(histIdx[id]||0)<=0;if(r)r.disabled=!id||(histIdx[id]||0)>=((histMap[id]||[]).length-1);}
 
 // ── FONT SIZE CONTROLS ────────────────────────────────────────
@@ -2406,7 +2491,17 @@ function toggleStickyPanel(){var p=g('sticky-panel');if(p)p.classList.toggle('sh
 function closeStickyPanel(){var p=g('sticky-panel');if(p)p.classList.remove('show');}
 
 // ── VIEWPORT ─────────────────────────────────────────────────
-function setVP(mode){vp=mode;g('vp-desk').classList.toggle('on',mode==='desktop');g('vp-mob').classList.toggle('on',mode==='mobile');document.body.classList.toggle('mob-mode',mode==='mobile');if(mode==='mobile'){var pa=g('page-area');if(pa)pa.scrollTop=0;}}
+function setVP(mode){
+  vp=mode;
+  g('vp-desk').classList.toggle('on',mode==='desktop');
+  g('vp-mob').classList.toggle('on',mode==='mobile');
+  document.body.classList.toggle('mob-mode',mode==='mobile');
+  if(mode==='mobile'){var pa=g('page-area');if(pa)pa.scrollTop=0;}
+  // Re-apply each slot so projects with mobile-only image overrides actually
+  // swap the visible <img src> when the user toggles the viewport.
+  var proj=getActive();
+  if(proj){applySlotsForViewport(proj,vp);}
+}
 function toggleSidebar(){sidebarOpen=!sidebarOpen;var sb=g('sidebar'),btn=g('sb-toggle');if(sb)sb.classList.toggle('collapsed',!sidebarOpen);if(btn)btn.textContent=sidebarOpen?'\u2630':'\u276F';}
 function goToDashboard(){
   // This HTML runs inside an iframe at /landing-lab/edit, so navigate the
@@ -2424,6 +2519,30 @@ function buildHTML(proj){
   clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
   clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired'].forEach(function(a){ el.removeAttribute(a); }); });
   clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
+  // Bake responsive <picture>/<source> wrappers for any slot with a
+  // mobile-only override BEFORE we strip data-v-img — we need that attribute
+  // to look up proj.images[slot]. The current <img src> in the canvas
+  // already shows whichever viewport is active, so we restore the desktop
+  // URL on the <img> for the export and put the mobile URL in a <source>.
+  clone.querySelectorAll('[data-v-img]').forEach(function(slotEl){
+    var slot=slotEl.getAttribute('data-v-img');
+    var entry=proj.images ? proj.images[slot] : null;
+    var dUrl=imgEntryDesktop(entry);
+    var mUrl=imgEntryMobile(entry);
+    if(!mUrl) return; // no mobile override → leave the static <img> alone
+    var dFallback=dUrl||mUrl; // covers the rare "only mobile uploaded" case
+    slotEl.querySelectorAll('img').forEach(function(img){
+      if(dFallback) img.setAttribute('src',dFallback);
+      if(img.parentElement && img.parentElement.tagName==='PICTURE') return;
+      var picture=document.createElement('picture');
+      var source=document.createElement('source');
+      source.setAttribute('media','(max-width:768px)');
+      source.setAttribute('srcset',mUrl);
+      img.parentNode.insertBefore(picture,img);
+      picture.appendChild(source);
+      picture.appendChild(img);
+    });
+  });
   clone.querySelectorAll('[data-v-text],[data-v-img]').forEach(function(el){el.removeAttribute('data-v-text');el.removeAttribute('data-v-img');});
   clone.classList.remove('edit-mode');clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
   var ctaUrl=proj.ctaUrl||'#';clone.querySelectorAll('a.cta-btn,a.sticky-btn').forEach(function(a){a.href=ctaUrl;});
@@ -2456,14 +2575,37 @@ function buildPublishPayload(proj){
 
   // Map each [data-v-img] back to the original src in proj.images, then
   // replace the src with a sentinel + record the upload job for the server.
+  // When the slot has a mobile-only override we also wrap the <img> in a
+  // <picture> with a <source media="(max-width:768px)"> pointing at a second
+  // sentinel — both URLs go through the same Shopify upload flow on the
+  // server, just with distinct slot keys (`<slot>` and `<slot>__m`).
   var images=[];
   clone.querySelectorAll('[data-v-img]').forEach(function(slotEl){
     var slot=slotEl.getAttribute('data-v-img');
-    var src=proj.images && proj.images[slot];
-    if(typeof src!=='string' || !src) return;
-    var placeholder='RIVERZ_IMG__'+slot+'__'+Math.random().toString(36).slice(2,8)+'__';
-    images.push({slot:slot,placeholder:placeholder,source:src});
-    slotEl.querySelectorAll('img').forEach(function(img){ img.setAttribute('src',placeholder); });
+    var entry=proj.images ? proj.images[slot] : null;
+    var dUrl=imgEntryDesktop(entry);
+    var mUrl=imgEntryMobile(entry);
+    if(!dUrl && !mUrl) return;
+    var imgs=slotEl.querySelectorAll('img'); if(!imgs.length) return;
+    var dForImg = dUrl || mUrl; // if user only set a mobile override, fall back to it as desktop
+    var ph='RIVERZ_IMG__'+slot+'__'+Math.random().toString(36).slice(2,8)+'__';
+    images.push({slot:slot,placeholder:ph,source:dForImg});
+    imgs.forEach(function(img){ img.setAttribute('src',ph); });
+    if(mUrl){
+      var phM='RIVERZ_IMG__'+slot+'__m__'+Math.random().toString(36).slice(2,8)+'__';
+      images.push({slot:slot+'__m',placeholder:phM,source:mUrl});
+      // Wrap each <img> in a <picture> with a mobile <source>.
+      imgs.forEach(function(img){
+        if(img.parentElement && img.parentElement.tagName==='PICTURE') return;
+        var picture=document.createElement('picture');
+        var source=document.createElement('source');
+        source.setAttribute('media','(max-width:768px)');
+        source.setAttribute('srcset',phM);
+        img.parentNode.insertBefore(picture,img);
+        picture.appendChild(source);
+        picture.appendChild(img);
+      });
+    }
   });
   // Strip editor-only data attributes after capturing them.
   clone.querySelectorAll('[data-v-text],[data-v-img]').forEach(function(el){
@@ -2957,13 +3099,7 @@ function restoreVersion(vid){
   if (v.seoTitle !== undefined) proj.seoTitle = v.seoTitle;
   if (v.metaDescription !== undefined) proj.metaDescription = v.metaDescription;
   applyTexts(proj.texts);
-  IMG_KEYS.forEach(function(k){
-    var x = proj.images[k];
-    if (x === null) collapseSlot(k);
-    else if (typeof x === 'string' && x) setSlot(k, x);
-    else if (TEMPLATE_DEFAULT_IMAGES[k]) setSlot(k, TEMPLATE_DEFAULT_IMAGES[k]);
-    else resetSlot(k);
-  });
+  applySlotsForViewport(proj, vp);
   applyCTA(proj.ctaUrl);
   saveAll();
   // Refresh modal fields
@@ -3103,6 +3239,10 @@ window.updateProjMeta=updateProjMeta; window.setAngle=setAngle;
 window.exportCurrent=exportCurrent;
 window.setSlot=setSlot;
 window.resetSlot=resetSlot;
+window.setProjImage=setProjImage;
+window.clearProjImage=clearProjImage;
+window.imgEntryGet=imgEntryGet;
+Object.defineProperty(window,'vp',{get:function(){return vp;},set:function(v){vp=v;}});
 window.getActive=getActive;
 window.snapshot=snapshot;
 window.saveAll=saveAll; window.exportAll=exportAll;
@@ -3146,9 +3286,13 @@ function openImgGen(slot) {
   if (ratioEl && cfg.ratio) ratioEl.value = cfg.ratio;
   igpShowStep('prompt');
   // Edit tab is only meaningful when the slot already has a remote (http) image —
-  // kie.ai's image_input rejects data: URLs from local uploads.
+  // kie.ai's image_input rejects data: URLs from local uploads. Resolve
+  // through the per-viewport entry so a mobile-only override is editable
+  // when the user is in mobile view.
   var proj = window.getActive ? window.getActive() : null;
-  var current = proj && proj.images ? proj.images[slot] : null;
+  var rawEntry = proj && proj.images ? proj.images[slot] : null;
+  var current = window.imgEntryGet ? window.imgEntryGet(rawEntry, window.vp || 'desktop')
+              : (typeof rawEntry === 'string' ? rawEntry : null);
   var editable = typeof current === 'string' && /^https?:\/\//i.test(current);
   var editTab = document.getElementById('igp-edit-tab');
   if (editTab) editTab.style.display = editable ? '' : 'none';
@@ -3302,7 +3446,9 @@ async function igpEdit() {
   var prompt = (document.getElementById('igp-edit-prompt').value || '').trim();
   if (!prompt) { igpToast('Describe el cambio', 1); return; }
   var proj = window.getActive ? window.getActive() : null;
-  var current = proj && proj.images ? proj.images[igpSlot] : null;
+  var rawEntry = proj && proj.images ? proj.images[igpSlot] : null;
+  var current = window.imgEntryGet ? window.imgEntryGet(rawEntry, window.vp || 'desktop')
+              : (typeof rawEntry === 'string' ? rawEntry : null);
   if (!current || !/^https?:\/\//i.test(current)) {
     igpToast('Solo se pueden editar imágenes con URL pública', 1); return;
   }
@@ -3372,10 +3518,10 @@ function igpUse() {
   if (!igpUrl || !igpSlot) return;
   window.setSlot(igpSlot, igpUrl);
   var proj = window.getActive();
-  if (proj) proj.images[igpSlot] = igpUrl;
+  if (proj) window.setProjImage(proj, igpSlot, igpUrl, window.vp || 'desktop');
   igpSaveToGallery(igpSlot, igpUrl, document.getElementById('igp-prompt').value);
   window.snapshot(); window.saveAll();
-  closeImgGen(); igpToast('✓ Imagen aplicada');
+  closeImgGen(); igpToast((window.vp==='mobile'?'✓ Imagen aplicada solo en mobile':'✓ Imagen aplicada'));
 }
 
 function igpAnother() { igpShowStep('prompt'); igpUrl = null; }
@@ -3401,8 +3547,8 @@ function igpApplyUrl() {
   if (!v || !igpSlot) { igpToast('Pega una URL', 1); return; }
   window.setSlot(igpSlot, v);
   var proj = window.getActive();
-  if (proj) proj.images[igpSlot] = v;
-  window.snapshot(); window.saveAll(); closeImgGen(); igpToast('✓ Imagen aplicada');
+  if (proj) window.setProjImage(proj, igpSlot, v, window.vp || 'desktop');
+  window.snapshot(); window.saveAll(); closeImgGen(); igpToast((window.vp==='mobile'?'✓ Imagen aplicada solo en mobile':'✓ Imagen aplicada'));
 }
 
 var igpPendingFile = null;     // data URL for in-modal preview only
@@ -3442,11 +3588,11 @@ async function igpFileApply() {
     var url  = await window.uploadImageToShopifyFiles(blob, igpPendingFileObj.name, igpSlot);
     window.setSlot(igpSlot, url);
     var proj = window.getActive();
-    if (proj) proj.images[igpSlot] = url;
+    if (proj) window.setProjImage(proj, igpSlot, url, window.vp || 'desktop');
     window.snapshot(); window.saveAll();
     igpFileReset();
     closeImgGen();
-    igpToast('✓ Imagen cargada');
+    igpToast((window.vp==='mobile'?'✓ Imagen cargada solo en mobile':'✓ Imagen cargada'));
   } catch (err) {
     console.error('igpFileApply', err);
     igpToast('Error: ' + (err.message || 'no se pudo subir'), 1);
@@ -3527,8 +3673,8 @@ function renderGallery(items, projName) {
 function igpApplyFromGallery(slot, url) {
   var decoded = decodeURIComponent(url);
   window.setSlot(slot, decoded);
-  var proj = window.getActive(); if (proj) proj.images[slot] = decoded;
-  window.snapshot(); window.saveAll(); closeGallery(); igpToast('✓ Imagen aplicada al slot ' + slot);
+  var proj = window.getActive(); if (proj) window.setProjImage(proj, slot, decoded, window.vp || 'desktop');
+  window.snapshot(); window.saveAll(); closeGallery(); igpToast('✓ Imagen aplicada al slot ' + slot + (window.vp==='mobile'?' (solo mobile)':''));
 }
 
 function igpOpenInNew(url) { window.open(url, '_blank'); }
