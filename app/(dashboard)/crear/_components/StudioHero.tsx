@@ -8,7 +8,6 @@ import { createClient } from '@/lib/supabase/client';
 import { useCredits } from '@/hooks/useCredits';
 import { useActiveBrand } from '@/hooks/useActiveBrand';
 import { ActiveBrandSwitcher } from './ActiveBrandSwitcher';
-import { cn } from '@/lib/utils';
 
 function greetingFor(date: Date) {
   const h = date.getHours();
@@ -56,61 +55,40 @@ export function StudioHero() {
     planType === 'free' || (subscriptionStatus !== 'active' && planType !== 'free');
 
   return (
-    <section className="relative isolate -mx-8 -mt-8 overflow-hidden border-b border-white/5 px-8 pb-10 pt-10 md:pt-14">
-      {/* Fondo: aurora + grid + noise */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="aurora opacity-60" />
-        <div className="absolute inset-0 bg-grid bg-grid-fade opacity-70" />
-        <div className="absolute inset-0 bg-noise mix-blend-overlay opacity-30" />
-        <div className="absolute inset-x-0 top-0 h-[70%] bg-[radial-gradient(ellipse_60%_45%_at_50%_0%,rgba(20,224,204,0.14),transparent_75%)]" />
-      </div>
-
-      <div className="grid items-start gap-6 md:grid-cols-[1.1fr_minmax(320px,420px)]">
-        {/* Saludo */}
+    <section className="relative -mx-6 -mt-6 border-b border-[#eee5d6] px-6 pb-10 pt-8 md:-mx-9 md:-mt-9 md:px-9 md:pt-12">
+      <div className="grid items-end gap-6 md:grid-cols-[1.2fr_minmax(320px,420px)]">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-white/65 backdrop-blur">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#14E0CC] opacity-70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#14E0CC]" />
-            </span>
+          <p className="app-v2-eyebrow">
             Tu estudio · 8 agentes en línea
-          </div>
-
-          <h1 className="font-display mt-4 text-[clamp(28px,4.4vw,48px)] font-semibold leading-[1.05] tracking-tight">
-            <span className="block text-white">
-              {greeting}
-              {firstName ? `, ${firstName}` : ''}.
-            </span>
-            <span className="block text-gradient-primary">
-              ¿Qué creamos hoy para tu marca?
-            </span>
+          </p>
+          <h1 className="app-v2-page-h1 mt-3">
+            {greeting}
+            {firstName ? `, ${firstName}` : ''}.
+            <br />
+            <span className="text-black/55">¿Qué creamos hoy?</span>
           </h1>
-
-          <p className="mt-4 max-w-xl text-[14px] leading-relaxed text-white/60">
-            Tu estudio creativo está montado. Activa una marca, asigna un agente y entrega
+          <p className="mt-4 max-w-xl text-[14px] leading-relaxed text-black/60">
+            Tu estudio creativo está montado. Activá una marca, asigná un agente y entregá
             piezas listas para Meta, TikTok y tu tienda — sin set, sin freelancers.
           </p>
         </div>
 
-        {/* Brand switcher */}
         <div className="flex justify-start md:justify-end">
           <ActiveBrandSwitcher />
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="relative mt-8 grid gap-3 sm:grid-cols-3">
+      <div className="mt-8 grid gap-3 sm:grid-cols-3">
         <StatTile
           icon={<Coins className="h-4 w-4" />}
           label="Créditos"
           value={credits.toLocaleString('es-CO')}
           hint={`Plan ${PLAN_LABEL[planType] ?? planType}`}
-          accent="#14E0CC"
           href="/configuracion"
           badge={
             subscriptionInactive ? (
-              <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-200">
-                Activa tu plan
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-800">
+                Activá tu plan
               </span>
             ) : null
           }
@@ -120,7 +98,6 @@ export function StudioHero() {
           label="Marcas"
           value={brandsLoading ? '—' : brands.length}
           hint="Productos en tu estudio"
-          accent="#A78BFA"
           href="/marcas"
         />
         <StatTile
@@ -128,7 +105,6 @@ export function StudioHero() {
           label="Generaciones este mes"
           value={monthlyCount}
           hint="Piezas producidas"
-          accent="#F472B6"
           href="/historial"
         />
       </div>
@@ -141,7 +117,6 @@ function StatTile({
   label,
   value,
   hint,
-  accent,
   href,
   badge,
 }: {
@@ -149,43 +124,30 @@ function StatTile({
   label: string;
   value: string | number;
   hint: string;
-  accent: string;
   href: string;
   badge?: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
-      className={cn(
-        'group glass-strong relative flex items-center justify-between overflow-hidden rounded-2xl px-5 py-4 transition',
-        'hover:border-white/15',
-      )}
+      className="card-cream group relative flex items-center justify-between p-5 transition hover:border-black/30"
     >
       <div className="flex items-center gap-3">
-        <span
-          className="grid h-9 w-9 place-items-center rounded-xl"
-          style={{
-            background: `linear-gradient(160deg, ${accent}33, ${accent}10)`,
-            border: `1px solid ${accent}33`,
-            color: accent,
-          }}
-        >
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#0a0a0a] text-[#f7ff9e]">
           {icon}
         </span>
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/45">
-              {label}
-            </p>
+            <p className="app-v2-eyebrow">{label}</p>
             {badge}
           </div>
-          <p className="font-display mt-0.5 text-2xl font-semibold leading-none text-white">
+          <p className="mt-1 text-[26px] font-medium leading-none tracking-tight text-black">
             {value}
           </p>
-          <p className="mt-1 text-[11px] text-white/45">{hint}</p>
+          <p className="mt-1.5 text-[11px] text-black/45">{hint}</p>
         </div>
       </div>
-      <ArrowUpRight className="h-4 w-4 text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white" />
+      <ArrowUpRight className="h-4 w-4 text-black/30 transition group-hover:translate-x-0.5 group-hover:text-black" />
     </Link>
   );
 }

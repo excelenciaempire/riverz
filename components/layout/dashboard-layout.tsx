@@ -54,7 +54,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a]">
+    <div className="app-v2 flex min-h-screen">
       <Sidebar collapsed={collapsed} onToggle={toggle} />
       <main
         className={cn(
@@ -63,7 +63,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           !hydrated && (forcedCollapse ? 'ml-0' : 'ml-56'),
         )}
       >
-        <div className="mx-auto max-w-[1800px] p-8">{children}</div>
+        <div className="mx-auto max-w-[1480px] p-6 md:p-9">{children}</div>
       </main>
     </div>
   );

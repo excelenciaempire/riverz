@@ -48,19 +48,15 @@ export function RecentWorkRail() {
   if (isLoading || items.length === 0) return null;
 
   return (
-    <section className="space-y-4">
-      <header className="flex items-end justify-between gap-4">
+    <section className="space-y-5">
+      <header className="app-v2-section-head">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#14E0CC]">
-            Continúa donde lo dejaste
-          </p>
-          <h2 className="font-display mt-2 text-xl font-semibold tracking-tight text-white md:text-2xl">
-            Trabajo reciente
-          </h2>
+          <p className="app-v2-eyebrow">Continúa donde lo dejaste</p>
+          <h2 className="app-v2-page-h2 mt-2">Trabajo reciente</h2>
         </div>
         <Link
           href="/historial"
-          className="inline-flex items-center gap-1 text-xs font-medium text-white/60 transition hover:text-white"
+          className="inline-flex items-center gap-1 text-[12px] font-medium text-black/60 transition hover:text-black"
         >
           Ver todo
           <ArrowRight className="h-3 w-3" />
@@ -90,12 +86,9 @@ function RecentCard({ item }: { item: Generation }) {
   return (
     <Link
       href={href}
-      className={cn(
-        'group glass-strong relative flex w-[200px] shrink-0 flex-col overflow-hidden rounded-2xl transition',
-        'hover:-translate-y-0.5 hover:border-white/15',
-      )}
+      className="card-cream group relative flex w-[200px] shrink-0 flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:border-black/30"
     >
-      <div className="relative aspect-square overflow-hidden bg-black/40">
+      <div className="relative aspect-square overflow-hidden bg-[#f5f3ec]">
         {item.result_url ? (
           isVideoType(item.type) ? (
             <video
@@ -113,26 +106,23 @@ function RecentCard({ item }: { item: Generation }) {
             />
           )
         ) : (
-          <div className="flex h-full items-center justify-center text-white/30">
+          <div className="flex h-full items-center justify-center text-black/30">
             <Clock className="h-6 w-6" />
           </div>
         )}
 
-        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-white/10 bg-black/60 px-2 py-0.5 text-[10px] font-medium backdrop-blur">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ background: agent.hue, boxShadow: `0 0 6px ${agent.hue}` }}
-          />
-          <span className="text-white/85">{getTypeLabel(item.type)}</span>
+        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full border border-black/10 bg-white/95 px-2 py-0.5 text-[10px] font-medium backdrop-blur">
+          <span className="h-1.5 w-1.5 rounded-full bg-black" />
+          <span className="text-black/85">{getTypeLabel(item.type)}</span>
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-        <div className="flex items-center gap-1.5 text-[10px] text-white/55">
+        <div className="flex items-center gap-1.5 text-[10px] text-black/55">
           <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} />
           {tone.label}
         </div>
-        <p className="truncate text-[10px] text-white/45">{created}</p>
+        <p className="truncate text-[10px] text-black/45">{created}</p>
       </div>
     </Link>
   );

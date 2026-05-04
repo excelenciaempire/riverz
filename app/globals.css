@@ -377,6 +377,164 @@ input[type="file"],
   border: 2px solid transparent;
 }
 
+/* ===== APP V2 — editorial light shell + dark sidebar ===========================
+   Used by every authenticated route under app/(dashboard)/. The body
+   keeps the original dark theme for legacy pages, but the dashboard
+   layout opts in by adding `app-v2` to the wrapping main element so the
+   redesign rolls in route-by-route without flashing existing dark pages.
+================================================================================ */
+.app-v2 {
+  background: #fafaf7;
+  color: #0a0a0a;
+  font-family: var(--font-inter-tight), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: -0.005em;
+}
+.app-v2 h1, .app-v2 h2, .app-v2 h3, .app-v2 h4 {
+  font-family: var(--font-inter-tight), sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 500;
+}
+.app-v2-page-h1 {
+  font-family: var(--font-inter-tight), sans-serif;
+  font-weight: 400;
+  font-size: clamp(34px, 4.4vw, 56px);
+  line-height: 1.0;
+  letter-spacing: -0.035em;
+}
+.app-v2-page-h2 {
+  font-family: var(--font-inter-tight), sans-serif;
+  font-weight: 500;
+  font-size: clamp(22px, 2.4vw, 32px);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+.app-v2-eyebrow {
+  font-family: var(--font-inter-tight), sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(10, 10, 10, 0.5);
+}
+.app-v2 .card-cream {
+  background: #ffffff;
+  border: 1px solid #eee5d6;
+  border-radius: 14px;
+}
+.app-v2 .card-dark {
+  background: #0e0e13;
+  color: #fafaf7;
+  border-radius: 14px;
+}
+
+/* Yellow primary CTA */
+.app-v2-cta {
+  background: #f7ff9e;
+  color: #0a0a0a;
+  border-radius: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 12px;
+  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease, transform 0.15s ease;
+  border: 0;
+  font-family: var(--font-inter-tight), sans-serif;
+}
+.app-v2-cta:hover { background: #f1fa84; }
+.app-v2-cta:active { transform: translateY(1px); }
+.app-v2-cta-outline {
+  background: transparent;
+  color: #0a0a0a;
+  border: 1px solid rgba(10, 10, 10, 0.18);
+  border-radius: 8px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 12px;
+  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-inter-tight), sans-serif;
+}
+.app-v2-cta-outline:hover {
+  border-color: rgba(10, 10, 10, 0.4);
+  background: rgba(10, 10, 10, 0.03);
+}
+
+/* Editorial input baseline used inside .app-v2 */
+.app-v2 input[type="text"],
+.app-v2 input[type="email"],
+.app-v2 input[type="search"],
+.app-v2 input[type="number"],
+.app-v2 input[type="url"],
+.app-v2 textarea,
+.app-v2 select {
+  background: #ffffff;
+  border: 1px solid #e3e0d5;
+  border-radius: 10px;
+  color: #0a0a0a;
+}
+.app-v2 input:focus, .app-v2 textarea:focus, .app-v2 select:focus {
+  outline: none;
+  border-color: #0a0a0a;
+  box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.06);
+}
+
+/* Section header used across pages */
+.app-v2-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #eee5d6;
+}
+
+/* Sidebar tokens for the dashboard nav */
+.app-v2-sidebar {
+  background: #0e0e13;
+  color: #fafaf7;
+  border-right: 1px solid #1a1a22;
+  font-family: var(--font-inter-tight), sans-serif;
+}
+.app-v2-sidebar a, .app-v2-sidebar button {
+  font-family: var(--font-inter-tight), sans-serif;
+}
+.app-v2-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: rgba(250, 250, 247, 0.6);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.app-v2-sidebar-link:hover {
+  background: rgba(250, 250, 247, 0.05);
+  color: #fafaf7;
+}
+.app-v2-sidebar-link.is-active {
+  background: #f7ff9e;
+  color: #0a0a0a;
+}
+.app-v2-sidebar-group {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(250, 250, 247, 0.35);
+  margin: 0 0 6px 10px;
+}
+
 /* ===== LANDING V2 — editorial type system inspired by weave.figma.com ===== */
 .font-editorial {
   font-family: var(--font-inter-tight), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

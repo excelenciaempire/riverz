@@ -76,7 +76,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <button
           onClick={onToggle}
           aria-label="Mostrar menú"
-          className="fixed left-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-gray-800 bg-black/70 text-gray-300 backdrop-blur-md transition-colors hover:border-[#07A498] hover:text-white"
+          className="fixed left-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-[#1a1a22] bg-[#0e0e13] text-[#fafaf7]/70 backdrop-blur-md transition-colors hover:border-[#f7ff9e] hover:text-white"
         >
           <PanelLeftOpen className="h-4 w-4" />
         </button>
@@ -84,17 +84,22 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       <div
         className={cn(
-          'fixed left-0 top-0 z-30 flex h-screen w-56 flex-col border-r border-gray-900 bg-black transition-transform duration-200 ease-out',
+          'app-v2-sidebar fixed left-0 top-0 z-30 flex h-screen w-56 flex-col transition-transform duration-200 ease-out',
           collapsed && '-translate-x-full',
         )}
       >
         {/* Logo + collapse button */}
-        <div className="flex h-12 items-center justify-between px-3">
-          <h1 className="text-xl font-bold tracking-wider text-[#07A498]">RIVERZ</h1>
+        <div className="flex h-14 items-center justify-between px-4">
+          <Link href="/crear" className="flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-md bg-[#f7ff9e] text-[12px] font-bold text-black">
+              R
+            </span>
+            <span className="text-[15px] font-semibold tracking-tight">Riverz</span>
+          </Link>
           <button
             onClick={onToggle}
             aria-label="Ocultar menú"
-            className="rounded-md p-1 text-gray-500 transition-colors hover:bg-gray-900 hover:text-gray-200"
+            className="rounded-md p-1 text-[#fafaf7]/40 transition-colors hover:bg-white/5 hover:text-[#fafaf7]"
           >
             <PanelLeftClose className="h-4 w-4" />
           </button>
@@ -102,10 +107,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
         <nav className="flex-1 overflow-hidden px-3 py-2 hover:overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
           {navigationGroups.map((group) => (
-            <div key={group.title} className="mb-3">
-              <h3 className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-wider text-gray-500">
-                {group.title}
-              </h3>
+            <div key={group.title} className="mb-4">
+              <h3 className="app-v2-sidebar-group">{group.title}</h3>
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const isActive =
@@ -118,13 +121,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       key={item.name}
                       href={item.href}
                       className={cn(
-                        'flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-medium transition-all',
-                        isActive
-                          ? 'bg-[#07A498]/10 text-[#07A498]'
-                          : 'text-gray-400 hover:bg-gray-900 hover:text-white',
+                        'app-v2-sidebar-link',
+                        isActive && 'is-active',
                       )}
                     >
-                      <Icon className="h-3 w-3 shrink-0" />
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
                       <span>{item.name}</span>
                     </Link>
                   );
@@ -134,35 +135,35 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           ))}
         </nav>
 
-        <div className="space-y-0.5 border-t border-gray-900 px-3 py-2">
+        <div className="space-y-0.5 border-t border-[#1a1a22] px-3 py-2">
           <Link
             href="/configuracion"
             className={cn(
-              'flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-medium text-gray-400 transition-all hover:bg-gray-900 hover:text-white',
-              pathname === '/configuracion' && 'bg-[#07A498]/10 text-[#07A498]',
+              'app-v2-sidebar-link',
+              pathname === '/configuracion' && 'is-active',
             )}
           >
-            <Settings className="h-3 w-3 shrink-0" />
+            <Settings className="h-3.5 w-3.5 shrink-0" />
             <span>Configuración</span>
           </Link>
 
           <button
             onClick={() => signOut(() => (window.location.href = '/'))}
-            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-medium text-gray-400 transition-all hover:bg-red-500/10 hover:text-red-400"
+            className="app-v2-sidebar-link w-full text-left hover:!bg-red-500/10 hover:!text-red-300"
           >
-            <LogOut className="h-3 w-3 shrink-0" />
+            <LogOut className="h-3.5 w-3.5 shrink-0" />
             <span>Cerrar Sesión</span>
           </button>
         </div>
 
-        <div className="border-t border-gray-900 p-2.5">
+        <div className="border-t border-[#1a1a22] p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="origin-left scale-90">
               <UserButton afterSignOutUrl="/sign-in" />
             </div>
             <div className="text-right">
-              <p className="text-[9px] text-gray-500">Créditos</p>
-              <p className="text-xs font-bold text-[#07A498]">{credits ?? 0}</p>
+              <p className="text-[9px] uppercase tracking-[0.16em] text-[#fafaf7]/40">Créditos</p>
+              <p className="text-[13px] font-bold text-[#f7ff9e]">{credits ?? 0}</p>
             </div>
           </div>
         </div>

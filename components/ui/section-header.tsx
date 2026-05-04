@@ -9,6 +9,11 @@ interface SectionHeaderProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
+/**
+ * Editorial section header. Used across the app — title falls back to
+ * the editorial display sizing automatically when the parent has the
+ * `app-v2` class on it (i.e. anywhere inside the dashboard layout).
+ */
 export function SectionHeader({
   title,
   description,
@@ -18,39 +23,31 @@ export function SectionHeader({
   size = 'md',
 }: SectionHeaderProps) {
   const sizes = {
-    sm: {
-      title: 'text-lg',
-      description: 'text-xs',
-      spacing: 'mb-4',
-    },
-    md: {
-      title: 'text-2xl',
-      description: 'text-sm',
-      spacing: 'mb-6',
-    },
-    lg: {
-      title: 'text-3xl',
-      description: 'text-base',
-      spacing: 'mb-8',
-    },
+    sm: { title: 'text-[20px]', description: 'text-[12px]', spacing: 'mb-4' },
+    md: { title: 'text-[26px] md:text-[30px]', description: 'text-[13px]', spacing: 'mb-5' },
+    lg: { title: 'text-[34px] md:text-[42px]', description: 'text-[14px]', spacing: 'mb-7' },
   };
 
   return (
-    <div className={cn('flex items-center justify-between', sizes[size].spacing, className)}>
+    <div className={cn('app-v2-section-head', sizes[size].spacing, className)}>
       <div className="flex items-center gap-3">
         {icon && (
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-accent/10 text-brand-accent">
+          <div className="grid h-10 w-10 place-items-center rounded-lg bg-[#0a0a0a] text-[#f7ff9e]">
             {icon}
           </div>
         )}
         <div>
-          <h2 className={cn('font-semibold text-white', sizes[size].title)}>
+          <h2
+            className={cn(
+              'font-medium tracking-tight text-black leading-[1.1]',
+              sizes[size].title,
+            )}
+            style={{ letterSpacing: '-0.025em' }}
+          >
             {title}
           </h2>
           {description && (
-            <p className={cn('text-gray-400 mt-0.5', sizes[size].description)}>
-              {description}
-            </p>
+            <p className={cn('text-black/55 mt-1', sizes[size].description)}>{description}</p>
           )}
         </div>
       </div>
