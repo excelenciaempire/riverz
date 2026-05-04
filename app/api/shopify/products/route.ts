@@ -63,6 +63,14 @@ export async function GET(req: Request) {
             featuredMedia {
               preview { image { url altText } }
             }
+            images(first: 10) {
+              edges {
+                node {
+                  url
+                  altText
+                }
+              }
+            }
             priceRangeV2 {
               minVariantPrice { amount currencyCode }
               maxVariantPrice { amount currencyCode }
@@ -122,14 +130,29 @@ export async function GET(req: Request) {
     const minPrice = n.priceRangeV2?.minVariantPrice;
     const maxPrice = n.priceRangeV2?.maxVariantPrice;
     const minCompareAt = n.compareAtPriceRange?.minVariantCompareAtPrice;
+    const featured = n.featuredMedia?.preview?.image?.url || null;
+    const allImages: Array<{ url: string; alt: string | null }> = (n.images?.edges || [])
+      .map((ie: any) => ({ url: ie.node.url, alt: ie.node.altText || null }))
+      .filter((x: any) => !!x.url);
+    // Make sure the featured image is index 0 — Shopify already orders this
+    // way 99% of the time but `images` ordering is by position and a merchant
+    // may have manually reordered after picking a featured one.
+    if (featured && allImages.length && allImages[0].url !== featured) {
+      const fIdx = allImages.findIndex((x) => x.url === featured);
+      if (fIdx > 0) {
+        const [f] = allImages.splice(fIdx, 1);
+        allImages.unshift(f);
+      }
+    }
     return {
       id: gidToNumeric(n.id),
       handle: n.handle,
       title: n.title,
       status: n.status,
       totalInventory: n.totalInventory,
-      image: n.featuredMedia?.preview?.image?.url || null,
+      image: featured,
       imageAlt: n.featuredMedia?.preview?.image?.altText || null,
+      images: allImages,
       priceMin: minPrice?.amount || null,
       priceMax: maxPrice?.amount || null,
       currencyCode: minPrice?.currencyCode || 'USD',

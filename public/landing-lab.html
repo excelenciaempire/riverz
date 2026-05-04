@@ -2529,7 +2529,7 @@ function buildPublishPayload(proj){
   var handleAttr = shopifyHandle ? ' data-shopify-handle="'+shopifyHandle.replace(/[^a-z0-9-]/gi,'')+'"' : '';
   var shopifyCode = '';
   if (shopifyHandle) {
-    shopifyCode = '(function(){var w=document.querySelector("[data-shopify-handle]");if(!w)return;var h=w.getAttribute("data-shopify-handle");if(!h)return;var fmt=function(c){try{if(window.Shopify&&Shopify.formatMoney)return Shopify.formatMoney(c,(window.theme&&theme.moneyFormat)||"${{amount}}");}catch(e){}return"$"+(c/100).toFixed(2);};var sel=null,prod=null;function applyVariant(v){if(!v)return;sel=v;var pe=w.querySelector(\'.price,[data-v-text="price"]\');if(pe)pe.textContent=fmt(v.price);var ce=w.querySelector(\'.compare-at,[data-v-text="compare-at"]\');if(ce){if(v.compare_at_price&&v.compare_at_price>v.price){ce.textContent=fmt(v.compare_at_price);ce.style.display="";}else{ce.style.display="none";}}var sp=w.querySelector(\'.sticky-text [data-v-text="sticky-price"]\');if(sp)sp.textContent=fmt(v.price);var sc=w.querySelector(\'.sticky-text [data-v-text="sticky-compare"]\');if(sc){if(v.compare_at_price&&v.compare_at_price>v.price){sc.textContent=fmt(v.compare_at_price);sc.style.display="";}else{sc.style.display="none";}}}fetch("/products/"+h+".js").then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(p){prod=p;var first=p.variants.find(function(v){return v.available;})||p.variants[0];applyVariant(first);var ne=w.querySelector(\'.prod-name,[data-v-text="product-name"]\');if(ne&&p.title)ne.textContent=p.title;var mi=w.querySelector(".gallery-main img");if(mi&&/placehold\\.co|placeholder/i.test(mi.src||"")&&p.featured_image)mi.src=p.featured_image;var rows=w.querySelectorAll(".opts-row");rows.forEach(function(row){var btns=row.querySelectorAll(".opt-btn");if(p.variants.length<=1){var optsBlock=row.closest(".opts");if(optsBlock)optsBlock.style.display="none";return;}p.variants.forEach(function(v,i){var b=btns[i];if(!b)return;b.setAttribute("data-variant-id",v.id);if(!v.available){b.classList.add("is-soldout");b.style.opacity="0.5";}});for(var i=p.variants.length;i<btns.length;i++)btns[i].style.display="none";row.addEventListener("click",function(e){var b=e.target.closest(".opt-btn");if(!b)return;var id=b.getAttribute("data-variant-id");if(!id)return;var v=p.variants.find(function(x){return String(x.id)===String(id);});if(!v)return;applyVariant(v);btns.forEach(function(x){x.classList.remove("is-active");});b.classList.add("is-active");});});}).catch(function(e){console.warn("[Riverz] Shopify product",h,"no se pudo cargar:",e&&e.message);});function addToCart(){if(!sel){alert("Cargando producto, intentá de nuevo en un segundo.");return;}var qi=w.querySelector(".qty input");var q=qi?Math.max(1,parseInt(qi.value,10)||1):1;fetch("/cart/add.js",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({id:sel.id,quantity:q})}).then(function(r){if(!r.ok)return r.json().then(function(d){throw new Error(d.description||d.message||"Error al agregar al carrito");});window.location.href="/cart";}).catch(function(e){alert(e.message||"No se pudo agregar al carrito");});}w.addEventListener("click",function(e){var c=e.target.closest(".cta-btn,.sticky-btn");if(!c||!w.contains(c))return;e.preventDefault();addToCart();});})();';
+    shopifyCode = '(function(){var w=document.querySelector("[data-shopify-handle]");if(!w)return;var h=w.getAttribute("data-shopify-handle");if(!h)return;var fmt=function(c){try{if(window.Shopify&&Shopify.formatMoney)return Shopify.formatMoney(c,(window.theme&&theme.moneyFormat)||"${{amount}}");}catch(e){}return"$"+(c/100).toFixed(2);};var sel=null,prod=null;function isPh(s){return !s||/placehold\\.co|placeholder|\\.svg$/i.test(s);}function applyVariant(v){if(!v)return;sel=v;var pe=w.querySelector(\'.price,[data-v-text="price"]\');if(pe)pe.textContent=fmt(v.price);var ce=w.querySelector(\'.compare-at,[data-v-text="compare-at"]\');if(ce){if(v.compare_at_price&&v.compare_at_price>v.price){ce.textContent=fmt(v.compare_at_price);ce.style.display="";}else{ce.style.display="none";}}var sp=w.querySelector(\'.sticky-text [data-v-text="sticky-price"]\');if(sp)sp.textContent=fmt(v.price);var sc=w.querySelector(\'.sticky-text [data-v-text="sticky-compare"]\');if(sc){if(v.compare_at_price&&v.compare_at_price>v.price){sc.textContent=fmt(v.compare_at_price);sc.style.display="";}else{sc.style.display="none";}}}fetch("/products/"+h+".js").then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(p){prod=p;var first=p.variants.find(function(v){return v.available;})||p.variants[0];applyVariant(first);var ne=w.querySelector(\'.prod-name,[data-v-text="product-name"]\');if(ne&&p.title)ne.textContent=p.title;var imgs=(p.images&&p.images.length)?p.images:(p.featured_image?[p.featured_image]:[]);if(imgs.length){var mi=w.querySelector(".gallery-main img");if(mi&&isPh(mi.src||""))mi.src=imgs[0];var thumbs=w.querySelectorAll(".gallery-thumbs .thumb img");thumbs.forEach(function(t,i){if(t&&isPh(t.src||"")){t.src=imgs[i]||imgs[imgs.length-1];}});var si=w.querySelector(".sticky-img img");if(si&&isPh(si.src||""))si.src=imgs[0];}var rows=w.querySelectorAll(".opts-row");rows.forEach(function(row){var btns=row.querySelectorAll(".opt-btn");if(p.variants.length<=1){var optsBlock=row.closest(".opts");if(optsBlock)optsBlock.style.display="none";return;}p.variants.forEach(function(v,i){var b=btns[i];if(!b)return;b.setAttribute("data-variant-id",v.id);if(!v.available){b.classList.add("is-soldout");b.style.opacity="0.5";}});for(var i=p.variants.length;i<btns.length;i++)btns[i].style.display="none";row.addEventListener("click",function(e){var b=e.target.closest(".opt-btn");if(!b)return;var id=b.getAttribute("data-variant-id");if(!id)return;var v=p.variants.find(function(x){return String(x.id)===String(id);});if(!v)return;applyVariant(v);btns.forEach(function(x){x.classList.remove("is-active");});b.classList.add("is-active");});});}).catch(function(e){console.warn("[Riverz] Shopify product",h,"no se pudo cargar:",e&&e.message);});function addToCart(){if(!sel){alert("Cargando producto, intentá de nuevo en un segundo.");return;}var qi=w.querySelector(".qty input");var q=qi?Math.max(1,parseInt(qi.value,10)||1):1;fetch("/cart/add.js",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({id:sel.id,quantity:q})}).then(function(r){if(!r.ok)return r.json().then(function(d){throw new Error(d.description||d.message||"Error al agregar al carrito");});window.location.href="/cart";}).catch(function(e){alert(e.message||"No se pudo agregar al carrito");});}w.addEventListener("click",function(e){var c=e.target.closest(".cta-btn,.sticky-btn");if(!c||!w.contains(c))return;e.preventDefault();addToCart();});})();';
   }
   var body_html =
     fontsLink +
@@ -2794,16 +2794,27 @@ function autofillFromProduct(p){
       setText('opt-'+(i+1), v.title || ('Opción '+(i+1)));
     });
   }
-  // Featured image → main gallery slot
-  if (p.image) {
-    var slot = 'prod-main';
-    if (typeof setSlot === 'function') {
-      setSlot(slot, p.image);
-      var proj = getActive();
-      if (proj) {
-        proj.images = proj.images || {};
-        proj.images[slot] = p.image;
+  // Gallery sync: main image, thumbnails and sticky bar thumbnail all
+  // pull from the product's image list. Falls back to the featured image
+  // if the merchant only uploaded one. We don't touch slots beyond
+  // prod-thumb-4 / sticky-img — UGC and section imagery stay user-owned
+  // because they're rarely the same as product photos.
+  var imgList = (p.images && p.images.length) ? p.images.map(function(x){return x.url;}) : (p.image ? [p.image] : []);
+  if (imgList.length) {
+    var thumbSlots = ['prod-main','prod-thumb-1','prod-thumb-2','prod-thumb-3','prod-thumb-4'];
+    var projForImgs = getActive();
+    thumbSlots.forEach(function(slot, i){
+      var src = imgList[i] || imgList[imgList.length - 1]; // fall back to last available
+      if (typeof setSlot === 'function') setSlot(slot, src);
+      if (projForImgs) {
+        projForImgs.images = projForImgs.images || {};
+        projForImgs.images[slot] = src;
       }
+    });
+    if (typeof setSlot === 'function') setSlot('sticky-img', imgList[0]);
+    if (projForImgs) {
+      projForImgs.images = projForImgs.images || {};
+      projForImgs.images['sticky-img'] = imgList[0];
     }
   }
   // Persist + flush
