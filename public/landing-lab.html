@@ -197,7 +197,7 @@ body{color:#E2E4EF;font-family:'Instrument Sans',sans-serif;font-size:13px;displ
 .ed-name input:focus{color:#C8CAD8}.ed-angle{font-size:10px;color:#3E4560;flex:2;min-width:0}
 .ed-angle input{background:transparent;border:none;color:#3E4560;font-size:10px;font-family:'Instrument Sans',sans-serif;width:100%;outline:none}
 .ed-angle input:focus{color:#5B6490}.ed-sep{width:1px;height:16px;background:#181B27}
-#page-area{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;background:#0E0A06;scrollbar-width:thin;scrollbar-color:#1E2130 #0E0A06}
+#page-area{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;background:#0E0A06;scrollbar-width:thin;scrollbar-color:#1E2130 #0E0A06;position:relative}
 #page-area::-webkit-scrollbar{width:4px;background:#0E0A06}
 #page-area::-webkit-scrollbar-thumb{background:#1E2130;border-radius:2px}
 #page-wrap{width:100%;min-height:100%;background:var(--ink,#0E0A06);color:var(--cream,#F5EDD8);font-family:'Instrument Sans',sans-serif;line-height:1.7;overflow-x:hidden;display:block}
@@ -265,6 +265,15 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
 #font-ctrl .fc-sep{width:1px;height:18px;background:#252840;margin:0 2px}
 #font-ctrl .fc-act{font-size:13px}
 #font-ctrl .fc-danger:hover{background:rgba(228,78,58,.15);color:#ff7a64;border-color:rgba(228,78,58,.4)}
+#sec-ctrl{position:absolute;z-index:60;display:none;align-items:center;gap:2px;background:#0D0E14;border:1px solid #2a2e3d;border-radius:7px;padding:3px 4px;box-shadow:0 6px 22px rgba(0,0,0,.55);font-family:'Instrument Sans',sans-serif;pointer-events:auto;user-select:none}
+#sec-ctrl.on{display:inline-flex}
+#sec-ctrl button{height:24px;padding:0 8px;border:1px solid #252840;background:#111420;color:#B8BCCC;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;font-family:inherit;letter-spacing:.02em}
+#sec-ctrl button:hover{background:#1E2436;color:#fff;border-color:#3a3f55}
+#sec-ctrl .sc-tag{font-size:9px;color:#0a0a0a;background:#f7ff9e;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px;font-weight:800;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;margin-right:2px}
+#sec-ctrl .sc-sep{width:1px;height:16px;background:#252840;margin:0 2px}
+#sec-ctrl .sc-mini{font-size:10px;color:#5B6490;padding:0 3px;font-weight:700;letter-spacing:.04em}
+#sec-ctrl button.sc-danger:hover{background:rgba(228,78,58,.15);color:#ff7a64;border-color:rgba(228,78,58,.4)}
+[data-section-id].riverz-sec-active{outline:2px dashed rgba(247,255,158,.7)!important;outline-offset:2px;background:rgba(247,255,158,.04)}
 /* Move-mode: every potential drop target gets a teal outline so the
    user knows where they can click to land the block they picked up. */
 body.riverz-move-mode [data-section-id]{outline:2px dashed rgba(247,255,158,.55);outline-offset:3px;cursor:copy}
@@ -507,6 +516,11 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
     <div class="sb-count" id="sb-count">0 landings</div>
   </div>
   <aside id="block-palette" aria-label="Bloques">
+    <div class="bp-group-label">Layout</div>
+    <button class="bp-item" draggable="true" data-block-type="section" type="button" title="Sección nueva (banda completa)"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="3.5" width="17" height="13" rx="1.5" stroke="currentColor" stroke-width="1.5"/><line x1="1.5" y1="7.5" x2="18.5" y2="7.5" stroke="currentColor" stroke-width="1.5"/><line x1="1.5" y1="12.5" x2="18.5" y2="12.5" stroke="currentColor" stroke-width="1.5"/></svg></span><span class="bp-label">Sección</span></button>
+    <button class="bp-item" draggable="true" data-block-type="row" type="button" title="Fila con 2 columnas"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="4.5" width="7.5" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="4.5" width="7.5" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/></svg></span><span class="bp-label">Fila</span></button>
+    <button class="bp-item" draggable="true" data-block-type="column" type="button" title="Columna nueva"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="6.5" y="2.5" width="7" height="15" rx="1" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="6" x2="11.5" y2="6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="8.5" y1="9" x2="11.5" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="8.5" y1="12" x2="10.5" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="bp-label">Columna</span></button>
+
     <div class="bp-group-label">Texto</div>
     <button class="bp-item" draggable="true" data-block-type="heading" type="button" title="Título grande (H2)"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><text x="10" y="14" text-anchor="middle" font-family="Inter,serif" font-weight="900" font-size="13" fill="currentColor">H</text></svg></span><span class="bp-label">Título</span></button>
     <button class="bp-item" draggable="true" data-block-type="text" type="button" title="Párrafo de texto"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><line x1="3" y1="6" x2="17" y2="6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="14" x2="12" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="bp-label">Texto</span></button>
@@ -889,10 +903,28 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
   <span id="font-size-val">16px</span>
   <button onclick="changeFontSize(1)" title="Más grande">A&#x207A;</button>
   <span class="fc-sep"></span>
+  <button class="fc-act" onclick="changeElPadding(-4,0)" title="Menos padding vertical">&#x21F3;&#x2212;</button>
+  <button class="fc-act" onclick="changeElPadding(4,0)" title="Más padding vertical">&#x21F3;&#x002B;</button>
+  <span class="fc-sep"></span>
   <button class="fc-act" onclick="duplicateSelectedBlock()" title="Duplicar este bloque">&#x29C9;</button>
   <button class="fc-act" onclick="commentSelectedBlock()" title="Comentar / nota interna">&#x1F4AC;</button>
   <button class="fc-act" onclick="moveSelectedBlock()" title="Mover este bloque a otra ubicación">&#x21F5;</button>
   <button class="fc-act fc-danger" onclick="deleteSelectedBlock()" title="Eliminar este bloque">&#x1F5D1;</button>
+</div>
+<div id="sec-ctrl">
+  <span class="sc-tag" id="sc-tag">Sección</span>
+  <button onclick="secParent()" title="Seleccionar contenedor padre">&#x2191;</button>
+  <span class="sc-sep"></span>
+  <span class="sc-mini">PAD Y</span>
+  <button onclick="secPad(-8,0)" title="Menos padding vertical">&#x2212;</button>
+  <button onclick="secPad(8,0)" title="Más padding vertical">&#x002B;</button>
+  <span class="sc-sep"></span>
+  <span class="sc-mini">PAD X</span>
+  <button onclick="secPad(0,-8)" title="Menos padding horizontal">&#x2212;</button>
+  <button onclick="secPad(0,8)" title="Más padding horizontal">&#x002B;</button>
+  <span class="sc-sep"></span>
+  <button onclick="secDuplicate()" title="Duplicar">&#x29C9;</button>
+  <button class="sc-danger" onclick="secDelete()" title="Eliminar este bloque">&#x1F5D1;</button>
 </div>
 <div id="sticky-panel">
   <label style="font-size:10px;color:#5B6490;white-space:nowrap">Sticky aparece al:</label>
@@ -1533,6 +1565,9 @@ var _paletteSrc = null;
 // dependency. data-v-text / data-v-img keys use auto-{slug} which
 // nextAutoSlug() bumps to avoid collisions on save.
 var BLOCK_TEMPLATES = {
+  section: '<section data-rz-kind="section" style="padding:80px 24px;background:transparent;position:relative"><div style="max-width:760px;margin:0 auto;width:100%"><h2 data-v-text="auto-{slug}-h" style="font-size:32px;font-weight:700;letter-spacing:-.01em;line-height:1.15;margin:0 0 18px">Nueva sección</h2><p data-v-text="auto-{slug}-p" style="font-size:16px;line-height:1.7;margin:0;opacity:.78">Hacé click en cualquier bloque para ver el toolbar de sección. Desde ahí ajustás padding, duplicás o borrás.</p></div></section>',
+  row: '<div data-rz-kind="row" style="display:grid;grid-template-columns:repeat(2,1fr);gap:24px;padding:16px 0;margin:24px 0"><div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}-l" style="margin:0;font-size:16px;line-height:1.7">Columna izquierda</p></div><div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}-r" style="margin:0;font-size:16px;line-height:1.7">Columna derecha</p></div></div>',
+  column: '<div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}" style="margin:0;font-size:16px;line-height:1.7">Nueva columna</p></div>',
   text: '<p data-v-text="auto-{slug}" style="margin:0 0 1em;font-size:16px;line-height:1.6">Hacé click acá para editar este párrafo. Podés agregar tantos como necesites.</p>',
   heading: '<h2 data-v-text="auto-{slug}" style="font-size:28px;font-weight:800;letter-spacing:-0.01em;margin:24px 0 12px;line-height:1.2">Nuevo encabezado</h2>',
   image: '<div class="reason-img" data-v-img="auto-{slug}" style="margin:18px 0;border-radius:10px;overflow:hidden;background:#f3f4f5"><img src="https://placehold.co/900x506/eef0f3/9ca3af?text=Imagen" alt="Imagen" style="width:100%;display:block"></div>',
@@ -1561,6 +1596,24 @@ function spawnBlockFromPalette(blockType, parent, beforeEl){
   tmp.innerHTML = html.trim();
   var newEl = tmp.firstElementChild;
   if (!newEl) return null;
+  // Layout-aware retargeting:
+  //  • section  → always lands at the page top-level container
+  //  • column   → walks up to the closest row (data-rz-kind="row" or grid)
+  //               so a column dropped onto a paragraph still ends up where
+  //               it makes sense, not nested inside the paragraph.
+  //  • row      → ascends out of nested cards/columns into the first
+  //               non-row ancestor that's still a section-like container.
+  if (blockType === 'section') {
+    parent = (typeof findSectionParent === 'function' && findSectionParent()) || parent;
+    beforeEl = beforeEl && parent.contains(beforeEl) ? beforeEl : null;
+  } else if (blockType === 'column') {
+    var row = parent.closest && parent.closest('[data-rz-kind="row"]');
+    if (!row && parent.matches && parent.matches('[data-rz-kind="row"]')) row = parent;
+    if (row) { beforeEl = (beforeEl && row.contains(beforeEl)) ? beforeEl : null; parent = row; }
+  } else if (blockType === 'row') {
+    var col = parent.closest && parent.closest('[data-rz-kind="col"]');
+    if (col && col.parentElement) { parent = col.parentElement; beforeEl = col.nextSibling; }
+  }
   if (beforeEl && beforeEl.parentNode === parent) parent.insertBefore(newEl, beforeEl);
   else parent.appendChild(newEl);
   // Re-run all the wiring so the new block gets contentEditable, image
@@ -1890,6 +1943,147 @@ function duplicateSelectedBlock(){
   toast('⧉ Bloque duplicado');
 }
 window.duplicateSelectedBlock = duplicateSelectedBlock;
+
+// ── PADDING CONTROLS ─────────────────────────────────────────
+// _padSteps mutates an element's inline padding by ±deltaY (top/bottom)
+// and ±deltaX (left/right) in pixels. It reads the *computed* padding so
+// elements styled by external CSS still react to the first nudge — once
+// inline padding is set, subsequent nudges read from the inline value.
+// Negative results clamp to 0 because negative padding would be a bug,
+// not a feature.
+function _padSteps(el, deltaY, deltaX){
+  if (!el) return;
+  var cs = window.getComputedStyle(el);
+  var pt = Math.max(0, (parseFloat(cs.paddingTop) || 0) + deltaY);
+  var pb = Math.max(0, (parseFloat(cs.paddingBottom) || 0) + deltaY);
+  var pr = Math.max(0, (parseFloat(cs.paddingRight) || 0) + deltaX);
+  var pl = Math.max(0, (parseFloat(cs.paddingLeft) || 0) + deltaX);
+  el.style.padding = pt + 'px ' + pr + 'px ' + pb + 'px ' + pl + 'px';
+}
+function changeElPadding(deltaY, deltaX){
+  if (!curEditEl) { toast('Seleccioná un texto primero',1); return; }
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  _padSteps(curEditEl, deltaY, deltaX);
+  if (typeof showFontCtrl === 'function') showFontCtrl(curEditEl);
+  qSave();
+}
+window.changeElPadding = changeElPadding;
+
+// ── SECTION / ROW / COLUMN TOOLBAR ───────────────────────────
+// _secCurrent is whichever [data-section-id] block is currently the
+// "section selection". It's set by hover OR click (not by the inline
+// editor focus, which already drives #font-ctrl). The toolbar floats
+// inside #page-area so it scrolls with the canvas — that's why we
+// position relative to that ancestor instead of viewport.
+var _secCurrent = null;
+function _secLabelFor(el){
+  var k = el && el.getAttribute && el.getAttribute('data-rz-kind');
+  if (k === 'col') return 'Columna';
+  if (k === 'row') return 'Fila';
+  if (k === 'section') return 'Sección';
+  if (el && el.tagName === 'SECTION') return 'Sección';
+  var id = (el && el.dataset && el.dataset.sectionId) || '';
+  if (id.indexOf('top-') === 0) return 'Sección';
+  return 'Bloque';
+}
+function showSecCtrl(el){
+  var sc = document.getElementById('sec-ctrl'); if (!sc || !el) return;
+  if (_secCurrent && _secCurrent !== el) _secCurrent.classList.remove('riverz-sec-active');
+  _secCurrent = el;
+  el.classList.add('riverz-sec-active');
+  var tag = document.getElementById('sc-tag');
+  if (tag) tag.textContent = _secLabelFor(el);
+  // Position the toolbar at the top edge of the block, inside the
+  // scrolling #page-area. If there's no room above (block is at the
+  // top of the canvas) we flip to inside-top of the block.
+  var pa = document.getElementById('page-area'); if (!pa) return;
+  var paR = pa.getBoundingClientRect();
+  var r = el.getBoundingClientRect();
+  // Toolbar is a child of body (not page-area), so we use viewport coords
+  // and just convert via scroll. To keep it simple we reparent into pa
+  // the first time we show it — that way scroll math is trivial.
+  if (sc.parentElement !== pa) pa.appendChild(sc);
+  var topInPa = r.top - paR.top + pa.scrollTop;
+  var leftInPa = r.left - paR.left + pa.scrollLeft;
+  // Default: hover above the block. If above clips, drop inside.
+  var preferredTop = topInPa - 32;
+  if (preferredTop < pa.scrollTop + 4) preferredTop = topInPa + 6;
+  sc.style.top = preferredTop + 'px';
+  sc.style.left = Math.max(8, leftInPa + 8) + 'px';
+  sc.classList.add('on');
+}
+function hideSecCtrl(){
+  var sc = document.getElementById('sec-ctrl'); if (sc) sc.classList.remove('on');
+  if (_secCurrent) { _secCurrent.classList.remove('riverz-sec-active'); _secCurrent = null; }
+}
+function secPad(deltaY, deltaX){
+  if (!_secCurrent) { toast('Pasá el cursor sobre una sección primero',1); return; }
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  _padSteps(_secCurrent, deltaY, deltaX);
+  // After padding change the block's height moves — reposition the toolbar
+  // so it stays glued to the same edge.
+  showSecCtrl(_secCurrent);
+  saveAll();
+}
+function secParent(){
+  if (!_secCurrent) return;
+  var p = _secCurrent.parentElement;
+  while (p && p.id !== 'page-wrap') {
+    if (p.dataset && p.dataset.sectionId) { showSecCtrl(p); return; }
+    p = p.parentElement;
+  }
+  toast('Ya estás en el contenedor más alto',0);
+}
+function secDuplicate(){
+  if (!_secCurrent) return;
+  curEditEl = _secCurrent;
+  duplicateSelectedBlock();
+  hideSecCtrl();
+}
+function secDelete(){
+  if (!_secCurrent) return;
+  curEditEl = _secCurrent;
+  deleteSelectedBlock();
+  hideSecCtrl();
+}
+window.showSecCtrl = showSecCtrl;
+window.hideSecCtrl = hideSecCtrl;
+window.secPad = secPad;
+window.secParent = secParent;
+window.secDuplicate = secDuplicate;
+window.secDelete = secDelete;
+
+// Hover wiring — picks the deepest [data-section-id] under the pointer
+// so a card inside a grid wins over the grid itself. Skips while the
+// user is typing in a contenteditable so the section toolbar doesn't
+// fight the font toolbar.
+function wireSecHover(){
+  var pw = document.getElementById('page-wrap'); if (!pw || pw.dataset.secHoverWired) return;
+  pw.dataset.secHoverWired = '1';
+  var lastEl = null;
+  pw.addEventListener('mousemove', function(e){
+    var ae = document.activeElement;
+    if (ae && ae !== document.body && ae.getAttribute && ae.getAttribute('contenteditable') === 'true') return;
+    var el = e.target.closest && e.target.closest('[data-section-id]');
+    if (!el || el === lastEl) return;
+    lastEl = el;
+    showSecCtrl(el);
+  });
+  pw.addEventListener('mouseleave', function(){
+    setTimeout(function(){
+      var sc = document.getElementById('sec-ctrl');
+      if (sc && sc.matches(':hover')) return;
+      lastEl = null;
+      hideSecCtrl();
+    }, 80);
+  });
+  // Click anywhere outside both toolbars and the canvas → hide.
+  document.addEventListener('click', function(e){
+    if (e.target.closest && (e.target.closest('#sec-ctrl') || e.target.closest('#font-ctrl') || e.target.closest('#page-wrap'))) return;
+    hideSecCtrl();
+  });
+}
+window.wireSecHover = wireSecHover;
 
 // Per-block comments. Stored on proj.blockComments keyed by
 // data-section-id. Block gets a yellow "💬" badge when a comment exists
@@ -2537,9 +2731,10 @@ function goToDashboard(){
 // ── EXPORT ────────────────────────────────────────────────────
 function buildHTML(proj){
   collectTexts();var pw=g('page-wrap'),clone=pw.cloneNode(true);
-  clone.querySelectorAll('.iov,.idel,#font-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('.iov,.idel,#font-ctrl,#sec-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('.riverz-sec-active').forEach(function(el){ el.classList.remove('riverz-sec-active'); });
   clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
-  clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired'].forEach(function(a){ el.removeAttribute(a); }); });
+  clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired],[data-rz-kind]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired','data-rz-kind'].forEach(function(a){ el.removeAttribute(a); }); });
   clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
   // Bake responsive <picture>/<source> wrappers for any slot with a
   // mobile-only override BEFORE we strip data-v-img — we need that attribute
@@ -2587,9 +2782,10 @@ function buildPublishPayload(proj){
   if(!proj) return null;
   collectTexts();
   var pw=g('page-wrap'),clone=pw.cloneNode(true);
-  clone.querySelectorAll('.iov,.idel,#font-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('.iov,.idel,#font-ctrl,#sec-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('.riverz-sec-active').forEach(function(el){ el.classList.remove('riverz-sec-active'); });
   clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
-  clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired'].forEach(function(a){ el.removeAttribute(a); }); });
+  clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired],[data-rz-kind]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired','data-rz-kind'].forEach(function(a){ el.removeAttribute(a); }); });
   clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
   clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
   clone.classList.remove('edit-mode');
@@ -3247,6 +3443,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // mounts, so the drag-source items are immediately interactive. The
   // palette items themselves don't need template-specific state.
   if (typeof wireBlockPalette === 'function') wireBlockPalette();
+  if (typeof wireSecHover === 'function') wireSecHover();
   window.addEventListener('dragover',function(e){e.preventDefault();});
   window.addEventListener('drop',function(e){e.preventDefault();});
 });
