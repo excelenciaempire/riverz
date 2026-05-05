@@ -1492,6 +1492,11 @@ function applyTemplateContent(tpl){
   if (typeof makeSectionsDraggable === 'function') makeSectionsDraggable();
   // Wire the block palette so users can drag new blocks into the canvas.
   if (typeof wireBlockPalette === 'function') wireBlockPalette();
+  // Product-page gallery carousel: thumb clicks swap the main image,
+  // arrow buttons navigate. The template's own script does this in the
+  // published page but applyTemplateContent strips <script> tags, so we
+  // re-implement it here for the editor preview.
+  if (typeof wireGalleryCarousel === 'function') wireGalleryCarousel();
 }
 
 // Restore the inline Vitalu HTML when switching from a dynamic template
@@ -2279,6 +2284,70 @@ window.wireSecHover = wireSecHover;
 window.showSecCtrl  = showSecCtrl;
 window.hideSecCtrl  = hideSecCtrl;
 
+// ── GALLERY CAROUSEL (product-page templates) ────────────────
+// Thumb click → swaps the main image. Arrow click → cycles ± through
+// the thumb list. We .stopPropagation() so the inspector doesn't grab
+// the click and steal the user's intent (swap image, not select block).
+// Re-runnable: each wired button gets a data-gallery-wired flag so
+// repeat calls (after section reorder, after template re-mount) don't
+// stack handlers.
+function wireGalleryCarousel(){
+  var pw = document.getElementById('page-wrap'); if (!pw) return;
+  var main = pw.querySelector('.gallery-main img');
+  var thumbBtns = Array.from(pw.querySelectorAll('.gallery-thumbs .thumb'));
+  if (!main || !thumbBtns.length) return;
+  function setActive(idx){
+    var t = thumbBtns[idx]; if (!t) return;
+    var img = t.querySelector('img'); if (!img) return;
+    main.setAttribute('src', img.getAttribute('src') || img.src || '');
+    thumbBtns.forEach(function(x){ x.classList.remove('is-active'); });
+    t.classList.add('is-active');
+    main.dataset.galleryIdx = String(idx);
+  }
+  thumbBtns.forEach(function(t, i){
+    if (t.dataset.galleryWired) return;
+    t.dataset.galleryWired = '1';
+    t.addEventListener('click', function(e){
+      // Inner image-edit pen / delete buttons must keep working — only
+      // intercept clicks on the thumb chrome itself, not on overlays.
+      if (e.target.closest && e.target.closest('.riverz-img-edit, .riverz-img-del, .iov, .idel')) return;
+      e.stopPropagation();
+      setActive(i);
+      // Also expose the active idx to the inspector so a swapped main
+      // image stays in sync after a future re-render.
+      if (typeof insSelect === 'function' && typeof _insEl !== 'undefined' && _insEl === t) insRefresh();
+    });
+  });
+  pw.querySelectorAll('.gallery-arrows button').forEach(function(btn){
+    if (btn.dataset.galleryWired) return;
+    btn.dataset.galleryWired = '1';
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var cur = parseInt(main.dataset.galleryIdx || '0', 10) || 0;
+      var label = (btn.getAttribute('aria-label') || btn.textContent || '').toLowerCase();
+      var dir = (label.indexOf('siguiente') >= 0 || label.indexOf('next') >= 0 || label.indexOf('›') >= 0) ? 1 : -1;
+      var n = thumbBtns.length;
+      var next = (cur + dir + n) % n;
+      setActive(next);
+    });
+  });
+  // Init: respect whichever thumb already has is-active in the markup.
+  var initIdx = thumbBtns.findIndex(function(t){ return t.classList.contains('is-active'); });
+  if (initIdx < 0) initIdx = 0;
+  // Don't overwrite a custom main src on init — only sync the active
+  // class + idx pointer so subsequent arrow clicks know where to start.
+  thumbBtns.forEach(function(x){ x.classList.remove('is-active'); });
+  thumbBtns[initIdx].classList.add('is-active');
+  main.dataset.galleryIdx = String(initIdx);
+}
+window.wireGalleryCarousel = wireGalleryCarousel;
+
+// Same logic, but as a string so it can be inlined in the published
+// HTML by buildHTML / buildPublishPayload. Kept verbatim from
+// wireGalleryCarousel above (sans editor-only inspector hooks).
+var RIVERZ_GALLERY_CODE = '(function(){var pw=document;var main=pw.querySelector(".gallery-main img");var thumbs=Array.prototype.slice.call(pw.querySelectorAll(".gallery-thumbs .thumb"));if(!main||!thumbs.length)return;function set(i){var t=thumbs[i];if(!t)return;var img=t.querySelector("img");if(!img)return;main.setAttribute("src",img.getAttribute("src")||img.src||"");thumbs.forEach(function(x){x.classList.remove("is-active");});t.classList.add("is-active");main.dataset.galleryIdx=String(i);}thumbs.forEach(function(t,i){t.addEventListener("click",function(){set(i);});});pw.querySelectorAll(".gallery-arrows button").forEach(function(btn){btn.addEventListener("click",function(){var cur=parseInt(main.dataset.galleryIdx||"0",10)||0;var lbl=(btn.getAttribute("aria-label")||btn.textContent||"").toLowerCase();var dir=(lbl.indexOf("siguiente")>=0||lbl.indexOf("next")>=0||lbl.indexOf("›")>=0)?1:-1;var n=thumbs.length;set((cur+dir+n)%n);});});var ai=thumbs.findIndex(function(t){return t.classList.contains("is-active");});if(ai<0)ai=0;thumbs.forEach(function(x){x.classList.remove("is-active");});thumbs[ai].classList.add("is-active");main.dataset.galleryIdx=String(ai);})();';
+window.RIVERZ_GALLERY_CODE = RIVERZ_GALLERY_CODE;
+
 // Per-block comments. Stored on proj.blockComments keyed by
 // data-section-id. Block gets a yellow "💬" badge when a comment exists
 // (CSS rule above). Comments are EDITOR-ONLY — stripped on publish.
@@ -2479,7 +2548,24 @@ async function loadAll(){
   else if(projects.length) activateProject(projects[0].id);
   else showEmpty();
 }
-function saveAll(){collectTexts();try{localStorage.setItem(SK,JSON.stringify({projects:projects,activeId:activeId}));isDirty=false;dot('ok');}catch(e){toast('Almacenamiento lleno',1);}}
+function saveAll(){
+  collectTexts();
+  try {
+    localStorage.setItem(SK, JSON.stringify({projects:projects, activeId:activeId}));
+    isDirty = false; dot('ok');
+    return true;
+  } catch(e) {
+    // Almost always QuotaExceededError. Surface the actual size so the
+    // user knows whether to publish (which uploads + frees data: URLs)
+    // or just delete an old landing. Log to console so a power user can
+    // open devtools and inspect localStorage themselves.
+    var sizeMb = 0;
+    try { sizeMb = Math.round((JSON.stringify({projects:projects, activeId:activeId}).length/1024/1024)*10)/10; } catch(_){}
+    toast('No se pudo guardar — almacenamiento lleno (' + sizeMb + 'MB). Publicá la landing o eliminá una vieja.', 1);
+    console.error('[Riverz] saveAll failed', e);
+    return false;
+  }
+}
 function qSave(){if(isRestoring)return;isDirty=true;dot('dirty');clearTimeout(saveT);saveT=setTimeout(function(){collectTexts();snapshot();saveAll();},700);}
 
 // ── PROJECTS ─────────────────────────────────────────────────
@@ -2790,13 +2876,24 @@ async function onFilePick(e){
     if(!file||!curImgKey)return;
     if(!file.type.startsWith('image/'))return toast('Solo imagenes',1);
     if(file.size>30*1024*1024)return toast('Imagen muy grande (max 30MB)',1);
-    toast('Subiendo a Shopify...',0);
+    toast('Procesando imagen…',0);
+    // Compress + store as a data URL. The publish flow already turns
+    // data: URLs into Shopify Files uploads via the RIVERZ_IMG__ sentinel
+    // path, so deferring the upload here means the user can iterate on a
+    // landing without burning Shopify Files quota until they actually
+    // hit "Publicar en Shopify".
     var blob=await compressImageFile(file,1920,0.85);
-    var url=await uploadImageToShopifyFiles(blob,file.name,curImgKey);
-    setSlot(curImgKey,url);
-    var proj=getActive();if(proj)setProjImage(proj,curImgKey,url,vp);
-    snapshot();saveAll();closeImgModal();toast(vp==='mobile'?'Imagen cargada solo en mobile':'Imagen cargada');
-  }catch(err){console.error('onFilePick',err);toast('Error: '+(err.message||'no se pudo subir'),1);}
+    var dataUrl=await new Promise(function(res,rej){
+      var r=new FileReader();
+      r.onload=function(){res(r.result);};
+      r.onerror=function(){rej(new Error('No se pudo leer el archivo'));};
+      r.readAsDataURL(blob);
+    });
+    setSlot(curImgKey,dataUrl);
+    var proj=getActive();if(proj)setProjImage(proj,curImgKey,dataUrl,vp);
+    snapshot();saveAll();closeImgModal();
+    toast(vp==='mobile'?'Imagen aplicada solo en mobile · se sube al publicar':'Imagen aplicada · se sube al publicar');
+  }catch(err){console.error('onFilePick',err);toast('Error: '+(err.message||'no se pudo cargar'),1);}
   finally{ if(e&&e.target) e.target.value=''; }
 }
 function delImg(e,key){
@@ -3091,7 +3188,8 @@ function buildHTML(proj){
   var cut=allCSS.indexOf('/* EDITOR UI */');if(cut>-1)allCSS=allCSS.substring(0,cut);
   var SO='<'+'scri'+'pt>',SC='<'+'/scri'+'pt>';
   var code='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh=0.22;function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
-  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<title>'+proj.name+' \u2014 Vital\u00fa</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">\n<style>'+allCSS+'</style>\n</head>\n<body>\n'+clone.outerHTML+'\n'+SO+code+SC+'\n</body>\n</html>';
+  var galleryCode = (typeof RIVERZ_GALLERY_CODE === 'string') ? RIVERZ_GALLERY_CODE : '';
+  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<title>'+proj.name+' \u2014 Vital\u00fa</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">\n<style>'+allCSS+'</style>\n</head>\n<body>\n'+clone.outerHTML+'\n'+SO+code+SC+'\n'+(galleryCode?(SO+galleryCode+SC):'')+'\n</body>\n</html>';
 }
 function exportCurrent(){var proj=getActive();if(!proj){toast('Selecciona una landing',1);return;}cpTxt(buildHTML(proj),'"'+proj.name+'" copiado');}
 function exportAll(){toast(projects.length+' landings — exporta cada una con Exportar HTML',0);}
@@ -3215,11 +3313,13 @@ function buildPublishPayload(proj){
   if (shopifyHandle) {
     shopifyCode = '(function(){var w=document.querySelector("[data-shopify-handle]");if(!w)return;var h=w.getAttribute("data-shopify-handle");if(!h)return;var fmt=function(c){try{if(window.Shopify&&Shopify.formatMoney)return Shopify.formatMoney(c,(window.theme&&theme.moneyFormat)||"${{amount}}");}catch(e){}return"$"+(c/100).toFixed(2);};var sel=null,prod=null;function isPh(s){return !s||/placehold\\.co|placeholder|\\.svg$/i.test(s);}function applyVariant(v){if(!v)return;sel=v;var pe=w.querySelector(\'.price,[data-v-text="price"]\');if(pe)pe.textContent=fmt(v.price);var ce=w.querySelector(\'.compare-at,[data-v-text="compare-at"]\');if(ce){if(v.compare_at_price&&v.compare_at_price>v.price){ce.textContent=fmt(v.compare_at_price);ce.style.display="";}else{ce.style.display="none";}}var sp=w.querySelector(\'.sticky-text [data-v-text="sticky-price"]\');if(sp)sp.textContent=fmt(v.price);var sc=w.querySelector(\'.sticky-text [data-v-text="sticky-compare"]\');if(sc){if(v.compare_at_price&&v.compare_at_price>v.price){sc.textContent=fmt(v.compare_at_price);sc.style.display="";}else{sc.style.display="none";}}}fetch("/products/"+h+".js").then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(p){prod=p;var first=p.variants.find(function(v){return v.available;})||p.variants[0];applyVariant(first);var ne=w.querySelector(\'.prod-name,[data-v-text="product-name"]\');if(ne&&p.title)ne.textContent=p.title;var imgs=(p.images&&p.images.length)?p.images:(p.featured_image?[p.featured_image]:[]);if(imgs.length){var mi=w.querySelector(".gallery-main img");if(mi&&isPh(mi.src||""))mi.src=imgs[0];var thumbs=w.querySelectorAll(".gallery-thumbs .thumb img");thumbs.forEach(function(t,i){if(t&&isPh(t.src||"")){t.src=imgs[i]||imgs[imgs.length-1];}});var si=w.querySelector(".sticky-img img");if(si&&isPh(si.src||""))si.src=imgs[0];}var rows=w.querySelectorAll(".opts-row");rows.forEach(function(row){var btns=row.querySelectorAll(".opt-btn");if(p.variants.length<=1){var optsBlock=row.closest(".opts");if(optsBlock)optsBlock.style.display="none";return;}p.variants.forEach(function(v,i){var b=btns[i];if(!b)return;b.setAttribute("data-variant-id",v.id);if(!v.available){b.classList.add("is-soldout");b.style.opacity="0.5";}});for(var i=p.variants.length;i<btns.length;i++)btns[i].style.display="none";row.addEventListener("click",function(e){var b=e.target.closest(".opt-btn");if(!b)return;var id=b.getAttribute("data-variant-id");if(!id)return;var v=p.variants.find(function(x){return String(x.id)===String(id);});if(!v)return;applyVariant(v);btns.forEach(function(x){x.classList.remove("is-active");});b.classList.add("is-active");});});}).catch(function(e){console.warn("[Riverz] Shopify product",h,"no se pudo cargar:",e&&e.message);});function addToCart(){if(!sel){alert("Cargando producto, intentá de nuevo en un segundo.");return;}var qi=w.querySelector(".qty input");var q=qi?Math.max(1,parseInt(qi.value,10)||1):1;fetch("/cart/add.js",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({id:sel.id,quantity:q})}).then(function(r){if(!r.ok)return r.json().then(function(d){throw new Error(d.description||d.message||"Error al agregar al carrito");});window.location.href="/cart";}).catch(function(e){alert(e.message||"No se pudo agregar al carrito");});}w.addEventListener("click",function(e){var c=e.target.closest(".cta-btn,.sticky-btn");if(!c||!w.contains(c))return;e.preventDefault();addToCart();});})();';
   }
+  var galleryCode = (typeof RIVERZ_GALLERY_CODE === 'string') ? RIVERZ_GALLERY_CODE : '';
   var body_html =
     fontsLink +
     '<style>'+allCSS+'</style>' +
     '<div id="'+wrapId+'"'+handleAttr+'>'+clone.outerHTML+'</div>' +
     SO+stickyCode+SC +
+    (galleryCode ? (SO+galleryCode+SC) : '') +
     (shopifyCode ? (SO+shopifyCode+SC) : '');
 
   return {
@@ -3557,10 +3657,14 @@ window.setStickyPct = setStickyPct;
 // "💾 Guardar" button + Ctrl+S + beforeunload guard.
 function saveDraftNow(){
   if (typeof collectTexts === 'function') collectTexts();
-  if (typeof saveAll === 'function') saveAll();
-  isDirty = false;
-  if (typeof dot === 'function') dot('ok');
-  toast('💾 Borrador guardado');
+  // saveAll returns false (and shows its own toast) when localStorage is
+  // full — don't overwrite that error with a false-positive success.
+  var ok = (typeof saveAll === 'function') ? saveAll() : false;
+  if (ok) {
+    isDirty = false;
+    if (typeof dot === 'function') dot('ok');
+    toast('💾 Borrador guardado');
+  }
 }
 window.saveDraftNow = saveDraftNow;
 
@@ -4125,17 +4229,24 @@ function igpFileChange(e) {
 
 async function igpFileApply() {
   if (!igpPendingFileObj || !igpSlot) { igpToast('Elige una imagen', 1); return; }
-  igpToast('Subiendo a Shopify...', 0);
+  igpToast('Procesando imagen…', 0);
   try {
     var blob = await window.compressImageFile(igpPendingFileObj, 1920, 0.85);
-    var url  = await window.uploadImageToShopifyFiles(blob, igpPendingFileObj.name, igpSlot);
+    // Store as data URL — uploaded to Shopify only at publish time so
+    // the user can iterate without burning Files quota.
+    var url = await new Promise(function(res, rej){
+      var r = new FileReader();
+      r.onload = function(){ res(r.result); };
+      r.onerror = function(){ rej(new Error('No se pudo leer el archivo')); };
+      r.readAsDataURL(blob);
+    });
     window.setSlot(igpSlot, url);
     var proj = window.getActive();
     if (proj) window.setProjImage(proj, igpSlot, url, window.vp || 'desktop');
     window.snapshot(); window.saveAll();
     igpFileReset();
     closeImgGen();
-    igpToast((window.vp==='mobile'?'✓ Imagen cargada solo en mobile':'✓ Imagen cargada'));
+    igpToast((window.vp==='mobile'?'✓ Imagen aplicada solo en mobile · se sube al publicar':'✓ Imagen aplicada · se sube al publicar'));
   } catch (err) {
     console.error('igpFileApply', err);
     igpToast('Error: ' + (err.message || 'no se pudo subir'), 1);
