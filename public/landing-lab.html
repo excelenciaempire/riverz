@@ -2056,13 +2056,11 @@ function decorateImageSlots(){
 // ── STORAGE ──────────────────────────────────────────────────
 async function loadAll(){
   try{ var s=localStorage.getItem(SK); if(s){var d=JSON.parse(s);projects=d.projects||[];activeId=d.activeId||null;} }catch(e){}
-  if(projects.length===0){
-    var pa=mkProj('Landing A — Ancestral','Ingrediente ancestral: sebo de res que nuestras bisabuelas usaban');
-    pa.id='vitalu_a'; pa.texts=JSON.parse(JSON.stringify(DEFAULT_TEXTS)); projects.push(pa);
-    var pb=mkProj('Landing B — Frustracion','Ya gastaste suficiente en cremas que no funcionan');
-    pb.id='vitalu_b'; pb.texts=JSON.parse(JSON.stringify(TEXTS_B)); projects.push(pb);
-    activeId='vitalu_a';
-  }
+  // No auto-seed. Users now arrive here from /landing-lab (template
+  // dashboard) or /landing-lab/mis-paginas — both paths supply either
+  // ?template=<id> (new project) or ?p=<id> (existing). Seeding
+  // Landing A / B on empty state was a Vitalu-era leftover that kept
+  // resurrecting deleted projects whenever the user wiped them.
   // The new dashboard at /landing-lab navigates here with either:
   //   ?p=<id>          → open an existing project
   //   ?template=<id>   → start a NEW project from a template
@@ -2181,6 +2179,20 @@ function doDelete(id){if(projects.length<=1){toast('No puedes eliminar la unica'
 async function bootProject(id){
   var proj = projects.find(function(p){return p.id===id;});
   if (!proj) return;
+  // Save the OUTGOING project's edits while its DOM is still mounted.
+  // collectTexts harvests by querying live #page-wrap [data-v-text]
+  // nodes, so doing this after applyTemplateContent / restoreInlineLayout
+  // would write the incoming layout's slot values into the outgoing
+  // project's texts dict — which is exactly how Vitalú copy was leaking
+  // into freshly-created template projects. Claim activeId now so any
+  // intermediate getActive() during the async fetch targets the correct
+  // (incoming) project, and so activateProject's own collectTexts guard
+  // becomes a no-op for this transition.
+  if (activeId && activeId !== id) {
+    collectTexts();
+    saveAll();
+    activeId = id;
+  }
   if (proj.templateId && currentTemplateId !== proj.templateId) {
     try {
       toast('Cargando template…', 0);
@@ -2208,7 +2220,16 @@ function activateProject(id){
   // [data-v-text] / [data-v-img] queries hit elements in their final
   // positions.
   if (typeof applyLayoutOrder === 'function') applyLayoutOrder(proj);
-  var texts=Object.keys(proj.texts).length>0?proj.texts:DEFAULT_TEXTS;
+  // DEFAULT_TEXTS is the Vitalú inline copy. Falling back to it for a
+  // template-based project bleeds Vitalú text into any slot whose key
+  // also exists in the template (e.g. sticky-h, sticky-sub) and pushes
+  // collectTexts to persist that bleed on the very first edit. Use it
+  // only for legacy inline projects that have no templateId; templates
+  // already ship with their own placeholder copy in the HTML.
+  var texts;
+  if (Object.keys(proj.texts).length > 0) texts = proj.texts;
+  else if (!proj.templateId) texts = DEFAULT_TEXTS;
+  else texts = {};
   applyTexts(texts);
   // For each slot, prefer the user's saved image (resolving per-viewport
   // overrides); fall back to the template's default; if neither, clear it.
