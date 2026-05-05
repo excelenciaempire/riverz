@@ -52,6 +52,8 @@ ul{margin:0;padding:0;list-style:none}
 @media (min-width:760px){ .pp{padding:0 32px} }
 .pp-narrow{max-width:1080px;margin:0 auto;padding:0 20px}
 @media (min-width:760px){ .pp-narrow{padding:0 32px} }
+.pp-wide{max-width:1340px;margin:0 auto;padding:0 20px}
+@media (min-width:760px){ .pp-wide{padding:0 32px} }
 
 /* ─── 1. ANNOUNCEMENT BAR ────────────────────────────────────── */
 .pp-announce{background:var(--olive);color:#fff;text-align:center;padding:11px 16px;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
@@ -288,6 +290,18 @@ ul{margin:0;padding:0;list-style:none}
 .rfy-item strong{color:var(--ink);font-weight:700}
 .rfy-img{aspect-ratio:1/1;border-radius:var(--r-md);overflow:hidden;background:#111}
 .rfy-img img{width:100%;height:100%;object-fit:cover}
+
+/* ─── 10b. VIDEO TESTIMONIALS (cream) ─────────────────────── */
+.vt-grid{display:grid;grid-template-columns:1fr;gap:20px;margin-top:36px}
+@media (min-width:600px){ .vt-grid{grid-template-columns:repeat(2,1fr)} }
+@media (min-width:880px){ .vt-grid{grid-template-columns:repeat(3,1fr);gap:24px} }
+.vt-card{display:flex;flex-direction:column;gap:12px}
+.vt-card .vid-ph{aspect-ratio:9/16;border-radius:var(--r-md);overflow:hidden;background:#0a0a0a;position:relative}
+.vt-card .vid-ph video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+.vt-card .vid-ph:not(.loaded)::after{content:attr(data-label);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(0,0,0,.42);border:1px dashed rgba(0,0,0,.18);padding:14px;text-align:center;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:var(--r-md);background:#fff}
+.vt-meta{display:flex;flex-direction:column;gap:4px;padding:0 4px}
+.vt-name{font-size:13.5px;font-weight:700;color:var(--ink)}
+.vt-quote{font-size:13.5px;color:var(--ink-2);line-height:1.55;font-style:italic}
 
 /* ─── 11. INGREDIENTS GRID (white) ───────────────────────────── */
 .ing-grid{display:grid;grid-template-columns:1fr;gap:20px;margin-top:40px}
@@ -796,7 +810,7 @@ ul{margin:0;padding:0;list-style:none}
 
   <!-- 10. Right for you (cream) -->
   <section class="section section-cream rv">
-    <div class="pp-narrow">
+    <div class="pp-wide">
       <div class="rfy-wrap">
         <div>
           <h2 class="section-h2" style="text-align:left" data-v-text="rfy-title">UltimaPeak es para vos si...</h2>
@@ -811,6 +825,42 @@ ul{margin:0;padding:0;list-style:none}
         </div>
         <div class="rfy-img" data-v-img="rfy-img">
           <img src="https://placehold.co/800x800/0a0a0a/e8b923?text=Producto" alt="">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10b. Video testimonials (cream) -->
+  <section class="section section-cream rv">
+    <div class="pp-narrow">
+      <h2 class="section-h2" data-v-text="vt-title">Lo que dicen <em>nuestros clientes</em></h2>
+      <div class="vt-grid">
+        <div class="vt-card">
+          <div class="vid-ph" data-v-video="vt-1" data-label="🎬 Video testimonio 1 · 9:16 vertical">
+            <video playsinline preload="metadata" controls></video>
+          </div>
+          <div class="vt-meta">
+            <div class="vt-name" data-v-text="vt-1-name">Marco — Buenos Aires</div>
+            <div class="vt-quote" data-v-text="vt-1-quote">"Lo noté desde la primera semana. Más energía, más enfoque."</div>
+          </div>
+        </div>
+        <div class="vt-card">
+          <div class="vid-ph" data-v-video="vt-2" data-label="🎬 Video testimonio 2 · 9:16 vertical">
+            <video playsinline preload="metadata" controls></video>
+          </div>
+          <div class="vt-meta">
+            <div class="vt-name" data-v-text="vt-2-name">Lucía — Córdoba</div>
+            <div class="vt-quote" data-v-text="vt-2-quote">"Probé otras cosas, ninguna funcionó así. Ya las recomiendo."</div>
+          </div>
+        </div>
+        <div class="vt-card">
+          <div class="vid-ph" data-v-video="vt-3" data-label="🎬 Video testimonio 3 · 9:16 vertical">
+            <video playsinline preload="metadata" controls></video>
+          </div>
+          <div class="vt-meta">
+            <div class="vt-name" data-v-text="vt-3-name">Julián — Rosario</div>
+            <div class="vt-quote" data-v-text="vt-3-quote">"Cambio real en mi rendimiento. Vale cada peso."</div>
+          </div>
         </div>
       </div>
     </div>

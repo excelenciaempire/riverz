@@ -251,6 +251,12 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
 .idel:hover{background:rgba(220,60,60,.9)}
 .img-ph.collapsed{display:none!important}
 .img-ph:not(.loaded) img{display:none}
+/* Video slots: same overlay/decoration pattern as .img-ph but for <video>. */
+.vid-ph{position:relative;overflow:hidden;background:#0a0a0a}
+.vid-ph video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+.vid-ph:not(.loaded) video{display:none}
+.vid-ph:not(.loaded)::after{content:attr(data-label);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Instrument Sans',sans-serif;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(245,237,216,.28);border:1px dashed rgba(245,237,216,.14);padding:12px;text-align:center;pointer-events:none;z-index:1}
+.vid-ph.collapsed{display:none!important}
 .hero-img-col:has(.img-ph.collapsed){display:none}
 .hero:has(.hero-img-col .img-ph.collapsed){grid-template-columns:1fr}
 .split-img:has(.img-ph.collapsed){display:none}
@@ -1311,6 +1317,37 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
     </div>
   </div>
 </div>
+<div id="vid-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99997;display:none;align-items:center;justify-content:center;backdrop-filter:blur(12px)">
+  <div style="width:min(560px,92vw);max-height:88vh;overflow:auto;background:#0E1118;border:1px solid #1f2530;border-radius:12px;padding:20px 22px;font-family:'Instrument Sans',sans-serif;color:#C8CAD8">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#7A82A0;margin-bottom:2px">Video del slot</div>
+        <div id="vid-modal-title" style="font-size:15px;font-weight:700;color:#fff">Video</div>
+      </div>
+      <button onclick="closeVidModal()" style="width:28px;height:28px;border-radius:50%;border:0;background:rgba(255,255,255,.06);color:#9aa3c0;cursor:pointer;font-size:14px">&#x2715;</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button id="vid-tab-file" class="igp-tab on" onclick="vidSetMode('file')">📁 Archivo</button>
+      <button id="vid-tab-url" class="igp-tab" onclick="vidSetMode('url')">🔗 URL</button>
+    </div>
+    <div id="vid-file-section">
+      <div onclick="document.getElementById('vid-file-input').click()" style="border:1.5px dashed #2a3140;border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;background:#0a0d14;transition:border-color .15s" onmouseover="this.style.borderColor='#3d4760'" onmouseout="this.style.borderColor='#2a3140'">
+        <div style="font-size:30px;margin-bottom:8px">🎬</div>
+        <div style="font-size:13px;color:#C8CAD8;margin-bottom:4px">Haz clic para subir un video</div>
+        <div style="font-size:11px;color:#5A6280">MP4 · MOV · WEBM · hasta 60MB · se sube directo a Shopify Files</div>
+        <input type="file" id="vid-file-input" accept="video/mp4,video/quicktime,video/webm,video/ogg" style="display:none" onchange="onVideoFilePick(event)">
+      </div>
+      <div id="vid-upload-status" style="margin-top:10px;font-size:11.5px;color:#7A82A0;text-align:center;display:none"></div>
+    </div>
+    <div id="vid-url-section" style="display:none">
+      <div style="font-size:11.5px;color:#7A82A0;margin-bottom:6px">Pega una URL pública (.mp4 directo, Shopify CDN, etc.)</div>
+      <input id="vid-url-input" placeholder="https://cdn.shopify.com/s/files/.../testimonial.mp4" style="width:100%;padding:10px 12px;background:#0a0d14;border:1px solid #2a3140;border-radius:6px;color:#fff;font-size:12.5px;font-family:inherit;margin-bottom:10px">
+      <div style="font-size:11px;color:#7A82A0;margin-bottom:8px">Poster (opcional, imagen de portada)</div>
+      <input id="vid-poster-input" placeholder="https://... (opcional)" style="width:100%;padding:10px 12px;background:#0a0d14;border:1px solid #2a3140;border-radius:6px;color:#fff;font-size:12.5px;font-family:inherit;margin-bottom:14px">
+      <button onclick="applyVideoUrl()" class="tb tb-acc" style="width:100%">Aplicar</button>
+    </div>
+  </div>
+</div>
 <div id="toast"></div>
 <script>
 (function(){
@@ -1324,6 +1361,15 @@ var SK = 'lab_v5';
 // defaults stay seeded here so Vitalu projects open with the right slot
 // order before a template swap kicks in.
 var IMG_KEYS = ['img-1','img-2','img-3','img-4','img-5a','img-5b','img-5c','img-5d','img-5e','img-5f','img-6','img-7a','img-7b','img-7c','img-8','img-9'];
+// Parallel slot table for [data-v-video] elements. Rebuilt by rebuildSlotTables
+// from the live #page-wrap whenever a template mounts. proj.videos[slot] holds
+// the cdn.shopify.com URL (videos upload immediately at file-pick time, never
+// stored as data: URLs — a 5MB MP4 base64-encoded would blow past the 5MB
+// localStorage quota in two slots).
+var VIDEO_KEYS = [];
+var TEMPLATE_DEFAULT_VIDEOS = {};
+var curVidKey = null;
+var vidMode = 'file';
 
 // Map of dynamic templates → their HTML location under /public. Inline
 // templates (Vitalu A/B) are NOT in this map — they're authored directly in
@@ -1486,6 +1532,7 @@ function applyTemplateContent(tpl){
   // every reveal-able section straight away.
   document.querySelectorAll('#page-wrap .rv').forEach(function(el){ el.classList.add('on'); });
   decorateImageSlots();
+  decorateVideoSlots();
   // initEdit re-attaches contentEditable to the new [data-v-text] nodes.
   if (typeof initEdit === 'function') initEdit();
   // Tag + wire drag-and-drop on the new sections.
@@ -1587,6 +1634,20 @@ function rebuildSlotTables(){
     var slot = el.getAttribute('data-v-text');
     if (!slot || (slot in DEFAULT_TEXTS)) return;
     DEFAULT_TEXTS[slot] = el.innerHTML;
+  });
+  // Video slots: parallel to images, keyed off [data-v-video]. We don't track
+  // SLOT_CFG for these — the modal is simpler (file or URL, no AI generation).
+  VIDEO_KEYS = [];
+  TEMPLATE_DEFAULT_VIDEOS = {};
+  var seenV = {};
+  document.querySelectorAll('#page-wrap [data-v-video]').forEach(function(el){
+    var slot = el.getAttribute('data-v-video');
+    if (!slot || seenV[slot]) return;
+    seenV[slot] = true;
+    VIDEO_KEYS.push(slot);
+    var v = el.querySelector('video');
+    var src = v ? (v.getAttribute('src') || '') : '';
+    if (src) TEMPLATE_DEFAULT_VIDEOS[slot] = src;
   });
 }
 
@@ -2580,7 +2641,7 @@ function qSave(){if(isRestoring)return;isDirty=true;dot('dirty');clearTimeout(sa
 
 // ── PROJECTS ─────────────────────────────────────────────────
 function uid(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
-function mkProj(name,angle,url,templateId){return{id:uid(),name:name||'Nueva Landing',angle:angle||'',ctaUrl:url||'https://vitaluoficial.store/products/kit-vitalu',texts:{},images:{},templateId:templateId||undefined};}
+function mkProj(name,angle,url,templateId){return{id:uid(),name:name||'Nueva Landing',angle:angle||'',ctaUrl:url||'https://vitaluoficial.store/products/kit-vitalu',texts:{},images:{},videos:{},templateId:templateId||undefined};}
 function getActive(){return projects.find(function(p){return p.id===activeId;});}
 
 function openNewModal(){
@@ -2720,6 +2781,8 @@ function activateProject(id){
   // We don't blindly resetSlot first — that wiped the placeholder images
   // that ship with templates like Pilar before any user value got applied.
   applySlotsForViewport(proj, vp);
+  if(!proj.videos) proj.videos={};
+  applyVideoSlots(proj);
   applyCTA(proj.ctaUrl);
   if (typeof reapplyBlockComments === 'function') reapplyBlockComments();
   isRestoring=false;
@@ -2752,6 +2815,173 @@ function imgEl(k){
 function resetSlot(k){var el=imgEl(k);if(!el)return;el.src='';var ph=el.closest('.img-ph');if(ph)ph.classList.remove('loaded','collapsed');}
 function setSlot(k,src){var el=imgEl(k);if(!el)return;el.src=src;var ph=el.closest('.img-ph');if(ph){ph.classList.add('loaded');ph.classList.remove('collapsed');}}
 function collapseSlot(k){var el=imgEl(k);if(!el)return;el.src='';var ph=el.closest('.img-ph');if(ph){ph.classList.remove('loaded');ph.classList.add('collapsed');}}
+// ── VIDEO SLOTS ─────────────────────────────────────────────
+// Parallel set of slot helpers for [data-v-video]. proj.videos[slot] is either
+// a string URL or { src, poster }. Videos are uploaded to Shopify Files at
+// pick time so we never store base64 in localStorage.
+function vidEl(k){
+  if(!k) return null;
+  var slot=document.querySelector('#page-wrap [data-v-video="'+k+'"]');
+  return slot ? slot.querySelector('video') : null;
+}
+function vidEntryUrl(entry){
+  if(!entry) return null;
+  if(typeof entry==='string') return entry;
+  if(typeof entry==='object' && typeof entry.src==='string') return entry.src;
+  return null;
+}
+function vidEntryPoster(entry){
+  if(entry && typeof entry==='object' && typeof entry.poster==='string') return entry.poster;
+  return null;
+}
+function setVidSlot(k,src,poster){
+  var el=vidEl(k); if(!el) return;
+  el.src=src||'';
+  if(poster) el.setAttribute('poster',poster); else el.removeAttribute('poster');
+  var ph=el.closest('.vid-ph');
+  if(ph){ ph.classList.add('loaded'); ph.classList.remove('collapsed'); }
+}
+function resetVidSlot(k){
+  var el=vidEl(k); if(!el) return;
+  el.src=''; el.removeAttribute('poster');
+  var ph=el.closest('.vid-ph'); if(ph) ph.classList.remove('loaded','collapsed');
+}
+function collapseVidSlot(k){
+  var el=vidEl(k); if(!el) return;
+  el.src=''; el.removeAttribute('poster');
+  var ph=el.closest('.vid-ph'); if(ph){ ph.classList.remove('loaded'); ph.classList.add('collapsed'); }
+}
+function applyVideoSlots(proj){
+  if(!proj || !proj.videos) return;
+  VIDEO_KEYS.forEach(function(k){
+    var entry=proj.videos[k];
+    if(entry===null){ collapseVidSlot(k); return; }
+    var url=vidEntryUrl(entry);
+    if(url){ setVidSlot(k,url,vidEntryPoster(entry)); return; }
+    if(TEMPLATE_DEFAULT_VIDEOS[k]) setVidSlot(k, TEMPLATE_DEFAULT_VIDEOS[k]);
+    else resetVidSlot(k);
+  });
+}
+function decorateVideoSlots(){
+  document.querySelectorAll('#page-wrap [data-v-video]').forEach(function(el){
+    if(el.querySelector(':scope > .riverz-vid-edit')) return;
+    var slot=el.getAttribute('data-v-video');
+    if(!slot) return;
+    if(getComputedStyle(el).position==='static') el.style.position='relative';
+    el.style.minHeight=el.style.minHeight || '120px';
+    var btn=document.createElement('button');
+    btn.type='button';
+    btn.className='riverz-vid-edit';
+    btn.innerHTML='🎬 Video';
+    btn.style.cssText='position:absolute;top:8px;right:8px;z-index:30;background:rgba(0,0,0,.78);color:#fff;border:0;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);font-family:Inter,system-ui,sans-serif;letter-spacing:0.02em';
+    btn.onclick=function(e){ e.preventDefault(); e.stopPropagation(); openVidModal(slot); };
+    el.appendChild(btn);
+    var del=document.createElement('button');
+    del.type='button';
+    del.className='riverz-vid-del';
+    del.innerHTML='🗑';
+    del.style.cssText='position:absolute;top:8px;left:8px;z-index:30;background:rgba(0,0,0,.78);color:#fff;border:0;width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+    del.onclick=function(e){ e.preventDefault(); e.stopPropagation(); delVid(e,slot); };
+    el.appendChild(del);
+  });
+}
+function openVidModal(k){
+  curVidKey=k;
+  var m=g('vid-modal'); if(!m) return;
+  var title=g('vid-modal-title'); if(title) title.textContent='Video · '+k;
+  vidSetMode('file');
+  var urlIn=g('vid-url-input'); if(urlIn) urlIn.value='';
+  var posIn=g('vid-poster-input'); if(posIn) posIn.value='';
+  var st=g('vid-upload-status'); if(st){ st.style.display='none'; st.textContent=''; }
+  m.style.display='flex';
+}
+function closeVidModal(){
+  var m=g('vid-modal'); if(m) m.style.display='none';
+  curVidKey=null;
+}
+function vidSetMode(mode){
+  vidMode=mode;
+  var fs=g('vid-file-section'), us=g('vid-url-section');
+  var ft=g('vid-tab-file'), ut=g('vid-tab-url');
+  if(fs) fs.style.display = mode==='file' ? 'block' : 'none';
+  if(us) us.style.display = mode==='url'  ? 'block' : 'none';
+  if(ft) ft.classList.toggle('on', mode==='file');
+  if(ut) ut.classList.toggle('on', mode==='url');
+}
+function applyVideoUrl(){
+  if(!curVidKey) return;
+  var url=(g('vid-url-input').value||'').trim();
+  if(!url){ toast('Pega una URL primero',1); return; }
+  var poster=(g('vid-poster-input').value||'').trim();
+  setVidSlot(curVidKey, url, poster);
+  var proj=getActive();
+  if(proj){
+    if(!proj.videos) proj.videos={};
+    proj.videos[curVidKey] = poster ? { src:url, poster:poster } : url;
+  }
+  snapshot(); saveAll(); closeVidModal();
+  toast('Video aplicado');
+}
+async function onVideoFilePick(e){
+  var file=e.target.files[0];
+  try{
+    if(!file || !curVidKey) return;
+    if(!/^video\//.test(file.type)) return toast('Solo videos',1);
+    if(file.size > 60*1024*1024) return toast('Video muy grande (max 60MB)',1);
+    var st=g('vid-upload-status');
+    if(st){ st.style.display='block'; st.textContent='Subiendo a Shopify Files…'; }
+    toast('Subiendo video a Shopify…',0);
+    var url=await uploadVideoToShopifyFiles(file, file.name, curVidKey);
+    setVidSlot(curVidKey, url);
+    var proj=getActive();
+    if(proj){
+      if(!proj.videos) proj.videos={};
+      proj.videos[curVidKey] = url;
+    }
+    snapshot(); saveAll(); closeVidModal();
+    toast('✓ Video subido');
+  }catch(err){
+    console.error('onVideoFilePick',err);
+    var st2=g('vid-upload-status'); if(st2) st2.textContent='Error: '+(err.message||'no se pudo subir');
+    toast('Error: '+(err.message||'no se pudo subir'),1);
+  } finally {
+    if(e && e.target) e.target.value='';
+  }
+}
+async function uploadVideoToShopifyFiles(file, originalName, slotKey){
+  var proj=getActive();
+  var fd=new FormData();
+  var clean=(originalName||'video').replace(/[^a-zA-Z0-9._-]+/g,'_');
+  fd.append('file', file, clean);
+  if(proj){
+    fd.append('project_id', proj.id || 'landing');
+    if(proj.name) fd.append('alt', proj.name+' — '+(slotKey||'video'));
+  }
+  if(slotKey) fd.append('slot', slotKey);
+  var res=await fetch('/api/landing-lab/upload-video',{method:'POST',body:fd});
+  var data=null; try{ data=await res.json(); }catch(_){}
+  if(!res.ok){
+    if(data && data.requiresReconnect) throw new Error((data.error||'Conecta tu Shopify primero')+' — Configuración → Integraciones');
+    throw new Error((data && data.error) || ('Subida fallida ('+res.status+')'));
+  }
+  if(!data || !data.url) throw new Error('Respuesta sin URL');
+  return data.url;
+}
+function delVid(e,key){
+  e.stopPropagation(); e.preventDefault();
+  var proj=getActive(); if(!proj) return;
+  if(!proj.videos) proj.videos={};
+  proj.videos[key]=null;
+  if(TEMPLATE_DEFAULT_VIDEOS[key]) setVidSlot(key, TEMPLATE_DEFAULT_VIDEOS[key]);
+  else collapseVidSlot(key);
+  snapshot(); saveAll();
+}
+window.openVidModal = openVidModal;
+window.closeVidModal = closeVidModal;
+window.vidSetMode = vidSetMode;
+window.applyVideoUrl = applyVideoUrl;
+window.onVideoFilePick = onVideoFilePick;
+window.delVid = delVid;
 
 // ── PER-VIEWPORT IMAGE OVERRIDES ─────────────────────────────
 // proj.images[k] can be one of three shapes:
@@ -2927,7 +3157,7 @@ function delImg(e,key){
 }
 
 // ── UNDO/REDO ─────────────────────────────────────────────────
-function snapshot(){if(isRestoring||!activeId)return;collectTexts();var proj=getActive();if(!proj)return;var snap={texts:JSON.parse(JSON.stringify(proj.texts)),images:JSON.parse(JSON.stringify(proj.images)),layoutOrder:proj.layoutOrder?JSON.parse(JSON.stringify(proj.layoutOrder)):null};if(!histMap[activeId]){histMap[activeId]=[];histIdx[activeId]=-1;}histMap[activeId].splice(histIdx[activeId]+1);histMap[activeId].push(snap);if(histMap[activeId].length>60)histMap[activeId].shift();histIdx[activeId]=histMap[activeId].length-1;updateUR();}
+function snapshot(){if(isRestoring||!activeId)return;collectTexts();var proj=getActive();if(!proj)return;var snap={texts:JSON.parse(JSON.stringify(proj.texts)),images:JSON.parse(JSON.stringify(proj.images)),videos:JSON.parse(JSON.stringify(proj.videos||{})),layoutOrder:proj.layoutOrder?JSON.parse(JSON.stringify(proj.layoutOrder)):null};if(!histMap[activeId]){histMap[activeId]=[];histIdx[activeId]=-1;}histMap[activeId].splice(histIdx[activeId]+1);histMap[activeId].push(snap);if(histMap[activeId].length>60)histMap[activeId].shift();histIdx[activeId]=histMap[activeId].length-1;updateUR();}
 function doUndo(){
   if(!activeId){ toast('Sin proyecto activo',1); return; }
   var idx = histIdx[activeId];
@@ -2947,7 +3177,7 @@ function doRedo(){
   updateUR();
   toast('↷ Rehecho');
 }
-function applySnap(snap){isRestoring=true;var proj=getActive();if(!proj){isRestoring=false;return;}proj.texts=JSON.parse(JSON.stringify(snap.texts||{}));proj.images=JSON.parse(JSON.stringify(snap.images||{}));if(snap.layoutOrder){proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));if(typeof applyLayoutOrder==='function')applyLayoutOrder(proj);}applyTexts(proj.texts);applySlotsForViewport(proj,vp);saveAll();isRestoring=false;}
+function applySnap(snap){isRestoring=true;var proj=getActive();if(!proj){isRestoring=false;return;}proj.texts=JSON.parse(JSON.stringify(snap.texts||{}));proj.images=JSON.parse(JSON.stringify(snap.images||{}));proj.videos=JSON.parse(JSON.stringify(snap.videos||{}));if(snap.layoutOrder){proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));if(typeof applyLayoutOrder==='function')applyLayoutOrder(proj);}applyTexts(proj.texts);applySlotsForViewport(proj,vp);applyVideoSlots(proj);saveAll();isRestoring=false;}
 function updateUR(){var id=activeId;var u=g('btn-undo'),r=g('btn-redo');if(u)u.disabled=!id||(histIdx[id]||0)<=0;if(r)r.disabled=!id||(histIdx[id]||0)>=((histMap[id]||[]).length-1);}
 
 // ── FONT SIZE CONTROLS ────────────────────────────────────────
@@ -3257,9 +3487,35 @@ function buildPublishPayload(proj){
       });
     }
   });
+  // Map each [data-v-video] slot to its proj.videos URL. Videos upload
+  // immediately at file-pick time so the URL is already a Shopify CDN URL —
+  // no sentinel/server roundtrip needed. Slots without a URL get collapsed
+  // (display:none) so empty placeholders don't ship.
+  clone.querySelectorAll('[data-v-video]').forEach(function(slotEl){
+    var slot=slotEl.getAttribute('data-v-video');
+    var entry=proj.videos ? proj.videos[slot] : null;
+    var url=null, poster=null;
+    if(entry){
+      if(typeof entry==='string') url=entry;
+      else if(typeof entry==='object'){ url=entry.src||null; poster=entry.poster||null; }
+    }
+    var v=slotEl.querySelector('video');
+    if(!v) return;
+    if(!url){
+      // No video set → drop the wrapper from the published page entirely.
+      slotEl.parentNode && slotEl.parentNode.removeChild(slotEl);
+      return;
+    }
+    v.setAttribute('src', url);
+    if(poster) v.setAttribute('poster', poster); else v.removeAttribute('poster');
+    // Make sure the published <video> is playable inline with controls.
+    if(!v.hasAttribute('controls')) v.setAttribute('controls','');
+    if(!v.hasAttribute('playsinline')) v.setAttribute('playsinline','');
+    if(!v.hasAttribute('preload')) v.setAttribute('preload','metadata');
+  });
   // Strip editor-only data attributes after capturing them.
-  clone.querySelectorAll('[data-v-text],[data-v-img]').forEach(function(el){
-    el.removeAttribute('data-v-text');el.removeAttribute('data-v-img');
+  clone.querySelectorAll('[data-v-text],[data-v-img],[data-v-video]').forEach(function(el){
+    el.removeAttribute('data-v-text');el.removeAttribute('data-v-img');el.removeAttribute('data-v-video');
   });
 
   // Inline the page CSS so the Shopify theme can't override the layout.

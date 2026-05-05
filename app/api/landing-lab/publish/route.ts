@@ -347,6 +347,21 @@ rte-formatter {
   padding: 0 !important;
 }
 
+/* Inline media must scale to its slot — Shopify themes sometimes inject
+   max-width: 700px on <video>/<picture>/<img> via .rte styles. Override. */
+[id^="riverz-landing-"] video,
+[id^="riverz-landing-"] picture,
+[id^="riverz-landing-"] img {
+  max-width: 100% !important;
+  height: auto;
+}
+[id^="riverz-landing-"] .vid-ph video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  display: block;
+}
+
 /* Some themes drop a min-height/padding on main; flatten it */
 main, #MainContent { min-height: 0 !important; }
 `.trim();
