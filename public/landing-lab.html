@@ -2537,7 +2537,17 @@ async function loadAll(){
       projects.push(newProj);
       activeId = newProj.id;
       try { history.replaceState(null, '', '/landing-lab/edit?p='+newProj.id); } catch(e){}
-      saveAll();
+      // Persist directly — DON'T call saveAll() here. saveAll runs
+      // collectTexts(), which harvests every [data-v-text] in the
+      // currently-mounted DOM. At this moment the DOM is still the
+      // inline Vitalú shell baked into landing-lab.html (the template
+      // hasn't been fetched yet), so saveAll would write Vitalú's
+      // hero-l1 / hero-em / auto-N / sticky-h / cta-* values into the
+      // brand-new project's texts dict. activateProject then picks
+      // proj.texts (now non-empty) over the template defaults and the
+      // Vitalú copy renders inside the user's "fresh" Powernax /
+      // Pilar landing. Bypass collectTexts entirely on this path.
+      try { localStorage.setItem(SK, JSON.stringify({ projects: projects, activeId: activeId })); } catch(e){}
     } else if (pid && projects.find(function(p){return p.id===pid;})) {
       activeId = pid;
     }
