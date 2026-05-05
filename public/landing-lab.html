@@ -197,10 +197,10 @@ body{color:#E2E4EF;font-family:'Instrument Sans',sans-serif;font-size:13px;displ
 .ed-name input:focus{color:#C8CAD8}.ed-angle{font-size:10px;color:#3E4560;flex:2;min-width:0}
 .ed-angle input{background:transparent;border:none;color:#3E4560;font-size:10px;font-family:'Instrument Sans',sans-serif;width:100%;outline:none}
 .ed-angle input:focus{color:#5B6490}.ed-sep{width:1px;height:16px;background:#181B27}
-#page-area{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;background:#0E0A06;scrollbar-width:thin;scrollbar-color:#1E2130 #0E0A06;position:relative}
+#page-area{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;background:#0E0A06;scrollbar-width:thin;scrollbar-color:#1E2130 #0E0A06}
 #page-area::-webkit-scrollbar{width:4px;background:#0E0A06}
 #page-area::-webkit-scrollbar-thumb{background:#1E2130;border-radius:2px}
-#page-wrap{width:100%;min-height:100%;background:var(--ink,#0E0A06);color:var(--cream,#F5EDD8);font-family:'Instrument Sans',sans-serif;line-height:1.7;overflow-x:hidden;display:block}
+#page-wrap{width:100%;min-height:100%;background:var(--ink,#0E0A06);color:var(--cream,#F5EDD8);font-family:'Instrument Sans',sans-serif;line-height:1.7;overflow-x:hidden;display:block;position:relative}
 body.mob-mode #page-area{background:#0D0D12;text-align:center}
 body.mob-mode:not(.riverz-tpl-active) #page-wrap{width:390px;max-width:390px;margin:20px auto;text-align:left;display:inline-block;min-height:auto;box-shadow:0 0 0 8px #1A1D28,0 0 0 9px #252840}
 /* Templates render mobile preview as a clean phone-shaped sheet, no dark frame */
@@ -259,21 +259,55 @@ body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
 .gift:has(.gift-img .img-ph.collapsed){grid-template-columns:1fr}
 .edit-mode [data-v-text]:hover{outline:2px solid rgba(74,144,226,.35);outline-offset:2px;border-radius:2px;cursor:text}
 .edit-mode [data-v-text]:focus{outline:2px solid #4A90E2;outline-offset:2px;border-radius:2px}
-#font-ctrl{position:fixed;z-index:9999;background:#0D0E14;border:1px solid #252840;border-radius:7px;padding:4px 6px;display:none;align-items:center;gap:4px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+#font-ctrl{display:none!important}
 #font-ctrl button{width:24px;height:24px;border:1px solid #252840;background:#111420;color:#9AA3C0;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:'Instrument Sans',sans-serif;transition:all .15s}
 #font-ctrl button:hover{background:#1E2436;color:#C8CAD8}
 #font-ctrl .fc-sep{width:1px;height:18px;background:#252840;margin:0 2px}
 #font-ctrl .fc-act{font-size:13px}
 #font-ctrl .fc-danger:hover{background:rgba(228,78,58,.15);color:#ff7a64;border-color:rgba(228,78,58,.4)}
-#sec-ctrl{position:absolute;z-index:60;display:none;align-items:center;gap:2px;background:#0D0E14;border:1px solid #2a2e3d;border-radius:7px;padding:3px 4px;box-shadow:0 6px 22px rgba(0,0,0,.55);font-family:'Instrument Sans',sans-serif;pointer-events:auto;user-select:none}
-#sec-ctrl.on{display:inline-flex}
+#sec-ctrl{display:none!important}
 #sec-ctrl button{height:24px;padding:0 8px;border:1px solid #252840;background:#111420;color:#B8BCCC;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;font-family:inherit;letter-spacing:.02em}
 #sec-ctrl button:hover{background:#1E2436;color:#fff;border-color:#3a3f55}
 #sec-ctrl .sc-tag{font-size:9px;color:#0a0a0a;background:#f7ff9e;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px;font-weight:800;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;margin-right:2px}
 #sec-ctrl .sc-sep{width:1px;height:16px;background:#252840;margin:0 2px}
 #sec-ctrl .sc-mini{font-size:10px;color:#5B6490;padding:0 3px;font-weight:700;letter-spacing:.04em}
 #sec-ctrl button.sc-danger:hover{background:rgba(228,78,58,.15);color:#ff7a64;border-color:rgba(228,78,58,.4)}
-[data-section-id].riverz-sec-active{outline:2px dashed rgba(247,255,158,.7)!important;outline-offset:2px;background:rgba(247,255,158,.04)}
+.riverz-sec-active{outline:2px dashed rgba(247,255,158,.85)!important;outline-offset:2px;background:rgba(247,255,158,.06)!important;position:relative}
+/* GemPages-style left inspector — slides open when an element is selected.
+   Lives between #block-palette and #editor so the palette stays reachable
+   for adding new blocks. Width animates so it feels like a panel sliding
+   in instead of the canvas jumping. */
+#inspector{flex:0 0 0;width:0;background:linear-gradient(180deg,#0a0c12 0%,#0D0E14 100%);border-right:1px solid #181B27;overflow:hidden;transition:flex-basis .18s ease,width .18s ease;display:flex;flex-direction:column}
+body.has-selection #inspector{flex:0 0 240px;width:240px}
+#inspector .in-inner{width:240px;display:flex;flex-direction:column;height:100%;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#1E2130 transparent}
+#inspector .in-inner::-webkit-scrollbar{width:3px}
+#inspector .in-inner::-webkit-scrollbar-thumb{background:#1E2130;border-radius:2px}
+.in-head{padding:16px 14px 12px;border-bottom:1px solid #181B27}
+.in-tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0a0a0a;background:#f7ff9e;padding:4px 9px;border-radius:4px;margin-bottom:8px}
+.in-tag.col{background:#79b1e8}
+.in-tag.row{background:#b497fa}
+.in-tag.text{background:#6cd09b}
+.in-name{font-size:12px;font-weight:700;color:#E8EAF0;margin-bottom:4px;line-height:1.3;word-break:break-word}
+.in-crumbs{font-size:10px;color:#5B6490;letter-spacing:.02em;line-height:1.5}
+.in-crumbs a{color:#79b1e8;cursor:pointer;text-decoration:none}
+.in-crumbs a:hover{text-decoration:underline}
+.in-crumbs .sep{color:#3E4560;margin:0 4px}
+.in-section{padding:14px;border-bottom:1px solid #14171f}
+.in-section:last-child{border-bottom:0}
+.in-label{font-size:9px;text-transform:uppercase;color:#5B6490;letter-spacing:.12em;font-weight:700;margin-bottom:8px}
+.in-row{display:flex;align-items:center;gap:6px}
+.in-row + .in-row{margin-top:8px}
+.in-btn{flex:0 0 auto;height:30px;padding:0 11px;background:#111420;border:1px solid #252840;color:#C8CAD8;border-radius:5px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:all .12s}
+.in-btn:hover{background:#1E2436;color:#fff;border-color:#3a3f55}
+.in-btn.flex{flex:1}
+.in-btn.danger:hover{background:rgba(228,78,58,.15);color:#ff7a64;border-color:rgba(228,78,58,.4)}
+.in-val{font-size:11px;color:#C8CAD8;font-variant-numeric:tabular-nums;width:50px;text-align:center;font-weight:600;background:#080910;border:1px solid #1E2130;border-radius:5px;padding:7px 4px;line-height:1.1}
+.in-empty{padding:24px 16px;color:#3E4560;font-size:11px;text-align:center;line-height:1.6}
+#inspector select.in-btn{padding:0 8px;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#5B6490 50%),linear-gradient(135deg,#5B6490 50%,transparent 50%);background-position:calc(100% - 12px) 13px,calc(100% - 7px) 13px;background-size:5px 5px;background-repeat:no-repeat;padding-right:22px}
+#inspector select.in-btn option{background:#0D0E14}
+.in-close{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:4px;border:0;background:transparent;color:#5B6490;cursor:pointer;font-size:13px;line-height:1}
+.in-close:hover{background:rgba(255,255,255,.06);color:#C8CAD8}
+.in-head{position:relative}
 /* Move-mode: every potential drop target gets a teal outline so the
    user knows where they can click to land the block they picked up. */
 body.riverz-move-mode [data-section-id]{outline:2px dashed rgba(247,255,158,.55);outline-offset:3px;cursor:copy}
@@ -539,6 +573,52 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
     <button class="bp-item" draggable="true" data-block-type="cta" type="button" title="Botón de compra"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="6" width="17" height="8" rx="2" fill="currentColor"/><path d="M7 10h6m-2-2.2L13.2 10 11 12.2" stroke="#0D0E14" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="bp-label">Botón</span></button>
     <button class="bp-item" draggable="true" data-block-type="review" type="button" title="Reseña con estrellas"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><polygon points="10,2 12.2,7 17.5,7.4 13.5,11 14.7,16.3 10,13.5 5.3,16.3 6.5,11 2.5,7.4 7.8,7" fill="#f5a623"/></svg></span><span class="bp-label">Reseña</span></button>
     <button class="bp-item" draggable="true" data-block-type="faq" type="button" title="Pregunta frecuente (acordeón)"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.2" stroke="currentColor" stroke-width="1.5"/><text x="10" y="13.5" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="currentColor">?</text></svg></span><span class="bp-label">FAQ</span></button>
+  </aside>
+  <aside id="inspector" aria-label="Propiedades del elemento seleccionado">
+    <div class="in-inner">
+      <div class="in-head">
+        <button class="in-close" type="button" onclick="insClear()" title="Cerrar">&times;</button>
+        <span class="in-tag" id="ins-kind">Bloque</span>
+        <div class="in-name" id="ins-name">—</div>
+        <div class="in-crumbs" id="ins-crumbs"></div>
+      </div>
+      <div class="in-section">
+        <div class="in-label">Padding vertical</div>
+        <div class="in-row">
+          <button class="in-btn flex" type="button" onclick="insPad(-8,0)" title="Menos arriba/abajo">&minus;</button>
+          <span class="in-val" id="ins-pad-y">—</span>
+          <button class="in-btn flex" type="button" onclick="insPad(8,0)" title="Más arriba/abajo">&plus;</button>
+        </div>
+        <div class="in-label" style="margin-top:14px">Padding horizontal</div>
+        <div class="in-row">
+          <button class="in-btn flex" type="button" onclick="insPad(0,-8)" title="Menos izq/der">&minus;</button>
+          <span class="in-val" id="ins-pad-x">—</span>
+          <button class="in-btn flex" type="button" onclick="insPad(0,8)" title="Más izq/der">&plus;</button>
+        </div>
+      </div>
+      <div class="in-section" id="ins-text-section" style="display:none">
+        <div class="in-label">Tamaño de texto</div>
+        <div class="in-row">
+          <button class="in-btn flex" type="button" onclick="insFontSize(-1)">A&minus;</button>
+          <span class="in-val" id="ins-font-size">—</span>
+          <button class="in-btn flex" type="button" onclick="insFontSize(1)">A&plus;</button>
+        </div>
+        <div class="in-label" style="margin-top:14px">Familia tipográfica</div>
+        <div class="in-row">
+          <select id="ins-font-fam" class="in-btn flex" onchange="insFontFamily(this.value)"></select>
+        </div>
+      </div>
+      <div class="in-section">
+        <div class="in-label">Acciones</div>
+        <div class="in-row">
+          <button class="in-btn flex" type="button" onclick="insParent()" title="Subir un nivel">&uarr; Padre</button>
+          <button class="in-btn flex" type="button" onclick="insDuplicate()" title="Duplicar bloque">&#x29C9; Duplicar</button>
+        </div>
+        <div class="in-row">
+          <button class="in-btn danger flex" type="button" onclick="insDelete()" title="Eliminar bloque">&#x1F5D1; Eliminar</button>
+        </div>
+      </div>
+    </div>
   </aside>
   <div id="editor">
     <div class="ed-toolbar" id="ed-toolbar" style="display:none">
@@ -1987,121 +2067,217 @@ function changeElPadding(deltaY, deltaX){
 }
 window.changeElPadding = changeElPadding;
 
-// ── SECTION / ROW / COLUMN TOOLBAR ───────────────────────────
-// _secCurrent is whichever [data-section-id] block is currently the
-// "section selection". It's set by hover OR click (not by the inline
-// editor focus, which already drives #font-ctrl). The toolbar floats
-// inside #page-area so it scrolls with the canvas — that's why we
-// position relative to that ancestor instead of viewport.
-var _secCurrent = null;
-function _secLabelFor(el){
-  var k = el && el.getAttribute && el.getAttribute('data-rz-kind');
-  if (k === 'col') return 'Columna';
-  if (k === 'row') return 'Fila';
-  if (k === 'section') return 'Sección';
-  if (el && el.tagName === 'SECTION') return 'Sección';
-  var id = (el && el.dataset && el.dataset.sectionId) || '';
-  if (id.indexOf('top-') === 0) return 'Sección';
-  return 'Bloque';
+// ── INSPECTOR (left panel, GemPages-style) ────────────────────
+// _insEl is the block currently selected. The inspector populates from
+// it on every selection / refresh so padding values stay in sync after
+// the user nudges them. Hover paints a soft outline; commit-to-selection
+// is on click only — the floating sec-ctrl is gone.
+var _insEl = null;
+function _insLabelFor(el){
+  if (!el) return { tag:'Bloque', cls:'' };
+  var k = el.getAttribute && el.getAttribute('data-rz-kind');
+  if (k === 'col') return { tag:'Columna', cls:'col' };
+  if (k === 'row') return { tag:'Fila',    cls:'row' };
+  if (k === 'section') return { tag:'Sección', cls:'' };
+  if (el.tagName === 'SECTION') return { tag:'Sección', cls:'' };
+  if (el.hasAttribute && el.hasAttribute('data-v-text')) return { tag:'Texto', cls:'text' };
+  if (el.hasAttribute && el.hasAttribute('data-v-img')) return { tag:'Imagen', cls:'text' };
+  var id = (el.dataset && el.dataset.sectionId) || '';
+  if (id.indexOf('top-') === 0) return { tag:'Sección', cls:'' };
+  return { tag:'Bloque', cls:'' };
 }
-function showSecCtrl(el){
-  var sc = document.getElementById('sec-ctrl'); if (!sc || !el) return;
-  if (_secCurrent && _secCurrent !== el) _secCurrent.classList.remove('riverz-sec-active');
-  _secCurrent = el;
-  el.classList.add('riverz-sec-active');
-  var tag = document.getElementById('sc-tag');
-  if (tag) tag.textContent = _secLabelFor(el);
-  // Position the toolbar at the top edge of the block, inside the
-  // scrolling #page-area. If there's no room above (block is at the
-  // top of the canvas) we flip to inside-top of the block.
-  var pa = document.getElementById('page-area'); if (!pa) return;
-  var paR = pa.getBoundingClientRect();
-  var r = el.getBoundingClientRect();
-  // Toolbar is a child of body (not page-area), so we use viewport coords
-  // and just convert via scroll. To keep it simple we reparent into pa
-  // the first time we show it — that way scroll math is trivial.
-  if (sc.parentElement !== pa) pa.appendChild(sc);
-  var topInPa = r.top - paR.top + pa.scrollTop;
-  var leftInPa = r.left - paR.left + pa.scrollLeft;
-  // Default: hover above the block. If above clips, drop inside.
-  var preferredTop = topInPa - 32;
-  if (preferredTop < pa.scrollTop + 4) preferredTop = topInPa + 6;
-  sc.style.top = preferredTop + 'px';
-  sc.style.left = Math.max(8, leftInPa + 8) + 'px';
-  sc.classList.add('on');
+function _insAncestorChain(el){
+  // Build the breadcrumb walking up [data-section-id] ancestors (newest
+  // first), capped at 4 levels so the panel doesn't wrap awkwardly on
+  // deeply nested blocks. Returns [{el, label}, ...] root → current.
+  var chain = []; var cur = el;
+  while (cur && cur.id !== 'page-wrap') {
+    if (cur.dataset && cur.dataset.sectionId) chain.unshift({ el: cur, label: _insLabelFor(cur).tag });
+    cur = cur.parentElement;
+  }
+  return chain.slice(-4);
 }
-function hideSecCtrl(){
-  var sc = document.getElementById('sec-ctrl'); if (sc) sc.classList.remove('on');
-  if (_secCurrent) { _secCurrent.classList.remove('riverz-sec-active'); _secCurrent = null; }
+function _insBuildFontPicker(){
+  var sel = document.getElementById('ins-font-fam'); if (!sel || sel.options.length) return;
+  var FONTS = (typeof FONT_OPTIONS !== 'undefined') ? FONT_OPTIONS : [{ v:'', label:'Por defecto' }];
+  FONTS.forEach(function(opt){
+    var o = document.createElement('option');
+    o.value = opt.v; o.textContent = opt.label;
+    sel.appendChild(o);
+  });
 }
-function secPad(deltaY, deltaX){
-  if (!_secCurrent) { toast('Pasá el cursor sobre una sección primero',1); return; }
+function insRefresh(){
+  if (!_insEl) return;
+  var info = _insLabelFor(_insEl);
+  var tagEl = document.getElementById('ins-kind');
+  if (tagEl){ tagEl.textContent = info.tag; tagEl.className = 'in-tag' + (info.cls ? ' '+info.cls : ''); }
+  // Friendly name = the section-id or the inner text snippet (first 40
+  // chars). Helps the user confirm they grabbed the right block when the
+  // outline alone isn't enough.
+  var name = '';
+  var txt = (_insEl.textContent || '').replace(/\s+/g,' ').trim();
+  if (txt) name = txt.length > 50 ? txt.slice(0,48) + '…' : txt;
+  else name = _insEl.dataset.sectionId || _insEl.tagName.toLowerCase();
+  var nameEl = document.getElementById('ins-name'); if (nameEl) nameEl.textContent = name;
+  // Breadcrumb
+  var crumbs = document.getElementById('ins-crumbs');
+  if (crumbs){
+    var chain = _insAncestorChain(_insEl);
+    crumbs.innerHTML = chain.map(function(c, i){
+      var isLast = i === chain.length - 1;
+      if (isLast) return '<span style="color:#9AA3C0">'+_spmEsc(c.label)+'</span>';
+      return '<a data-cr-i="'+i+'">'+_spmEsc(c.label)+'</a>';
+    }).join('<span class="sep">›</span>');
+    crumbs.querySelectorAll('a[data-cr-i]').forEach(function(a){
+      a.addEventListener('click', function(){
+        var idx = parseInt(a.getAttribute('data-cr-i'),10);
+        var target = chain[idx] && chain[idx].el;
+        if (target) insSelect(target);
+      });
+    });
+  }
+  // Padding values (computed, in px, integer)
+  var cs = window.getComputedStyle(_insEl);
+  var py = Math.round(((parseFloat(cs.paddingTop)||0) + (parseFloat(cs.paddingBottom)||0)) / 2);
+  var px = Math.round(((parseFloat(cs.paddingLeft)||0) + (parseFloat(cs.paddingRight)||0)) / 2);
+  var pyEl = document.getElementById('ins-pad-y'); if (pyEl) pyEl.textContent = py + 'px';
+  var pxEl = document.getElementById('ins-pad-x'); if (pxEl) pxEl.textContent = px + 'px';
+  // Text-only section: show font controls when the selection is a text
+  // slot (or contains one immediate child that's a text slot).
+  var textSec = document.getElementById('ins-text-section');
+  var textTarget = (_insEl.hasAttribute && _insEl.hasAttribute('data-v-text')) ? _insEl
+                 : _insEl.querySelector ? _insEl.querySelector(':scope > [data-v-text]') : null;
+  if (textSec) textSec.style.display = textTarget ? '' : 'none';
+  if (textTarget){
+    var fs = Math.round(parseFloat(window.getComputedStyle(textTarget).fontSize)||16);
+    var fsEl = document.getElementById('ins-font-size'); if (fsEl) fsEl.textContent = fs + 'px';
+    _insBuildFontPicker();
+    var sel = document.getElementById('ins-font-fam');
+    if (sel){
+      var fam = (textTarget.style.fontFamily || window.getComputedStyle(textTarget).fontFamily || '').trim();
+      var matched = false;
+      for (var i=0;i<sel.options.length;i++){
+        var optFirst = (sel.options[i].value.split(',')[0] || '').replace(/^["']|["']$/g,'').toLowerCase().trim();
+        var elFirst  = (fam.split(',')[0] || '').replace(/^["']|["']$/g,'').toLowerCase().trim();
+        if (optFirst && optFirst === elFirst){ sel.selectedIndex = i; matched = true; break; }
+      }
+      if (!matched) sel.selectedIndex = 0;
+    }
+  }
+}
+function insSelect(el){
+  if (!el) return;
+  // Select the actual clicked element so the inspector reflects what
+  // the user pointed at. Text slots → font controls visible; section →
+  // padding controls. _movableParentOf is still used inside duplicate /
+  // delete, so those flows still operate on the [data-section-id]
+  // ancestor regardless of how granular the selection is.
+  if (_insEl && _insEl !== el) _insEl.classList.remove('riverz-sec-active');
+  _insEl = el;
+  _insEl.classList.add('riverz-sec-active');
+  document.body.classList.add('has-selection');
+  insRefresh();
+  curEditEl = el;
+}
+function insClear(){
+  if (_insEl) _insEl.classList.remove('riverz-sec-active');
+  _insEl = null;
+  document.body.classList.remove('has-selection');
+}
+function insPad(dy, dx){
+  if (!_insEl){ toast('Seleccioná un bloque primero',1); return; }
   if (typeof snapshot === 'function' && !isRestoring) snapshot();
-  _padSteps(_secCurrent, deltaY, deltaX);
-  // After padding change the block's height moves — reposition the toolbar
-  // so it stays glued to the same edge.
-  showSecCtrl(_secCurrent);
-  saveAll();
+  _padSteps(_insEl, dy, dx);
+  insRefresh();
+  if (typeof saveAll === 'function') saveAll();
 }
-function secParent(){
-  if (!_secCurrent) return;
-  var p = _secCurrent.parentElement;
-  while (p && p.id !== 'page-wrap') {
-    if (p.dataset && p.dataset.sectionId) { showSecCtrl(p); return; }
+function insFontSize(delta){
+  if (!_insEl) return;
+  var t = (_insEl.hasAttribute && _insEl.hasAttribute('data-v-text')) ? _insEl
+        : _insEl.querySelector ? _insEl.querySelector(':scope > [data-v-text]') : null;
+  if (!t) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  var sz = Math.round(parseFloat(window.getComputedStyle(t).fontSize)||16) + delta*2;
+  sz = Math.max(8, Math.min(120, sz));
+  t.style.fontSize = sz + 'px';
+  insRefresh();
+  if (typeof qSave === 'function') qSave();
+}
+function insFontFamily(value){
+  if (!_insEl) return;
+  var t = (_insEl.hasAttribute && _insEl.hasAttribute('data-v-text')) ? _insEl
+        : _insEl.querySelector ? _insEl.querySelector(':scope > [data-v-text]') : null;
+  if (!t) return;
+  if (value) t.style.fontFamily = value; else t.style.removeProperty('font-family');
+  if (typeof qSave === 'function') qSave();
+}
+function insParent(){
+  if (!_insEl) return;
+  var p = _insEl.parentElement;
+  while (p && p.id !== 'page-wrap'){
+    if (p.dataset && p.dataset.sectionId){ insSelect(p); return; }
     p = p.parentElement;
   }
   toast('Ya estás en el contenedor más alto',0);
 }
-function secDuplicate(){
-  if (!_secCurrent) return;
-  curEditEl = _secCurrent;
+function insDuplicate(){
+  if (!_insEl) return;
+  curEditEl = _insEl;
   duplicateSelectedBlock();
-  hideSecCtrl();
 }
-function secDelete(){
-  if (!_secCurrent) return;
-  curEditEl = _secCurrent;
+function insDelete(){
+  if (!_insEl) return;
+  curEditEl = _insEl;
   deleteSelectedBlock();
-  hideSecCtrl();
+  insClear();
 }
-window.showSecCtrl = showSecCtrl;
-window.hideSecCtrl = hideSecCtrl;
-window.secPad = secPad;
-window.secParent = secParent;
-window.secDuplicate = secDuplicate;
-window.secDelete = secDelete;
+window.insSelect = insSelect;
+window.insClear = insClear;
+window.insPad = insPad;
+window.insFontSize = insFontSize;
+window.insFontFamily = insFontFamily;
+window.insParent = insParent;
+window.insDuplicate = insDuplicate;
+window.insDelete = insDelete;
 
-// Hover wiring — picks the deepest [data-section-id] under the pointer
-// so a card inside a grid wins over the grid itself. Skips while the
-// user is typing in a contenteditable so the section toolbar doesn't
-// fight the font toolbar.
-function wireSecHover(){
-  var pw = document.getElementById('page-wrap'); if (!pw || pw.dataset.secHoverWired) return;
-  pw.dataset.secHoverWired = '1';
-  var lastEl = null;
-  pw.addEventListener('mousemove', function(e){
-    var ae = document.activeElement;
-    if (ae && ae !== document.body && ae.getAttribute && ae.getAttribute('contenteditable') === 'true') return;
-    var el = e.target.closest && e.target.closest('[data-section-id]');
-    if (!el || el === lastEl) return;
-    lastEl = el;
-    showSecCtrl(el);
+// Selection wiring — click on any block under #page-wrap to select it
+// in the inspector. Hover-only highlight stays subtle so the user has
+// visual feedback before committing. Typing inside a contenteditable
+// doesn't deselect — keeps the inspector sticky on the block being
+// edited so font controls remain visible. Click outside the canvas /
+// inspector clears the selection.
+function wireInspectorClicks(){
+  var pw = document.getElementById('page-wrap'); if (!pw || pw.dataset.insWired) return;
+  pw.dataset.insWired = '1';
+  pw.addEventListener('click', function(e){
+    // Pick the most specific block-like target the user clicked. Text /
+    // image slots win over section ancestors so the inspector shows the
+    // controls that match the click. If we miss all three the click is
+    // probably on raw template chrome — just bail.
+    var el = e.target.closest && e.target.closest('[data-v-text],[data-v-img],[data-section-id]');
+    if (!el) return;
+    insSelect(el);
   });
-  pw.addEventListener('mouseleave', function(){
-    setTimeout(function(){
-      var sc = document.getElementById('sec-ctrl');
-      if (sc && sc.matches(':hover')) return;
-      lastEl = null;
-      hideSecCtrl();
-    }, 80);
-  });
-  // Click anywhere outside both toolbars and the canvas → hide.
   document.addEventListener('click', function(e){
-    if (e.target.closest && (e.target.closest('#sec-ctrl') || e.target.closest('#font-ctrl') || e.target.closest('#page-wrap'))) return;
-    hideSecCtrl();
+    if (e.target.closest && (e.target.closest('#inspector') || e.target.closest('#font-ctrl') || e.target.closest('#page-wrap') || e.target.closest('#topbar') || e.target.closest('#block-palette') || e.target.closest('.modal-bg'))) return;
+    insClear();
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') {
+      var ae = document.activeElement;
+      if (ae && ae.getAttribute && ae.getAttribute('contenteditable') === 'true') ae.blur();
+      else insClear();
+    }
   });
 }
+window.wireInspectorClicks = wireInspectorClicks;
+// Back-compat shims so any leftover callsites or saved bindings keep working.
+function wireSecHover(){ wireInspectorClicks(); }
+function showSecCtrl(el){ insSelect(el); }
+function hideSecCtrl(){ insClear(); }
 window.wireSecHover = wireSecHover;
+window.showSecCtrl  = showSecCtrl;
+window.hideSecCtrl  = hideSecCtrl;
 
 // Per-block comments. Stored on proj.blockComments keyed by
 // data-section-id. Block gets a yellow "💬" badge when a comment exists
