@@ -497,6 +497,7 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
     <button class="tb tb-ghost" id="btn-undo" onclick="doUndo()" title="Ctrl+Z">&#x21B6;</button>
     <button class="tb tb-ghost" id="btn-redo" onclick="doRedo()" title="Ctrl+Y">&#x21B7;</button>
     <div class="t-sep"></div>
+    <button class="tb tb-blue" id="btn-shop-prod" onclick="openShopProdModal()" title="Sincronizar producto desde Shopify" style="display:none">&#x1F6CD; Producto Shopify</button>
     <button class="tb tb-gal" onclick="openGallery()">&#x1F4F7; Imagenes</button>
     <button class="tb tb-ghost" onclick="openVersionsModal()" title="Historial de versiones">&#x1F570; Versiones</button>
     <button class="tb tb-ghost" onclick="openSettings()" title="Ajustes de la página">&#x2699; Ajustes</button>
@@ -970,6 +971,23 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
       <div class="go-step" id="gstep-2"><div class="go-step-dot"></div>Escribiendo copy de conversion</div>
       <div class="go-step" id="gstep-3"><div class="go-step-dot"></div>Creando testimonios</div>
       <div class="go-step" id="gstep-4"><div class="go-step-dot"></div>Finalizando CTAs</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SHOPIFY PRODUCT PICKER (product-page templates only) ─── -->
+<div id="shop-prod-modal" class="modal-bg">
+  <div class="modal-box" style="max-width:780px;padding:22px 24px">
+    <div class="modal-title">&#x1F6CD; Sincronizar producto Shopify</div>
+    <div class="modal-sub">Elegí un producto activo de tu tienda. Se sincronizan título e imágenes en el orden que tengan en Shopify.</div>
+    <div class="modal-field" style="margin-top:14px">
+      <input id="spm-search" class="modal-input" placeholder="Buscar por nombre, vendor, SKU…" oninput="spmDebouncedSearch()">
+    </div>
+    <div id="spm-state" style="font-size:11px;color:#5B6490;padding:0 0 8px;letter-spacing:.04em">&nbsp;</div>
+    <div id="spm-list" style="max-height:60vh;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-right:4px"></div>
+    <div class="modal-btns" style="margin-top:14px">
+      <div class="modal-btns-left"></div>
+      <button class="tb tb-ghost" onclick="closeShopProdModal()" type="button">Cancelar</button>
     </div>
   </div>
 </div>
@@ -2439,6 +2457,7 @@ function activateProject(id){
   document.querySelectorAll('.sb-item').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-id')===id);});
   if(histMap[id].length===0)snapshot(); updateUR(); dot('ok');
   stickyGone=false; var st=g('sticky'); if(st)st.classList.remove('show');
+  if (typeof refreshShopifyProductBtn === 'function') refreshShopifyProductBtn();
 }
 function showEmpty(){activeId=null;g('ed-toolbar').style.display='none';g('empty-state').style.display='flex';g('page-area').style.display='none';document.querySelectorAll('.sb-item').forEach(function(el){el.classList.remove('active');});}
 
@@ -2727,6 +2746,135 @@ function goToDashboard(){
   try { (window.top || window.parent || window).location.href = '/landing-lab'; }
   catch(e) { window.location.href = '/landing-lab'; }
 }
+
+// ── SHOPIFY PRODUCT SYNC (product-page templates only) ───────
+// Toggles the toolbar button based on the active project's templateId.
+// Only product-page-* templates have the canonical product-name /
+// prod-main / prod-thumb-N slot keys this flow writes into; surfacing
+// the button on a listicle would just no-op on apply.
+function isProductPageTemplate(){
+  var p = (typeof getActive === 'function') ? getActive() : null;
+  if (!p) return false;
+  return /^product-page-/.test(p.templateId || '');
+}
+function refreshShopifyProductBtn(){
+  var btn = document.getElementById('btn-shop-prod');
+  if (!btn) return;
+  btn.style.display = isProductPageTemplate() ? '' : 'none';
+}
+window.refreshShopifyProductBtn = refreshShopifyProductBtn;
+
+function openShopProdModal(){
+  var m = document.getElementById('shop-prod-modal'); if (!m) return;
+  m.classList.add('on'); m.style.display = 'flex';
+  var s = document.getElementById('spm-search'); if (s){ s.value = ''; setTimeout(function(){ s.focus(); }, 80); }
+  spmFetch('');
+}
+function closeShopProdModal(){
+  var m = document.getElementById('shop-prod-modal'); if (!m) return;
+  m.classList.remove('on'); m.style.display = 'none';
+}
+var _spmDebounce = null;
+function spmDebouncedSearch(){
+  clearTimeout(_spmDebounce);
+  _spmDebounce = setTimeout(function(){
+    var v = (document.getElementById('spm-search').value || '').trim();
+    spmFetch(v);
+  }, 280);
+}
+function _spmEsc(s){ return String(s == null ? '' : s).replace(/[<>&"']/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]; }); }
+async function spmFetch(q){
+  var state = document.getElementById('spm-state');
+  var list = document.getElementById('spm-list');
+  if (!state || !list) return;
+  state.textContent = 'Cargando productos…';
+  list.innerHTML = '';
+  try {
+    var url = '/api/shopify/products?first=30' + (q ? '&q=' + encodeURIComponent(q) : '');
+    var r = await fetch(url, { credentials: 'same-origin' });
+    var data = null; try { data = await r.json(); } catch(e){ data = null; }
+    if (!r.ok) {
+      var msg = (data && data.error) || ('Error ' + r.status);
+      var linkText = (data && data.requiresReconnect) ? 'Reconectar tienda' : 'Conectar Shopify';
+      state.innerHTML = _spmEsc(msg) + ' <a href="/configuracion?tab=integrations" target="_blank" rel="noopener" style="color:#79b1e8;text-decoration:underline">' + linkText + ' &rarr;</a>';
+      return;
+    }
+    var products = (data && data.products) || [];
+    if (!products.length) {
+      state.textContent = q ? ('Sin resultados para "' + q + '"') : 'No hay productos activos en tu tienda';
+      return;
+    }
+    state.textContent = (data.shop || '') + ' · ' + products.length + ' productos';
+    list.innerHTML = products.map(function(p){
+      var img = p.image || 'https://placehold.co/120x120/1E2130/5B6490?text=Producto';
+      var price = p.priceMin ? ('$' + p.priceMin) : '';
+      var imgs = (p.images && p.images.length) || 0;
+      return '<button class="spm-card" type="button" data-pid="' + _spmEsc(p.id) + '" '
+        + 'style="display:flex;gap:10px;text-align:left;background:#111420;border:1px solid #252840;border-radius:7px;padding:10px;cursor:pointer;font-family:inherit;color:#C8CAD8;transition:border-color .15s,background .15s">'
+        + '<img src="' + _spmEsc(img) + '" alt="" style="width:54px;height:54px;object-fit:cover;border-radius:5px;flex:0 0 54px;background:#1E2436">'
+        + '<div style="min-width:0;flex:1">'
+        + '<div style="font-weight:600;font-size:13px;line-height:1.3;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _spmEsc(p.title) + '</div>'
+        + '<div style="font-size:11px;color:#5B6490;margin-top:4px">' + imgs + ' imágenes' + (price ? (' · ' + price + ' ' + _spmEsc(p.currencyCode || '')) : '') + '</div>'
+        + '</div></button>';
+    }).join('');
+    list.dataset.products = JSON.stringify(products);
+    list.querySelectorAll('.spm-card').forEach(function(card){
+      card.addEventListener('mouseenter', function(){ card.style.borderColor = '#f7ff9e'; card.style.background = '#181B27'; });
+      card.addEventListener('mouseleave', function(){ card.style.borderColor = '#252840'; card.style.background = '#111420'; });
+      card.addEventListener('click', function(){ spmSelect(card.getAttribute('data-pid')); });
+    });
+  } catch(e){
+    state.textContent = 'Error de red: ' + (e && e.message ? e.message : e);
+  }
+}
+function spmSelect(id){
+  var list = document.getElementById('spm-list');
+  var arr = []; try { arr = JSON.parse(list.dataset.products || '[]'); } catch(e){}
+  var p = arr.find(function(x){ return String(x.id) === String(id); });
+  if (!p) return;
+  applyShopifyProduct(p);
+  closeShopProdModal();
+  toast('✓ "' + p.title + '" sincronizado');
+}
+function applyShopifyProduct(p){
+  var proj = (typeof getActive === 'function') ? getActive() : null;
+  if (!proj) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  proj.texts = proj.texts || {};
+  if (p.title) {
+    proj.texts['product-name'] = p.title;
+    proj.texts['page-title']   = p.title;
+  }
+  if (typeof applyTexts === 'function') applyTexts(proj.texts);
+  // Images: prod-main + prod-thumb-N follow Shopify's order. We only write
+  // to slot keys that actually exist on the page so a template with 4
+  // thumbs doesn't grow extra empty slots, and a template with 6 thumbs
+  // gets all of them filled. If Shopify has fewer images than thumbs we
+  // repeat the last image instead of leaving a placeholder behind.
+  proj.images = proj.images || {};
+  var imgs = (p.images || []).map(function(x){ return x.url; }).filter(Boolean);
+  if (imgs.length) {
+    var pw = document.getElementById('page-wrap');
+    if (pw && pw.querySelector('[data-v-img="prod-main"]')) {
+      setProjImage(proj, 'prod-main', imgs[0], 'desktop');
+      setSlot('prod-main', imgs[0]);
+    }
+    var thumbs = pw ? Array.from(pw.querySelectorAll('[data-v-img^="prod-thumb-"]')) : [];
+    thumbs.forEach(function(thumbEl, i){
+      var key = thumbEl.getAttribute('data-v-img');
+      // thumb-1 mirrors the main image (matches the template's "is-active"
+      // initial state); thumb-N picks images[N-1] for N>=2.
+      var url = i === 0 ? imgs[0] : (imgs[i] || imgs[imgs.length - 1] || imgs[0]);
+      setProjImage(proj, key, url, 'desktop');
+      setSlot(key, url);
+    });
+  }
+  if (typeof saveAll === 'function') saveAll();
+}
+window.openShopProdModal = openShopProdModal;
+window.closeShopProdModal = closeShopProdModal;
+window.spmDebouncedSearch = spmDebouncedSearch;
+window.spmSelect = spmSelect;
 
 // ── EXPORT ────────────────────────────────────────────────────
 function buildHTML(proj){
