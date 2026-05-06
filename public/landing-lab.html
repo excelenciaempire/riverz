@@ -175,6 +175,7 @@ body{color:#E2E4EF;font-family:'Instrument Sans',sans-serif;font-size:13px;displ
 .bp-label{font-size:10px;font-weight:600;letter-spacing:.02em}
 /* Drop indicator — pulsing border when palette item drags over a slot */
 [data-section-id].riverz-palette-target{outline:2px dashed #f7ff9e!important;outline-offset:3px;background:rgba(247,255,158,.05)}
+[data-reorder-container].riverz-container-drop-target{outline:2px dashed #4A90E2!important;outline-offset:-2px;background:rgba(74,144,226,.06);transition:background .1s,outline-color .1s}
 #page-wrap.riverz-palette-canvas{outline:2px dashed rgba(247,255,158,.4);outline-offset:-2px}
 .sb-head{padding:12px 12px 8px;border-bottom:1px solid #181B27;flex-shrink:0}
 .sb-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#3E4560;font-weight:600;margin-bottom:8px}
@@ -2075,30 +2076,39 @@ function tagAllReorderable(){
       _assignUniqueSectionId(top, child, 'top', i, topUsed);
     });
   }
-  // 2) Any flex/grid container with 2+ children → its kids reorder within
-  //    that container. Plus sections / .reason / .adv-intro / etc. whose
-  //    direct children are block-level content (p, h*, blockquote, lists,
-  //    image wrappers) — so the user can shuffle paragraphs, headings,
-  //    images, quotes within a section. Skip system widgets.
+  // 2) Tag every plausible block-level container under #page-wrap. Three
+  //    overlapping cases:
+  //    (a) Layout primitives — Riverz rows / columns and any <section>:
+  //        always a reorder target, even when empty, so the user can
+  //        drop a block into a freshly-spawned empty column.
+  //    (b) Flex / grid containers with 2+ children — the original case.
+  //    (c) Block-level containers with 2+ block-level children
+  //        (paragraphs, headings, images) — lets the user shuffle
+  //        content within a section.
+  //    SKIP_SEL keeps system widgets (qty pickers, gallery thumbs,
+  //    review meta, etc.) from getting wired as drop zones.
   var counter = 1;
   var BLOCK_CHILD_SEL = 'p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, [data-v-img], details, .quote, .inline-img, .reason-img, .checks, .crosses, .offer-bullets, .gallery-main';
   var SKIP_SEL = 'button, input, textarea, label, .qty, .opts-row, .gallery-thumbs, .review-author, .rev-meta, .review-react, .trust-item, .prod-rating, .prod-price-row, .trust, .byline, .qty-row';
+  var STRUCT_SEL = '[data-rz-kind="row"], [data-rz-kind="col"], section';
   pw.querySelectorAll('*').forEach(function(el){
     if (el.dataset.reorderContainer) return;
     if (el === top) return;
-    if (el.children.length < 2) return;
     if (el.matches(SKIP_SEL)) return;
     if (el.closest('.riverz-img-edit, .riverz-img-del, .riverz-section-handle')) return;
 
-    var cs = getComputedStyle(el);
     var isContainer = false;
-    if (cs.display === 'flex' || cs.display === 'grid') {
+    if (el.matches(STRUCT_SEL)) {
+      // Layout primitive — always a drop zone, regardless of child count.
       isContainer = true;
-    } else {
-      // Block-level container: count children that look like reorderable
-      // content blocks. If at least 2, the user can rearrange them.
-      var blocks = Array.from(el.children).filter(function(c){ return c.matches(BLOCK_CHILD_SEL); });
-      if (blocks.length >= 2) isContainer = true;
+    } else if (el.children.length >= 2) {
+      var cs = getComputedStyle(el);
+      if (cs.display === 'flex' || cs.display === 'grid') {
+        isContainer = true;
+      } else {
+        var blocks = Array.from(el.children).filter(function(c){ return c.matches(BLOCK_CHILD_SEL); });
+        if (blocks.length >= 2) isContainer = true;
+      }
     }
     if (!isContainer) return;
     var key = 'rc-' + (counter++);
@@ -2313,6 +2323,17 @@ function makeSectionsDraggable(){
   // Wire every element under a [data-reorder-container]
   pw.querySelectorAll('[data-reorder-container]').forEach(function(parent){
     var isTop = parent.dataset.reorderContainer === '__top__';
+    // Container-level drop handlers — let the user drop into the
+    // container's own padding/margin or into an EMPTY container (a
+    // fresh column with no children yet). Without these the only drop
+    // anchors are existing siblings, so empty columns / sections
+    // silently reject everything dragged into them.
+    if (!parent.dataset.containerDropWired) {
+      parent.dataset.containerDropWired = '1';
+      parent.addEventListener('dragover', _onContainerDragOver);
+      parent.addEventListener('drop', _onContainerDrop);
+      parent.addEventListener('dragleave', _onContainerDragLeave);
+    }
     Array.from(parent.children).forEach(function(child){
       if (!child.dataset.sectionId) return;
       if (child.dataset.dragWired) return;
@@ -2440,6 +2461,67 @@ function _onSecDragEnd(){
   this.style.outline = '';
   _hideDropLine();
   _dragSrc = null;
+}
+
+// Container-level handlers. Children fire their own dragover first; this
+// only kicks in when the cursor is over the container's own padding /
+// gap / empty space (e.g. a freshly-dropped column with no kids yet).
+// Without this, the user's drop is silently rejected because nothing
+// in the container called preventDefault on dragover.
+function _onContainerDragOver(e){
+  if (!_paletteSrc && (!_dragSrc || _dragSrc === this)) return;
+  // Bail if the drop target is one of the container's children — that
+  // child's _onSecDragOver already called preventDefault and showed the
+  // drop line. We only handle the "empty space" case.
+  var directTarget = e.target;
+  if (directTarget !== this && this.contains(directTarget)) return;
+  if (_dragSrc && _dragSrc.contains && _dragSrc.contains(this)) return;
+  e.preventDefault();
+  try { e.dataTransfer.dropEffect = _paletteSrc ? 'copy' : 'move'; } catch(err){}
+  // Highlight the container so the user sees it's a valid drop zone
+  // even when there's no child to anchor a drop line to.
+  this.classList.add('riverz-container-drop-target');
+  _hideDropLine();
+}
+function _onContainerDragLeave(e){
+  // Only clear the highlight if the cursor is actually leaving the
+  // container — dragleave fires for every internal element transition
+  // too. relatedTarget is the element being entered next.
+  if (e.relatedTarget && this.contains(e.relatedTarget)) return;
+  this.classList.remove('riverz-container-drop-target');
+}
+function _onContainerDrop(e){
+  this.classList.remove('riverz-container-drop-target');
+  // Same "empty space only" guard as dragover so we don't fight the
+  // child-level drop handler.
+  var directTarget = e.target;
+  if (directTarget !== this && this.contains(directTarget)) return;
+  if (!_paletteSrc && (!_dragSrc || _dragSrc === this)) return;
+  if (_dragSrc && _dragSrc.contains && _dragSrc.contains(this)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  // Pick an insertion point inside this container based on the cursor
+  // position relative to the existing children. If the container is
+  // empty, just append.
+  var insertBefore = null;
+  var kids = Array.from(this.children).filter(function(c){
+    return !c.classList || (!c.classList.contains('riverz-section-handle') && !c.classList.contains('riverz-img-del') && !c.classList.contains('riverz-img-edit'));
+  });
+  for (var i = 0; i < kids.length; i++){
+    var k = kids[i];
+    var r = k.getBoundingClientRect();
+    if (e.clientY < r.top + r.height / 2) { insertBefore = k; break; }
+  }
+  if (_paletteSrc) {
+    spawnBlockFromPalette(_paletteSrc, this, insertBefore);
+    _paletteSrc = null;
+    return;
+  }
+  if (!_dragSrc || _dragSrc === this) return;
+  this.insertBefore(_dragSrc, insertBefore);
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (typeof saveAll === 'function') saveAll();
 }
 function saveLayoutOrder(){
   var proj = getActive(); if (!proj) return;
