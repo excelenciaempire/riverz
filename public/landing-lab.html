@@ -4487,8 +4487,17 @@ function applyVideoSlots(proj){
     if(entry===null){ collapseVidSlot(k); return; }
     var url=vidEntryUrl(entry);
     if(url){ setVidSlot(k,url,vidEntryPoster(entry)); return; }
-    if(TEMPLATE_DEFAULT_VIDEOS[k]) setVidSlot(k, TEMPLATE_DEFAULT_VIDEOS[k]);
-    else resetVidSlot(k);
+    if(TEMPLATE_DEFAULT_VIDEOS[k]){ setVidSlot(k, TEMPLATE_DEFAULT_VIDEOS[k]); return; }
+    // entry === undefined: never set. If the proj.html restore already
+    // put a usable src in the <video> tag (and it's not a dead blob:
+    // ObjectURL from a previous session), keep it. Otherwise reset to
+    // the empty placeholder.
+    if (entry === undefined){
+      var elU = vidEl(k);
+      var inlineSrc = elU ? (elU.getAttribute('src') || '') : '';
+      if (inlineSrc && inlineSrc.indexOf('blob:') !== 0) return;
+    }
+    resetVidSlot(k);
   });
 }
 function decorateVideoSlots(){
@@ -4579,31 +4588,76 @@ function applyVideoUrl(){
 // "que cuando se anada un video al editor no se anade a shopify sino
 // solamente cuando se le da clic a publicar". Keys are slot keys, values
 // are { file, name, objectUrl }. Lost on reload — see _purgeStaleBlobVideos.
+// _pendingVideos was the legacy "upload only at publish" flow that stored
+// File objects + blob: URLs in memory. Those blob: URLs died on reload, so
+// every dropped video disappeared whenever the user came back. The new
+// path uploads to Supabase immediately at file-pick time (mirroring images),
+// so proj.videos[slot] holds a durable public URL that survives reload AND
+// goes into the published page directly. The map is kept around as a
+// no-op for any old code paths still pushing into it.
 var _pendingVideos = {};
+async function uploadVideoToSupabase(file, originalName, slotKey){
+  var proj = (typeof getActive === 'function') ? getActive() : null;
+  var fd = new FormData();
+  var clean = (originalName || 'video').replace(/[^a-zA-Z0-9._-]+/g, '_');
+  if (!/\.\w+$/.test(clean)) clean += '.mp4';
+  fd.append('file', file, clean);
+  if (proj) fd.append('project_id', proj.id || 'landing');
+  if (slotKey) fd.append('slot', slotKey);
+  var res, data = null, raw = '';
+  try {
+    res = await fetch('/api/landing-lab/upload-video-draft', { method: 'POST', body: fd, credentials: 'same-origin' });
+    raw = await res.text();
+    try { data = JSON.parse(raw); } catch(_){ /* server returned non-JSON */ }
+  } catch (netErr) {
+    console.error('[Riverz] upload-video-draft network failure:', netErr);
+    throw new Error('Sin red — no se pudo contactar al servidor');
+  }
+  if (!res.ok){
+    var msg = (data && data.error) || raw || ('Subida fallida (' + res.status + ')');
+    console.error('[Riverz] upload-video-draft rejected (' + res.status + '):', msg);
+    throw new Error(msg);
+  }
+  if (!data || !data.url){
+    console.error('[Riverz] upload-video-draft missing url in response:', raw);
+    throw new Error('Respuesta sin URL');
+  }
+  return data.url;
+}
+window.uploadVideoToSupabase = uploadVideoToSupabase;
+
 async function onVideoFilePick(e){
   var file = e.target.files[0];
   try{
     if(!file || !curVidKey) return;
     if(!/^video\//.test(file.type)) return toast('Solo videos',1);
     if(file.size > 60*1024*1024) return toast('Video muy grande (max 60MB)',1);
-    // Hold the file in memory + show a local preview via ObjectURL.
-    // The Shopify Files upload is deferred to publishToShopify so a
-    // user can iterate on a draft without spending Files quota.
-    var prev = _pendingVideos[curVidKey];
-    if (prev && prev.objectUrl) { try { URL.revokeObjectURL(prev.objectUrl); } catch(_){} }
+    // Show a local preview via ObjectURL while the upload runs so the
+    // user gets immediate feedback. We swap to the Supabase URL once
+    // it's back.
     var objectUrl = URL.createObjectURL(file);
-    _pendingVideos[curVidKey] = { file: file, name: file.name, objectUrl: objectUrl };
     setVidSlot(curVidKey, objectUrl);
+    toast('Subiendo video a Supabase…', 0);
+    var publicUrl;
+    try {
+      publicUrl = await uploadVideoToSupabase(file, file.name, curVidKey);
+    } catch (upErr){
+      // Roll back the preview src so the slot doesn't show a now-revoked
+      // blob URL after the failure.
+      try { URL.revokeObjectURL(objectUrl); } catch(_){}
+      throw upErr;
+    }
+    try { URL.revokeObjectURL(objectUrl); } catch(_){}
+    setVidSlot(curVidKey, publicUrl);
     var proj = getActive();
     if(proj){
       if(!proj.videos) proj.videos={};
-      // Mark as pending so _purgeStaleBlobVideos can detect it on reload.
-      proj.videos[curVidKey] = { src: objectUrl, _pending: true, name: file.name };
+      proj.videos[curVidKey] = { src: publicUrl, name: file.name };
     }
     snapshot();
     saveAll();
     closeVidModal();
-    toast('🎬 Video listo · se sube a Shopify al publicar');
+    toast('🎬 Video guardado');
   } catch(err){
     console.error('onVideoFilePick', err);
     var st2 = g('vid-upload-status'); if(st2) st2.textContent = 'Error: ' + (err.message || 'no se pudo cargar');
@@ -4771,8 +4825,18 @@ function applySlotsForViewport(proj, viewport){
     if (entry === null){ collapseSlot(k); return; }
     var url = imgEntryGet(entry, viewport);
     if (url){ setSlot(k, url); return; }
-    if (TEMPLATE_DEFAULT_IMAGES[k]) setSlot(k, TEMPLATE_DEFAULT_IMAGES[k]);
-    else resetSlot(k);
+    if (TEMPLATE_DEFAULT_IMAGES[k]) { setSlot(k, TEMPLATE_DEFAULT_IMAGES[k]); return; }
+    // entry === undefined: user never set this slot. For palette-dropped
+    // image blocks (auto-N slots not in TEMPLATE_DEFAULT_IMAGES), the
+    // inline <img src> already points at the placeholder URL baked into
+    // BLOCK_TEMPLATES.image — leave it alone instead of clearing it,
+    // otherwise reload would wipe the placeholder visual on any block
+    // the user hasn't filled yet.
+    if (entry === undefined){
+      var elU = imgEl(k);
+      if (elU && elU.getAttribute('src')) return;
+    }
+    resetSlot(k);
   });
 }
 function pickImg(key){ if(typeof openImgGen==='function'){openImgGen(key);return;} curImgKey=key; var m=g('img-modal');if(m)m.classList.add('on'); }
