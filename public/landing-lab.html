@@ -764,11 +764,12 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
       <div class="in-section">
         <div class="in-label">Acciones</div>
         <div class="in-row">
-          <button class="in-btn flex" type="button" onclick="insParent()" title="Subir un nivel">&uarr; Padre</button>
-          <button class="in-btn flex" type="button" onclick="insDuplicate()" title="Duplicar bloque">&#x29C9; Duplicar</button>
+          <button class="in-btn flex" type="button" onclick="insParent()" title="Subir un nivel — ir al contenedor padre">&uarr; Padre</button>
+          <button class="in-btn flex" type="button" onclick="insChild()" title="Bajar un nivel — entrar al primer bloque hijo">&darr; Hijo</button>
         </div>
         <div class="in-row">
-          <button class="in-btn danger flex" type="button" onclick="insDelete()" title="Eliminar bloque">&#x1F5D1; Eliminar</button>
+          <button class="in-btn flex" type="button" onclick="insDuplicate()" title="Duplicar bloque">&#x29C9; Duplicar</button>
+          <button class="in-btn danger flex" type="button" onclick="insDelete()" title="Eliminar bloque seleccionado">&#x1F5D1; Eliminar</button>
         </div>
       </div>
     </div>
@@ -2063,18 +2064,55 @@ function wireBlockPalette(){
   var pw = g('page-wrap');
   if (pw && !pw.dataset.paletteWired) {
     pw.dataset.paletteWired = '1';
+    // Track the deepest [data-section-id] under cursor and show the
+    // teal drop-line over its top or bottom edge so the user sees
+    // EXACTLY where the new block will land. _onSecDragOver on each
+    // section already does this for "real" sections, but when the
+    // user hovers over dead space (gaps between sections) only the
+    // page-wrap-level handler fires — without this the line would
+    // disappear in those gaps and the drop would feel imprecise.
     pw.addEventListener('dragover', function(e){
       if (!_paletteSrc) return;
       e.preventDefault();
       try { e.dataTransfer.dropEffect = 'copy'; } catch(err){}
+      var t = (e.target && e.target.closest) ? e.target.closest('[data-section-id]') : null;
+      if (t && pw.contains(t)){
+        var rect = t.getBoundingClientRect();
+        var parentCs = getComputedStyle(t.parentNode);
+        var horizontal = parentCs.display === 'flex' && (parentCs.flexDirection || 'row').indexOf('row') === 0;
+        var before = horizontal
+          ? (e.clientX - rect.left) < rect.width / 2
+          : (e.clientY - rect.top) < rect.height / 2;
+        if (typeof _showDropLine === 'function') _showDropLine(t, before);
+      } else if (typeof _hideDropLine === 'function') {
+        _hideDropLine();
+      }
+    });
+    pw.addEventListener('dragleave', function(e){
+      // Only hide when leaving the canvas entirely, not when crossing
+      // between child sections.
+      if (e.target === pw && typeof _hideDropLine === 'function') _hideDropLine();
     });
     pw.addEventListener('drop', function(e){
       if (!_paletteSrc) return;
       e.preventDefault();
-      // If the drop landed directly on page-wrap (not on a child), append
-      // to the section parent (or page-wrap itself for a brand-new section).
-      var parent = (typeof findSectionParent === 'function' && findSectionParent()) || pw;
-      spawnBlockFromPalette(_paletteSrc, parent, null);
+      if (typeof _hideDropLine === 'function') _hideDropLine();
+      // If we have a hover target with section-id, drop relative to it
+      // (before/after based on cursor side) just like reorder drops do.
+      var t = (e.target && e.target.closest) ? e.target.closest('[data-section-id]') : null;
+      if (t && pw.contains(t) && t.parentNode){
+        var rect = t.getBoundingClientRect();
+        var parentCs = getComputedStyle(t.parentNode);
+        var horizontal = parentCs.display === 'flex' && (parentCs.flexDirection || 'row').indexOf('row') === 0;
+        var before = horizontal
+          ? (e.clientX - rect.left) < rect.width / 2
+          : (e.clientY - rect.top) < rect.height / 2;
+        spawnBlockFromPalette(_paletteSrc, t.parentNode, before ? t : t.nextSibling);
+      } else {
+        // Empty / dead space — append to the closest section parent.
+        var parent = (typeof findSectionParent === 'function' && findSectionParent()) || pw;
+        spawnBlockFromPalette(_paletteSrc, parent, null);
+      }
       _paletteSrc = null;
       pw.classList.remove('riverz-palette-canvas');
     });
@@ -2896,6 +2934,18 @@ function insParent(){
   }
   toast('Ya estás en el contenedor más alto',0);
 }
+// Navigate INTO the selected element — picks the first block-like
+// child (data-section-id / data-rz-kind / data-v-text / data-v-img /
+// data-v-video) so the user can drill from a section into its row,
+// from a row into its first column, from a column into its first
+// paragraph, etc. The inverse of insParent.
+function insChild(){
+  if (!_insEl) return;
+  var match = _insEl.querySelector('[data-section-id], [data-rz-kind], [data-v-text], [data-v-img], [data-v-video]');
+  if (!match){ toast('No hay bloques hijos para entrar',0); return; }
+  insSelect(match);
+}
+window.insChild = insChild;
 function insDuplicate(){
   if (!_insEl) return;
   curEditEl = _insEl;
@@ -2903,8 +2953,21 @@ function insDuplicate(){
 }
 function insDelete(){
   if (!_insEl) return;
-  curEditEl = _insEl;
-  deleteSelectedBlock();
+  // Delete EXACTLY the selected element — don't let _movableParentOf
+  // walk up to a section ancestor and nuke more than the user expects.
+  // The inspector already shows them what's highlighted in yellow;
+  // that's what should disappear.
+  var target = _insEl;
+  if (!target.parentNode) return;
+  var isTop = target.dataset && target.dataset.sectionId && target.dataset.sectionId.indexOf('top-') === 0;
+  if (isTop && !confirm('¿Eliminar esta sección entera? Podés deshacerlo con Ctrl+Z.')) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  target.parentNode.removeChild(target);
+  if (typeof hideFontCtrl === 'function') hideFontCtrl();
+  if (typeof rebuildSlotTables === 'function') rebuildSlotTables();
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
+  if (typeof saveAll === 'function') saveAll();
+  toast('🗑 Bloque eliminado · Ctrl+Z para deshacer');
   insClear();
 }
 window.insSelect = insSelect;
@@ -2978,10 +3041,16 @@ function wireInspectorClicks(){
     if (!t || !t.closest) return;
     // Don't hover over editor-injected chrome (trash, drag handle, etc.).
     if (t.closest('.riverz-img-del, .riverz-vid-del, .riverz-section-handle, .iov, .idel, .riverz-img-edit, .riverz-vid-edit')) return;
+    // Suppress hover affordance during a palette drag or section
+    // reorder — we already show a teal drop-line for those, and a
+    // second blue outline competing with it just looks busy.
+    if (_paletteSrc || _dragSrc){ _setHover(null); return; }
     var hit = t.closest(HOVER_SEL);
     _setHover(hit && pw.contains(hit) ? hit : null);
   }, { passive: true });
   pw.addEventListener('mouseleave', function(){ _setHover(null); });
+  pw.addEventListener('dragstart', function(){ _setHover(null); });
+  pw.addEventListener('drop', function(){ _setHover(null); });
   document.addEventListener('click', function(e){
     if (e.target.closest && (e.target.closest('#inspector') || e.target.closest('#font-ctrl') || e.target.closest('#page-wrap') || e.target.closest('#topbar') || e.target.closest('#block-palette') || e.target.closest('.modal-bg'))) return;
     insClear();
