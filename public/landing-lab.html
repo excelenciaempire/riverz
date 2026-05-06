@@ -1407,6 +1407,16 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
       </div>
 
       <div class="set-section">
+        <h3>Tipografía global</h3>
+        <p class="set-help">Cambia la fuente de toda la página de un saco. Las personalizaciones por elemento (desde el inspector lateral) siguen mandando si las definiste.</p>
+        <label class="set-field">
+          <span>Fuente</span>
+          <select id="set-global-font" onchange="setGlobalFont(this.value)" style="background:#0e1015;color:#fff;border:1px solid #2a2e38;border-radius:6px;padding:9px 11px;font-size:13px;font-family:inherit;cursor:pointer;width:100%"></select>
+          <small>Si la fuente requiere un Google Font, lo agregamos automáticamente al publicar.</small>
+        </label>
+      </div>
+
+      <div class="set-section">
         <h3>Sticky CTA</h3>
         <p class="set-help">El botón sticky aparece cuando el usuario scrollea más del % indicado.</p>
         <label class="set-field">
@@ -2579,6 +2589,60 @@ var FONT_OPTIONS = [
   { v: '"Times New Roman", serif', label: 'Times New Roman' },
   { v: '"Courier New", monospace', label: 'Courier' },
 ];
+// Google Fonts CSS URLs for each font family that isn't a system font.
+// Used both at editor mount (via dynamic <link>) so the picker preview
+// renders correctly, and at publish time so the published page also
+// loads the font. Keys are the FONT_OPTIONS .v values.
+var GLOBAL_FONT_GFONT_URLS = {
+  'Inter, system-ui, sans-serif': 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap',
+  '"Cormorant Garamond", Georgia, serif': 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap',
+  '"Playfair Display", Georgia, serif': 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&display=swap',
+  '"Instrument Sans", sans-serif': 'https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap'
+};
+function _ensureGlobalFontLink(value){
+  // Inject a <link> for this font's Google Font CSS if we have a URL
+  // for it, so the editor preview picks it up. Idempotent.
+  var url = GLOBAL_FONT_GFONT_URLS[value];
+  if (!url) return;
+  if (document.querySelector('link[data-rz-global-font="'+CSS.escape(value)+'"]')) return;
+  var link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = url;
+  link.setAttribute('data-rz-global-font', value);
+  document.head.appendChild(link);
+}
+// Apply / clear the global font on the live #page-wrap by injecting a
+// single <style> block. Uses !important so it beats template-shipped
+// inline font-family rules; per-element overrides set via the inspector
+// also use !important (insFontFamily) so they still win against this.
+function applyGlobalFont(value){
+  var styleEl = document.getElementById('riverz-global-font-style');
+  if (!value) {
+    if (styleEl && styleEl.parentNode) styleEl.parentNode.removeChild(styleEl);
+    return;
+  }
+  _ensureGlobalFontLink(value);
+  if (!styleEl){
+    styleEl = document.createElement('style');
+    styleEl.id = 'riverz-global-font-style';
+    document.head.appendChild(styleEl);
+  }
+  // Cascade to every descendant of #page-wrap. The leading rule on
+  // #page-wrap itself anchors elements that don't have an inline
+  // font-family at all; the *-rule catches descendants that DO carry an
+  // inline font-family from the template (those without !important).
+  styleEl.textContent =
+    '#page-wrap, #page-wrap *:not([style*="!important"]) { font-family: ' + value + ' !important; }';
+}
+window.applyGlobalFont = applyGlobalFont;
+function setGlobalFont(value){
+  var proj = (typeof getActive === 'function') ? getActive() : null;
+  if (!proj) return;
+  proj.globalFont = value || '';
+  applyGlobalFont(value);
+  if (typeof qSave === 'function') qSave();
+}
+window.setGlobalFont = setGlobalFont;
 function buildFontPicker(){
   var ctrl = document.getElementById('font-ctrl'); if (!ctrl) return;
   if (ctrl.querySelector('.font-fam-sel')) return; // already built
@@ -3427,7 +3491,12 @@ function insFontFamily(value){
   var t = (_insEl.hasAttribute && _insEl.hasAttribute('data-v-text')) ? _insEl
         : _insEl.querySelector ? _insEl.querySelector(':scope > [data-v-text]') : null;
   if (!t) return;
-  if (value) t.style.fontFamily = value; else t.style.removeProperty('font-family');
+  // Use !important so per-element overrides win against the global
+  // font rule injected by applyGlobalFont (which also uses !important).
+  // Without this, switching the global font would silently nuke any
+  // element-level customisation the user already made.
+  if (value) t.style.setProperty('font-family', value, 'important');
+  else t.style.removeProperty('font-family');
   if (typeof qSave === 'function') qSave();
 }
 function insParent(){
@@ -3948,6 +4017,11 @@ function _projectDataPayload(proj){
     imageStyles: proj.imageStyles || {},
     videoSizes: proj.videoSizes || {},
     layoutOrder: proj.layoutOrder || null,
+    // Global typography pick (font-family CSS string from FONT_OPTIONS).
+    // Empty string = template default. applyGlobalFont injects a
+    // <style> rule on activate; the publish flow re-applies it as part
+    // of the inlined CSS.
+    globalFont: typeof proj.globalFont === 'string' ? proj.globalFont : '',
     // The rendered #page-wrap HTML — captured by saveAll on every save
     // so palette-dropped blocks (Imagen, Video, Texto, etc.) survive
     // reload. Without this, the editor falls back to the template's
@@ -4234,6 +4308,7 @@ function _normalizeServerProject(sp){
     imageStyles: sp.imageStyles || {},
     videoSizes: sp.videoSizes || {},
     layoutOrder: sp.layoutOrder || null,
+    globalFont: typeof sp.globalFont === 'string' ? sp.globalFont : '',
     html: typeof sp.html === 'string' ? sp.html : null
   };
 }
@@ -4532,6 +4607,10 @@ function activateProject(id){
   if (typeof applyImageStyles === 'function') applyImageStyles();
   if (typeof applyVideoSizes === 'function') applyVideoSizes();
   applyCTA(proj.ctaUrl);
+  // Re-apply the project's global font (if set). Idempotent — the
+  // styleEl gets removed when value is empty so switching projects
+  // doesn't leak one project's font into another.
+  if (typeof applyGlobalFont === 'function') applyGlobalFont(proj.globalFont || '');
   if (typeof reapplyBlockComments === 'function') reapplyBlockComments();
   isRestoring=false;
   setTimeout(function(){document.querySelectorAll('#page-wrap [data-v-text]').forEach(function(el){el.contentEditable='true';});},30);
@@ -5729,11 +5808,21 @@ function buildHTML(proj){
   if (typeof RIVERZ_SIZE_CSS === 'string' && allCSS.indexOf('riverz-size-50') === -1) {
     allCSS += '\n' + RIVERZ_SIZE_CSS;
   }
+  // Carry through the project's global typography (Settings \u2192 Tipograf\u00eda).
+  // Scoped to #page-wrap and !important so it overrides the template's
+  // inline font-family rules; per-element overrides set in the inspector
+  // also use !important so they stay above this.
+  if (proj.globalFont) {
+    allCSS += '\n#page-wrap, #page-wrap *:not([style*="!important"]) { font-family: ' + proj.globalFont + ' !important; }';
+  }
+  var globalFontLink = (proj.globalFont && typeof GLOBAL_FONT_GFONT_URLS !== 'undefined' && GLOBAL_FONT_GFONT_URLS[proj.globalFont])
+    ? '<link href="'+GLOBAL_FONT_GFONT_URLS[proj.globalFont]+'" rel="stylesheet">'
+    : '';
   var SO='<'+'scri'+'pt>',SC='<'+'/scri'+'pt>';
   var code='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh=0.22;function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
   var galleryCode = (typeof RIVERZ_GALLERY_CODE === 'string') ? RIVERZ_GALLERY_CODE : '';
   var ingCode = (typeof RIVERZ_ING_CODE === 'string') ? RIVERZ_ING_CODE : '';
-  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<title>'+proj.name+' \u2014 Vital\u00fa</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">\n<style>'+allCSS+'</style>\n</head>\n<body>\n'+clone.outerHTML+'\n'+SO+code+SC+'\n'+(galleryCode?(SO+galleryCode+SC):'')+(ingCode?(SO+ingCode+SC):'')+'\n</body>\n</html>';
+  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<title>'+proj.name+' \u2014 Vital\u00fa</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">\n'+globalFontLink+'\n<style>'+allCSS+'</style>\n</head>\n<body>\n'+clone.outerHTML+'\n'+SO+code+SC+'\n'+(galleryCode?(SO+galleryCode+SC):'')+(ingCode?(SO+ingCode+SC):'')+'\n</body>\n</html>';
 }
 function exportCurrent(){var proj=getActive();if(!proj){toast('Selecciona una landing',1);return;}cpTxt(buildHTML(proj),'"'+proj.name+'" copiado');}
 function exportAll(){toast(projects.length+' landings — exporta cada una con Exportar HTML',0);}
@@ -5856,6 +5945,12 @@ function buildPublishPayload(proj){
   if (typeof RIVERZ_SIZE_CSS === 'string' && allCSS.indexOf('riverz-size-50') === -1) {
     allCSS += '\n' + RIVERZ_SIZE_CSS;
   }
+  // Carry through the project's global typography (Settings → Tipografía).
+  // Same rule the editor preview uses, scoped to #page-wrap so it doesn't
+  // leak into the merchant's theme outside the wrapper.
+  if (proj.globalFont) {
+    allCSS += '\n#page-wrap, #page-wrap *:not([style*="!important"]) { font-family: ' + proj.globalFont + ' !important; }';
+  }
   // Scope the styles to a wrapper so they don't leak into the merchant's
   // theme (e.g. the merchant's body{} rules vs ours).
   var wrapId='riverz-landing-'+(proj.id||'x').replace(/[^a-z0-9]/gi,'').slice(0,12);
@@ -5871,6 +5966,14 @@ function buildPublishPayload(proj){
   }
   if (!fontsLink) {
     fontsLink = '<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">';
+  }
+  // If the user picked a Google-hosted global font that isn't already
+  // covered by the template's own link tag, append its stylesheet too.
+  if (proj.globalFont && typeof GLOBAL_FONT_GFONT_URLS !== 'undefined' && GLOBAL_FONT_GFONT_URLS[proj.globalFont]) {
+    var gUrl = GLOBAL_FONT_GFONT_URLS[proj.globalFont];
+    if (fontsLink.indexOf(gUrl) === -1) {
+      fontsLink += '<link rel="stylesheet" href="'+gUrl+'">';
+    }
   }
   // Same scroll-driven script as buildHTML(): toggles the sticky CTA after
   // the user scrolls past 22%, plays the .rv reveal animations via
@@ -6035,6 +6138,20 @@ function openSettings(){
   var stickyPct = (typeof proj.stickyThresh === 'number' ? proj.stickyThresh : 0.22) * 100;
   var stickyEl = byId('set-sticky-pct'); if (stickyEl) stickyEl.value = String(Math.round(stickyPct));
   var stickyValEl = byId('set-sticky-pct-val'); if (stickyValEl) stickyValEl.textContent = String(Math.round(stickyPct));
+  // Populate the global-font picker. Lazy-built so the FONT_OPTIONS list
+  // can change without us hard-coding <option> tags in the modal HTML.
+  var fontSel = byId('set-global-font');
+  if (fontSel && !fontSel.dataset.populated){
+    fontSel.dataset.populated = '1';
+    if (typeof FONT_OPTIONS !== 'undefined'){
+      FONT_OPTIONS.forEach(function(opt){
+        var o = document.createElement('option');
+        o.value = opt.v; o.textContent = opt.label;
+        fontSel.appendChild(o);
+      });
+    }
+  }
+  if (fontSel) fontSel.value = proj.globalFont || '';
   byId('settings-modal').classList.add('on');
 }
 function closeSettings(){
