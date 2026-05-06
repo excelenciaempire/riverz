@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;800&display=swap" rel="stylesheet">
 <style>
-/* Container query root — lets the editor's mobile preview (390px wrapper) trigger this template's mobile breakpoints even though the iframe viewport is desktop-sized. */
-#page-wrap, .pp-doc { container-type: inline-size; container-name: pp; }
+/* Container query root — scoped to .pp-doc so .sticky-bar (position:fixed) descendants in the published page aren't contained by the container box. */
+.pp-doc { container-type: inline-size; container-name: pp; }
 
 /* ─── RESET / TOKENS ─────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box}
@@ -495,17 +495,17 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 
   </article>
 
-  <!-- 16. STICKY -->
-  <aside id="sticky" class="sticky-bar">
-    <button id="sticky-close" class="sticky-close" aria-label="Cerrar">×</button>
-    <div class="sticky-text">
-      <strong data-v-text="sticky-h">Powernax — 60% OFF</strong>
-      <span data-v-text="sticky-sub">Envío gratis · Garantía 30 días</span>
-    </div>
-    <a href="#" class="sticky-cta cta-btn" data-v-text="sticky-cta">Lo quiero</a>
-  </aside>
 
 </div>
+<!-- 16. STICKY — outside .pp-doc so position:fixed escapes the container. -->
+<aside id="sticky" class="sticky-bar">
+  <button id="sticky-close" class="sticky-close" aria-label="Cerrar">×</button>
+  <div class="sticky-text">
+    <strong data-v-text="sticky-h">Powernax — 60% OFF</strong>
+    <span data-v-text="sticky-sub">Envío gratis · Garantía 30 días</span>
+  </div>
+  <a href="#" class="sticky-cta cta-btn" data-v-text="sticky-cta">Lo quiero</a>
+</aside>
 
 <script>
 (function(){

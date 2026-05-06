@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-/* Container query root — lets the editor's mobile preview (390px wrapper) trigger this template's mobile breakpoints even though the iframe viewport is desktop-sized. */
-#page-wrap, .pp-doc { container-type: inline-size; container-name: pp; }
+/* Container query root — scoped to .pp-doc so .sticky-bar (position:fixed) descendants in the published page aren't contained by the container box. */
+.pp-doc { container-type: inline-size; container-name: pp; }
 
 /* ─── RESET / TOKENS ─────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box}
@@ -600,21 +600,22 @@ ul{margin:0;padding:0;list-style:none}
     </div>
   </section>
 
-  <!-- Sticky buy bar -->
-  <aside id="sticky" class="sticky-bar">
-    <div class="sticky-info">
-      <div class="sticky-img" data-v-img="sticky-img">
-        <img src="https://placehold.co/120x120/eef0f3/9ca3af?text=Imagen" alt="">
-      </div>
-      <div class="sticky-text">
-        <strong data-v-text="sticky-name">Nombre del producto</strong>
-        <span><span data-v-text="sticky-price">$59.900</span> <s data-v-text="sticky-compare">$120.000</s></span>
-      </div>
-    </div>
-    <a href="#" class="cta-btn sticky-btn" data-v-text="sticky-cta">Comprar →</a>
-  </aside>
 
 </div>
+<!-- Sticky buy bar lives outside .pp-doc so its position:fixed isn't
+     trapped inside the container-type:inline-size container. -->
+<aside id="sticky" class="sticky-bar">
+  <div class="sticky-info">
+    <div class="sticky-img" data-v-img="sticky-img">
+      <img src="https://placehold.co/120x120/eef0f3/9ca3af?text=Imagen" alt="">
+    </div>
+    <div class="sticky-text">
+      <strong data-v-text="sticky-name">Nombre del producto</strong>
+      <span><span data-v-text="sticky-price">$59.900</span> <s data-v-text="sticky-compare">$120.000</s></span>
+    </div>
+  </div>
+  <a href="#" class="cta-btn sticky-btn" data-v-text="sticky-cta">Comprar →</a>
+</aside>
 
 <script>
 (function(){

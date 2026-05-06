@@ -8,8 +8,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
-/* Container query root — lets the editor's mobile preview (390px wrapper) trigger this template's mobile breakpoints even though the iframe viewport is desktop-sized. */
-#page-wrap, .pp-doc { container-type: inline-size; container-name: pp; }
+/* Container query root — lets the editor's mobile preview (390px wrapper) trigger this template's mobile breakpoints even though the iframe viewport is desktop-sized. Scoped to .pp-doc only (NOT also #page-wrap) so the published .sticky-bar's position:fixed isn't trapped inside the container. */
+.pp-doc { container-type: inline-size; container-name: pp; }
+
+/* Style isolation. The editor's outer #page-wrap inherits a cream/yellow
+   color and Instrument Sans font for the legacy Vitalu canvas; without
+   resetting on .pp-doc the prod-name and other headings render invisible
+   (cream on cream) and the typography drifts off-brand. */
+.pp-doc { color: var(--ink); background: var(--bg); font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif; }
+.pp-doc h1, .pp-doc h2, .pp-doc h3, .pp-doc h4 { color: var(--ink); }
+.pp-doc .section-dark, .pp-doc .section-dark h1, .pp-doc .section-dark h2, .pp-doc .section-dark h3, .pp-doc .section-dark h4 { color: #fff; }
 
 /* ─── RESET / TOKENS ─────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box}
@@ -194,13 +202,17 @@ ul{margin:0;padding:0;list-style:none}
 .mini-acc-item[open] summary::after{transform:rotate(-135deg)}
 .mini-acc-body{padding:0 18px 16px;font-size:13.5px;color:var(--ink-2);line-height:1.6}
 
-/* ─── 4. PRESS STRIP (dark) ──────────────────────────────────── */
-.press-strip{background:var(--bg-dark);color:#fff;padding:34px 24px;text-align:center}
+/* ─── 4. PRESS STRIP (dark) — infinite marquee ───────────────── */
+.press-strip{background:var(--bg-dark);color:#fff;padding:34px 0;text-align:center;overflow:hidden}
 .press-title{font-size:13.5px;font-weight:500;color:rgba(255,255,255,.85);letter-spacing:0.04em;margin:0 0 18px;text-transform:none}
-.press-marquee{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:36px;max-width:1080px;margin:0 auto}
-.press-logo{font-family:'Times New Roman',Georgia,serif;font-style:italic;font-size:24px;font-weight:700;letter-spacing:0.01em;color:#fff;text-transform:none;opacity:.96}
+.press-marquee{position:relative;width:100%;overflow:hidden;mask-image:linear-gradient(90deg,transparent 0,#000 8%,#000 92%,transparent 100%);-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 8%,#000 92%,transparent 100%)}
+.press-track{display:inline-flex;align-items:center;gap:54px;padding-left:54px;white-space:nowrap;animation:press-scroll 26s linear infinite;will-change:transform}
+.press-marquee:hover .press-track{animation-play-state:paused}
+.press-logo{font-family:'Times New Roman',Georgia,serif;font-style:italic;font-size:24px;font-weight:700;letter-spacing:0.01em;color:#fff;text-transform:none;opacity:.96;flex:0 0 auto}
 .press-logo.bold{font-family:'Inter',sans-serif;font-style:normal;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;font-size:18px}
-@container pp (min-width:760px){ .press-marquee{gap:54px} .press-logo{font-size:28px} .press-logo.bold{font-size:22px} }
+@container pp (min-width:760px){ .press-logo{font-size:28px} .press-logo.bold{font-size:22px} }
+@keyframes press-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce){ .press-track{animation:none} }
 
 /* ─── SECTION GENERIC ────────────────────────────────────────── */
 .section{padding:72px 0}
@@ -266,7 +278,8 @@ ul{margin:0;padding:0;list-style:none}
 /* ─── 8. RECOMMENDED BY (cream) ─────────────────────────────── */
 .spec-wrap{display:grid;grid-template-columns:1fr;gap:32px;margin-top:32px;align-items:center}
 @container pp (min-width:880px){ .spec-wrap{grid-template-columns:.4fr .6fr;gap:48px} }
-.spec-photo{aspect-ratio:1/1;max-width:340px;justify-self:center;border-radius:50%;overflow:hidden;background:#eee}
+.spec-photo{aspect-ratio:1/1;width:200px;max-width:60%;justify-self:center;border-radius:50%;overflow:hidden;background:#eee}
+@container pp (min-width:880px){ .spec-photo{width:340px;max-width:340px} }
 .spec-photo img{width:100%;height:100%;object-fit:cover}
 .spec-name{font-size:22px;font-weight:800;letter-spacing:0;text-transform:none;margin:0 0 4px}
 .spec-role{font-size:14px;color:var(--ink-2);font-weight:500;margin:0 0 18px}
@@ -294,23 +307,25 @@ ul{margin:0;padding:0;list-style:none}
 .rfy-img{aspect-ratio:1/1;border-radius:var(--r-md);overflow:hidden;background:#111}
 .rfy-img img{width:100%;height:100%;object-fit:cover}
 
-/* ─── 10b. VIDEO TESTIMONIALS (cream) ─────────────────────── */
-.vt-grid{display:grid;grid-template-columns:1fr;gap:20px;margin-top:36px}
-@container pp (min-width:600px){ .vt-grid{grid-template-columns:repeat(2,1fr)} }
-@container pp (min-width:880px){ .vt-grid{grid-template-columns:repeat(3,1fr);gap:24px} }
-.vt-card{display:flex;flex-direction:column;gap:12px}
-.vt-card .vid-ph{aspect-ratio:9/16;border-radius:var(--r-md);overflow:hidden;background:#0a0a0a;position:relative}
-.vt-card .vid-ph video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
-.vt-card .vid-ph:not(.loaded)::after{content:attr(data-label);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(0,0,0,.42);border:1px dashed rgba(0,0,0,.18);padding:14px;text-align:center;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:var(--r-md);background:#fff}
-.vt-meta{display:flex;flex-direction:column;gap:4px;padding:0 4px}
-.vt-name{font-size:13.5px;font-weight:700;color:var(--ink)}
-.vt-quote{font-size:13.5px;color:var(--ink-2);line-height:1.55;font-style:italic}
+/* ─── 10b. BRAND VIDEO BLOCK (cream) ──────────────────────── */
+/* One full-width 16:9 video slot — perfect for an explainer or hero
+   ad. Wired to the editor's video upload flow via [data-v-video]. */
+.brand-video{aspect-ratio:16/9;border-radius:var(--r-md);overflow:hidden;background:#0a0a0a;position:relative;max-width:1080px;margin:32px auto 0}
+.brand-video video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+.brand-video:not(.loaded)::after{content:attr(data-label);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.18);padding:18px;text-align:center;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:var(--r-md);background:#0a0a0a}
 
-/* ─── 11. INGREDIENTS GRID (white) ───────────────────────────── */
-.ing-grid{display:grid;grid-template-columns:1fr;gap:20px;margin-top:40px}
-@container pp (min-width:600px){ .ing-grid{grid-template-columns:repeat(2,1fr)} }
-@container pp (min-width:980px){ .ing-grid{grid-template-columns:repeat(4,1fr)} }
-.ing-card{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
+/* ─── 11. INGREDIENTS CAROUSEL (white) ───────────────────────── */
+/* Horizontal scroll-snap carousel like the UltimaPeak original.
+   Container queries hide overflow + give cards a fixed width below
+   980px; on wider containers the cards fit in a single row and the
+   scroll behaviour is moot. */
+.ing-grid{display:flex;flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:24px;margin-top:40px;padding:8px 4px 24px;scrollbar-width:thin}
+.ing-grid::-webkit-scrollbar{height:6px}
+.ing-grid::-webkit-scrollbar-track{background:transparent}
+.ing-grid::-webkit-scrollbar-thumb{background:rgba(10,10,10,.18);border-radius:3px}
+.ing-card{flex:0 0 70%;max-width:300px;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
+@container pp (min-width:600px){ .ing-card{flex-basis:42%} }
+@container pp (min-width:980px){ .ing-grid{flex-wrap:wrap;justify-content:center;overflow:visible;scroll-snap-type:none} .ing-card{flex:0 1 calc(25% - 18px)} }
 .ing-img{width:140px;height:140px;border-radius:50%;background:var(--bg-cream-2);overflow:hidden;display:flex;align-items:center;justify-content:center}
 .ing-img img{width:100%;height:100%;object-fit:cover}
 .ing-card h3{font-size:18px;font-weight:800;margin:6px 0 0;text-transform:none;letter-spacing:0}
@@ -609,15 +624,39 @@ ul{margin:0;padding:0;list-style:none}
     </section>
   </div>
 
-  <!-- 4. Press strip (dark) -->
+  <!-- 4. Press strip (dark) — marquee scroller -->
   <section class="press-strip rv">
     <p class="press-title" data-v-text="press-title">Como se vio en:</p>
-    <div class="press-marquee">
-      <span class="press-logo" data-v-text="press-1">Forbes</span>
-      <span class="press-logo bold" data-v-text="press-2">Shark Tank</span>
-      <span class="press-logo bold" data-v-text="press-3">Buzzfeed</span>
-      <span class="press-logo bold" data-v-text="press-4">GQ</span>
-      <span class="press-logo" data-v-text="press-5">Men's Health</span>
+    <div class="press-marquee" aria-label="Como se vio en">
+      <div class="press-track">
+        <span class="press-logo" data-v-text="press-1">Forbes</span>
+        <span class="press-logo bold" data-v-text="press-2">Shark Tank</span>
+        <span class="press-logo bold" data-v-text="press-3">Buzzfeed</span>
+        <span class="press-logo bold" data-v-text="press-4">GQ</span>
+        <span class="press-logo" data-v-text="press-5">Men's Health</span>
+        <span class="press-logo bold" data-v-text="press-6">Esquire</span>
+        <span class="press-logo" data-v-text="press-7">WIRED</span>
+        <!-- Duplicate set for seamless infinite loop. Edits to text above
+             are mirrored at publish time by editor's collectTexts. -->
+        <span class="press-logo" aria-hidden="true">Forbes</span>
+        <span class="press-logo bold" aria-hidden="true">Shark Tank</span>
+        <span class="press-logo bold" aria-hidden="true">Buzzfeed</span>
+        <span class="press-logo bold" aria-hidden="true">GQ</span>
+        <span class="press-logo" aria-hidden="true">Men's Health</span>
+        <span class="press-logo bold" aria-hidden="true">Esquire</span>
+        <span class="press-logo" aria-hidden="true">WIRED</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4b. Brand video (cream) — single 16:9 explainer / hero video -->
+  <section class="section section-cream rv" style="padding-bottom:0">
+    <div class="pp-narrow">
+      <h2 class="section-h2" data-v-text="bv-title">Mirá <em>UltimaPeak</em> en acción</h2>
+      <p class="section-sub" data-v-text="bv-sub">El video corto que explica por qué ya no querés volver a tu rutina anterior.</p>
+      <div class="brand-video vid-ph" data-v-video="brand-video" data-label="🎬 Subí tu video · 16:9 horizontal">
+        <video playsinline preload="metadata" controls></video>
+      </div>
     </div>
   </section>
 
@@ -833,42 +872,6 @@ ul{margin:0;padding:0;list-style:none}
     </div>
   </section>
 
-  <!-- 10b. Video testimonials (cream) -->
-  <section class="section section-cream rv">
-    <div class="pp-narrow">
-      <h2 class="section-h2" data-v-text="vt-title">Lo que dicen <em>nuestros clientes</em></h2>
-      <div class="vt-grid">
-        <div class="vt-card">
-          <div class="vid-ph" data-v-video="vt-1" data-label="🎬 Video testimonio 1 · 9:16 vertical">
-            <video playsinline preload="metadata" controls></video>
-          </div>
-          <div class="vt-meta">
-            <div class="vt-name" data-v-text="vt-1-name">Marco — Buenos Aires</div>
-            <div class="vt-quote" data-v-text="vt-1-quote">"Lo noté desde la primera semana. Más energía, más enfoque."</div>
-          </div>
-        </div>
-        <div class="vt-card">
-          <div class="vid-ph" data-v-video="vt-2" data-label="🎬 Video testimonio 2 · 9:16 vertical">
-            <video playsinline preload="metadata" controls></video>
-          </div>
-          <div class="vt-meta">
-            <div class="vt-name" data-v-text="vt-2-name">Lucía — Córdoba</div>
-            <div class="vt-quote" data-v-text="vt-2-quote">"Probé otras cosas, ninguna funcionó así. Ya las recomiendo."</div>
-          </div>
-        </div>
-        <div class="vt-card">
-          <div class="vid-ph" data-v-video="vt-3" data-label="🎬 Video testimonio 3 · 9:16 vertical">
-            <video playsinline preload="metadata" controls></video>
-          </div>
-          <div class="vt-meta">
-            <div class="vt-name" data-v-text="vt-3-name">Julián — Rosario</div>
-            <div class="vt-quote" data-v-text="vt-3-quote">"Cambio real en mi rendimiento. Vale cada peso."</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- 11. Powerful ingredients (white) -->
   <section class="section rv">
     <div class="pp-narrow">
@@ -1060,21 +1063,22 @@ ul{margin:0;padding:0;list-style:none}
     <p class="foot-disclaimer" data-v-text="foot-disclaimer">DESCARGO MÉDICO Y DE SALUD: Los resultados pueden variar. El contenido y los productos presentados aquí no están destinados a diagnosticar, tratar, curar o prevenir ninguna enfermedad. Esta oferta no reemplaza ningún medicamento o tratamiento prescrito por un médico o profesional de la salud. Recomendamos consultar a un médico antes de usar cualquier producto o aplicar cualquier recomendación mencionada en esta página. La FDA no ha evaluado estas declaraciones.</p>
   </footer>
 
-  <!-- Sticky buy bar -->
-  <aside id="sticky" class="sticky-bar">
-    <div class="sticky-info">
-      <div class="sticky-img" data-v-img="sticky-img">
-        <img src="https://placehold.co/120x120/0a0a0a/e8b923?text=Producto" alt="">
-      </div>
-      <div class="sticky-text">
-        <strong data-v-text="sticky-name">Performance Gummies</strong>
-        <span><span data-v-text="sticky-price">$78.00</span> <s data-v-text="sticky-compare">$196.00</s></span>
-      </div>
-    </div>
-    <a href="#bundles" class="cta-btn sticky-btn" data-v-text="sticky-cta">Agregar →</a>
-  </aside>
-
 </div>
+<!-- /#page-wrap.pp-doc — sticky bar lives OUTSIDE so its position:fixed
+     isn't trapped inside the container-type:inline-size container. -->
+
+<aside id="sticky" class="sticky-bar">
+  <div class="sticky-info">
+    <div class="sticky-img" data-v-img="sticky-img">
+      <img src="https://placehold.co/120x120/0a0a0a/e8b923?text=Producto" alt="">
+    </div>
+    <div class="sticky-text">
+      <strong data-v-text="sticky-name">Performance Gummies</strong>
+      <span><span data-v-text="sticky-price">$78.00</span> <s data-v-text="sticky-compare">$196.00</s></span>
+    </div>
+  </div>
+  <a href="#bundles" class="cta-btn sticky-btn" data-v-text="sticky-cta">Agregar →</a>
+</aside>
 
 <script>
 (function(){

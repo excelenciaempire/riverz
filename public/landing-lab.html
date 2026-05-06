@@ -1400,6 +1400,23 @@ var curImgKey=null, saveT=null, vp='desktop', sidebarOpen=true;
 var histMap={}, histIdx={}, genTimers=[], stickyGone=false, stickyThresh=0.20;
 var curEditEl=null;
 
+// ── PER-SLOT IMAGE SIZE ──────────────────────────────────────
+// Cycle order surfaced in the editor next to the trash + camera buttons.
+// "0" means "no override" (the slot uses whatever width the template's CSS
+// gave it). Stored on proj.imageSizes[slot] = "50" | "70" | "85" | "0".
+// The riverz-size-NN utility classes ship inside the template's own
+// <style data-tpl="…"> block (see RIVERZ_SIZE_CSS below) so the publish
+// flow — which only inlines that one style block for tpl projects —
+// carries the size override into the published Shopify page.
+var IMG_SIZE_CYCLE = ['0', '50', '70', '85'];
+var IMG_SIZE_LABEL = { '0':'Auto', '50':'50%', '70':'70%', '85':'85%' };
+var RIVERZ_SIZE_CSS =
+  '/* Riverz per-slot image sizing — set via the editor\'s 📐 button. */\n' +
+  '[data-v-img].riverz-size-50,[data-v-img].riverz-size-70,[data-v-img].riverz-size-85{margin-left:auto!important;margin-right:auto!important;display:block}\n' +
+  '[data-v-img].riverz-size-50{max-width:50%!important;width:50%}\n' +
+  '[data-v-img].riverz-size-70{max-width:70%!important;width:70%}\n' +
+  '[data-v-img].riverz-size-85{max-width:85%!important;width:85%}\n';
+
 // Load JSON data from script tags (avoids JS string escaping issues)
 var DEFAULT_TEXTS = JSON.parse(document.getElementById('data-default').textContent);
 var TEXTS_B       = JSON.parse(document.getElementById('data-landing-b').textContent);
@@ -1471,10 +1488,13 @@ function applyTemplateContent(tpl){
     document.head.appendChild(link);
   });
 
-  // 3) Inject template CSS, marked so we can find it for publish + cleanup
+  // 3) Inject template CSS, marked so we can find it for publish + cleanup.
+  //    Append the per-slot riverz-size-* utility classes to the template's
+  //    own CSS so resized images survive the publish path (which only
+  //    inlines style[data-tpl="<id>"] for tpl projects).
   var styleEl = document.createElement('style');
   styleEl.setAttribute('data-tpl', tpl.id);
-  styleEl.textContent = tpl.css;
+  styleEl.textContent = tpl.css + '\n' + RIVERZ_SIZE_CSS;
   document.head.appendChild(styleEl);
 
   // 4) Snapshot the inline Vitalu HTML the first time we leave it, so we
@@ -1542,6 +1562,8 @@ function applyTemplateContent(tpl){
   document.querySelectorAll('#page-wrap .rv').forEach(function(el){ el.classList.add('on'); });
   decorateImageSlots();
   decorateVideoSlots();
+  // Apply the active project's per-slot size overrides (if any).
+  if (typeof applyImageSizes === 'function') applyImageSizes();
   // initEdit re-attaches contentEditable to the new [data-v-text] nodes.
   if (typeof initEdit === 'function') initEdit();
   // Tag + wire drag-and-drop on the new sections.
@@ -2570,6 +2592,17 @@ function decorateImageSlots(){
     btn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:30;background:rgba(0,0,0,.75);color:#fff;border:0;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);font-family:Inter,system-ui,sans-serif;letter-spacing:0.02em';
     btn.onclick = function(e){ e.preventDefault(); e.stopPropagation(); pickImg(slot); };
     el.appendChild(btn);
+    // Size cycle button — clicks rotate Auto → 50% → 70% → 85% → Auto.
+    // Sits between the trash and the camera so the user always sees the
+    // currently-applied size at a glance ("📐 Auto", "📐 50%", …).
+    var sz = document.createElement('button');
+    sz.type = 'button';
+    sz.className = 'riverz-img-size';
+    sz.dataset.slot = slot;
+    sz.style.cssText = 'position:absolute;top:8px;right:96px;z-index:30;background:rgba(0,0,0,.75);color:#fff;border:0;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);font-family:Inter,system-ui,sans-serif;letter-spacing:0.02em';
+    syncSizeBtn(sz, slot);
+    sz.onclick = function(e){ e.preventDefault(); e.stopPropagation(); cycleImgSize(slot); };
+    el.appendChild(sz);
     var del = document.createElement('button');
     del.type = 'button';
     del.className = 'riverz-img-del';
@@ -2579,6 +2612,44 @@ function decorateImageSlots(){
     el.appendChild(del);
   });
 }
+
+// ── PER-SLOT IMAGE SIZE: storage, apply, cycle ───────────────
+// The size lives on proj.imageSizes[slot]; applyImageSizes walks the
+// slot table and toggles the matching riverz-size-NN class. Called on
+// project activate, after template mount, and after each cycle click.
+function applyImageSizes(){
+  var proj = getActive();
+  document.querySelectorAll('#page-wrap [data-v-img]').forEach(function(el){
+    var slot = el.getAttribute('data-v-img');
+    var size = proj && proj.imageSizes ? (proj.imageSizes[slot] || '0') : '0';
+    el.classList.remove('riverz-size-50','riverz-size-70','riverz-size-85');
+    if (size && size !== '0') el.classList.add('riverz-size-' + size);
+    var sz = el.querySelector(':scope > .riverz-img-size');
+    if (sz) syncSizeBtn(sz, slot);
+  });
+}
+function syncSizeBtn(btnEl, slot){
+  var proj = getActive();
+  var size = proj && proj.imageSizes ? (proj.imageSizes[slot] || '0') : '0';
+  btnEl.innerHTML = '📐 ' + IMG_SIZE_LABEL[size];
+}
+function cycleImgSize(slot){
+  var proj = getActive();
+  if (!proj) return;
+  if (!proj.imageSizes) proj.imageSizes = {};
+  var cur = proj.imageSizes[slot] || '0';
+  var idx = IMG_SIZE_CYCLE.indexOf(cur);
+  if (idx < 0) idx = 0;
+  var next = IMG_SIZE_CYCLE[(idx + 1) % IMG_SIZE_CYCLE.length];
+  if (next === '0') delete proj.imageSizes[slot];
+  else proj.imageSizes[slot] = next;
+  applyImageSizes();
+  if (typeof snapshot === 'function') snapshot();
+  if (typeof saveAll === 'function') saveAll();
+  toast('Tamaño imagen: ' + IMG_SIZE_LABEL[next]);
+}
+window.cycleImgSize = cycleImgSize;
+window.applyImageSizes = applyImageSizes;
 
 // ── STORAGE ──────────────────────────────────────────────────
 async function loadAll(){
@@ -2792,6 +2863,8 @@ function activateProject(id){
   applySlotsForViewport(proj, vp);
   if(!proj.videos) proj.videos={};
   applyVideoSlots(proj);
+  if(!proj.imageSizes) proj.imageSizes={};
+  applyImageSizes();
   applyCTA(proj.ctaUrl);
   if (typeof reapplyBlockComments === 'function') reapplyBlockComments();
   isRestoring=false;
@@ -3401,7 +3474,7 @@ window.spmSelect = spmSelect;
 // ── EXPORT ────────────────────────────────────────────────────
 function buildHTML(proj){
   collectTexts();var pw=g('page-wrap'),clone=pw.cloneNode(true);
-  clone.querySelectorAll('.iov,.idel,#font-ctrl,#sec-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('.iov,.idel,#font-ctrl,#sec-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-img-size,.riverz-vid-edit,.riverz-vid-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
   clone.querySelectorAll('.riverz-sec-active').forEach(function(el){ el.classList.remove('riverz-sec-active'); });
   clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
   clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired],[data-rz-kind]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired','data-rz-kind'].forEach(function(a){ el.removeAttribute(a); }); });
@@ -3453,7 +3526,7 @@ function buildPublishPayload(proj){
   if(!proj) return null;
   collectTexts();
   var pw=g('page-wrap'),clone=pw.cloneNode(true);
-  clone.querySelectorAll('.iov,.idel,#font-ctrl,#sec-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  clone.querySelectorAll('.iov,.idel,#font-ctrl,#sec-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-img-size,.riverz-vid-edit,.riverz-vid-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
   clone.querySelectorAll('.riverz-sec-active').forEach(function(el){ el.classList.remove('riverz-sec-active'); });
   clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
   clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired],[data-rz-kind]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired','data-rz-kind'].forEach(function(a){ el.removeAttribute(a); }); });
