@@ -288,6 +288,19 @@ body.mob-mode:not(.riverz-tpl-active) .cta-btn{padding:14px 28px!important;font-
 #sec-ctrl .sc-mini{font-size:10px;color:#5B6490;padding:0 3px;font-weight:700;letter-spacing:.04em}
 #sec-ctrl button.sc-danger:hover{background:rgba(228,78,58,.15);color:#ff7a64;border-color:rgba(228,78,58,.4)}
 .riverz-sec-active{outline:2px dashed rgba(247,255,158,.85)!important;outline-offset:2px;background:rgba(247,255,158,.06)!important;position:relative}
+/* Hover affordance: a soft blue dashed outline on the deepest block
+   under the cursor so the user knows what would be selected. JS picks
+   the closest [data-section-id] / [data-rz-kind] / [data-v-*] / section
+   ancestor and tags it with .riverz-hover (only the innermost match
+   gets the class, never multiple nested at once).
+   The active selection (yellow) wins — riverz-sec-active overrides. */
+#page-wrap .riverz-hover{outline:1.5px dashed rgba(74,144,226,.65)!important;outline-offset:2px;cursor:pointer}
+#page-wrap .riverz-hover.riverz-sec-active{outline:2px dashed rgba(247,255,158,.85)!important}
+/* Floating tag in the corner of whichever block is hovered, so the
+   user sees what TYPE of block they're about to grab (Sección, Fila,
+   Columna, Imagen, Video, Texto). Pure CSS, content from data attr. */
+#page-wrap .riverz-hover::before{content:attr(data-rz-hover-label);position:absolute;top:-1px;left:-1px;background:#4A90E2;color:#fff;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:0 0 4px 0;z-index:24;font-family:'Instrument Sans',sans-serif;pointer-events:none;line-height:1.3;white-space:nowrap}
+#page-wrap .riverz-hover.riverz-sec-active::before{display:none}
 /* GemPages-style left inspector — slides open when an element is selected.
    Lives between #block-palette and #editor so the palette stays reachable
    for adding new blocks. Width animates so it feels like a panel sliding
@@ -2921,6 +2934,54 @@ function wireInspectorClicks(){
     if (!el) return;
     insSelect(el);
   });
+
+  // Hover affordance — tag whatever block is under the cursor with
+  // .riverz-hover so the user sees a soft blue outline + a "SECCIÓN /
+  // FILA / COLUMNA / IMAGEN / VIDEO / TEXTO" badge. Only ONE block at
+  // a time gets the class (the deepest match), so nested containers
+  // don't all light up at once.
+  var HOVER_SEL = '[data-v-text],[data-v-img],[data-v-video],[data-rz-kind],[data-section-id],section';
+  function _hoverLabel(el){
+    if (el.hasAttribute('data-v-img')) return 'Imagen';
+    if (el.hasAttribute('data-v-video')) return 'Video';
+    if (el.hasAttribute('data-v-text')) return 'Texto';
+    var kind = el.getAttribute('data-rz-kind');
+    if (kind === 'row') return 'Fila';
+    if (kind === 'col') return 'Columna';
+    if (kind === 'section') return 'Sección';
+    if (el.tagName === 'SECTION') return 'Sección';
+    return 'Bloque';
+  }
+  var _curHover = null;
+  function _setHover(el){
+    if (_curHover === el) return;
+    if (_curHover){
+      _curHover.classList.remove('riverz-hover');
+      _curHover.removeAttribute('data-rz-hover-label');
+      // If we forced position:relative just for the hover badge, only
+      // strip it back to static if no other code path needed it. Safest
+      // to leave it — once relative, costs nothing.
+    }
+    _curHover = el;
+    if (_curHover){
+      _curHover.classList.add('riverz-hover');
+      _curHover.setAttribute('data-rz-hover-label', _hoverLabel(_curHover));
+      // The ::before badge is absolutely positioned — make sure the
+      // hovered element is a positioning context, otherwise the badge
+      // floats to the nearest positioned ancestor.
+      var cs = getComputedStyle(_curHover);
+      if (cs.position === 'static') _curHover.style.position = 'relative';
+    }
+  }
+  pw.addEventListener('mousemove', function(e){
+    var t = e.target;
+    if (!t || !t.closest) return;
+    // Don't hover over editor-injected chrome (trash, drag handle, etc.).
+    if (t.closest('.riverz-img-del, .riverz-vid-del, .riverz-section-handle, .iov, .idel, .riverz-img-edit, .riverz-vid-edit')) return;
+    var hit = t.closest(HOVER_SEL);
+    _setHover(hit && pw.contains(hit) ? hit : null);
+  }, { passive: true });
+  pw.addEventListener('mouseleave', function(){ _setHover(null); });
   document.addEventListener('click', function(e){
     if (e.target.closest && (e.target.closest('#inspector') || e.target.closest('#font-ctrl') || e.target.closest('#page-wrap') || e.target.closest('#topbar') || e.target.closest('#block-palette') || e.target.closest('.modal-bg'))) return;
     insClear();
@@ -3884,6 +3945,9 @@ function snapshot(){
     var clone=pw.cloneNode(true);
     clone.querySelectorAll('.iov,.idel,.riverz-img-edit,.riverz-img-del,.riverz-img-size,.riverz-vid-edit,.riverz-vid-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
     clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
+    // Hover affordance is editor-only — strip the class + data attr so
+    // it never leaks into history snapshots or the published page.
+    clone.querySelectorAll('.riverz-hover').forEach(function(el){el.classList.remove('riverz-hover');el.removeAttribute('data-rz-hover-label');});
     rawHtml=clone.innerHTML;
   }
   var snap={
@@ -4239,6 +4303,9 @@ window.spmSelect = spmSelect;
 function buildHTML(proj){
   collectTexts();var pw=g('page-wrap'),clone=pw.cloneNode(true);
   clone.querySelectorAll('.iov,.idel,#font-ctrl,#sec-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-img-size,.riverz-vid-edit,.riverz-vid-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  // Strip the editor-only hover state so the published page never
+  // ships with .riverz-hover or its data-rz-hover-label attribute.
+  clone.querySelectorAll('.riverz-hover').forEach(function(el){el.classList.remove('riverz-hover');el.removeAttribute('data-rz-hover-label');});
   clone.querySelectorAll('.riverz-sec-active').forEach(function(el){ el.classList.remove('riverz-sec-active'); });
   clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
   clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired'].forEach(function(a){ el.removeAttribute(a); }); });
@@ -4294,6 +4361,9 @@ function buildPublishPayload(proj){
   collectTexts();
   var pw=g('page-wrap'),clone=pw.cloneNode(true);
   clone.querySelectorAll('.iov,.idel,#font-ctrl,#sec-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-img-size,.riverz-vid-edit,.riverz-vid-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+  // Strip the editor-only hover state so the published page never
+  // ships with .riverz-hover or its data-rz-hover-label attribute.
+  clone.querySelectorAll('.riverz-hover').forEach(function(el){el.classList.remove('riverz-hover');el.removeAttribute('data-rz-hover-label');});
   clone.querySelectorAll('.riverz-sec-active').forEach(function(el){ el.classList.remove('riverz-sec-active'); });
   clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
   clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired'].forEach(function(a){ el.removeAttribute(a); }); });
