@@ -3771,7 +3771,23 @@ window.applyImageSizes = applyImageSizes;
 
 // ── STORAGE ──────────────────────────────────────────────────
 async function loadAll(){
-  try{ var s=localStorage.getItem(SK); if(s){var d=JSON.parse(s);projects=d.projects||[];activeId=d.activeId||null;} }catch(e){}
+  console.log('[Riverz][loadAll] start', { url: window.location.href, parentUrl: (function(){try{return window.parent?window.parent.location.href:'?';}catch(_){return '(blocked)';}})() });
+  try{
+    var s=localStorage.getItem(SK);
+    if(s){
+      var d=JSON.parse(s);
+      projects=d.projects||[];
+      activeId=d.activeId||null;
+      console.log('[Riverz][loadAll] localStorage loaded:', {
+        projectCount: projects.length,
+        activeId: activeId,
+        projectIds: projects.map(function(p){return p.id;}),
+        textsByProject: projects.map(function(p){return {id:p.id, textKeys:Object.keys(p.texts||{}).length, name:p.name};})
+      });
+    } else {
+      console.log('[Riverz][loadAll] localStorage is empty');
+    }
+  }catch(e){ console.error('[Riverz][loadAll] localStorage parse failed:', e); }
   // ObjectURL-based pending videos die on reload — clear them from
   // proj.videos so the slot shows its placeholder and the user knows
   // to re-pick. Runs before any project mounts so the bad URLs never
@@ -3859,7 +3875,16 @@ async function loadAll(){
 function saveAll(){
   collectTexts();
   try {
-    localStorage.setItem(SK, JSON.stringify({projects:projects, activeId:activeId}));
+    var payload = JSON.stringify({projects:projects, activeId:activeId});
+    localStorage.setItem(SK, payload);
+    var actProj = projects.find(function(p){return p.id===activeId;});
+    console.log('[Riverz][saveAll] OK', {
+      activeId: activeId,
+      bytes: payload.length,
+      activeTextKeys: actProj ? Object.keys(actProj.texts||{}).length : 0,
+      activeImageSlots: actProj ? Object.keys(actProj.images||{}).length : 0,
+      sampleText: actProj && actProj.texts ? Object.keys(actProj.texts).slice(0,3).map(function(k){return k+':'+String(actProj.texts[k]).slice(0,40);}) : []
+    });
     isDirty = false; dot('ok');
     hideQuotaBanner();
     return true;
@@ -4011,7 +4036,16 @@ function doDelete(id){if(projects.length<=1){toast('No puedes eliminar la unica'
 // target project uses a different template than what's currently mounted.
 async function bootProject(id){
   var proj = projects.find(function(p){return p.id===id;});
-  if (!proj) return;
+  console.log('[Riverz][bootProject] id=' + id, {
+    found: !!proj,
+    templateId: proj && proj.templateId,
+    textKeys: proj ? Object.keys(proj.texts||{}).length : 0,
+    imageSlots: proj ? Object.keys(proj.images||{}).length : 0
+  });
+  if (!proj) {
+    console.error('[Riverz][bootProject] project ' + id + ' NOT FOUND in projects[]. localStorage may have lost the data, or the URL ?p=<id> doesn\'t match any saved project.');
+    return;
+  }
   // Save the OUTGOING project's edits while its DOM is still mounted.
   // collectTexts harvests by querying live #page-wrap [data-v-text]
   // nodes, so doing this after applyTemplateContent / restoreInlineLayout
@@ -4092,8 +4126,31 @@ function activateProject(id){
 function showEmpty(){activeId=null;g('ed-toolbar').style.display='none';g('empty-state').style.display='flex';g('page-area').style.display='none';document.querySelectorAll('.sb-item').forEach(function(el){el.classList.remove('active');});}
 
 // ── TEXT / IMAGES ─────────────────────────────────────────────
-function collectTexts(){var proj=getActive();if(!proj)return;document.querySelectorAll('#page-wrap [data-v-text]').forEach(function(el){proj.texts[el.getAttribute('data-v-text')]=el.innerHTML;});}
-function applyTexts(texts){document.querySelectorAll('#page-wrap [data-v-text]').forEach(function(el){var k=el.getAttribute('data-v-text');if(texts&&texts[k]!==undefined)el.innerHTML=texts[k];});}
+function collectTexts(){
+  var proj=getActive();
+  if(!proj){
+    console.warn('[Riverz][collectTexts] no active project — skipping');
+    return;
+  }
+  if(!proj.texts) proj.texts = {};
+  var nodes = document.querySelectorAll('#page-wrap [data-v-text]');
+  nodes.forEach(function(el){
+    proj.texts[el.getAttribute('data-v-text')] = el.innerHTML;
+  });
+  console.log('[Riverz][collectTexts] captured ' + nodes.length + ' text nodes for proj ' + proj.id);
+}
+function applyTexts(texts){
+  var nodes = document.querySelectorAll('#page-wrap [data-v-text]');
+  var hits = 0;
+  nodes.forEach(function(el){
+    var k=el.getAttribute('data-v-text');
+    if(texts&&texts[k]!==undefined){
+      el.innerHTML=texts[k];
+      hits++;
+    }
+  });
+  console.log('[Riverz][applyTexts] DOM has ' + nodes.length + ' text nodes, applied ' + hits + ' from saved dict (' + Object.keys(texts||{}).length + ' keys)');
+}
 function applyCTA(url){if(!url)return;document.querySelectorAll('#page-wrap a.cta-btn,#page-wrap a.sticky-btn').forEach(function(a){a.href=url;});}
 
 // imgEl resolves a slot key to its <img> element. The legacy Vitalu layout
