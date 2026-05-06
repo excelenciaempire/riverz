@@ -581,6 +581,16 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
 .gal-shopify-steps{display:flex;gap:14px;flex-wrap:wrap}
 .gal-s-step{display:flex;align-items:flex-start;gap:8px;font-size:11px;color:#545A72;font-family:'Instrument Sans',sans-serif;flex:1;min-width:130px}
 .gal-s-num{width:18px;height:18px;border-radius:50%;background:#1E2130;color:#4CAF7D;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+/* Persistent quota banner — appears below the topbar when saveAll has
+   started failing. Stays until the user publishes (which uploads
+   data: URLs to Shopify CDN, freeing localStorage) or clicks the X. */
+#riverz-quota-banner{display:none;position:relative;background:linear-gradient(180deg,#3a1818 0%,#2a1212 100%);border-bottom:1px solid #5a2020;color:#ffd6c6;padding:10px 48px 10px 18px;font-family:'Instrument Sans',sans-serif;font-size:12px;font-weight:600;letter-spacing:.02em;line-height:1.5;z-index:1500}
+#riverz-quota-banner.on{display:block}
+#riverz-quota-banner b{color:#ff9a72;font-weight:800}
+#riverz-quota-banner button.rqb-cta{background:#f7ff9e;color:#0a0a0a;border:0;padding:6px 12px;border-radius:5px;font-size:11px;font-weight:800;letter-spacing:.04em;cursor:pointer;margin-left:8px}
+#riverz-quota-banner button.rqb-cta:hover{filter:brightness(1.1)}
+#riverz-quota-banner button.rqb-x{position:absolute;top:8px;right:10px;background:transparent;border:0;color:rgba(255,200,180,.55);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px}
+#riverz-quota-banner button.rqb-x:hover{color:#fff}
 </style>
 <script type="application/json" id="data-default">{"hero-l1": "Llevas años", "hero-l2": "probando de todo.", "hero-em": "Tu piel merece algo diferente.", "hero-sub": "Lo que las grandes marcas nunca te van a contar — y el ingrediente que nuestras bisabuelas usaban sin saberlo.", "pq-text": "\"Probé la rutina coreana, el dermatólogo, los sérums importados. Gasté más de dos millones de pesos. Mi piel seguía igual.\"", "pq-cite": "— Magdalena R., Bogotá", "dolor-p1": "Si esto te suena familiar, no es casualidad. El mercado de skincare está diseñado para que siempre necesites <strong>el siguiente producto", "dolor-p2": "Diez pasos. Quince productos. Dos millones de pesos al año. Y la piel… más o menos igual.", "stat-1": "Gasta en promedio una colombiana en cosméticos al año", "stat-2": "Solo compra en oferta por desconfianza al precio real", "stat-3": "De hogares colombianos usan crema — pocas están satisfechas", "vill-p1": "Tu piel tiene una barrera hecha de lípidos que <strong>bloquea la mayoría de las cremas", "vill-p2": "Las grandes marcas lo resuelven con químicos agresivos. Tu piel se irrita. La barrera se debilita. El ciclo se repite.", "vill-p3": "El costo real de los ingredientes puede ser <strong>hasta 1.000 veces menor", "rev-p1": "Antes de que existiera una sola crema importada, las mujeres colombianas cuidaban su piel con lo que tenían. Sin rutinas de diez pasos. Y muchas tenían una piel que hoy llamaríamos \"glass skin.\"", "rev-p2": "El ingrediente central de ese cuidado tiene un nombre que te va a sorprender:", "rev-p3": "Sí. Antes de que hagas esa cara — escucha la ciencia.", "rev-pq": "\"El perfil de ácidos grasos del sebo bovino es casi idéntico al de los lípidos naturales de la piel humana. Es el ingrediente más biocompatible que existe.\"", "rev-p4": "Biocompatible significa que tu piel lo reconoce como propio. No lo bloquea. Lo absorbe y lo usa para repararse desde adentro.", "rev-p5": "La industria lo enterró porque <strong>no se puede patentar", "prod-desc": "Fabricada en Medellín. Formulada para la piel colombiana y su clima. El sebo de res purificado como protagonista, potenciado por los activos modernos que la ciencia confirma.", "prod-p1": "El sebo de res purificado como protagonista, combinado con ácido hialurónico, vitamina E y omega 3. Se absorbe en minutos. Sin residuo graso. Sin olor fuerte.", "ing-1-name": "Sebo de Res Purificado", "ing-1-desc": "Grass-fed. Tu piel lo reconoce como propio — absorción inmediata. Repara la barrera cutánea.", "ing-2-name": "Ácido Hialurónico", "ing-2-desc": "Retiene hasta 1.000 veces su peso en agua. Hidratación activa 24 horas.", "ing-3-name": "Aceite de Coco", "ing-3-desc": "Antibacterial natural. Ayuda al sebo a penetrar más profundo sin tapar los poros.", "ing-4-name": "Manteca de Cacao", "ing-4-desc": "Textura sedosa, absorción en minutos. Sin residuo. Antioxidantes para el sol.", "ing-5-name": "Vitamina E", "ing-5-desc": "Potencia los efectos del sebo. Protege del daño celular. Multiplica la eficacia.", "ing-6-name": "Omega 3", "ing-6-desc": "Reduce inflamación y rojeces. Estimula la renovación celular desde adentro.", "t1-body": "\"Llevaba AÑOS probando de todo. Dos semanas después mi compañera me dijo que me veía radiante. Ahora salgo sin base y me siento segura.\"", "t1-name": "Magdalena R.", "t1-city": "Bogotá · Cliente verificada", "t2-body": "\"Tengo rosácea desde los 25. Gasté más de $2.000.000 en cremas. Por primera vez en 8 años mi cara no está roja. Mis amigas preguntan si me hice láser.\"", "t2-name": "Patricia V.", "t2-city": "Cali · Cliente verificada", "t3-body": "\"Trabajo en turismo en Cartagena. Con este sol tenía la nariz grasosa pero mejillas resecas. Ha sido lo mejor que he probado.\"", "t3-name": "Luciana M.", "t3-city": "Cartagena · Cliente verificada", "gift-title": "Con tu Crema Vitalú<br>te regalamos el Jabón Exótico.", "gift-p1": "La crema funciona sola. Pero los resultados se multiplican cuando la piel llega limpia y lista para absorber.", "gift-p2": "El Jabón Exótico Vitalú — maracuyá, sandía, karité y chía — prepara tu piel para que la crema entre donde debe entrar.", "gift-note": "No lo cobramos aparte. Es un regalo. Sin condiciones.", "ck-1": "Ya probaste cremas importadas, rutinas coreanas o el dermatólogo — y tu piel sigue sin ser lo que quieres.", "ck-2": "Te gustaría salir sin base algún día y sentirte bien de todas formas.", "ck-3": "Tienes manchas del sol colombiano que no desaparecen con nada.", "ck-4": "Estás cansada de rutinas de diez pasos y quieres algo simple que funcione de verdad.", "ck-5": "Tienes piel seca, grasa, mixta, sensible o madura. Vitalú trabaja con tu biología, no contra ella.", "ck-6": "Quieres apoyar una empresa colombiana con ingredientes reales y garantía real.", "gtee-title": "30 días. O te devolvemos cada peso.", "gtee-body": "Creemos tanto en la fórmula que asumimos el riesgo nosotros. Prueba la Crema Vitalú durante 30 días. Si no ves una diferencia real en tu piel, te hacemos la devolución completa. Sin preguntas. Sin burocracia.", "cta-title": "Tu piel tan bonita que el maquillaje se vuelve opcional.", "cta-sub": "Para las que ya probaron de todo. Con el Jabón Exótico de regalo.", "cta-btn": "Quiero mi Crema Vitalú →", "cta-meta": "🛡️ Garantía 30 días — devolución completa si no ves resultados\n🚚 Envío desde Medellín · 2 a 5 días hábiles · Transportadora Envía\n🎁 Jabón Exótico de regalo con cada pedido · Sin costo adicional"}</script>
 <script type="application/json" id="data-landing-b">{"hero-l1": "Ya gastaste suficiente", "hero-l2": "en cremas que no funcionan.", "hero-em": "Esta vez es diferente.", "hero-sub": "Descubrimos por qué tu piel no responde a nada. No es tu disciplina. Es la biología.", "hero-gtag": "Vitalú Colombia · Para las que ya probaron todo", "pq-text": "Probé la rutina coreana, el dermatólogo, los sérums importados. Gasté más de dos millones de pesos. Mi piel seguía igual.", "pq-cite": "— Valentina C., Bogotá", "dolor-p1": "Conoces exactamente esa sensación. Compras algo nuevo con esperanza. Los primeros días parece que algo cambia. Y luego... nada. De vuelta al punto de partida con el cajón lleno de cremas a medio usar.", "dolor-p2": "No es falta de constancia. No es tu tipo de piel. Es que la mayoría de las cremas del mercado están diseñadas para fallar — para que siempre necesites comprar la siguiente.", "stat-n1": "$1.2M", "stat-1": "Gasta al año una colombiana en cosméticos que no funcionan", "stat-n2": "61%", "stat-2": "Compra solo en oferta por desconfianza en los precios reales", "stat-n3": "74%", "stat-3": "De hogares usan crema a diario — pocas están satisfechas", "vill-p1": "Tu piel tiene una barrera lipídica que bloquea lo que no reconoce como propio. La mayoría de ingredientes de las cremas masivas son tan ajenos a tu biología que tu piel simplemente los rechaza.", "vill-p2": "Para burlar esa barrera, las marcas usan penetradores químicos que irritan, adelgazan y debilitan tu piel con el tiempo. Resultado: piel más sensible, más dependiente, siempre necesitando más producto.", "vill-p3": "El ingrediente activo real puede costar menos del 1% de lo que pagas. El resto es marca, empaque y publicidad. Tú pagas el marketing, no la solución.", "rev-p1": "Antes de que existiera el skincare moderno, las mujeres colombianas mantenían su piel con lo que había. Sin doce pasos. Sin importados. Y muchas llegaban a los 70 con una piel que hoy pagaríamos miles por tener.", "rev-p2": "El secreto era simple. Un ingrediente que tu piel reconoce como propio, absorbe sin resistencia y usa exactamente como sabe hacerlo. Uno que la industria enterró porque no se puede patentar.", "rev-p3": "Se llama sebo de res. Y la ciencia está confirmando lo que nuestras bisabuelas sabían por instinto.", "rev-pq": "El sebo bovino purificado tiene el perfil de ácidos grasos más cercano al de los lípidos naturales de la piel humana.", "rev-p4": "Tu barrera no lo bloquea. Lo absorbe. Lo usa para repararse e hidratarse desde adentro.", "rev-p5": "No tiene nombre en francés. No puede venderse a $300.000 la cajita. Por eso desapareció. Por eso nadie te lo había contado.", "prod-desc": "Fabricada en Medellín para el clima colombiano. Seis ingredientes con rol específico, ninguno de relleno.", "prod-name": "Crema Vitalú", "prod-p1": "Sin agua, sin silicones, sin relleno. Solo lo que tu piel necesita para hacer lo que sabe hacer: repararse sola.", "prod-tag1": "Hecha en Medellín", "prod-tag2": "6 ingredientes", "prod-tag3": "Sin relleno", "ing-1-name": "Sebo de Res Grass-Fed", "ing-1-desc": "El ingrediente que tu piel reconoce como propio. Absorción inmediata, cero rechazo, reparación real.", "ing-2-name": "Ácido Hialurónico", "ing-2-desc": "Retiene hasta 1000 veces su peso en agua. Hidratación que dura todo el día.", "ing-3-name": "Aceite de Coco Virgin", "ing-3-desc": "Antibacterial natural. Potencia la penetración del sebo sin tapar poros.", "ing-4-name": "Manteca de Cacao", "ing-4-desc": "Se derrite con el calor de tu piel. Antioxidantes para el sol colombiano.", "ing-5-name": "Vitamina E", "ing-5-desc": "Amplifica la acción reparadora del sebo. Escudo contra el daño oxidativo.", "ing-6-name": "Omega 3", "ing-6-desc": "Apaga la inflamación silenciosa. Activa la renovación celular.", "tl-1": "Primera noche: tu piel respira diferente. Más suave. Sin la sensación de tirante.", "tl-2": "Días 3 a 5: el brillo real aparece. No grasoso — el brillo húmedo, saludable.", "tl-3": "Semana 2: la textura cambia. Manchas que se atenúan. Poros más finos.", "tl-4": "Semana 3: alguien te pregunta si hiciste algo. Tú dices que no.", "tl-5": "Mes 2 en adelante: sin base. No porque debas — porque puedes.", "t1-body": "Probé absolutamente todo. La rutina coreana completa. Tres dermatólogos distintos. Con Vitalú en dos semanas mi piel se veía mejor que en cinco años. Ahora salgo sin base.", "t1-name": "Valentina C.", "t1-city": "Bogotá · Usuaria verificada", "t2-body": "Tengo rosácea desde los 22. Todo me irritaba. Con Vitalú por primera vez en años mi piel no está roja al despertar. Mi esposo pensó que me había hecho un tratamiento.", "t2-name": "Sofía M.", "t2-city": "Medellín · Usuaria verificada", "t3-body": "Piel mixta, clima costero, sol todo el año. Vitalú es lo primero que regula todo sin secar las mejillas ni engrasar la nariz.", "t3-name": "Adriana P.", "t3-city": "Barranquilla · Usuaria verificada", "gift-tag": "Regalo con cada pedido", "gift-title": "El Jabón Exótico va incluido.", "gift-p1": "La crema funciona sola. Pero cuando la piel llega limpia y lista para absorber, los resultados se ven antes.", "gift-p2": "Con maracuyá, sandía, karité y chía — prepara tu piel para aprovechar cada aplicación.", "gift-note": "Incluido con cada pedido. Sin condiciones. Sin costo extra.", "gtee-title": "30 días de prueba real. Sin riesgo.", "gtee-body": "No pedimos fotos. No exigimos justificación. Si en 30 días no ves la diferencia, te hacemos la devolución completa. Punto.", "cta-title": "Por fin algo que funciona.", "cta-sub": "Para las que ya probaron todo. Garantía 30 días real — si no funciona, te devolvemos cada peso.", "cta-btn": "Probar sin riesgo →", "cta-meta": "Garantia 30 dias sin preguntas\nEnvio desde Medellin 2-5 dias\nJabon Exotico incluido con cada pedido", "ck-head": "Vitalú es para ti", "ck-1": "Ya probaste cremas importadas, rutinas coreanas y dermatólogos sin resultados.", "ck-2": "Has gastado más de lo que quieres admitir en productos que prometían todo.", "ck-3": "Tienes manchas, piel seca en algunos lados y grasa en otros.", "ck-4": "Quieres una rutina simple que funcione de verdad.", "ck-5": "Te gustaría salir sin base y sentirte bien mirándote al espejo.", "ck-6": "Estás dispuesta a darle una oportunidad más — con garantía real de por medio.", "tl-day1": "Primera noche", "tl-day2": "Días 3 – 5", "tl-day3": "Semana 1 – 2", "tl-day4": "Semana 3", "tl-day5": "Mes 2 en adelante", "sticky-h": "Vitalú — Garantía 30 días", "sticky-sub": " Si no funciona, te devolvemos cada peso.", "sticky-btn": "Probar sin riesgo →"}</script>
@@ -611,6 +621,14 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
     <button class="tb tb-grn" onclick="publishToShopify()" title="Publicar como página en tu Shopify">&#x1F6D2; Publicar en Shopify</button>
     <input type="file" id="file-in" accept="image/*" style="display:none" onchange="onFilePick(event)">
   </div>
+</div>
+<!-- Sticky banner shown when localStorage is full so the user actually
+     sees the failure (the 3.2s toast was being missed). Hidden by
+     default; saveAll's catch path turns it on. -->
+<div id="riverz-quota-banner" role="alert">
+  <span>⚠️ <b>Almacenamiento lleno</b> — los cambios y las imágenes nuevas no se están guardando. <span id="rqb-detail"></span> Publicá esta landing (las imágenes se mueven a Shopify Files y liberan espacio) o eliminá una landing vieja.</span>
+  <button type="button" class="rqb-cta" onclick="publishToShopify()">Publicar para liberar espacio</button>
+  <button type="button" class="rqb-x" aria-label="Cerrar" onclick="hideQuotaBanner()">&times;</button>
 </div>
 <div id="main">
   <div id="sidebar">
@@ -3738,6 +3756,13 @@ async function loadAll(){
   // to re-pick. Runs before any project mounts so the bad URLs never
   // hit setVidSlot / applyVideoSlots.
   if (typeof _purgeStaleBlobVideos === 'function') _purgeStaleBlobVideos();
+  // Resolve any "idb:<key>" image sentinels back to ObjectURLs (the
+  // saveAll auto-recovery path migrated data: URLs into IndexedDB to
+  // dodge the 5MB localStorage cap). Must run before bootProject so
+  // applySlotsForViewport sees usable URLs synchronously.
+  if (typeof resolveIDBImages === 'function'){
+    try { await resolveIDBImages(); } catch(e){ console.warn('[Riverz] resolveIDBImages failed:', e); }
+  }
   // No auto-seed. Users now arrive here from /landing-lab (template
   // dashboard) or /landing-lab/mis-paginas — both paths supply either
   // ?template=<id> (new project) or ?p=<id> (existing). Seeding
@@ -3788,19 +3813,63 @@ function saveAll(){
   try {
     localStorage.setItem(SK, JSON.stringify({projects:projects, activeId:activeId}));
     isDirty = false; dot('ok');
+    hideQuotaBanner();
     return true;
   } catch(e) {
-    // Almost always QuotaExceededError. Surface the actual size so the
-    // user knows whether to publish (which uploads + frees data: URLs)
-    // or just delete an old landing. Log to console so a power user can
-    // open devtools and inspect localStorage themselves.
+    // QuotaExceededError. The most common cause is base64 image data
+    // URLs in proj.images blowing through the 5MB limit. Try to recover
+    // by offloading every data: URL to IndexedDB (which has 50%+ of
+    // disk space available) and replacing them with tiny "idb:<key>"
+    // sentinels in proj.images. Then retry the localStorage write.
+    // This auto-recovery means the user usually never sees the failure.
     var sizeMb = 0;
     try { sizeMb = Math.round((JSON.stringify({projects:projects, activeId:activeId}).length/1024/1024)*10)/10; } catch(_){}
-    toast('No se pudo guardar — almacenamiento lleno (' + sizeMb + 'MB). Publicá la landing o eliminá una vieja.', 1);
-    console.error('[Riverz] saveAll failed', e);
+    console.warn('[Riverz] saveAll hit quota at ' + sizeMb + 'MB — migrating images to IDB');
+    // Kick off the async migration + retry. The current saveAll call
+    // returns false (it failed), but the next save will succeed because
+    // proj.images will be tiny sentinels.
+    if (typeof saveImagesToIDB === 'function'){
+      saveImagesToIDB().then(function(changed){
+        if (!changed) return;
+        try {
+          localStorage.setItem(SK, JSON.stringify({projects:projects, activeId:activeId}));
+          isDirty = false; if (typeof dot === 'function') dot('ok');
+          hideQuotaBanner();
+          if (typeof toast === 'function') toast('💾 Borrador guardado (imágenes movidas a IndexedDB)');
+        } catch (e2){
+          console.error('[Riverz] saveAll retry still failed:', e2);
+          var s2 = 0;
+          try { s2 = Math.round((JSON.stringify({projects:projects, activeId:activeId}).length/1024/1024)*10)/10; } catch(_){}
+          if (typeof toast === 'function') toast('Almacenamiento todavía lleno (' + s2 + 'MB). Publicá o eliminá una landing vieja.', 1);
+          showQuotaBanner(s2);
+        }
+      }).catch(function(err){
+        console.error('[Riverz] IDB migration failed:', err);
+        if (typeof toast === 'function') toast('No se pudo migrar las imágenes a IndexedDB: ' + (err && err.message || err), 1);
+      });
+    }
+    toast('No se pudo guardar — almacenamiento lleno (' + sizeMb + 'MB). Recuperando con IndexedDB…', 1);
+    showQuotaBanner(sizeMb);
+    isDirty = true; dot('dirty');
     return false;
   }
 }
+// Sticky quota banner control. saveAll calls showQuotaBanner on the
+// first failure and hideQuotaBanner once a save succeeds again. The
+// banner has a "Publicar" CTA that runs publishToShopify (which moves
+// data: URLs to Shopify Files and frees ~all of the bloat).
+function showQuotaBanner(sizeMb){
+  var b = document.getElementById('riverz-quota-banner'); if (!b) return;
+  var d = document.getElementById('rqb-detail');
+  if (d && sizeMb) d.textContent = '(' + sizeMb + 'MB usados de ~5MB).';
+  b.classList.add('on');
+}
+function hideQuotaBanner(){
+  var b = document.getElementById('riverz-quota-banner'); if (!b) return;
+  b.classList.remove('on');
+}
+window.showQuotaBanner = showQuotaBanner;
+window.hideQuotaBanner = hideQuotaBanner;
 function qSave(){if(isRestoring)return;isDirty=true;dot('dirty');clearTimeout(saveT);saveT=setTimeout(function(){collectTexts();snapshot();saveAll();saveT=null;},700);}
 // Cancel a pending qSave timer. Call this before doing your own
 // synchronous snapshot+saveAll so we don't end up with two history
@@ -4336,6 +4405,158 @@ function applyUrl(){var inp=g('im-url-in');if(!inp)return;var v=inp.value.trim()
 //            → cdn.shopify.com URL returned to the editor.
 // localStorage only stores those ~120-char URLs, so the 5–10MB quota stops
 // being an issue.
+// ── IndexedDB-backed image blob storage ──────────────────────
+// localStorage caps at ~5MB on most browsers. A single uploaded
+// image as a data URL eats 200-400KB; ten images blow the quota and
+// saveAll silently fails. To keep proj.images small in localStorage
+// we offload the raw bytes to IndexedDB and persist only "idb:<key>"
+// sentinels. saveImagesToIDB() is run as a pre-flight from saveAll
+// when it detects data: URLs in proj.images. resolveIDBImages()
+// inflates the sentinels back to ObjectURLs at load time so the
+// canvas can render the slot.
+var IDB_NAME = 'riverz-landing-lab';
+var IDB_STORE = 'images';
+var IDB_VERSION = 1;
+var _idbDbPromise = null;
+function _idbOpen(){
+  if (_idbDbPromise) return _idbDbPromise;
+  if (typeof indexedDB === 'undefined') {
+    _idbDbPromise = Promise.reject(new Error('IndexedDB no disponible'));
+    return _idbDbPromise;
+  }
+  _idbDbPromise = new Promise(function(resolve, reject){
+    var req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = function(){
+      var db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error || new Error('IDB open failed')); };
+  });
+  return _idbDbPromise;
+}
+async function idbPut(key, blob){
+  var db = await _idbOpen();
+  return new Promise(function(resolve, reject){
+    var tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(blob, key);
+    tx.oncomplete = function(){ resolve(); };
+    tx.onerror = function(){ reject(tx.error); };
+  });
+}
+async function idbGet(key){
+  var db = await _idbOpen();
+  return new Promise(function(resolve, reject){
+    var tx = db.transaction(IDB_STORE, 'readonly');
+    var req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = function(){ resolve(req.result || null); };
+    req.onerror = function(){ reject(req.error); };
+  });
+}
+async function idbDelete(key){
+  try {
+    var db = await _idbOpen();
+    return await new Promise(function(resolve, reject){
+      var tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(key);
+      tx.oncomplete = function(){ resolve(); };
+      tx.onerror = function(){ reject(tx.error); };
+    });
+  } catch (e) { /* swallow — best-effort cleanup */ }
+}
+function _dataUrlToBlob(dataUrl){
+  var m = /^data:([^;,]+)(;base64)?,(.*)$/.exec(dataUrl);
+  if (!m) return null;
+  var mime = m[1];
+  var bytes = m[2] ? atob(m[3]) : decodeURIComponent(m[3]);
+  var u8 = new Uint8Array(bytes.length);
+  for (var i = 0; i < bytes.length; i++) u8[i] = bytes.charCodeAt(i);
+  return new Blob([u8], { type: mime });
+}
+// Walks every project's images dict and migrates any data: URLs into
+// IndexedDB, replacing the entry with an "idb:<key>" sentinel. Returns
+// true if anything changed (so saveAll knows to persist the now-tiny
+// projects array). Async — saveAll awaits this when it detects bloat.
+async function saveImagesToIDB(){
+  var changed = false;
+  for (var i = 0; i < projects.length; i++){
+    var p = projects[i];
+    if (!p || !p.images) continue;
+    var keys = Object.keys(p.images);
+    for (var k = 0; k < keys.length; k++){
+      var slot = keys[k];
+      var v = p.images[slot];
+      // Flat string entry (desktop only)
+      if (typeof v === 'string' && v.indexOf('data:') === 0){
+        try {
+          var blob = _dataUrlToBlob(v);
+          if (!blob) continue;
+          var key = p.id + '__' + slot + '__' + Date.now().toString(36);
+          await idbPut(key, blob);
+          p.images[slot] = 'idb:' + key;
+          changed = true;
+        } catch(e){ console.warn('[Riverz] IDB put failed for slot', slot, e); }
+      }
+      // Per-viewport object entry { d, m }
+      else if (v && typeof v === 'object') {
+        if (typeof v.d === 'string' && v.d.indexOf('data:') === 0){
+          try {
+            var blob = _dataUrlToBlob(v.d);
+            if (blob){
+              var key = p.id + '__' + slot + '__d__' + Date.now().toString(36);
+              await idbPut(key, blob);
+              v.d = 'idb:' + key;
+              changed = true;
+            }
+          } catch(e){ console.warn('[Riverz] IDB put failed for slot.d', slot, e); }
+        }
+        if (typeof v.m === 'string' && v.m.indexOf('data:') === 0){
+          try {
+            var blob = _dataUrlToBlob(v.m);
+            if (blob){
+              var key = p.id + '__' + slot + '__m__' + Date.now().toString(36);
+              await idbPut(key, blob);
+              v.m = 'idb:' + key;
+              changed = true;
+            }
+          } catch(e){ console.warn('[Riverz] IDB put failed for slot.m', slot, e); }
+        }
+      }
+    }
+  }
+  return changed;
+}
+window.saveImagesToIDB = saveImagesToIDB;
+// At load time, walk every project and resolve any "idb:<key>" sentinels
+// back to ObjectURLs so applySlotsForViewport (synchronous) sees a usable
+// URL. ObjectURLs live for the session — fine because the next reload
+// re-runs this resolver.
+async function resolveIDBImages(){
+  for (var i = 0; i < projects.length; i++){
+    var p = projects[i];
+    if (!p || !p.images) continue;
+    var keys = Object.keys(p.images);
+    for (var k = 0; k < keys.length; k++){
+      var slot = keys[k];
+      var v = p.images[slot];
+      if (typeof v === 'string' && v.indexOf('idb:') === 0){
+        try {
+          var blob = await idbGet(v.slice(4));
+          if (blob) p.images[slot] = URL.createObjectURL(blob);
+          else p.images[slot] = null; // missing — clear so the slot collapses
+        } catch(e){ console.warn('[Riverz] IDB get failed for', slot, e); }
+      } else if (v && typeof v === 'object') {
+        if (typeof v.d === 'string' && v.d.indexOf('idb:') === 0){
+          try { var b = await idbGet(v.d.slice(4)); if (b) v.d = URL.createObjectURL(b); else v.d = ''; } catch(_){}
+        }
+        if (typeof v.m === 'string' && v.m.indexOf('idb:') === 0){
+          try { var b2 = await idbGet(v.m.slice(4)); if (b2) v.m = URL.createObjectURL(b2); else v.m = ''; } catch(_){}
+        }
+      }
+    }
+  }
+}
+window.resolveIDBImages = resolveIDBImages;
 async function compressImageFile(file, maxDim, quality){
   if(!/^image\//.test(file.type)) return file;
   var url=URL.createObjectURL(file);
@@ -4380,6 +4601,64 @@ async function uploadImageToShopifyFiles(blob, originalName, slotKey){
   if(!data || !data.url) throw new Error('Respuesta sin URL');
   return data.url;
 }
+// Safety net for the publish path: any blob: URL still in proj.images
+// (from a legacy IDB-resolved entry, etc.) gets read back as a Blob and
+// converted to a data: URL the server's fetchAsBuffer can decode.
+// Brand-new images now go straight to Supabase, so this rarely fires —
+// but it's cheap and prevents broken publishes when it does.
+async function _resolveBlobUrlsToDataUrls(proj){
+  if (!proj || !proj.images) return;
+  async function _blobToDataUrl(url){
+    var resp = await fetch(url);
+    var blob = await resp.blob();
+    return await new Promise(function(resolve, reject){
+      var r = new FileReader();
+      r.onload = function(){ resolve(r.result); };
+      r.onerror = function(){ reject(r.error); };
+      r.readAsDataURL(blob);
+    });
+  }
+  var keys = Object.keys(proj.images);
+  for (var i = 0; i < keys.length; i++){
+    var slot = keys[i];
+    var v = proj.images[slot];
+    if (typeof v === 'string' && v.indexOf('blob:') === 0){
+      try { proj.images[slot] = await _blobToDataUrl(v); }
+      catch (e){ console.warn('[Riverz] could not resolve blob URL for', slot, e); }
+    } else if (v && typeof v === 'object'){
+      if (typeof v.d === 'string' && v.d.indexOf('blob:') === 0){
+        try { v.d = await _blobToDataUrl(v.d); } catch(_){}
+      }
+      if (typeof v.m === 'string' && v.m.indexOf('blob:') === 0){
+        try { v.m = await _blobToDataUrl(v.m); } catch(_){}
+      }
+    }
+  }
+}
+// Upload a Blob to Supabase Storage (user-uploads bucket). The endpoint
+// is multi-tenant: every authed user gets their own folder, so this
+// works for every Riverz user, regardless of whether they've connected
+// Shopify yet. Returns the public URL — the editor stores that ~120-char
+// string in proj.images[slot] instead of a 300-400KB base64 data URL,
+// which is what was filling localStorage and breaking saveAll.
+async function uploadImageToSupabase(blob, originalName, slotKey){
+  var proj = (typeof getActive === 'function') ? getActive() : null;
+  var fd = new FormData();
+  var clean = (originalName || 'image').replace(/[^a-zA-Z0-9._-]+/g, '_');
+  if (!/\.\w+$/.test(clean)) clean += '.jpg';
+  fd.append('file', blob, clean);
+  if (proj) fd.append('project_id', proj.id || 'landing');
+  if (slotKey) fd.append('slot', slotKey);
+  var res = await fetch('/api/landing-lab/upload-asset', { method: 'POST', body: fd });
+  var data = null;
+  try { data = await res.json(); } catch(_){}
+  if (!res.ok){
+    throw new Error((data && data.error) || ('Subida fallida (' + res.status + ')'));
+  }
+  if (!data || !data.url) throw new Error('Respuesta sin URL');
+  return data.url;
+}
+window.uploadImageToSupabase = uploadImageToSupabase;
 async function onFilePick(e){
   var file=e.target.files[0];
   try{
@@ -4392,19 +4671,24 @@ async function onFilePick(e){
     // path, so deferring the upload here means the user can iterate on a
     // landing without burning Shopify Files quota until they actually
     // hit "Publicar en Shopify".
-    var blob=await compressImageFile(file,1920,0.85);
-    var dataUrl=await new Promise(function(res,rej){
-      var r=new FileReader();
-      r.onload=function(){res(r.result);};
-      r.onerror=function(){rej(new Error('No se pudo leer el archivo'));};
-      r.readAsDataURL(blob);
-    });
-    setSlot(curImgKey,dataUrl);
-    var proj=getActive();if(proj)setProjImage(proj,curImgKey,dataUrl,vp);
-    snapshot();saveAll();closeImgModal();
-    toast(vp==='mobile'?'Imagen aplicada solo en mobile · se sube al publicar':'Imagen aplicada · se sube al publicar');
-  }catch(err){console.error('onFilePick',err);toast('Error: '+(err.message||'no se pudo cargar'),1);}
-  finally{ if(e&&e.target) e.target.value=''; }
+    // High-quality compression: 1920px max @ 0.85 quality. Images go
+    // straight to Supabase Storage so localStorage only holds the
+    // public URL string — no 5MB cap to worry about, and the URL works
+    // across browsers/devices because Supabase is per-user.
+    var blob = await compressImageFile(file, 1920, 0.85);
+    toast('Subiendo a Supabase…', 0);
+    var publicUrl = await uploadImageToSupabase(blob, file.name, curImgKey);
+    setSlot(curImgKey, publicUrl);
+    var proj = getActive();
+    if (proj) setProjImage(proj, curImgKey, publicUrl, vp);
+    snapshot(); saveAll(); closeImgModal();
+    toast(vp === 'mobile' ? 'Imagen aplicada solo en mobile' : 'Imagen aplicada');
+  } catch(err){
+    console.error('onFilePick', err);
+    toast('Error: ' + (err.message || 'no se pudo cargar'), 1);
+  } finally {
+    if (e && e.target) e.target.value = '';
+  }
 }
 function delImg(e,key){
   e.stopPropagation();e.preventDefault();
@@ -5073,6 +5357,18 @@ async function publishToShopify(){
       toast('Error subiendo video: ' + (e && e.message || e), 1);
       return;
     }
+  }
+
+  // Convert any blob: URLs in proj.images (created by resolveIDBImages
+  // when sentinels were inflated at load time) back to data: URLs so
+  // the server's fetchAsBuffer can decode them. Without this every
+  // IDB-resolved image would silently fail to upload at publish time.
+  try {
+    await _resolveBlobUrlsToDataUrls(proj);
+  } catch(e){
+    console.error('[Riverz] _resolveBlobUrlsToDataUrls failed:', e);
+    toast('Error preparando imágenes: ' + (e && e.message || e), 1);
+    return;
   }
 
   var payload=buildPublishPayload(proj);
