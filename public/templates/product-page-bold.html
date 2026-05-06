@@ -307,29 +307,30 @@ ul{margin:0;padding:0;list-style:none}
 .rfy-img{aspect-ratio:1/1;border-radius:var(--r-md);overflow:hidden;background:#111}
 .rfy-img img{width:100%;height:100%;object-fit:cover}
 
-/* ─── 10b. BRAND VIDEO BLOCK (cream) ──────────────────────── */
-/* One full-width 16:9 video slot — perfect for an explainer or hero
-   ad. Wired to the editor's video upload flow via [data-v-video]. */
-.brand-video{aspect-ratio:16/9;border-radius:var(--r-md);overflow:hidden;background:#0a0a0a;position:relative;max-width:1080px;margin:32px auto 0}
-.brand-video video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
-.brand-video:not(.loaded)::after{content:attr(data-label);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.18);padding:18px;text-align:center;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:var(--r-md);background:#0a0a0a}
 
-/* ─── 11. INGREDIENTS CAROUSEL (white) ───────────────────────── */
-/* Horizontal scroll-snap carousel like the UltimaPeak original.
-   Container queries hide overflow + give cards a fixed width below
-   980px; on wider containers the cards fit in a single row and the
-   scroll behaviour is moot. */
-.ing-grid{display:flex;flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:24px;margin-top:40px;padding:8px 4px 24px;scrollbar-width:thin}
+/* ─── 11. INGREDIENTS CAROUSEL (white) — UltimaPeak style ────── */
+/* Each card is a tall stack: a wide image-area on top (cream wash,
+   image fills it), and a separate cream text card below with name +
+   description. Below 980px the cards form a horizontal scroll-snap
+   carousel; above 980px they tile in a flex row with no scrolling. */
+.ing-grid{display:flex;flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:18px;margin-top:40px;padding:8px 4px 24px;scrollbar-width:thin}
 .ing-grid::-webkit-scrollbar{height:6px}
 .ing-grid::-webkit-scrollbar-track{background:transparent}
-.ing-grid::-webkit-scrollbar-thumb{background:rgba(10,10,10,.18);border-radius:3px}
-.ing-card{flex:0 0 70%;max-width:300px;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
-@container pp (min-width:600px){ .ing-card{flex-basis:42%} }
-@container pp (min-width:980px){ .ing-grid{flex-wrap:wrap;justify-content:center;overflow:visible;scroll-snap-type:none} .ing-card{flex:0 1 calc(25% - 18px)} }
-.ing-img{width:140px;height:140px;border-radius:50%;background:var(--bg-cream-2);overflow:hidden;display:flex;align-items:center;justify-content:center}
-.ing-img img{width:100%;height:100%;object-fit:cover}
-.ing-card h3{font-size:18px;font-weight:800;margin:6px 0 0;text-transform:none;letter-spacing:0}
-.ing-card p{font-size:13.5px;color:var(--ink-2);line-height:1.55;margin:0;max-width:240px}
+.ing-grid::-webkit-scrollbar-thumb{background:rgba(10,10,10,.22);border-radius:3px}
+.ing-card{flex:0 0 86%;max-width:380px;scroll-snap-align:center;display:flex;flex-direction:column;gap:0;background:transparent}
+@container pp (min-width:600px){ .ing-card{flex-basis:60%} }
+@container pp (min-width:980px){ .ing-grid{flex-wrap:wrap;justify-content:center;overflow:visible;scroll-snap-type:none;padding:0} .ing-card{flex:0 1 calc(25% - 14px);max-width:320px} }
+.ing-img{aspect-ratio:1/1;background:var(--bg-cream-2);border-radius:var(--r-md) var(--r-md) 0 0;overflow:hidden;display:block;border-radius:0;border-top-left-radius:var(--r-md);border-top-right-radius:var(--r-md)}
+.ing-img img{width:100%;height:100%;object-fit:cover;display:block}
+.ing-body{background:var(--bg-cream-2);padding:22px 22px 26px;border-radius:0 0 var(--r-md) var(--r-md);display:flex;flex-direction:column;gap:10px;text-align:left;min-height:140px}
+.ing-card h3{font-size:20px;font-weight:800;margin:0;text-transform:none;letter-spacing:0;color:var(--ink)}
+.ing-card p{font-size:14.5px;color:var(--ink-2);line-height:1.55;margin:0}
+/* Carousel arrow buttons (visual only — native scroll handles motion;
+   wireGalleryCarousel-style hooks could swap to programmatic if needed). */
+.ing-nav{display:flex;justify-content:center;gap:14px;margin-top:8px}
+@container pp (min-width:980px){ .ing-nav{display:none} }
+.ing-nav button{width:42px;height:42px;border-radius:50%;border:1px solid rgba(10,10,10,.18);background:#fff;color:var(--ink);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
+.ing-nav button:hover{background:#f7f7f7;border-color:rgba(10,10,10,.32)}
 
 .shop-trust{display:flex;justify-content:center;gap:28px;margin-top:18px;font-size:13.5px;color:var(--ink-2);font-weight:600;flex-wrap:wrap}
 .shop-trust span{display:inline-flex;align-items:center;gap:8px}
@@ -649,17 +650,6 @@ ul{margin:0;padding:0;list-style:none}
     </div>
   </section>
 
-  <!-- 4b. Brand video (cream) — single 16:9 explainer / hero video -->
-  <section class="section section-cream rv" style="padding-bottom:0">
-    <div class="pp-narrow">
-      <h2 class="section-h2" data-v-text="bv-title">Mirá <em>UltimaPeak</em> en acción</h2>
-      <p class="section-sub" data-v-text="bv-sub">El video corto que explica por qué ya no querés volver a tu rutina anterior.</p>
-      <div class="brand-video vid-ph" data-v-video="brand-video" data-label="🎬 Subí tu video · 16:9 horizontal">
-        <video playsinline preload="metadata" controls></video>
-      </div>
-    </div>
-  </section>
-
   <!-- 5. Results timeline (cream) -->
   <section class="section section-cream rv">
     <div class="pp-narrow">
@@ -878,25 +868,40 @@ ul{margin:0;padding:0;list-style:none}
       <h2 class="section-h2" data-v-text="ingredients-title"><em>Ingredientes Potentes</em> para Rendimiento Pico</h2>
       <div class="ing-grid">
         <div class="ing-card">
-          <div class="ing-img" data-v-img="ing-img-1"><img src="https://placehold.co/400x400/f5edd9/3a3122?text=Ing+1" alt=""></div>
-          <h3 data-v-text="ing-1-name">Ashwagandha</h3>
-          <p data-v-text="ing-1-desc">Reduce el cortisol, eleva la testosterona libre, mejora la resiliencia al estrés.</p>
+          <div class="ing-img" data-v-img="ing-img-1"><img src="https://placehold.co/600x600/f5edd9/3a3122?text=Ing+1" alt=""></div>
+          <div class="ing-body">
+            <h3 data-v-text="ing-1-name">Ashwagandha</h3>
+            <p data-v-text="ing-1-desc">Reduce el cortisol, eleva la testosterona libre, mejora la resiliencia al estrés.</p>
+          </div>
         </div>
         <div class="ing-card">
-          <div class="ing-img" data-v-img="ing-img-2"><img src="https://placehold.co/400x400/f5edd9/3a3122?text=Ing+2" alt=""></div>
-          <h3 data-v-text="ing-2-name">Shilajit</h3>
-          <p data-v-text="ing-2-desc">Aumenta testosterona total y libre, potencia el ATP mitocondrial.</p>
+          <div class="ing-img" data-v-img="ing-img-2"><img src="https://placehold.co/600x600/f5edd9/3a3122?text=Ing+2" alt=""></div>
+          <div class="ing-body">
+            <h3 data-v-text="ing-2-name">Shilajit</h3>
+            <p data-v-text="ing-2-desc">Aumenta testosterona total y libre, potencia el ATP mitocondrial.</p>
+          </div>
         </div>
         <div class="ing-card">
-          <div class="ing-img" data-v-img="ing-img-3"><img src="https://placehold.co/400x400/f5edd9/3a3122?text=Ing+3" alt=""></div>
-          <h3 data-v-text="ing-3-name">Raíz de Jengibre</h3>
-          <p data-v-text="ing-3-desc">Aumenta producción de LH, flujo sanguíneo, antiinflamatorio natural.</p>
+          <div class="ing-img" data-v-img="ing-img-3"><img src="https://placehold.co/600x600/f5edd9/3a3122?text=Ing+3" alt=""></div>
+          <div class="ing-body">
+            <h3 data-v-text="ing-3-name">Raíz de Jengibre</h3>
+            <p data-v-text="ing-3-desc">Aumenta producción de LH, flujo sanguíneo, antiinflamatorio natural.</p>
+          </div>
         </div>
         <div class="ing-card">
-          <div class="ing-img" data-v-img="ing-img-4"><img src="https://placehold.co/400x400/f5edd9/3a3122?text=Ing+4" alt=""></div>
-          <h3 data-v-text="ing-4-name">Horny Goat Weed</h3>
-          <p data-v-text="ing-4-desc">La Icariína inhibe PDE5, aumenta NO → erecciones más fuertes.</p>
+          <div class="ing-img" data-v-img="ing-img-4"><img src="https://placehold.co/600x600/f5edd9/3a3122?text=Ing+4" alt=""></div>
+          <div class="ing-body">
+            <h3 data-v-text="ing-4-name">Horny Goat Weed</h3>
+            <p data-v-text="ing-4-desc">La Icariína inhibe PDE5, aumenta NO → erecciones más fuertes.</p>
+          </div>
         </div>
+      </div>
+      <!-- Carousel arrows visible only on mobile/tablet (container queries
+           in CSS hide it above 980px). Wired by wireIngCarousel in the
+           editor; the published page re-injects the same handler. -->
+      <div class="ing-nav" aria-hidden="true">
+        <button type="button" data-ing-prev aria-label="Anterior">‹</button>
+        <button type="button" data-ing-next aria-label="Siguiente">›</button>
       </div>
 
       <div class="section-cta">

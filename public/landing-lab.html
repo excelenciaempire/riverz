@@ -320,6 +320,13 @@ body.has-selection #inspector{flex:0 0 240px;width:240px}
 .in-empty{padding:24px 16px;color:#3E4560;font-size:11px;text-align:center;line-height:1.6}
 #inspector select.in-btn{padding:0 8px;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#5B6490 50%),linear-gradient(135deg,#5B6490 50%,transparent 50%);background-position:calc(100% - 12px) 13px,calc(100% - 7px) 13px;background-size:5px 5px;background-repeat:no-repeat;padding-right:22px}
 #inspector select.in-btn option{background:#0D0E14}
+/* Segmented control for size + shape pickers in the image / video
+   inspector sections. Each option is a small toggle button; .is-on
+   marks the active value. */
+.in-seg{display:flex;flex-wrap:wrap;gap:4px}
+.in-seg .seg-b{flex:1;min-width:48px;height:28px;padding:0 8px;background:#111420;border:1px solid #252840;color:#9AA3C0;border-radius:5px;font-family:inherit;font-size:10.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .12s}
+.in-seg .seg-b:hover{background:#1E2436;color:#fff;border-color:#3a3f55}
+.in-seg .seg-b.is-on{background:#f7ff9e;color:#0a0a0a;border-color:#f7ff9e}
 .in-close{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:4px;border:0;background:transparent;color:#5B6490;cursor:pointer;font-size:13px;line-height:1}
 .in-close:hover{background:rgba(255,255,255,.06);color:#C8CAD8}
 .in-head{position:relative}
@@ -621,6 +628,38 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         <div class="in-label" style="margin-top:14px">Familia tipográfica</div>
         <div class="in-row">
           <select id="ins-font-fam" class="in-btn flex" onchange="insFontFamily(this.value)"></select>
+        </div>
+      </div>
+      <!-- Image-slot controls: appears only when the selected element is
+           a [data-v-img]. insRefresh() toggles the display + populates
+           the active size / shape state. -->
+      <div class="in-section" id="ins-image-section" style="display:none">
+        <div class="in-label">Imagen</div>
+        <div class="in-row">
+          <button class="in-btn flex" type="button" id="ins-img-change" title="Subir o pegar URL">📷 Cambiar imagen</button>
+        </div>
+        <div class="in-row" style="margin-top:6px">
+          <button class="in-btn flex" type="button" id="ins-img-ai" title="Generar con IA">✨ Generar con IA</button>
+        </div>
+        <div class="in-label" style="margin-top:14px">Tamaño</div>
+        <div class="in-row in-seg" id="ins-img-size-seg"></div>
+        <div class="in-label" style="margin-top:14px">Forma</div>
+        <div class="in-row in-seg" id="ins-img-shape-seg"></div>
+        <div class="in-row" style="margin-top:10px">
+          <button class="in-btn flex danger" type="button" id="ins-img-del" title="Borrar imagen">🗑 Eliminar imagen</button>
+        </div>
+      </div>
+      <!-- Video-slot controls: appears only when the selected element is
+           a [data-v-video]. Same pattern as the image section above. -->
+      <div class="in-section" id="ins-video-section" style="display:none">
+        <div class="in-label">Video</div>
+        <div class="in-row">
+          <button class="in-btn flex" type="button" id="ins-vid-change" title="Subir video o pegar URL">🎬 Cambiar video</button>
+        </div>
+        <div class="in-label" style="margin-top:14px">Tamaño</div>
+        <div class="in-row in-seg" id="ins-vid-size-seg"></div>
+        <div class="in-row" style="margin-top:10px">
+          <button class="in-btn flex danger" type="button" id="ins-vid-del" title="Borrar video">🗑 Eliminar video</button>
         </div>
       </div>
       <div class="in-section">
@@ -1400,22 +1439,46 @@ var curImgKey=null, saveT=null, vp='desktop', sidebarOpen=true;
 var histMap={}, histIdx={}, genTimers=[], stickyGone=false, stickyThresh=0.20;
 var curEditEl=null;
 
-// ── PER-SLOT IMAGE SIZE ──────────────────────────────────────
-// Cycle order surfaced in the editor next to the trash + camera buttons.
-// "0" means "no override" (the slot uses whatever width the template's CSS
-// gave it). Stored on proj.imageSizes[slot] = "50" | "70" | "85" | "0".
-// The riverz-size-NN utility classes ship inside the template's own
-// <style data-tpl="…"> block (see RIVERZ_SIZE_CSS below) so the publish
-// flow — which only inlines that one style block for tpl projects —
-// carries the size override into the published Shopify page.
-var IMG_SIZE_CYCLE = ['0', '50', '70', '85'];
-var IMG_SIZE_LABEL = { '0':'Auto', '50':'50%', '70':'70%', '85':'85%' };
+// ── PER-SLOT IMAGE SIZE + SHAPE ──────────────────────────────
+// Both surfaced in the inspector sidebar (#inspector → #ins-image-section)
+// when the user clicks an image slot. Size "0" means "no override" (the
+// slot uses whatever width the template's CSS gave it). Shape "original"
+// means "no override". Stored on proj.imageSizes / proj.imageShapes so
+// the choice survives reload + republish.
+//
+// The utility classes ship inside the template's own <style data-tpl="…">
+// block (see RIVERZ_SIZE_CSS below) so the publish flow — which only
+// inlines that one style block for tpl projects — carries the override
+// through to the published Shopify page.
+var IMG_SIZE_OPTIONS = [
+  { value: '0',  label: 'Auto' },
+  { value: '50', label: '50%' },
+  { value: '70', label: '70%' },
+  { value: '85', label: '85%' }
+];
+var IMG_SHAPE_OPTIONS = [
+  { value: 'original', label: 'Original' },
+  { value: 'square',   label: 'Cuadrada' },
+  { value: 'circle',   label: 'Círculo' }
+];
 var RIVERZ_SIZE_CSS =
-  '/* Riverz per-slot image sizing — set via the editor\'s 📐 button. */\n' +
+  '/* Riverz per-slot image sizing — set via the inspector sidebar. */\n' +
   '[data-v-img].riverz-size-50,[data-v-img].riverz-size-70,[data-v-img].riverz-size-85{margin-left:auto!important;margin-right:auto!important;display:block}\n' +
   '[data-v-img].riverz-size-50{max-width:50%!important;width:50%}\n' +
   '[data-v-img].riverz-size-70{max-width:70%!important;width:70%}\n' +
-  '[data-v-img].riverz-size-85{max-width:85%!important;width:85%}\n';
+  '[data-v-img].riverz-size-85{max-width:85%!important;width:85%}\n' +
+  '/* Riverz per-slot image shape — square forces 1:1 with cover crop;\n' +
+  '   circle is square + 50% radius. Defaults to whatever the template gave. */\n' +
+  '[data-v-img].riverz-shape-square,[data-v-img].riverz-shape-circle{aspect-ratio:1/1!important;overflow:hidden}\n' +
+  '[data-v-img].riverz-shape-square > img,[data-v-img].riverz-shape-circle > img{width:100%!important;height:100%!important;object-fit:cover!important}\n' +
+  '[data-v-img].riverz-shape-circle{border-radius:50%!important}\n' +
+  '[data-v-img].riverz-shape-square{border-radius:8px!important}\n' +
+  '/* Riverz per-slot video sizing (separate from image classes so the\n' +
+  '   two stay independent if the same slot key is shared by both). */\n' +
+  '[data-v-video].riverz-vsize-50,[data-v-video].riverz-vsize-70,[data-v-video].riverz-vsize-85{margin-left:auto!important;margin-right:auto!important;display:block}\n' +
+  '[data-v-video].riverz-vsize-50{max-width:50%!important;width:50%}\n' +
+  '[data-v-video].riverz-vsize-70{max-width:70%!important;width:70%}\n' +
+  '[data-v-video].riverz-vsize-85{max-width:85%!important;width:85%}\n';
 
 // Load JSON data from script tags (avoids JS string escaping issues)
 var DEFAULT_TEXTS = JSON.parse(document.getElementById('data-default').textContent);
@@ -1562,8 +1625,9 @@ function applyTemplateContent(tpl){
   document.querySelectorAll('#page-wrap .rv').forEach(function(el){ el.classList.add('on'); });
   decorateImageSlots();
   decorateVideoSlots();
-  // Apply the active project's per-slot size overrides (if any).
+  // Apply the active project's per-slot size + shape overrides (if any).
   if (typeof applyImageSizes === 'function') applyImageSizes();
+  if (typeof applyVideoSizes === 'function') applyVideoSizes();
   // initEdit re-attaches contentEditable to the new [data-v-text] nodes.
   if (typeof initEdit === 'function') initEdit();
   // Tag + wire drag-and-drop on the new sections.
@@ -1575,6 +1639,7 @@ function applyTemplateContent(tpl){
   // published page but applyTemplateContent strips <script> tags, so we
   // re-implement it here for the editor preview.
   if (typeof wireGalleryCarousel === 'function') wireGalleryCarousel();
+  if (typeof wireIngCarousel === 'function') wireIngCarousel();
 }
 
 // Restore the inline Vitalu HTML when switching from a dynamic template
@@ -2261,6 +2326,76 @@ function insRefresh(){
       if (!matched) sel.selectedIndex = 0;
     }
   }
+  // Image-slot controls — show + populate when the selection (or its
+  // closest ancestor) is a [data-v-img]. Click handlers route to
+  // pickImg / openImgGen / setImgSize / setImgShape / delImg.
+  var imgEl = (_insEl.hasAttribute && _insEl.hasAttribute('data-v-img')) ? _insEl
+            : (_insEl.closest ? _insEl.closest('[data-v-img]') : null);
+  var imgSec = document.getElementById('ins-image-section');
+  if (imgSec) imgSec.style.display = imgEl ? '' : 'none';
+  if (imgEl) _insRenderImageSection(imgEl.getAttribute('data-v-img'));
+  // Video-slot controls — same pattern, scoped to [data-v-video].
+  var vidEl2 = (_insEl.hasAttribute && _insEl.hasAttribute('data-v-video')) ? _insEl
+             : (_insEl.closest ? _insEl.closest('[data-v-video]') : null);
+  var vidSec = document.getElementById('ins-video-section');
+  if (vidSec) vidSec.style.display = vidEl2 ? '' : 'none';
+  if (vidEl2) _insRenderVideoSection(vidEl2.getAttribute('data-v-video'));
+}
+
+// Build the size + shape segmented controls for the active image slot
+// and wire the action buttons. Re-runs on every selection change so
+// .is-on always reflects the current proj.imageSizes / proj.imageShapes.
+function _insRenderImageSection(slot){
+  var proj = (typeof getActive === 'function') ? getActive() : null;
+  var curSize = (proj && proj.imageSizes && proj.imageSizes[slot]) || '0';
+  var curShape = (proj && proj.imageShapes && proj.imageShapes[slot]) || 'original';
+  var sizeWrap = document.getElementById('ins-img-size-seg');
+  if (sizeWrap){
+    sizeWrap.innerHTML = IMG_SIZE_OPTIONS.map(function(o){
+      var on = (o.value === curSize) ? ' is-on' : '';
+      return '<button type="button" class="seg-b'+on+'" data-val="'+o.value+'">'+o.label+'</button>';
+    }).join('');
+    sizeWrap.querySelectorAll('.seg-b').forEach(function(b){
+      b.onclick = function(){ setImgSize(slot, b.dataset.val); _insRenderImageSection(slot); };
+    });
+  }
+  var shapeWrap = document.getElementById('ins-img-shape-seg');
+  if (shapeWrap){
+    shapeWrap.innerHTML = IMG_SHAPE_OPTIONS.map(function(o){
+      var on = (o.value === curShape) ? ' is-on' : '';
+      return '<button type="button" class="seg-b'+on+'" data-val="'+o.value+'">'+o.label+'</button>';
+    }).join('');
+    shapeWrap.querySelectorAll('.seg-b').forEach(function(b){
+      b.onclick = function(){ setImgShape(slot, b.dataset.val); _insRenderImageSection(slot); };
+    });
+  }
+  var changeBtn = document.getElementById('ins-img-change');
+  if (changeBtn) changeBtn.onclick = function(){ if (typeof pickImg === 'function') pickImg(slot); };
+  var aiBtn = document.getElementById('ins-img-ai');
+  if (aiBtn) aiBtn.onclick = function(){ if (typeof openImgGen === 'function') openImgGen(slot); };
+  var delBtn = document.getElementById('ins-img-del');
+  if (delBtn) delBtn.onclick = function(e){ if (typeof delImg === 'function') delImg(e || {stopPropagation:function(){},preventDefault:function(){}}, slot); };
+}
+
+// Same idea for video slots: change button opens the upload modal,
+// size segs route to setVideoSize, delete clears the slot.
+function _insRenderVideoSection(slot){
+  var proj = (typeof getActive === 'function') ? getActive() : null;
+  var curSize = (proj && proj.videoSizes && proj.videoSizes[slot]) || '0';
+  var sizeWrap = document.getElementById('ins-vid-size-seg');
+  if (sizeWrap){
+    sizeWrap.innerHTML = IMG_SIZE_OPTIONS.map(function(o){
+      var on = (o.value === curSize) ? ' is-on' : '';
+      return '<button type="button" class="seg-b'+on+'" data-val="'+o.value+'">'+o.label+'</button>';
+    }).join('');
+    sizeWrap.querySelectorAll('.seg-b').forEach(function(b){
+      b.onclick = function(){ setVideoSize(slot, b.dataset.val); _insRenderVideoSection(slot); };
+    });
+  }
+  var changeBtn = document.getElementById('ins-vid-change');
+  if (changeBtn) changeBtn.onclick = function(){ if (typeof openVidModal === 'function') openVidModal(slot); };
+  var delBtn = document.getElementById('ins-vid-del');
+  if (delBtn) delBtn.onclick = function(e){ if (typeof delVid === 'function') delVid(e || {stopPropagation:function(){},preventDefault:function(){}}, slot); };
 }
 function insSelect(el){
   if (!el) return;
@@ -2351,7 +2486,7 @@ function wireInspectorClicks(){
     // image slots win over section ancestors so the inspector shows the
     // controls that match the click. If we miss all three the click is
     // probably on raw template chrome — just bail.
-    var el = e.target.closest && e.target.closest('[data-v-text],[data-v-img],[data-section-id]');
+    var el = e.target.closest && e.target.closest('[data-v-text],[data-v-img],[data-v-video],[data-section-id]');
     if (!el) return;
     insSelect(el);
   });
@@ -2433,6 +2568,32 @@ function wireGalleryCarousel(){
   main.dataset.galleryIdx = String(initIdx);
 }
 window.wireGalleryCarousel = wireGalleryCarousel;
+
+// Ingredient carousel arrow buttons: click ‹ / › to scroll the parent
+// .ing-grid by one card width. Native scroll-snap snaps to the next
+// card. Same routine ships in the published page via RIVERZ_ING_CODE.
+function wireIngCarousel(){
+  var pw = document.getElementById('page-wrap'); if (!pw) return;
+  pw.querySelectorAll('.ing-nav').forEach(function(nav){
+    if (nav.dataset.ingWired) return;
+    nav.dataset.ingWired = '1';
+    var grid = nav.previousElementSibling;
+    while (grid && !grid.classList.contains('ing-grid')) grid = grid.previousElementSibling;
+    if (!grid) return;
+    nav.querySelectorAll('button').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        var firstCard = grid.querySelector('.ing-card'); if (!firstCard) return;
+        var step = firstCard.getBoundingClientRect().width + 18;
+        var dir = btn.hasAttribute('data-ing-prev') ? -1 : 1;
+        grid.scrollBy({ left: step * dir, behavior: 'smooth' });
+      });
+    });
+  });
+}
+window.wireIngCarousel = wireIngCarousel;
+var RIVERZ_ING_CODE = '(function(){document.querySelectorAll(".ing-nav").forEach(function(nav){var grid=nav.previousElementSibling;while(grid&&!grid.classList.contains("ing-grid"))grid=grid.previousElementSibling;if(!grid)return;nav.querySelectorAll("button").forEach(function(btn){btn.addEventListener("click",function(){var fc=grid.querySelector(".ing-card");if(!fc)return;var step=fc.getBoundingClientRect().width+18;var dir=btn.hasAttribute("data-ing-prev")?-1:1;grid.scrollBy({left:step*dir,behavior:"smooth"});});});});})();';
+window.RIVERZ_ING_CODE = RIVERZ_ING_CODE;
 
 // Same logic, but as a string so it can be inlined in the published
 // HTML by buildHTML / buildPublishPayload. Kept verbatim from
@@ -2578,45 +2739,37 @@ window.moveSelectedBlock = moveSelectedBlock;
 // .img-ph:hover), but Pilar / product-page slots don't have .img-ph and
 // the overlay never appeared. We use riverz-img-* classes with inline
 // styles so the buttons render regardless of which template is loaded.
+// Image slots — clicking the slot opens the inspector panel on the
+// left where Cambiar imagen / Tamaño / Forma live. The only inline
+// chrome is a small trash button; "Imagen" overlay + size cycle were
+// retired in favour of the inspector flow so the canvas stays clean.
 function decorateImageSlots(){
   document.querySelectorAll('#page-wrap [data-v-img]').forEach(function(el){
-    if (el.querySelector(':scope > .riverz-img-edit')) return;
+    if (el.querySelector(':scope > .riverz-img-del')) return;
     var slot = el.getAttribute('data-v-img');
     if (!slot) return;
     if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
     el.style.minHeight = el.style.minHeight || '60px';
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'riverz-img-edit';
-    btn.innerHTML = '📷 Imagen';
-    btn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:30;background:rgba(0,0,0,.75);color:#fff;border:0;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);font-family:Inter,system-ui,sans-serif;letter-spacing:0.02em';
-    btn.onclick = function(e){ e.preventDefault(); e.stopPropagation(); pickImg(slot); };
-    el.appendChild(btn);
-    // Size cycle button — clicks rotate Auto → 50% → 70% → 85% → Auto.
-    // Sits between the trash and the camera so the user always sees the
-    // currently-applied size at a glance ("📐 Auto", "📐 50%", …).
-    var sz = document.createElement('button');
-    sz.type = 'button';
-    sz.className = 'riverz-img-size';
-    sz.dataset.slot = slot;
-    sz.style.cssText = 'position:absolute;top:8px;right:96px;z-index:30;background:rgba(0,0,0,.75);color:#fff;border:0;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);font-family:Inter,system-ui,sans-serif;letter-spacing:0.02em';
-    syncSizeBtn(sz, slot);
-    sz.onclick = function(e){ e.preventDefault(); e.stopPropagation(); cycleImgSize(slot); };
-    el.appendChild(sz);
+    el.classList.add('riverz-img-slot');
     var del = document.createElement('button');
     del.type = 'button';
     del.className = 'riverz-img-del';
     del.innerHTML = '🗑';
-    del.style.cssText = 'position:absolute;top:8px;left:8px;z-index:30;background:rgba(0,0,0,.75);color:#fff;border:0;width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+    del.title = 'Eliminar imagen';
+    del.style.cssText = 'position:absolute;top:8px;left:8px;z-index:30;background:rgba(0,0,0,.75);color:#fff;border:0;width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:0;transition:opacity .15s';
     del.onclick = function(e){ e.preventDefault(); e.stopPropagation(); delImg(e, slot); };
     el.appendChild(del);
+    // Show the trash only on hover so the canvas stays uncluttered.
+    el.addEventListener('mouseenter', function(){ del.style.opacity = '1'; });
+    el.addEventListener('mouseleave', function(){ del.style.opacity = '0'; });
   });
 }
 
-// ── PER-SLOT IMAGE SIZE: storage, apply, cycle ───────────────
-// The size lives on proj.imageSizes[slot]; applyImageSizes walks the
-// slot table and toggles the matching riverz-size-NN class. Called on
-// project activate, after template mount, and after each cycle click.
+// ── PER-SLOT IMAGE SIZE + SHAPE: storage, apply ──────────────
+// Both live on the active project: proj.imageSizes[slot] = "50"/"70"/"85"
+// (or absent for "auto"); proj.imageShapes[slot] = "circle"/"square"
+// (or absent for "original"). applyImageSizes walks every slot once
+// and (re)toggles the matching riverz-size-NN / riverz-shape-* classes.
 function applyImageSizes(){
   var proj = getActive();
   document.querySelectorAll('#page-wrap [data-v-img]').forEach(function(el){
@@ -2624,31 +2777,31 @@ function applyImageSizes(){
     var size = proj && proj.imageSizes ? (proj.imageSizes[slot] || '0') : '0';
     el.classList.remove('riverz-size-50','riverz-size-70','riverz-size-85');
     if (size && size !== '0') el.classList.add('riverz-size-' + size);
-    var sz = el.querySelector(':scope > .riverz-img-size');
-    if (sz) syncSizeBtn(sz, slot);
+    var shape = proj && proj.imageShapes ? (proj.imageShapes[slot] || 'original') : 'original';
+    el.classList.remove('riverz-shape-circle','riverz-shape-square','riverz-shape-original');
+    el.classList.add('riverz-shape-' + shape);
   });
 }
-function syncSizeBtn(btnEl, slot){
-  var proj = getActive();
-  var size = proj && proj.imageSizes ? (proj.imageSizes[slot] || '0') : '0';
-  btnEl.innerHTML = '📐 ' + IMG_SIZE_LABEL[size];
-}
-function cycleImgSize(slot){
-  var proj = getActive();
-  if (!proj) return;
+function setImgSize(slot, size){
+  var proj = getActive(); if (!proj) return;
   if (!proj.imageSizes) proj.imageSizes = {};
-  var cur = proj.imageSizes[slot] || '0';
-  var idx = IMG_SIZE_CYCLE.indexOf(cur);
-  if (idx < 0) idx = 0;
-  var next = IMG_SIZE_CYCLE[(idx + 1) % IMG_SIZE_CYCLE.length];
-  if (next === '0') delete proj.imageSizes[slot];
-  else proj.imageSizes[slot] = next;
+  if (!size || size === '0') delete proj.imageSizes[slot];
+  else proj.imageSizes[slot] = size;
   applyImageSizes();
   if (typeof snapshot === 'function') snapshot();
   if (typeof saveAll === 'function') saveAll();
-  toast('Tamaño imagen: ' + IMG_SIZE_LABEL[next]);
 }
-window.cycleImgSize = cycleImgSize;
+function setImgShape(slot, shape){
+  var proj = getActive(); if (!proj) return;
+  if (!proj.imageShapes) proj.imageShapes = {};
+  if (!shape || shape === 'original') delete proj.imageShapes[slot];
+  else proj.imageShapes[slot] = shape;
+  applyImageSizes();
+  if (typeof snapshot === 'function') snapshot();
+  if (typeof saveAll === 'function') saveAll();
+}
+window.setImgSize = setImgSize;
+window.setImgShape = setImgShape;
 window.applyImageSizes = applyImageSizes;
 
 // ── STORAGE ──────────────────────────────────────────────────
@@ -2864,7 +3017,10 @@ function activateProject(id){
   if(!proj.videos) proj.videos={};
   applyVideoSlots(proj);
   if(!proj.imageSizes) proj.imageSizes={};
+  if(!proj.imageShapes) proj.imageShapes={};
+  if(!proj.videoSizes) proj.videoSizes={};
   applyImageSizes();
+  if (typeof applyVideoSizes === 'function') applyVideoSizes();
   applyCTA(proj.ctaUrl);
   if (typeof reapplyBlockComments === 'function') reapplyBlockComments();
   isRestoring=false;
@@ -2945,28 +3101,52 @@ function applyVideoSlots(proj){
   });
 }
 function decorateVideoSlots(){
+  // Video slots: clicking the slot opens the inspector panel (where
+  // upload + size controls live). Inline chrome is just a hover-only
+  // trash so the canvas stays uncluttered, mirroring the image flow.
   document.querySelectorAll('#page-wrap [data-v-video]').forEach(function(el){
-    if(el.querySelector(':scope > .riverz-vid-edit')) return;
+    if(el.querySelector(':scope > .riverz-vid-del')) return;
     var slot=el.getAttribute('data-v-video');
     if(!slot) return;
     if(getComputedStyle(el).position==='static') el.style.position='relative';
     el.style.minHeight=el.style.minHeight || '120px';
-    var btn=document.createElement('button');
-    btn.type='button';
-    btn.className='riverz-vid-edit';
-    btn.innerHTML='🎬 Video';
-    btn.style.cssText='position:absolute;top:8px;right:8px;z-index:30;background:rgba(0,0,0,.78);color:#fff;border:0;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);font-family:Inter,system-ui,sans-serif;letter-spacing:0.02em';
-    btn.onclick=function(e){ e.preventDefault(); e.stopPropagation(); openVidModal(slot); };
-    el.appendChild(btn);
+    el.classList.add('riverz-vid-slot');
     var del=document.createElement('button');
     del.type='button';
     del.className='riverz-vid-del';
     del.innerHTML='🗑';
-    del.style.cssText='position:absolute;top:8px;left:8px;z-index:30;background:rgba(0,0,0,.78);color:#fff;border:0;width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+    del.title='Eliminar video';
+    del.style.cssText='position:absolute;top:8px;left:8px;z-index:30;background:rgba(0,0,0,.78);color:#fff;border:0;width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:0;transition:opacity .15s';
     del.onclick=function(e){ e.preventDefault(); e.stopPropagation(); delVid(e,slot); };
     el.appendChild(del);
+    el.addEventListener('mouseenter', function(){ del.style.opacity = '1'; });
+    el.addEventListener('mouseleave', function(){ del.style.opacity = '0'; });
   });
 }
+
+// Per-slot video size — same model as image sizes. Stored on
+// proj.videoSizes[slot]; applied via riverz-vsize-NN classes that
+// ship inside the template's data-tpl style block.
+function applyVideoSizes(){
+  var proj = getActive();
+  document.querySelectorAll('#page-wrap [data-v-video]').forEach(function(el){
+    var slot = el.getAttribute('data-v-video');
+    var size = proj && proj.videoSizes ? (proj.videoSizes[slot] || '0') : '0';
+    el.classList.remove('riverz-vsize-50','riverz-vsize-70','riverz-vsize-85');
+    if (size && size !== '0') el.classList.add('riverz-vsize-' + size);
+  });
+}
+function setVideoSize(slot, size){
+  var proj = getActive(); if (!proj) return;
+  if (!proj.videoSizes) proj.videoSizes = {};
+  if (!size || size === '0') delete proj.videoSizes[slot];
+  else proj.videoSizes[slot] = size;
+  applyVideoSizes();
+  if (typeof snapshot === 'function') snapshot();
+  if (typeof saveAll === 'function') saveAll();
+}
+window.setVideoSize = setVideoSize;
+window.applyVideoSizes = applyVideoSizes;
 function openVidModal(k){
   curVidKey=k;
   var m=g('vid-modal'); if(!m) return;
@@ -3511,7 +3691,8 @@ function buildHTML(proj){
   var SO='<'+'scri'+'pt>',SC='<'+'/scri'+'pt>';
   var code='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh=0.22;function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
   var galleryCode = (typeof RIVERZ_GALLERY_CODE === 'string') ? RIVERZ_GALLERY_CODE : '';
-  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<title>'+proj.name+' \u2014 Vital\u00fa</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">\n<style>'+allCSS+'</style>\n</head>\n<body>\n'+clone.outerHTML+'\n'+SO+code+SC+'\n'+(galleryCode?(SO+galleryCode+SC):'')+'\n</body>\n</html>';
+  var ingCode = (typeof RIVERZ_ING_CODE === 'string') ? RIVERZ_ING_CODE : '';
+  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<title>'+proj.name+' \u2014 Vital\u00fa</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">\n<style>'+allCSS+'</style>\n</head>\n<body>\n'+clone.outerHTML+'\n'+SO+code+SC+'\n'+(galleryCode?(SO+galleryCode+SC):'')+(ingCode?(SO+ingCode+SC):'')+'\n</body>\n</html>';
 }
 function exportCurrent(){var proj=getActive();if(!proj){toast('Selecciona una landing',1);return;}cpTxt(buildHTML(proj),'"'+proj.name+'" copiado');}
 function exportAll(){toast(projects.length+' landings — exporta cada una con Exportar HTML',0);}
@@ -3662,12 +3843,14 @@ function buildPublishPayload(proj){
     shopifyCode = '(function(){var w=document.querySelector("[data-shopify-handle]");if(!w)return;var h=w.getAttribute("data-shopify-handle");if(!h)return;var fmt=function(c){try{if(window.Shopify&&Shopify.formatMoney)return Shopify.formatMoney(c,(window.theme&&theme.moneyFormat)||"${{amount}}");}catch(e){}return"$"+(c/100).toFixed(2);};var sel=null,prod=null;function isPh(s){return !s||/placehold\\.co|placeholder|\\.svg$/i.test(s);}function applyVariant(v){if(!v)return;sel=v;var pe=w.querySelector(\'.price,[data-v-text="price"]\');if(pe)pe.textContent=fmt(v.price);var ce=w.querySelector(\'.compare-at,[data-v-text="compare-at"]\');if(ce){if(v.compare_at_price&&v.compare_at_price>v.price){ce.textContent=fmt(v.compare_at_price);ce.style.display="";}else{ce.style.display="none";}}var sp=w.querySelector(\'.sticky-text [data-v-text="sticky-price"]\');if(sp)sp.textContent=fmt(v.price);var sc=w.querySelector(\'.sticky-text [data-v-text="sticky-compare"]\');if(sc){if(v.compare_at_price&&v.compare_at_price>v.price){sc.textContent=fmt(v.compare_at_price);sc.style.display="";}else{sc.style.display="none";}}}fetch("/products/"+h+".js").then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(p){prod=p;var first=p.variants.find(function(v){return v.available;})||p.variants[0];applyVariant(first);var ne=w.querySelector(\'.prod-name,[data-v-text="product-name"]\');if(ne&&p.title)ne.textContent=p.title;var imgs=(p.images&&p.images.length)?p.images:(p.featured_image?[p.featured_image]:[]);if(imgs.length){var mi=w.querySelector(".gallery-main img");if(mi&&isPh(mi.src||""))mi.src=imgs[0];var thumbs=w.querySelectorAll(".gallery-thumbs .thumb img");thumbs.forEach(function(t,i){if(t&&isPh(t.src||"")){t.src=imgs[i]||imgs[imgs.length-1];}});var si=w.querySelector(".sticky-img img");if(si&&isPh(si.src||""))si.src=imgs[0];}var rows=w.querySelectorAll(".opts-row");rows.forEach(function(row){var btns=row.querySelectorAll(".opt-btn");if(p.variants.length<=1){var optsBlock=row.closest(".opts");if(optsBlock)optsBlock.style.display="none";return;}p.variants.forEach(function(v,i){var b=btns[i];if(!b)return;b.setAttribute("data-variant-id",v.id);if(!v.available){b.classList.add("is-soldout");b.style.opacity="0.5";}});for(var i=p.variants.length;i<btns.length;i++)btns[i].style.display="none";row.addEventListener("click",function(e){var b=e.target.closest(".opt-btn");if(!b)return;var id=b.getAttribute("data-variant-id");if(!id)return;var v=p.variants.find(function(x){return String(x.id)===String(id);});if(!v)return;applyVariant(v);btns.forEach(function(x){x.classList.remove("is-active");});b.classList.add("is-active");});});}).catch(function(e){console.warn("[Riverz] Shopify product",h,"no se pudo cargar:",e&&e.message);});function addToCart(){if(!sel){alert("Cargando producto, intentá de nuevo en un segundo.");return;}var qi=w.querySelector(".qty input");var q=qi?Math.max(1,parseInt(qi.value,10)||1):1;fetch("/cart/add.js",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({id:sel.id,quantity:q})}).then(function(r){if(!r.ok)return r.json().then(function(d){throw new Error(d.description||d.message||"Error al agregar al carrito");});window.location.href="/cart";}).catch(function(e){alert(e.message||"No se pudo agregar al carrito");});}w.addEventListener("click",function(e){var c=e.target.closest(".cta-btn,.sticky-btn");if(!c||!w.contains(c))return;e.preventDefault();addToCart();});})();';
   }
   var galleryCode = (typeof RIVERZ_GALLERY_CODE === 'string') ? RIVERZ_GALLERY_CODE : '';
+  var ingCode = (typeof RIVERZ_ING_CODE === 'string') ? RIVERZ_ING_CODE : '';
   var body_html =
     fontsLink +
     '<style>'+allCSS+'</style>' +
     '<div id="'+wrapId+'"'+handleAttr+'>'+clone.outerHTML+'</div>' +
     SO+stickyCode+SC +
     (galleryCode ? (SO+galleryCode+SC) : '') +
+    (ingCode ? (SO+ingCode+SC) : '') +
     (shopifyCode ? (SO+shopifyCode+SC) : '');
 
   return {
