@@ -2037,14 +2037,42 @@ function findSectionParent(){
   }
   return best || pw;
 }
+// Assign a sectionId to `child` if it doesn't have one, picking a name
+// that doesn't collide with any sibling already under `parent`. The
+// positional default (`<prefix>-<i>`) used to silently overwrite when a
+// new block was inserted in the middle (two siblings ending up with the
+// same id) — applyLayoutOrder then sent the duplicates to the wrong
+// position on reload. This wrapper guarantees uniqueness within the
+// container even when the positional name is taken.
+function _assignUniqueSectionId(parent, child, prefix, idx, usedIds){
+  if (child.dataset.sectionId) return;
+  var candidate = prefix + '-' + idx;
+  if (!usedIds[candidate]) {
+    child.dataset.sectionId = candidate;
+    usedIds[candidate] = true;
+    return;
+  }
+  // Positional name is taken — fall back to a stamp-based id so the new
+  // block keeps its own slot in proj.layoutOrder across reloads.
+  var stamp;
+  do { stamp = prefix + '-x' + Date.now().toString(36) + Math.random().toString(36).slice(2,4); }
+  while (usedIds[stamp]);
+  child.dataset.sectionId = stamp;
+  usedIds[stamp] = true;
+}
+
 function tagAllReorderable(){
   var pw = g('page-wrap'); if (!pw) return;
   // 1) Top-level sections under the section parent
   var top = findSectionParent();
   if (top) {
     if (!top.dataset.reorderContainer) top.dataset.reorderContainer = '__top__';
+    var topUsed = {};
+    Array.from(top.children).forEach(function(child){
+      if (child.dataset.sectionId) topUsed[child.dataset.sectionId] = true;
+    });
     Array.from(top.children).forEach(function(child, i){
-      if (!child.dataset.sectionId) child.dataset.sectionId = 'top-' + i;
+      _assignUniqueSectionId(top, child, 'top', i, topUsed);
     });
   }
   // 2) Any flex/grid container with 2+ children → its kids reorder within
@@ -2075,8 +2103,12 @@ function tagAllReorderable(){
     if (!isContainer) return;
     var key = 'rc-' + (counter++);
     el.dataset.reorderContainer = key;
+    var rcUsed = {};
+    Array.from(el.children).forEach(function(c){
+      if (c.dataset.sectionId) rcUsed[c.dataset.sectionId] = true;
+    });
     Array.from(el.children).forEach(function(c, i){
-      if (!c.dataset.sectionId) c.dataset.sectionId = key + '-' + i;
+      _assignUniqueSectionId(el, c, key, i, rcUsed);
     });
   });
 }
@@ -2158,6 +2190,17 @@ function spawnBlockFromPalette(blockType, parent, beforeEl){
   }
   if (beforeEl && beforeEl.parentNode === parent) parent.insertBefore(newEl, beforeEl);
   else parent.appendChild(newEl);
+  // Stamp a unique non-positional sectionId BEFORE makeSectionsDraggable
+  // runs. tagAllReorderable assigns 'top-<index>' / '<rc-N>-<index>' to
+  // children that lack a sectionId — when a block is inserted in the
+  // middle, that index naming collides with an existing sibling's id, and
+  // applyLayoutOrder on the next reload then sends the new block to the
+  // top of its container because byId can't disambiguate the duplicates.
+  // Pre-assigning a unique id (and persisting layoutOrder below) keeps
+  // the drop position stable across reloads.
+  if (!newEl.dataset.sectionId){
+    newEl.dataset.sectionId = 'pal-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  }
   // Re-run all the wiring so the new block gets contentEditable, image
   // overlays, drag handles, and shows up in IMG_KEYS / VIDEO_KEYS /
   // DEFAULT_TEXTS.
@@ -2167,6 +2210,12 @@ function spawnBlockFromPalette(blockType, parent, beforeEl){
   if (typeof initEdit === 'function') initEdit();
   if (typeof makeSectionsDraggable === 'function') makeSectionsDraggable();
   if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  // Persist the new layout order so applyLayoutOrder on reload re-stages
+  // every container with the new block in its dropped position. Without
+  // this, proj.layoutOrder would still reflect the pre-drop order and
+  // applyLayoutOrder would reshuffle the unsaved id to the end (and
+  // because of the duplicate-id collision above, even further astray).
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
   saveAll();
   // Auto-select video / image blocks so the inspector pops open with
   // their controls — the user dropped them in to fill them, no point
