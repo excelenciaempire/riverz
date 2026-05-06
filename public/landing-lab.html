@@ -3786,7 +3786,20 @@ async function loadAll(){
       var newProj = mkProj('Nueva landing', '', null, tpl);
       projects.push(newProj);
       activeId = newProj.id;
-      try { history.replaceState(null, '', '/landing-lab/edit?p='+newProj.id); } catch(e){}
+      // CRITICAL: this editor lives inside an iframe whose parent is
+      // /landing-lab/edit?template=<id>. history.replaceState INSIDE the
+      // iframe only changes the iframe's URL — the parent URL stays at
+      // ?template=<id>, so on reload the parent re-renders the iframe
+      // with ?template= again and we mint ANOTHER fresh project. The
+      // user's edits get saved to project A, but reload activates a
+      // brand-new project B, making it look like nothing persisted.
+      // Walk up to the parent (same-origin) and replace ITS URL.
+      try { history.replaceState(null, '', '/landing-lab.html?p='+newProj.id); } catch(e){}
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.history.replaceState(null, '', '/landing-lab/edit?p='+newProj.id);
+        }
+      } catch(e){ console.warn('[Riverz] could not update parent URL:', e); }
       // Persist directly — DON'T call saveAll() here. saveAll runs
       // collectTexts(), which harvests every [data-v-text] in the
       // currently-mounted DOM. At this moment the DOM is still the
@@ -3800,6 +3813,14 @@ async function loadAll(){
       try { localStorage.setItem(SK, JSON.stringify({ projects: projects, activeId: activeId })); } catch(e){}
     } else if (pid && projects.find(function(p){return p.id===pid;})) {
       activeId = pid;
+    } else if (pid) {
+      // URL says ?p=<id> but the project isn't in projects[]. This
+      // happens when the user reloaded an old bookmarked URL after
+      // clearing localStorage, or if they're opening on a new device.
+      // Fall through to the activeId from localStorage if we have one,
+      // otherwise pick the first project so we don't end up on the
+      // empty state when projects exist.
+      console.warn('[Riverz] ?p='+pid+' not found in projects — falling back to last active');
     }
   }catch(e){}
   renderSidebar();
