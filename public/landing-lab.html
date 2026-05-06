@@ -1751,9 +1751,30 @@ function g(id){return document.getElementById(id);}
 async function fetchTemplate(templateId){
   var url = TEMPLATE_FILES[templateId];
   if (!url) throw new Error('Template no registrado: '+templateId);
-  var res = await fetch(url, { credentials: 'same-origin' });
-  if (!res.ok) throw new Error('No se pudo cargar el template ('+res.status+')');
-  var html = await res.text();
+  // Try up to 3 times with backoff. The most common failure pattern
+  // we saw in production was "TypeError: Failed to fetch" when the
+  // iframe was racing against a parent-URL update — a brief retry
+  // catches transient network blips and asset-cache cold starts on
+  // the Render deployment.
+  var lastErr = null;
+  for (var attempt = 0; attempt < 3; attempt++){
+    try {
+      var res = await fetch(url, { credentials: 'same-origin', cache: 'no-cache' });
+      if (!res.ok) throw new Error('No se pudo cargar el template ('+res.status+')');
+      var html = await res.text();
+      return await _parseTemplateHtml(templateId, html);
+    } catch (e){
+      lastErr = e;
+      console.warn('[Riverz] fetchTemplate attempt ' + (attempt + 1) + ' failed:', e && e.message || e);
+      if (attempt < 2) {
+        await new Promise(function(r){ setTimeout(r, 250 * (attempt + 1)); });
+      }
+    }
+  }
+  throw lastErr || new Error('Falla cargando el template');
+}
+// Extracted parse step so the retry loop in fetchTemplate stays clean.
+async function _parseTemplateHtml(templateId, html){
   var doc = new DOMParser().parseFromString(html, 'text/html');
   var css = '';
   doc.querySelectorAll('style').forEach(function(s){ css += s.textContent + '\n'; });
@@ -3794,12 +3815,18 @@ async function loadAll(){
       // user's edits get saved to project A, but reload activates a
       // brand-new project B, making it look like nothing persisted.
       // Walk up to the parent (same-origin) and replace ITS URL.
+      // We DEFER the parent-URL update to the next tick so that any
+      // currently in-flight fetch (template HTML) isn't aborted by a
+      // possible Next.js rerender of the iframe.
       try { history.replaceState(null, '', '/landing-lab.html?p='+newProj.id); } catch(e){}
-      try {
-        if (window.parent && window.parent !== window) {
-          window.parent.history.replaceState(null, '', '/landing-lab/edit?p='+newProj.id);
-        }
-      } catch(e){ console.warn('[Riverz] could not update parent URL:', e); }
+      var _projIdForParent = newProj.id;
+      setTimeout(function(){
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.history.replaceState(null, '', '/landing-lab/edit?p='+_projIdForParent);
+          }
+        } catch(e){ console.warn('[Riverz] could not update parent URL:', e); }
+      }, 50);
       // Persist directly — DON'T call saveAll() here. saveAll runs
       // collectTexts(), which harvests every [data-v-text] in the
       // currently-mounted DOM. At this moment the DOM is still the
