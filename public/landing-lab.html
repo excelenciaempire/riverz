@@ -3782,7 +3782,19 @@ async function loadAll(){
         projectCount: projects.length,
         activeId: activeId,
         projectIds: projects.map(function(p){return p.id;}),
-        textsByProject: projects.map(function(p){return {id:p.id, textKeys:Object.keys(p.texts||{}).length, name:p.name};})
+        textsByProject: projects.map(function(p){return {id:p.id, textKeys:Object.keys(p.texts||{}).length, name:p.name};}),
+        // Dump the image entries verbatim so we can see exactly what
+        // came back from localStorage — Supabase URL, blob: URL, idb:
+        // sentinel, null, or whatever.
+        imagesByProject: projects.map(function(p){
+          var img = p.images || {};
+          var sample = {};
+          Object.keys(img).slice(0, 3).forEach(function(k){
+            var v = img[k];
+            sample[k] = (typeof v === 'string') ? v.slice(0, 100) : (v && typeof v === 'object') ? { d: String(v.d||'').slice(0,80), m: String(v.m||'').slice(0,80) } : v;
+          });
+          return { id: p.id, slotCount: Object.keys(img).length, sample: sample };
+        })
       });
     } else {
       console.log('[Riverz][loadAll] localStorage is empty');
@@ -4489,14 +4501,23 @@ function clearProjImage(proj, k, viewport){
 // after restore/undo so the canvas reflects the active viewport's image.
 function applySlotsForViewport(proj, viewport){
   if (!proj) return;
+  var stats = { keys: IMG_KEYS.length, applied: 0, defaulted: 0, collapsed: 0, missingEl: 0, samples: [] };
   IMG_KEYS.forEach(function(k){
     var entry = proj.images[k];
-    if (entry === null){ collapseSlot(k); return; }
+    if (entry === null){ collapseSlot(k); stats.collapsed++; return; }
     var url = imgEntryGet(entry, viewport);
-    if (url){ setSlot(k, url); return; }
-    if (TEMPLATE_DEFAULT_IMAGES[k]) setSlot(k, TEMPLATE_DEFAULT_IMAGES[k]);
-    else resetSlot(k);
+    if (url){
+      var elBefore = imgEl(k);
+      if (!elBefore) stats.missingEl++;
+      setSlot(k, url);
+      stats.applied++;
+      if (stats.samples.length < 3) stats.samples.push({ slot: k, url: String(url).slice(0, 90) });
+      return;
+    }
+    if (TEMPLATE_DEFAULT_IMAGES[k]) { setSlot(k, TEMPLATE_DEFAULT_IMAGES[k]); stats.defaulted++; }
+    else { resetSlot(k); }
   });
+  console.log('[Riverz][applySlotsForViewport] vp=' + viewport, stats);
 }
 function pickImg(key){ if(typeof openImgGen==='function'){openImgGen(key);return;} curImgKey=key; var m=g('img-modal');if(m)m.classList.add('on'); }
 function closeImgModal(){var m=g('img-modal');if(m)m.classList.remove('on');curImgKey=null;}
@@ -4794,9 +4815,13 @@ async function onFilePick(e){
     var blob = await compressImageFile(file, 1920, 0.85);
     toast('Subiendo a Supabase…', 0);
     var publicUrl = await uploadImageToSupabase(blob, file.name, curImgKey);
+    console.log('[Riverz][onFilePick] Supabase upload OK', { slot: curImgKey, url: publicUrl, vp: vp });
     setSlot(curImgKey, publicUrl);
     var proj = getActive();
-    if (proj) setProjImage(proj, curImgKey, publicUrl, vp);
+    if (proj) {
+      setProjImage(proj, curImgKey, publicUrl, vp);
+      console.log('[Riverz][onFilePick] proj.images after setProjImage:', JSON.parse(JSON.stringify(proj.images)));
+    }
     snapshot(); saveAll(); closeImgModal();
     toast(vp === 'mobile' ? 'Imagen aplicada solo en mobile' : 'Imagen aplicada');
   } catch(err){
