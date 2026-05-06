@@ -317,6 +317,9 @@ body.has-selection #inspector{flex:0 0 240px;width:240px}
 .in-btn.flex{flex:1}
 .in-btn.danger:hover{background:rgba(228,78,58,.15);color:#ff7a64;border-color:rgba(228,78,58,.4)}
 .in-val{font-size:11px;color:#C8CAD8;font-variant-numeric:tabular-nums;width:50px;text-align:center;font-weight:600;background:#080910;border:1px solid #1E2130;border-radius:5px;padding:7px 4px;line-height:1.1}
+.in-num{flex:1;height:30px;background:#080910;border:1px solid #1E2130;color:#C8CAD8;border-radius:5px;font-family:inherit;font-size:12px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;outline:none;-moz-appearance:textfield}
+.in-num:focus{border-color:#4A90E2}
+.in-num::-webkit-outer-spin-button,.in-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .in-empty{padding:24px 16px;color:#3E4560;font-size:11px;text-align:center;line-height:1.6}
 #inspector select.in-btn{padding:0 8px;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#5B6490 50%),linear-gradient(135deg,#5B6490 50%,transparent 50%);background-position:calc(100% - 12px) 13px,calc(100% - 7px) 13px;background-size:5px 5px;background-repeat:no-repeat;padding-right:22px}
 #inspector select.in-btn option{background:#0D0E14}
@@ -609,18 +612,21 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         <div class="in-crumbs" id="ins-crumbs"></div>
       </div>
       <div class="in-section">
-        <div class="in-label">Padding vertical</div>
+        <div class="in-label">Espaciado vertical (px)</div>
         <div class="in-row">
-          <button class="in-btn flex" type="button" onclick="insPad(-8,0)" title="Menos arriba/abajo">&minus;</button>
-          <span class="in-val" id="ins-pad-y">—</span>
-          <button class="in-btn flex" type="button" onclick="insPad(8,0)" title="Más arriba/abajo">&plus;</button>
+          <button class="in-btn" type="button" onclick="insPad(-1,0)" title="−1px arriba/abajo">&minus;</button>
+          <input id="ins-pad-y" class="in-num" type="number" step="1" inputmode="numeric"
+                 oninput="insPadSet(this.value, null)" onkeydown="if(event.key==='Enter')this.blur()" />
+          <button class="in-btn" type="button" onclick="insPad(1,0)" title="+1px arriba/abajo">&plus;</button>
         </div>
-        <div class="in-label" style="margin-top:14px">Padding horizontal</div>
+        <div class="in-label" style="margin-top:14px">Espaciado horizontal (px)</div>
         <div class="in-row">
-          <button class="in-btn flex" type="button" onclick="insPad(0,-8)" title="Menos izq/der">&minus;</button>
-          <span class="in-val" id="ins-pad-x">—</span>
-          <button class="in-btn flex" type="button" onclick="insPad(0,8)" title="Más izq/der">&plus;</button>
+          <button class="in-btn" type="button" onclick="insPad(0,-1)" title="−1px izq/der">&minus;</button>
+          <input id="ins-pad-x" class="in-num" type="number" step="1" inputmode="numeric"
+                 oninput="insPadSet(null, this.value)" onkeydown="if(event.key==='Enter')this.blur()" />
+          <button class="in-btn" type="button" onclick="insPad(0,1)" title="+1px izq/der">&plus;</button>
         </div>
+        <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.45">Valores negativos reducen el espacio (margin negativo).</p>
       </div>
       <div class="in-section" id="ins-text-section" style="display:none">
         <div class="in-label">Tamaño de texto</div>
@@ -2271,14 +2277,60 @@ window.duplicateSelectedBlock = duplicateSelectedBlock;
 // inline padding is set, subsequent nudges read from the inline value.
 // Negative results clamp to 0 because negative padding would be a bug,
 // not a feature.
+// Read the current "vertical space" in px on an element. Negative
+// when an inline negative margin is in effect; positive when padding
+// is doing the work. Returns the average of top + bottom so the
+// inspector exposes one number per axis.
+function _readSpaceY(el){
+  var cs = window.getComputedStyle(el);
+  var mt = parseFloat(el.style.marginTop) || 0;
+  var mb = parseFloat(el.style.marginBottom) || 0;
+  if (mt < 0 || mb < 0) return Math.round((mt + mb) / 2);
+  var pt = parseFloat(cs.paddingTop) || 0;
+  var pb = parseFloat(cs.paddingBottom) || 0;
+  return Math.round((pt + pb) / 2);
+}
+function _readSpaceX(el){
+  var cs = window.getComputedStyle(el);
+  var ml = parseFloat(el.style.marginLeft) || 0;
+  var mr = parseFloat(el.style.marginRight) || 0;
+  if (ml < 0 || mr < 0) return Math.round((ml + mr) / 2);
+  var pl = parseFloat(cs.paddingLeft) || 0;
+  var pr = parseFloat(cs.paddingRight) || 0;
+  return Math.round((pl + pr) / 2);
+}
+// Write a "vertical space" value on an element. Positive → padding,
+// margin reset. Negative → padding clamped to 0, margin set to N.
+function _writeSpaceY(el, n){
+  if (n >= 0){
+    el.style.paddingTop = n + 'px';
+    el.style.paddingBottom = n + 'px';
+    el.style.marginTop = '';
+    el.style.marginBottom = '';
+  } else {
+    el.style.paddingTop = '0px';
+    el.style.paddingBottom = '0px';
+    el.style.marginTop = n + 'px';
+    el.style.marginBottom = n + 'px';
+  }
+}
+function _writeSpaceX(el, n){
+  if (n >= 0){
+    el.style.paddingLeft = n + 'px';
+    el.style.paddingRight = n + 'px';
+    el.style.marginLeft = '';
+    el.style.marginRight = '';
+  } else {
+    el.style.paddingLeft = '0px';
+    el.style.paddingRight = '0px';
+    el.style.marginLeft = n + 'px';
+    el.style.marginRight = n + 'px';
+  }
+}
 function _padSteps(el, deltaY, deltaX){
   if (!el) return;
-  var cs = window.getComputedStyle(el);
-  var pt = Math.max(0, (parseFloat(cs.paddingTop) || 0) + deltaY);
-  var pb = Math.max(0, (parseFloat(cs.paddingBottom) || 0) + deltaY);
-  var pr = Math.max(0, (parseFloat(cs.paddingRight) || 0) + deltaX);
-  var pl = Math.max(0, (parseFloat(cs.paddingLeft) || 0) + deltaX);
-  el.style.padding = pt + 'px ' + pr + 'px ' + pb + 'px ' + pl + 'px';
+  if (deltaY !== 0) _writeSpaceY(el, _readSpaceY(el) + deltaY);
+  if (deltaX !== 0) _writeSpaceX(el, _readSpaceX(el) + deltaX);
 }
 function changeElPadding(deltaY, deltaX){
   if (!curEditEl) { toast('Seleccioná un texto primero',1); return; }
@@ -2358,12 +2410,16 @@ function insRefresh(){
       });
     });
   }
-  // Padding values (computed, in px, integer)
-  var cs = window.getComputedStyle(_insEl);
-  var py = Math.round(((parseFloat(cs.paddingTop)||0) + (parseFloat(cs.paddingBottom)||0)) / 2);
-  var px = Math.round(((parseFloat(cs.paddingLeft)||0) + (parseFloat(cs.paddingRight)||0)) / 2);
-  var pyEl = document.getElementById('ins-pad-y'); if (pyEl) pyEl.textContent = py + 'px';
-  var pxEl = document.getElementById('ins-pad-x'); if (pxEl) pxEl.textContent = px + 'px';
+  // Spacing values — show whichever is "in effect" for this element:
+  // negative margin trumps positive padding, otherwise positive padding.
+  // Skip writing the input that's currently focused so we don't yank
+  // the user's typing cursor mid-edit.
+  var py = _readSpaceY(_insEl);
+  var px = _readSpaceX(_insEl);
+  var pyEl = document.getElementById('ins-pad-y');
+  if (pyEl && document.activeElement !== pyEl) pyEl.value = String(py);
+  var pxEl = document.getElementById('ins-pad-x');
+  if (pxEl && document.activeElement !== pxEl) pxEl.value = String(px);
   // Text-only section: show font controls when the selection is a text
   // slot (or contains one immediate child that's a text slot).
   var textSec = document.getElementById('ins-text-section');
@@ -2550,6 +2606,24 @@ function insPad(dy, dx){
   insRefresh();
   if (typeof saveAll === 'function') saveAll();
 }
+// Direct set from the editable number input. Pass null on the axis
+// you don't want to touch. Strings come in from <input>; coerce + clamp.
+function insPadSet(yVal, xVal){
+  if (!_insEl){ return; }
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (yVal !== null && yVal !== undefined && yVal !== ''){
+    var y = parseInt(yVal, 10);
+    if (!isNaN(y)) _writeSpaceY(_insEl, Math.max(-500, Math.min(500, y)));
+  }
+  if (xVal !== null && xVal !== undefined && xVal !== ''){
+    var x = parseInt(xVal, 10);
+    if (!isNaN(x)) _writeSpaceX(_insEl, Math.max(-500, Math.min(500, x)));
+  }
+  // Don't call insRefresh here — that'd overwrite the input the user
+  // is typing in. The next selection / commit will resync.
+  if (typeof qSave === 'function') qSave();
+}
+window.insPadSet = insPadSet;
 function insFontSize(delta){
   if (!_insEl) return;
   var t = (_insEl.hasAttribute && _insEl.hasAttribute('data-v-text')) ? _insEl
@@ -3546,7 +3620,47 @@ function delImg(e,key){
 }
 
 // ── UNDO/REDO ─────────────────────────────────────────────────
-function snapshot(){if(isRestoring||!activeId)return;collectTexts();var proj=getActive();if(!proj)return;var snap={texts:JSON.parse(JSON.stringify(proj.texts)),images:JSON.parse(JSON.stringify(proj.images)),videos:JSON.parse(JSON.stringify(proj.videos||{})),layoutOrder:proj.layoutOrder?JSON.parse(JSON.stringify(proj.layoutOrder)):null};if(!histMap[activeId]){histMap[activeId]=[];histIdx[activeId]=-1;}histMap[activeId].splice(histIdx[activeId]+1);histMap[activeId].push(snap);if(histMap[activeId].length>60)histMap[activeId].shift();histIdx[activeId]=histMap[activeId].length-1;updateUR();}
+// Each snapshot captures BOTH the editor state dictionaries (texts,
+// images, videos, image sizes/shapes, video sizes, layout order) AND
+// the raw #page-wrap.innerHTML, so undo can roll back DOM-level
+// mutations like palette drops, deletes, duplicates, and row column
+// changes. Without the HTML capture, those structural edits would
+// stick after undo because applyTexts only touches existing nodes.
+function snapshot(){
+  if(isRestoring||!activeId)return;
+  collectTexts();
+  var proj=getActive();
+  if(!proj)return;
+  // Strip editor-only chrome before capturing the HTML so re-applying
+  // doesn't re-inject duplicate trash buttons / drag handles when we
+  // re-decorate after the restore.
+  var pw=g('page-wrap');
+  var rawHtml=null;
+  if(pw){
+    var clone=pw.cloneNode(true);
+    clone.querySelectorAll('.iov,.idel,.riverz-img-edit,.riverz-img-del,.riverz-img-size,.riverz-vid-edit,.riverz-vid-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
+    clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
+    rawHtml=clone.innerHTML;
+  }
+  var snap={
+    texts:JSON.parse(JSON.stringify(proj.texts)),
+    images:JSON.parse(JSON.stringify(proj.images)),
+    videos:JSON.parse(JSON.stringify(proj.videos||{})),
+    imageSizes:JSON.parse(JSON.stringify(proj.imageSizes||{})),
+    imageShapes:JSON.parse(JSON.stringify(proj.imageShapes||{})),
+    videoSizes:JSON.parse(JSON.stringify(proj.videoSizes||{})),
+    layoutOrder:proj.layoutOrder?JSON.parse(JSON.stringify(proj.layoutOrder)):null,
+    html:rawHtml
+  };
+  if(!histMap[activeId]){histMap[activeId]=[];histIdx[activeId]=-1;}
+  histMap[activeId].splice(histIdx[activeId]+1);
+  histMap[activeId].push(snap);
+  // Cap at 40 (down from 60) since each entry now carries page-wrap
+  // HTML — keeps localStorage from blowing past quota on long sessions.
+  if(histMap[activeId].length>40)histMap[activeId].shift();
+  histIdx[activeId]=histMap[activeId].length-1;
+  updateUR();
+}
 function doUndo(){
   if(!activeId){ toast('Sin proyecto activo',1); return; }
   var idx = histIdx[activeId];
@@ -3566,7 +3680,46 @@ function doRedo(){
   updateUR();
   toast('↷ Rehecho');
 }
-function applySnap(snap){isRestoring=true;var proj=getActive();if(!proj){isRestoring=false;return;}proj.texts=JSON.parse(JSON.stringify(snap.texts||{}));proj.images=JSON.parse(JSON.stringify(snap.images||{}));proj.videos=JSON.parse(JSON.stringify(snap.videos||{}));if(snap.layoutOrder){proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));if(typeof applyLayoutOrder==='function')applyLayoutOrder(proj);}applyTexts(proj.texts);applySlotsForViewport(proj,vp);applyVideoSlots(proj);saveAll();isRestoring=false;}
+function applySnap(snap){
+  isRestoring=true;
+  var proj=getActive();
+  if(!proj){isRestoring=false;return;}
+  proj.texts=JSON.parse(JSON.stringify(snap.texts||{}));
+  proj.images=JSON.parse(JSON.stringify(snap.images||{}));
+  proj.videos=JSON.parse(JSON.stringify(snap.videos||{}));
+  proj.imageSizes=JSON.parse(JSON.stringify(snap.imageSizes||{}));
+  proj.imageShapes=JSON.parse(JSON.stringify(snap.imageShapes||{}));
+  proj.videoSizes=JSON.parse(JSON.stringify(snap.videoSizes||{}));
+  // Restore the captured DOM first so palette drops / deletes / row
+  // column changes roll back; THEN re-decorate + re-apply the data
+  // dicts on top of the restored structure.
+  var pw=g('page-wrap');
+  if(pw && typeof snap.html==='string'){
+    pw.innerHTML=snap.html;
+    if(typeof rebuildSlotTables==='function') rebuildSlotTables();
+    if(typeof decorateImageSlots==='function') decorateImageSlots();
+    if(typeof decorateVideoSlots==='function') decorateVideoSlots();
+    if(typeof initEdit==='function') initEdit();
+    if(typeof makeSectionsDraggable==='function') makeSectionsDraggable();
+    if(typeof wireGalleryCarousel==='function') wireGalleryCarousel();
+    if(typeof wireIngCarousel==='function') wireIngCarousel();
+  }
+  if(snap.layoutOrder){
+    proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));
+    if(typeof applyLayoutOrder==='function')applyLayoutOrder(proj);
+  }
+  applyTexts(proj.texts);
+  applySlotsForViewport(proj,vp);
+  applyVideoSlots(proj);
+  if(typeof applyImageSizes==='function') applyImageSizes();
+  if(typeof applyVideoSizes==='function') applyVideoSizes();
+  // Selection survives only if the captured HTML still has the same
+  // node tree; safest to clear it so the inspector doesn't render
+  // controls against a stale element reference.
+  if(typeof insClear==='function') insClear();
+  saveAll();
+  isRestoring=false;
+}
 function updateUR(){var id=activeId;var u=g('btn-undo'),r=g('btn-redo');if(u)u.disabled=!id||(histIdx[id]||0)<=0;if(r)r.disabled=!id||(histIdx[id]||0)>=((histMap[id]||[]).length-1);}
 
 // ── FONT SIZE CONTROLS ────────────────────────────────────────
