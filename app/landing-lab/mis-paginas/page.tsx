@@ -4,34 +4,75 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SideNav } from '../_side-nav';
 
-type Project = { id: string; name: string; angle?: string; templateId?: string };
+type Project = {
+  id: string;
+  name: string;
+  angle?: string;
+  templateId?: string;
+  updatedAt?: string;
+};
 
 const PROJECTS_KEY = 'lab_v5';
 
 export default function MisPaginasPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingDelete, setPendingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    // Show whatever's in the local cache instantly so navigating between
+    // pages feels snappy. The fetch below replaces it with the server's
+    // truth as soon as it lands.
     try {
       const raw = localStorage.getItem(PROJECTS_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         const list: Project[] = Array.isArray(parsed?.projects)
           ? parsed.projects.map((p: any) => ({
-              id: p.id, name: p.name, angle: p.angle, templateId: p.templateId,
+              id: p.id,
+              name: p.name,
+              angle: p.angle,
+              templateId: p.templateId,
+            }))
+          : [];
+        if (!cancelled && list.length > 0) setProjects(list);
+      }
+    } catch {/* corrupt or first visit */}
+
+    fetch('/api/landing-lab/projects', { credentials: 'same-origin' })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
+        return data;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const list: Project[] = Array.isArray(data?.projects)
+          ? data.projects.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              angle: p.angle,
+              templateId: p.templateId,
+              updatedAt: p.updatedAt,
             }))
           : [];
         setProjects(list);
-        setActiveId(parsed?.activeId || null);
-      }
-    } catch {/* corrupt or first visit */}
-    setLoaded(true);
+        setLoadError(null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('[mis-paginas] list failed:', err);
+        setLoadError(err?.message || 'No se pudo cargar la lista');
+      })
+      .finally(() => { if (!cancelled) setLoaded(true); });
+
+    return () => { cancelled = true; };
   }, []);
 
   const selectedCount = selected.size;
@@ -69,36 +110,62 @@ export default function MisPaginasPage() {
     setSelected(new Set());
   }
 
-  function deleteSelected() {
+  async function deleteSelected() {
     if (selectedCount === 0) return;
-    const ids = selected;
-    const remaining = projects.filter((p) => !ids.has(p.id));
+    setDeleting(true);
+    const ids = Array.from(selected);
 
-    // Persist: read full JSON, drop selected projects (preserving any extra
-    // fields like texts/images that we don't surface on this page), and
-    // pick a new activeId if the current one was deleted.
+    // Fire DELETEs in parallel — each call is independent and the API is
+    // idempotent (404 treated as success). Surface a single error if any
+    // fail; the ones that succeeded still come out of the visible list.
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        fetch(`/api/landing-lab/projects/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          credentials: 'same-origin',
+        }).then(async (r) => {
+          if (!r.ok) {
+            const data = await r.json().catch(() => ({}));
+            throw new Error(data?.error || `HTTP ${r.status}`);
+          }
+          return id;
+        }),
+      ),
+    );
+
+    const failed = results.filter((r) => r.status === 'rejected');
+    const succeededIds = new Set(
+      results.flatMap((r) => (r.status === 'fulfilled' ? [r.value as string] : [])),
+    );
+
+    setProjects((prev) => prev.filter((p) => !succeededIds.has(p.id)));
+
+    // Keep the local cache in sync so the editor doesn't resurrect the
+    // deleted project on its next loadAll() pass.
     try {
       const raw = localStorage.getItem(PROJECTS_KEY);
       const parsed = raw ? JSON.parse(raw) : { projects: [], activeId: null };
       const fullList: any[] = Array.isArray(parsed.projects) ? parsed.projects : [];
-      const kept = fullList.filter((p: any) => !ids.has(p.id));
+      const kept = fullList.filter((p: any) => !succeededIds.has(p.id));
       let newActive = parsed.activeId;
-      if (newActive && ids.has(newActive)) {
+      if (newActive && succeededIds.has(newActive)) {
         newActive = kept[0]?.id ?? null;
       }
       localStorage.setItem(
         PROJECTS_KEY,
         JSON.stringify({ ...parsed, projects: kept, activeId: newActive }),
       );
-      setProjects(remaining);
-      setActiveId(newActive);
-    } catch {
-      setProjects(remaining);
-    }
+    } catch {/* cache drift is non-fatal */}
 
     setSelected(new Set());
     setEditMode(false);
     setPendingDelete(false);
+    setDeleting(false);
+
+    if (failed.length > 0) {
+      const msg = (failed[0] as PromiseRejectedResult).reason?.message || 'Algunas eliminaciones fallaron';
+      setLoadError(`No se pudieron eliminar ${failed.length} proyecto(s): ${msg}`);
+    }
   }
 
   return (
@@ -122,20 +189,22 @@ export default function MisPaginasPage() {
                   <>
                     <button
                       onClick={toggleSelectAll}
-                      className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)]"
+                      disabled={deleting}
+                      className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)] disabled:opacity-50"
                     >
                       {allSelected ? 'Quitar todas' : 'Seleccionar todas'}
                     </button>
                     <button
                       onClick={() => setPendingDelete(true)}
-                      disabled={selectedCount === 0}
+                      disabled={selectedCount === 0 || deleting}
                       className="rounded-lg bg-red-500 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-500/40"
                     >
                       Eliminar{selectedCount ? ` (${selectedCount})` : ''}
                     </button>
                     <button
                       onClick={exitEditMode}
-                      className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)]"
+                      disabled={deleting}
+                      className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)] disabled:opacity-50"
                     >
                       Listo
                     </button>
@@ -152,7 +221,13 @@ export default function MisPaginasPage() {
             )}
           </div>
 
-          {loaded && projects.length === 0 && (
+          {loadError && (
+            <div className="card-cream mt-6 border-red-300 p-4 text-[13px] text-red-700">
+              {loadError}
+            </div>
+          )}
+
+          {loaded && projects.length === 0 && !loadError && (
             <div className="card-cream mt-10 p-12 text-center text-[var(--rvz-ink-muted)]">
               Todavía no creaste ninguna página.{' '}
               <a
@@ -165,7 +240,7 @@ export default function MisPaginasPage() {
             </div>
           )}
 
-          {loaded && projects.length > 0 && (
+          {projects.length > 0 && (
             <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((p) => {
                 const isSelected = selected.has(p.id);
@@ -205,11 +280,6 @@ export default function MisPaginasPage() {
                           </div>
                         )}
                       </div>
-                      {!editMode && activeId === p.id && (
-                        <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
-                          Activo
-                        </span>
-                      )}
                     </div>
                     {!editMode && (
                       <div className="mt-4 flex items-center gap-2 text-[11px] uppercase tracking-[0.06em] text-[var(--rvz-ink-faint)] group-hover:text-[var(--rvz-ink)]">
@@ -227,7 +297,7 @@ export default function MisPaginasPage() {
       {pendingDelete && (
         <div
           className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setPendingDelete(false)}
+          onClick={() => !deleting && setPendingDelete(false)}
         >
           <div
             className="w-full max-w-sm rounded-xl border border-[var(--rvz-card-border)] bg-[var(--rvz-card)] p-6 text-[var(--rvz-ink)] shadow-2xl"
@@ -237,21 +307,23 @@ export default function MisPaginasPage() {
               ¿Eliminar {selectedCount} {selectedCount === 1 ? 'página' : 'páginas'}?
             </h2>
             <p className="mt-2 text-[13px] text-[var(--rvz-ink-muted)]">
-              Esto borra los proyectos de tu navegador. Las páginas ya publicadas en Shopify
+              Esto borra los proyectos de tu cuenta. Las páginas ya publicadas en Shopify
               no se ven afectadas.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setPendingDelete(false)}
-                className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)]"
+                disabled={deleting}
+                className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)] disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={deleteSelected}
-                className="rounded-lg bg-red-500 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-white hover:bg-red-600"
+                disabled={deleting}
+                className="rounded-lg bg-red-500 px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-white hover:bg-red-600 disabled:opacity-50"
               >
-                Eliminar
+                {deleting ? 'Eliminando…' : 'Eliminar'}
               </button>
             </div>
           </div>

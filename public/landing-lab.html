@@ -3770,7 +3770,150 @@ window.setImgShape = setImgShape;
 window.applyImageSizes = applyImageSizes;
 
 // ── STORAGE ──────────────────────────────────────────────────
+// Server-side persistence layer. Replaces the previous localStorage-only
+// model that lost progress on reload, didn't survive across browsers, and
+// caused "duplicated" projects every time the user re-entered via the
+// template chooser. The flow now is:
+//   - loadAll() pulls the user's projects from /api/landing-lab/projects.
+//   - saveAll() writes to localStorage as a fast cache AND schedules a
+//     debounced PUT to /api/landing-lab/projects/<id>.
+//   - Brand-new projects (?template=<id> on first paint, createManual,
+//     generateWithAI, doClone) hit POST /api/landing-lab/projects so the
+//     server mints the durable row, and then we redirect to ?p=<id>.
+//   - doDelete fires DELETE so "Mis páginas" stays in sync.
+// localStorage is kept as a write-through cache so the editor remains
+// responsive on slow networks and survives a reload before a debounced
+// push has fired.
+var pushTimers = {}; // projectId → setTimeout handle for debounced PUTs
+var pushInflight = {}; // projectId → Promise of in-flight PUT
+var serverKnown = {}; // projectId → true if the server already has this row
+var serverSyncFailed = false;
+
+function _fetchJson(url, opts){
+  // Tiny fetch wrapper that returns parsed JSON + ok-ness without
+  // throwing on 4xx. credentials:'same-origin' is required so Clerk's
+  // session cookie ships with the request.
+  var o = opts || {};
+  o.credentials = 'same-origin';
+  o.headers = Object.assign({ 'Content-Type': 'application/json' }, o.headers || {});
+  return fetch(url, o).then(function(res){
+    return res.text().then(function(raw){
+      var data = null; try { data = raw ? JSON.parse(raw) : null; } catch(_){}
+      return { ok: res.ok, status: res.status, data: data, raw: raw };
+    });
+  });
+}
+
+// Build the JSON payload that goes on the wire / into localStorage. Only
+// the editor-state fields the API knows about — dropping in-memory junk
+// like blob: URLs (the publish path resolves those just-in-time anyway).
+function _projectDataPayload(proj){
+  return {
+    texts: proj.texts || {},
+    images: proj.images || {},
+    videos: proj.videos || {},
+    imageSizes: proj.imageSizes || {},
+    imageShapes: proj.imageShapes || {},
+    imageStyles: proj.imageStyles || {},
+    videoSizes: proj.videoSizes || {},
+    layoutOrder: proj.layoutOrder || null
+  };
+}
+function _projectMetaPayload(proj){
+  return {
+    name: proj.name || 'Sin nombre',
+    angle: proj.angle || '',
+    cta_url: proj.ctaUrl || '',
+    template_id: proj.templateId || null,
+    project_data: _projectDataPayload(proj)
+  };
+}
+
+async function apiListProjects(){
+  var r = await _fetchJson('/api/landing-lab/projects', { method: 'GET' });
+  if (!r.ok) throw new Error((r.data && r.data.error) || ('list failed ' + r.status));
+  return (r.data && r.data.projects) || [];
+}
+async function apiGetProject(id){
+  var r = await _fetchJson('/api/landing-lab/projects/' + encodeURIComponent(id), { method: 'GET' });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error((r.data && r.data.error) || ('get failed ' + r.status));
+  return r.data && r.data.project;
+}
+async function apiCreateProject(proj){
+  var body = Object.assign({ id: proj.id }, _projectMetaPayload(proj));
+  var r = await _fetchJson('/api/landing-lab/projects', { method: 'POST', body: JSON.stringify(body) });
+  if (r.status === 409) {
+    // ID collision — let the server mint a fresh one.
+    var body2 = _projectMetaPayload(proj); // no id
+    var r2 = await _fetchJson('/api/landing-lab/projects', { method: 'POST', body: JSON.stringify(body2) });
+    if (!r2.ok) throw new Error((r2.data && r2.data.error) || ('create failed ' + r2.status));
+    return r2.data && r2.data.project;
+  }
+  if (!r.ok) throw new Error((r.data && r.data.error) || ('create failed ' + r.status));
+  return r.data && r.data.project;
+}
+async function apiUpdateProject(id, body){
+  var r = await _fetchJson('/api/landing-lab/projects/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify(body) });
+  if (!r.ok) throw new Error((r.data && r.data.error) || ('update failed ' + r.status));
+  return r.data && r.data.project;
+}
+async function apiDeleteProject(id){
+  var r = await _fetchJson('/api/landing-lab/projects/' + encodeURIComponent(id), { method: 'DELETE' });
+  // 404 is benign (project already gone) — treat as success so the local
+  // state can drop it without a confusing error.
+  if (!r.ok && r.status !== 404) throw new Error((r.data && r.data.error) || ('delete failed ' + r.status));
+  return true;
+}
+
+// Schedule a server PUT for the given project. Multiple rapid calls
+// collapse into one PUT 800ms after the last one — keeps API traffic
+// reasonable while typing. Use _pushNow() to flush immediately (e.g. on
+// the explicit "💾 Guardar" button or before unload).
+function _schedulePush(id){
+  if (!id) return;
+  if (pushTimers[id]) clearTimeout(pushTimers[id]);
+  pushTimers[id] = setTimeout(function(){ pushTimers[id] = null; _pushNow(id); }, 800);
+}
+function _pushNow(id){
+  if (!id) return Promise.resolve(false);
+  if (pushTimers[id]) { clearTimeout(pushTimers[id]); pushTimers[id] = null; }
+  // Coalesce concurrent flushes — if a PUT is already in flight, chain
+  // a re-push after it resolves so the latest state always wins.
+  if (pushInflight[id]) {
+    return pushInflight[id].then(function(){ return _pushNow(id); });
+  }
+  var proj = projects.find(function(p){return p.id===id;});
+  if (!proj) return Promise.resolve(false);
+  var p;
+  if (!serverKnown[id]) {
+    p = apiCreateProject(proj).then(function(saved){
+      if (saved){ serverKnown[id] = true; serverSyncFailed = false; if (typeof dot==='function') dot('ok'); }
+      return true;
+    });
+  } else {
+    p = apiUpdateProject(id, _projectMetaPayload(proj)).then(function(){
+      serverSyncFailed = false; if (typeof dot==='function') dot('ok');
+      return true;
+    });
+  }
+  pushInflight[id] = p.catch(function(err){
+    console.warn('[Riverz] server save failed:', err && err.message || err);
+    serverSyncFailed = true; if (typeof dot==='function') dot('dirty');
+    if (typeof toast === 'function') toast('Sin conexión con el servidor — guardado local. Reintentando…', 1);
+    return false;
+  }).then(function(ok){
+    pushInflight[id] = null;
+    return ok;
+  });
+  return pushInflight[id];
+}
+window._pushNow = _pushNow;
+
 async function loadAll(){
+  // Read the local cache first. It seeds projects[] for instant first
+  // paint (the server fetch is async) and gives us a fallback if the
+  // network is down. Server response below overwrites this.
   try{
     var s=localStorage.getItem(SK);
     if(s){
@@ -3784,26 +3927,59 @@ async function loadAll(){
   // to re-pick. Runs before any project mounts so the bad URLs never
   // hit setVidSlot / applyVideoSlots.
   if (typeof _purgeStaleBlobVideos === 'function') _purgeStaleBlobVideos();
-  // Resolve any "idb:<key>" image sentinels back to ObjectURLs (the
-  // saveAll auto-recovery path migrated data: URLs into IndexedDB to
-  // dodge the 5MB localStorage cap). Must run before bootProject so
-  // applySlotsForViewport sees usable URLs synchronously.
+  // Resolve any "idb:<key>" image sentinels back to ObjectURLs (legacy
+  // pre-Supabase saves stored data: URLs in IndexedDB to dodge the 5MB
+  // localStorage cap). Must run before bootProject so applySlotsForViewport
+  // sees usable URLs synchronously.
   if (typeof resolveIDBImages === 'function'){
     try { await resolveIDBImages(); } catch(e){ console.warn('[Riverz] resolveIDBImages failed:', e); }
   }
-  // No auto-seed. Users now arrive here from /landing-lab (template
-  // dashboard) or /landing-lab/mis-paginas — both paths supply either
-  // ?template=<id> (new project) or ?p=<id> (existing). Seeding
-  // Landing A / B on empty state was a Vitalu-era leftover that kept
-  // resurrecting deleted projects whenever the user wiped them.
-  // The new dashboard at /landing-lab navigates here with either:
-  //   ?p=<id>          → open an existing project
-  //   ?template=<id>   → start a NEW project from a template
-  // For Vitalu inline templates (frustración / ancestral) we resolve to the
-  // existing seed projects so we don't dupe them. For dynamic templates
-  // listed in TEMPLATE_FILES we mint a new project on the fly and rewrite
-  // the URL so a refresh resumes that same project instead of creating
-  // another one.
+
+  // ── Sync with the server. ───────────────────────────────────
+  // The server is the source of truth. We fetched the local cache
+  // above for fast first paint; now overlay the durable list from
+  // /api/landing-lab/projects. Any project that's only in localStorage
+  // (e.g. legacy data from before this migration) gets backfilled to
+  // the server so it doesn't get lost.
+  var serverProjects = [];
+  try {
+    serverProjects = await apiListProjects();
+    serverSyncFailed = false;
+  } catch (e) {
+    console.warn('[Riverz] apiListProjects failed, using localStorage cache:', e && e.message || e);
+    serverSyncFailed = true;
+    if (typeof toast === 'function') toast('Sin conexión con el servidor — usando caché local', 1);
+  }
+
+  if (!serverSyncFailed) {
+    // Migrate any localStorage-only projects up to the server. Skip
+    // legacy seed ids the server doesn't need to know about.
+    var serverIds = {};
+    serverProjects.forEach(function(p){ serverIds[p.id] = true; });
+    var localOnly = projects.filter(function(p){
+      return p && p.id && !serverIds[p.id] && p.id !== 'vitalu_a' && p.id !== 'vitalu_b';
+    });
+    for (var i = 0; i < localOnly.length; i++){
+      try {
+        var saved = await apiCreateProject(localOnly[i]);
+        if (saved){ serverIds[saved.id] = true; serverProjects.unshift(saved); }
+      } catch(e){
+        console.warn('[Riverz] could not backfill project to server:', localOnly[i].id, e && e.message || e);
+      }
+    }
+    // Mark every server project as known so saveAll PUTs (instead of POSTing).
+    serverProjects.forEach(function(p){ serverKnown[p.id] = true; });
+    // Replace the local list with the server's list. Newest-first
+    // ordering is preserved from the server response.
+    projects = serverProjects.map(function(sp){ return _normalizeServerProject(sp); });
+  }
+
+  // ── URL parameter handling. ─────────────────────────────────
+  //   ?p=<id>          → open an existing project (server-backed)
+  //   ?template=<id>   → create a NEW server-side copy of a template
+  // For Vitalu inline templates (frustración / ancestral) we resolve to
+  // the legacy local seed ids so we don't migrate those — they're inline
+  // in this file and not meant to be persisted.
   try{
     var qs=new URLSearchParams(window.location.search);
     var pid=qs.get('p');
@@ -3811,20 +3987,29 @@ async function loadAll(){
     if (tpl === 'vitalu-frustracion') { pid = 'vitalu_b'; tpl = null; }
     else if (tpl === 'vitalu-ancestral') { pid = 'vitalu_a'; tpl = null; }
     if (tpl && TEMPLATE_FILES[tpl]) {
-      var newProj = mkProj('Nueva landing', '', null, tpl);
-      projects.push(newProj);
+      // CREATE A SERVER-SIDE COPY of the template owned by this user.
+      // Each "Usar plantilla" click → one durable, listable project. We
+      // mint the row server-side so reload / re-entry / multi-device all
+      // converge on the same project — that's what fixes the "duplicada
+      // desde cero" bug.
+      var draft = mkProj('Nueva landing', '', null, tpl);
+      var serverProj = null;
+      try {
+        serverProj = await apiCreateProject(draft);
+      } catch(e){
+        console.warn('[Riverz] template create failed, falling back to local-only:', e && e.message || e);
+        serverSyncFailed = true;
+      }
+      var newProj = serverProj ? _normalizeServerProject(serverProj) : draft;
+      projects.unshift(newProj);
+      if (serverProj) serverKnown[newProj.id] = true;
       activeId = newProj.id;
       // CRITICAL: this editor lives inside an iframe whose parent is
       // /landing-lab/edit?template=<id>. history.replaceState INSIDE the
       // iframe only changes the iframe's URL — the parent URL stays at
       // ?template=<id>, so on reload the parent re-renders the iframe
-      // with ?template= again and we mint ANOTHER fresh project. The
-      // user's edits get saved to project A, but reload activates a
-      // brand-new project B, making it look like nothing persisted.
-      // Walk up to the parent (same-origin) and replace ITS URL.
-      // We DEFER the parent-URL update to the next tick so that any
-      // currently in-flight fetch (template HTML) isn't aborted by a
-      // possible Next.js rerender of the iframe.
+      // with ?template= again and we'd mint ANOTHER fresh project. Walk
+      // up to the parent (same-origin) and replace ITS URL too.
       try { history.replaceState(null, '', '/landing-lab.html?p='+newProj.id); } catch(e){}
       var _projIdForParent = newProj.id;
       setTimeout(function(){
@@ -3834,41 +4019,80 @@ async function loadAll(){
           }
         } catch(e){ console.warn('[Riverz] could not update parent URL:', e); }
       }, 50);
-      // Persist directly — DON'T call saveAll() here. saveAll runs
-      // collectTexts(), which harvests every [data-v-text] in the
-      // currently-mounted DOM. At this moment the DOM is still the
-      // inline Vitalú shell baked into landing-lab.html (the template
-      // hasn't been fetched yet), so saveAll would write Vitalú's
-      // hero-l1 / hero-em / auto-N / sticky-h / cta-* values into the
-      // brand-new project's texts dict. activateProject then picks
-      // proj.texts (now non-empty) over the template defaults and the
-      // Vitalú copy renders inside the user's "fresh" Powernax /
-      // Pilar landing. Bypass collectTexts entirely on this path.
+      // Cache locally so a fast reload still sees the project before the
+      // server fetch completes. saveAll itself isn't safe to call here
+      // because the template HTML hasn't been mounted yet — collectTexts
+      // would harvest the inline Vitalú slots into this project.
       try { localStorage.setItem(SK, JSON.stringify({ projects: projects, activeId: activeId })); } catch(e){}
     } else if (pid && projects.find(function(p){return p.id===pid;})) {
       activeId = pid;
+    } else if (pid && !serverSyncFailed) {
+      // URL says ?p=<id> but the list response didn't include it — try a
+      // direct GET. Catches the case where the project was created in
+      // another tab between our list call and now.
+      try {
+        var single = await apiGetProject(pid);
+        if (single){
+          var norm = _normalizeServerProject(single);
+          projects.unshift(norm);
+          serverKnown[norm.id] = true;
+          activeId = norm.id;
+        } else {
+          console.warn('[Riverz] ?p='+pid+' not found on server');
+        }
+      } catch(e){
+        console.warn('[Riverz] could not fetch ?p='+pid+':', e && e.message || e);
+      }
     } else if (pid) {
-      // URL says ?p=<id> but the project isn't in projects[]. This
-      // happens when the user reloaded an old bookmarked URL after
-      // clearing localStorage, or if they're opening on a new device.
-      // Fall through to the activeId from localStorage if we have one,
-      // otherwise pick the first project so we don't end up on the
-      // empty state when projects exist.
-      console.warn('[Riverz] ?p='+pid+' not found in projects — falling back to last active');
+      console.warn('[Riverz] ?p='+pid+' not found locally and server unreachable');
     }
   }catch(e){}
+
+  // Confirm activeId still points to something we have. If not (e.g. the
+  // localStorage active was deleted on another device), pick the first.
+  if (activeId && !projects.find(function(p){return p.id===activeId;})) activeId = null;
+  // Persist the merged state back to localStorage so a subsequent reload
+  // before the next save has a coherent cache.
+  try { localStorage.setItem(SK, JSON.stringify({ projects: projects, activeId: activeId })); } catch(_){}
+
   renderSidebar();
   var found=activeId&&projects.find(function(p){return p.id===activeId;});
   if(found) await bootProject(activeId);
   else if(projects.length) activateProject(projects[0].id);
   else showEmpty();
 }
+
+// Coerce a server project response into the editor's in-memory shape.
+// The API returns texts/images/etc. at the top level (alongside meta)
+// thanks to rowToClient — we just need to ensure every collection
+// exists so applyTexts / applySlotsForViewport don't blow up on undefined.
+function _normalizeServerProject(sp){
+  return {
+    id: sp.id,
+    name: sp.name || 'Sin nombre',
+    angle: sp.angle || '',
+    ctaUrl: sp.ctaUrl || '',
+    templateId: sp.templateId || undefined,
+    texts: sp.texts || {},
+    images: sp.images || {},
+    videos: sp.videos || {},
+    imageSizes: sp.imageSizes || {},
+    imageShapes: sp.imageShapes || {},
+    imageStyles: sp.imageStyles || {},
+    videoSizes: sp.videoSizes || {},
+    layoutOrder: sp.layoutOrder || null
+  };
+}
 function saveAll(){
   collectTexts();
+  // Schedule a debounced PUT for the active project so the server has
+  // the latest state. New projects (not yet known to the server) hit
+  // POST inside _pushNow on the first call.
+  if (activeId) _schedulePush(activeId);
   try {
     var payload = JSON.stringify({projects:projects, activeId:activeId});
     localStorage.setItem(SK, payload);
-    isDirty = false; dot('ok');
+    if (!serverSyncFailed) { isDirty = false; dot('ok'); }
     hideQuotaBanner();
     return true;
   } catch(e) {
@@ -4009,7 +4233,28 @@ function renderSidebar(){
   var cnt=g('sb-count');if(cnt)cnt.textContent=projects.length+' landing'+(projects.length!==1?'s':'');
 }
 function doClone(id){var src=projects.find(function(p){return p.id===id;});if(!src)return;if(id===activeId)collectTexts();var c=JSON.parse(JSON.stringify(src));c.id=uid();c.name=src.name+' (copia)';projects.push(c);renderSidebar();bootProject(c.id);saveAll();toast('Clonada');}
-function doDelete(id){if(projects.length<=1){toast('No puedes eliminar la unica',1);return;}projects=projects.filter(function(p){return p.id!==id;});delete histMap[id];delete histIdx[id];if(activeId===id){activeId=null;if(projects.length)bootProject(projects[0].id);else showEmpty();}renderSidebar();saveAll();toast('Eliminada');}
+function doDelete(id){
+  if(projects.length<=1){toast('No puedes eliminar la unica',1);return;}
+  // Cancel any pending push for the doomed project — otherwise a stale
+  // PUT could land after the DELETE and resurrect it.
+  if (pushTimers[id]) { clearTimeout(pushTimers[id]); pushTimers[id] = null; }
+  projects=projects.filter(function(p){return p.id!==id;});
+  delete histMap[id]; delete histIdx[id];
+  if(activeId===id){activeId=null;if(projects.length)bootProject(projects[0].id);else showEmpty();}
+  renderSidebar();
+  // Persist the removal locally + on the server. We don't await the
+  // DELETE because the rest of the UI has already moved on; if it fails
+  // we log and surface a toast but the local state is still authoritative.
+  try { localStorage.setItem(SK, JSON.stringify({projects:projects, activeId:activeId})); } catch(_){}
+  if (serverKnown[id]) {
+    delete serverKnown[id];
+    apiDeleteProject(id).catch(function(e){
+      console.warn('[Riverz] server delete failed:', e && e.message || e);
+      if (typeof toast === 'function') toast('No se pudo eliminar en el servidor (se eliminó localmente)', 1);
+    });
+  }
+  toast('Eliminada');
+}
 
 // ── BOOT-A-PROJECT (template-aware) ─────────────────────────
 // Wrapper around activateProject that swaps the active template's HTML
@@ -5805,9 +6050,26 @@ function saveDraftNow(){
     return;
   }
   if (ok) {
-    isDirty = false;
-    if (typeof dot === 'function') dot('ok');
-    toast('💾 Borrador guardado');
+    // saveAll wrote the cache and scheduled a debounced server PUT.
+    // Flush that PUT *now* so the toolbar "💾 Guardar" button matches
+    // user intent — they pressed it because they want it persisted,
+    // not because they want to wait 800ms more.
+    if (typeof _pushNow === 'function' && activeId) {
+      toast('💾 Guardando…', 0);
+      _pushNow(activeId).then(function(serverOk){
+        if (serverOk) {
+          isDirty = false;
+          if (typeof dot === 'function') dot('ok');
+          toast('💾 Borrador guardado');
+        } else {
+          toast('Guardado local — sin conexión con el servidor', 1);
+        }
+      });
+    } else {
+      isDirty = false;
+      if (typeof dot === 'function') dot('ok');
+      toast('💾 Borrador guardado');
+    }
   } else {
     // saveAll already shows its own quota-error toast; this branch
     // means saveAll returned false without throwing (typically the
@@ -5830,12 +6092,35 @@ document.addEventListener('keydown', function(e){
 
 // beforeunload guard — prompts only when there are pending changes the
 // debounced qSave hasn't flushed yet. localStorage already has every
-// confirmed edit, so this just protects the last 0-700 ms of typing.
+// confirmed edit, plus we fire a sendBeacon to the server so the last
+// bit of typing survives a tab-close.
 window.addEventListener('beforeunload', function(e){
-  // Force a final save synchronously so even if the user dismisses the
-  // prompt and leaves, the latest state persists. localStorage writes
-  // are sync so this works in beforeunload.
   try { if (typeof collectTexts === 'function') collectTexts(); if (typeof saveAll === 'function') saveAll(); } catch(_){}
+  // Flush the active project to the server synchronously via Beacon API
+  // — fetch in beforeunload is unreliable across browsers, but
+  // navigator.sendBeacon is purpose-built for this. The server treats
+  // beacons identically to a normal PUT.
+  try {
+    if (activeId && typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      var proj = projects.find(function(p){return p.id===activeId;});
+      if (proj) {
+        var body = serverKnown[activeId]
+          ? JSON.stringify(_projectMetaPayload(proj))
+          : JSON.stringify(Object.assign({ id: proj.id }, _projectMetaPayload(proj)));
+        var url = serverKnown[activeId]
+          ? '/api/landing-lab/projects/' + encodeURIComponent(activeId) + '?_via=beacon'
+          : '/api/landing-lab/projects?_via=beacon';
+        // sendBeacon doesn't allow custom methods directly, but our
+        // POST endpoint accepts beacons natively. For PUTs we fall back
+        // to fetch with keepalive — also designed for unload.
+        if (serverKnown[activeId]) {
+          fetch(url, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: body, keepalive: true, credentials: 'same-origin' });
+        } else {
+          navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+        }
+      }
+    }
+  } catch(_){}
   if (isDirty) {
     var msg = '¿Salir sin guardar? Tenés cambios sin confirmar.';
     e.preventDefault();

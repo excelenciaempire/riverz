@@ -19,8 +19,6 @@ type Product = {
   research_status?: string | null;
 };
 
-const PROJECTS_KEY = 'lab_v5';
-
 const TYPE_DEFAULT_TEMPLATE: Record<LandingTemplateKind, string | null> = {
   advertorial: 'pilar-listicle',
   listicle: 'pilar-listicle',
@@ -167,28 +165,43 @@ function DashboardInner() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
 
-      const newId = makeProjectId();
       const tplName = LANDING_TEMPLATES.find((t) => t.id === templateId)?.name || 'Template';
       const projectName = `${tplName} — ${data.product_name || product?.name || 'Sin producto'}`;
       const newProject = {
-        id: newId,
+        id: makeProjectId(),
         name: projectName,
         angle: prompt.trim() || product?.name || '',
-        ctaUrl: 'https://',
-        texts: data.texts || {},
-        images: {},
-        templateId,
+        cta_url: 'https://',
+        template_id: templateId,
+        project_data: {
+          texts: data.texts || {},
+          images: {},
+          videos: {},
+          imageSizes: {},
+          imageShapes: {},
+          imageStyles: {},
+          videoSizes: {},
+          layoutOrder: null,
+        },
       };
 
-      const raw = localStorage.getItem(PROJECTS_KEY);
-      const stored = raw ? JSON.parse(raw) : { projects: [], activeId: null };
-      const list = Array.isArray(stored.projects) ? stored.projects : [];
-      list.push(newProject);
-      stored.projects = list;
-      stored.activeId = newId;
-      localStorage.setItem(PROJECTS_KEY, JSON.stringify(stored));
+      // Persist server-side first — that's the source of truth. The
+      // editor's loadAll will fetch this back from the API on first
+      // paint, so we don't need to touch localStorage here. (The
+      // editor backfills its local cache after the server fetch.)
+      const createRes = await fetch('/api/landing-lab/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(newProject),
+      });
+      const createData = await createRes.json().catch(() => ({}));
+      if (!createRes.ok) {
+        throw new Error(createData?.error || `No se pudo crear el proyecto (HTTP ${createRes.status})`);
+      }
+      const createdId = createData?.project?.id || newProject.id;
 
-      router.push(`/landing-lab/edit?p=${encodeURIComponent(newId)}`);
+      router.push(`/landing-lab/edit?p=${encodeURIComponent(createdId)}`);
     } catch (err: any) {
       setGenError(err?.message || 'No se pudo generar el copy');
       setGenerating(false);

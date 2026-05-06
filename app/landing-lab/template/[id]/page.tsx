@@ -8,6 +8,11 @@ import {
 } from '@/lib/landing-templates/registry';
 import { SideNav } from '../../_side-nav';
 
+// Special-case ids the editor has hard-coded inline support for. These
+// don't go through the server-create flow because they're not real
+// templates — they're seed projects that live inside landing-lab.html.
+const INLINE_TEMPLATE_IDS = new Set(['vitalu-frustracion', 'vitalu-ancestral']);
+
 const KIND_LABEL: Record<LandingTemplateKind, string> = {
   landing_page: 'Landing page',
   product_page: 'Product page',
@@ -23,6 +28,11 @@ export default function TemplatePreviewPage() {
   // vp-mob buttons. Mobile = 390px wide phone-shape sheet so the user
   // can preview the template's mobile breakpoints before cloning.
   const [viewport, setViewport] = useState<'desktop' | 'mobile'>('desktop');
+  // "Usar plantilla" is now an async POST to /api/landing-lab/projects
+  // before we route into the editor. Track that state so the button
+  // shows progress and can't be double-clicked.
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const template = useMemo(
     () => LANDING_TEMPLATES.find((t) => t.id === id),
@@ -49,13 +59,54 @@ export default function TemplatePreviewPage() {
     );
   }
 
-  function useTemplateRaw() {
-    if (!template) return;
-    // Mints a new project in lab_v5 keyed to this template — the editor
-    // boot path turns ?template=<id> into a fresh project on load. The
-    // system templates under /public/templates/ are never touched; every
-    // user works on their own copy in localStorage.
-    router.push(`/landing-lab/edit?template=${encodeURIComponent(template.id)}`);
+  async function useTemplateRaw() {
+    if (!template || creating) return;
+    setCreateError(null);
+    // Inline Vitalu seeds aren't real templates — the editor has them
+    // baked in. Pass through with the legacy ?template=<id> param so
+    // the editor's special-case branch runs.
+    if (INLINE_TEMPLATE_IDS.has(template.id)) {
+      router.push(`/landing-lab/edit?template=${encodeURIComponent(template.id)}`);
+      return;
+    }
+    setCreating(true);
+    try {
+      // POST a fresh server-side copy keyed to this user. Each click
+      // mints exactly ONE durable project. The editor opens it via
+      // ?p=<id> and from there every save flows through the same row,
+      // so reload / re-entry / multi-device all see the same draft —
+      // no more "duplicada desde cero".
+      const tplName = template.name || 'Template';
+      const res = await fetch('/api/landing-lab/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          name: `${tplName} — Sin producto`,
+          template_id: template.id,
+          cta_url: 'https://',
+          project_data: {
+            texts: {},
+            images: {},
+            videos: {},
+            imageSizes: {},
+            imageShapes: {},
+            imageStyles: {},
+            videoSizes: {},
+            layoutOrder: null,
+          },
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.project?.id) {
+        throw new Error(data?.error || `No se pudo crear la copia (HTTP ${res.status})`);
+      }
+      router.push(`/landing-lab/edit?p=${encodeURIComponent(data.project.id)}`);
+    } catch (e: any) {
+      console.error('[template/use] create failed:', e);
+      setCreateError(e?.message || 'No se pudo crear la copia del template');
+      setCreating(false);
+    }
   }
 
   function customizeWithAi() {
@@ -163,15 +214,18 @@ export default function TemplatePreviewPage() {
             <div className="flex flex-col gap-2">
               <button
                 onClick={useTemplateRaw}
-                disabled={template.comingSoon}
+                disabled={template.comingSoon || creating}
                 className="rounded-lg bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white/30"
               >
-                Usar esta plantilla →
+                {creating ? 'Creando copia…' : 'Usar esta plantilla →'}
               </button>
               <p className="text-xs text-white/45">
                 Crea una copia del template en tu cuenta. Editás texto, imágenes, secciones libremente.
                 El template del sistema nunca se modifica.
               </p>
+              {createError && (
+                <p className="text-xs text-red-400">{createError}</p>
+              )}
             </div>
 
             <div className="my-1 border-t border-white/5" />
@@ -215,10 +269,10 @@ export default function TemplatePreviewPage() {
           </button>
           <button
             onClick={useTemplateRaw}
-            disabled={template.comingSoon}
+            disabled={template.comingSoon || creating}
             className="flex-1 rounded-lg bg-white px-3 py-2.5 text-sm font-semibold text-black hover:bg-white/90 disabled:bg-white/30"
           >
-            Usar plantilla →
+            {creating ? 'Creando…' : 'Usar plantilla →'}
           </button>
         </div>
       </div>
