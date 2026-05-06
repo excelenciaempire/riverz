@@ -575,7 +575,10 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
   <aside id="block-palette" aria-label="Bloques">
     <div class="bp-group-label">Layout</div>
     <button class="bp-item" draggable="true" data-block-type="section" type="button" title="Sección nueva (banda completa)"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="3.5" width="17" height="13" rx="1.5" stroke="currentColor" stroke-width="1.5"/><line x1="1.5" y1="7.5" x2="18.5" y2="7.5" stroke="currentColor" stroke-width="1.5"/><line x1="1.5" y1="12.5" x2="18.5" y2="12.5" stroke="currentColor" stroke-width="1.5"/></svg></span><span class="bp-label">Sección</span></button>
-    <button class="bp-item" draggable="true" data-block-type="row" type="button" title="Fila con 2 columnas"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="4.5" width="7.5" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="4.5" width="7.5" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/></svg></span><span class="bp-label">Fila</span></button>
+    <button class="bp-item" draggable="true" data-block-type="row1" type="button" title="Fila — 1 columna"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="4.5" width="17" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/></svg></span><span class="bp-label">1 col</span></button>
+    <button class="bp-item" draggable="true" data-block-type="row2" type="button" title="Fila — 2 columnas (responsive)"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="4.5" width="7.5" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="4.5" width="7.5" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/></svg></span><span class="bp-label">2 col</span></button>
+    <button class="bp-item" draggable="true" data-block-type="row3" type="button" title="Fila — 3 columnas (responsive)"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="4.5" width="5" height="11" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="7.5" y="4.5" width="5" height="11" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="13.5" y="4.5" width="5" height="11" rx="1" stroke="currentColor" stroke-width="1.4"/></svg></span><span class="bp-label">3 col</span></button>
+    <button class="bp-item" draggable="true" data-block-type="row4" type="button" title="Fila — 4 columnas (responsive)"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="5" width="3.5" height="10" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="6" y="5" width="3.5" height="10" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="10.5" y="5" width="3.5" height="10" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="15" y="5" width="3.5" height="10" rx="1" stroke="currentColor" stroke-width="1.4"/></svg></span><span class="bp-label">4 col</span></button>
     <button class="bp-item" draggable="true" data-block-type="column" type="button" title="Columna nueva"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="6.5" y="2.5" width="7" height="15" rx="1" stroke="currentColor" stroke-width="1.5"/><line x1="8.5" y1="6" x2="11.5" y2="6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="8.5" y1="9" x2="11.5" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="8.5" y1="12" x2="10.5" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="bp-label">Columna</span></button>
 
     <div class="bp-group-label">Texto</div>
@@ -661,6 +664,15 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         <div class="in-row" style="margin-top:10px">
           <button class="in-btn flex danger" type="button" id="ins-vid-del" title="Borrar video">🗑 Eliminar video</button>
         </div>
+      </div>
+      <!-- Row-block controls: appears when the selection is (or is inside)
+           a [data-rz-kind="row"]. Lets the user switch between 1/2/3/4
+           columns; the responsive collapse on narrow containers comes
+           from the rz-row CSS that ships in RIVERZ_SIZE_CSS. -->
+      <div class="in-section" id="ins-row-section" style="display:none">
+        <div class="in-label">Columnas</div>
+        <div class="in-row in-seg" id="ins-row-cols-seg"></div>
+        <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.4">Las filas colapsan a 1 columna en móvil automáticamente.</p>
       </div>
       <div class="in-section">
         <div class="in-label">Acciones</div>
@@ -1478,7 +1490,31 @@ var RIVERZ_SIZE_CSS =
   '[data-v-video].riverz-vsize-50,[data-v-video].riverz-vsize-70,[data-v-video].riverz-vsize-85{margin-left:auto!important;margin-right:auto!important;display:block}\n' +
   '[data-v-video].riverz-vsize-50{max-width:50%!important;width:50%}\n' +
   '[data-v-video].riverz-vsize-70{max-width:70%!important;width:70%}\n' +
-  '[data-v-video].riverz-vsize-85{max-width:85%!important;width:85%}\n';
+  '[data-v-video].riverz-vsize-85{max-width:85%!important;width:85%}\n' +
+  '/* Responsive multi-column rows. data-rz-cols="N" picks the column count.\n' +
+  '   Always 1fr on narrow containers; ramp up at 600px / 900px so the row\n' +
+  '   collapses cleanly on phones inside templates that use container queries. */\n' +
+  '[data-rz-kind="row"]{display:grid;grid-template-columns:1fr}\n' +
+  '@container pp (min-width:600px){\n' +
+  '  [data-rz-kind="row"][data-rz-cols="2"]{grid-template-columns:repeat(2,1fr)}\n' +
+  '  [data-rz-kind="row"][data-rz-cols="3"]{grid-template-columns:repeat(2,1fr)}\n' +
+  '  [data-rz-kind="row"][data-rz-cols="4"]{grid-template-columns:repeat(2,1fr)}\n' +
+  '}\n' +
+  '@container pp (min-width:900px){\n' +
+  '  [data-rz-kind="row"][data-rz-cols="3"]{grid-template-columns:repeat(3,1fr)}\n' +
+  '  [data-rz-kind="row"][data-rz-cols="4"]{grid-template-columns:repeat(4,1fr)}\n' +
+  '}\n' +
+  '/* Fallback for non-template (Vitalu) projects where no `pp` container\n' +
+  '   exists — use the iframe viewport so the rows still collapse on mobile. */\n' +
+  '@media (min-width:600px){\n' +
+  '  [data-rz-kind="row"][data-rz-cols="2"]{grid-template-columns:repeat(2,1fr)}\n' +
+  '  [data-rz-kind="row"][data-rz-cols="3"]{grid-template-columns:repeat(2,1fr)}\n' +
+  '  [data-rz-kind="row"][data-rz-cols="4"]{grid-template-columns:repeat(2,1fr)}\n' +
+  '}\n' +
+  '@media (min-width:900px){\n' +
+  '  [data-rz-kind="row"][data-rz-cols="3"]{grid-template-columns:repeat(3,1fr)}\n' +
+  '  [data-rz-kind="row"][data-rz-cols="4"]{grid-template-columns:repeat(4,1fr)}\n' +
+  '}\n';
 
 // Load JSON data from script tags (avoids JS string escaping issues)
 var DEFAULT_TEXTS = JSON.parse(document.getElementById('data-default').textContent);
@@ -1826,7 +1862,15 @@ var _paletteSrc = null;
 // nextAutoSlug() bumps to avoid collisions on save.
 var BLOCK_TEMPLATES = {
   section: '<section data-rz-kind="section" style="padding:80px 24px;background:transparent;position:relative"><div style="max-width:760px;margin:0 auto;width:100%"><h2 data-v-text="auto-{slug}-h" style="font-size:32px;font-weight:700;letter-spacing:-.01em;line-height:1.15;margin:0 0 18px">Nueva sección</h2><p data-v-text="auto-{slug}-p" style="font-size:16px;line-height:1.7;margin:0;opacity:.78">Hacé click en cualquier bloque para ver el toolbar de sección. Desde ahí ajustás padding, duplicás o borrás.</p></div></section>',
-  row: '<div data-rz-kind="row" style="display:grid;grid-template-columns:repeat(2,1fr);gap:24px;padding:16px 0;margin:24px 0"><div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}-l" style="margin:0;font-size:16px;line-height:1.7">Columna izquierda</p></div><div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}-r" style="margin:0;font-size:16px;line-height:1.7">Columna derecha</p></div></div>',
+  // Row blocks ship with data-rz-cols="N" — the rz-row CSS shipped in
+  // RIVERZ_SIZE_CSS turns that attribute into a responsive grid:
+  // always 1 col on narrow containers, ramp up to N at the breakpoints.
+  // Inspector "Columnas" segmented control rewrites data-rz-cols + adds
+  // / removes child cols on the fly.
+  row1: '<div data-rz-kind="row" data-rz-cols="1" style="gap:24px;padding:16px 0;margin:24px 0"><div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}-1" style="margin:0;font-size:16px;line-height:1.7">Columna 1</p></div></div>',
+  row2: '<div data-rz-kind="row" data-rz-cols="2" style="gap:24px;padding:16px 0;margin:24px 0"><div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}-1" style="margin:0;font-size:16px;line-height:1.7">Columna 1</p></div><div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}-2" style="margin:0;font-size:16px;line-height:1.7">Columna 2</p></div></div>',
+  row3: '<div data-rz-kind="row" data-rz-cols="3" style="gap:20px;padding:16px 0;margin:24px 0"><div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}-1" style="margin:0;font-size:16px;line-height:1.7">Columna 1</p></div><div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}-2" style="margin:0;font-size:16px;line-height:1.7">Columna 2</p></div><div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}-3" style="margin:0;font-size:16px;line-height:1.7">Columna 3</p></div></div>',
+  row4: '<div data-rz-kind="row" data-rz-cols="4" style="gap:18px;padding:16px 0;margin:24px 0"><div data-rz-kind="col" style="padding:14px;min-width:0"><p data-v-text="auto-{slug}-1" style="margin:0;font-size:15px;line-height:1.7">Columna 1</p></div><div data-rz-kind="col" style="padding:14px;min-width:0"><p data-v-text="auto-{slug}-2" style="margin:0;font-size:15px;line-height:1.7">Columna 2</p></div><div data-rz-kind="col" style="padding:14px;min-width:0"><p data-v-text="auto-{slug}-3" style="margin:0;font-size:15px;line-height:1.7">Columna 3</p></div><div data-rz-kind="col" style="padding:14px;min-width:0"><p data-v-text="auto-{slug}-4" style="margin:0;font-size:15px;line-height:1.7">Columna 4</p></div></div>',
   column: '<div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-{slug}" style="margin:0;font-size:16px;line-height:1.7">Nueva columna</p></div>',
   text: '<p data-v-text="auto-{slug}" style="margin:0 0 1em;font-size:16px;line-height:1.6">Hacé click acá para editar este párrafo. Podés agregar tantos como necesites.</p>',
   heading: '<h2 data-v-text="auto-{slug}" style="font-size:28px;font-weight:800;letter-spacing:-0.01em;margin:24px 0 12px;line-height:1.2">Nuevo encabezado</h2>',
@@ -1870,7 +1914,7 @@ function spawnBlockFromPalette(blockType, parent, beforeEl){
     var row = parent.closest && parent.closest('[data-rz-kind="row"]');
     if (!row && parent.matches && parent.matches('[data-rz-kind="row"]')) row = parent;
     if (row) { beforeEl = (beforeEl && row.contains(beforeEl)) ? beforeEl : null; parent = row; }
-  } else if (blockType === 'row') {
+  } else if (blockType === 'row' || /^row[1-4]$/.test(blockType)) {
     var col = parent.closest && parent.closest('[data-rz-kind="col"]');
     if (col && col.parentElement) { parent = col.parentElement; beforeEl = col.nextSibling; }
   }
@@ -2340,7 +2384,74 @@ function insRefresh(){
   var vidSec = document.getElementById('ins-video-section');
   if (vidSec) vidSec.style.display = vidEl2 ? '' : 'none';
   if (vidEl2) _insRenderVideoSection(vidEl2.getAttribute('data-v-video'));
+  // Row-block controls — show whenever the selection is (or sits
+  // inside) a [data-rz-kind="row"]. Lets the user pick 1/2/3/4 cols.
+  var rowEl = (_insEl.matches && _insEl.matches('[data-rz-kind="row"]')) ? _insEl
+            : (_insEl.closest ? _insEl.closest('[data-rz-kind="row"]') : null);
+  var rowSec = document.getElementById('ins-row-section');
+  if (rowSec) rowSec.style.display = rowEl ? '' : 'none';
+  if (rowEl) _insRenderRowSection(rowEl);
 }
+
+// Build the columns segmented control for the active row. Clicking a
+// value rewrites data-rz-cols on the row + reconciles the number of
+// child <[data-rz-kind="col"]> elements (appends empties to grow,
+// merges contents into the last surviving col when shrinking).
+function _insRenderRowSection(rowEl){
+  var cur = rowEl.getAttribute('data-rz-cols') || '2';
+  var wrap = document.getElementById('ins-row-cols-seg');
+  if (!wrap) return;
+  wrap.innerHTML = ['1','2','3','4'].map(function(n){
+    var on = (n === cur) ? ' is-on' : '';
+    return '<button type="button" class="seg-b'+on+'" data-val="'+n+'">'+n+' col</button>';
+  }).join('');
+  wrap.querySelectorAll('.seg-b').forEach(function(b){
+    b.onclick = function(){ setRowCols(rowEl, parseInt(b.dataset.val,10)); _insRenderRowSection(rowEl); };
+  });
+}
+
+function setRowCols(rowEl, n){
+  if (!rowEl || !n) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  rowEl.setAttribute('data-rz-cols', String(n));
+  var cols = Array.prototype.slice.call(rowEl.querySelectorAll(':scope > [data-rz-kind="col"]'));
+  if (cols.length < n){
+    // Grow: append empty cols. Slug uses the highest auto-N already on
+    // the page so new keys don't collide with existing ones.
+    while (cols.length < n){
+      var slug = (typeof nextAutoSlug === 'function') ? nextAutoSlug() : ('c'+Date.now());
+      var html = '<div data-rz-kind="col" style="padding:16px;min-width:0"><p data-v-text="auto-'+slug+'" style="margin:0;font-size:16px;line-height:1.7">Columna '+(cols.length+1)+'</p></div>';
+      var tmp = document.createElement('div'); tmp.innerHTML = html;
+      var newCol = tmp.firstElementChild;
+      rowEl.appendChild(newCol);
+      cols.push(newCol);
+    }
+  } else if (cols.length > n){
+    // Shrink: keep the first n-1, then merge everything from the rest
+    // into col n-1 so the user doesn't lose copy. Empty cols (just
+    // the placeholder paragraph) are dropped silently.
+    var keepLast = cols[n - 1];
+    for (var i = n; i < cols.length; i++){
+      var c = cols[i];
+      // Move every child of c that isn't a stale section handle into
+      // keepLast. Skip empty placeholder paragraphs that match the
+      // default copy.
+      Array.from(c.childNodes).forEach(function(node){
+        if (node.nodeType === 1 && node.classList && node.classList.contains('riverz-section-handle')) return;
+        if (node.nodeType === 1 && node.tagName === 'P' && /^Columna \d+$/.test((node.textContent||'').trim())) return;
+        keepLast.appendChild(node);
+      });
+      c.remove();
+    }
+  }
+  // Re-run wiring so any new cols pick up dnd / contentEditable / image
+  // overlays + the slot tables stay in sync with the new DOM.
+  if (typeof rebuildSlotTables === 'function') rebuildSlotTables();
+  if (typeof initEdit === 'function') initEdit();
+  if (typeof makeSectionsDraggable === 'function') makeSectionsDraggable();
+  if (typeof saveAll === 'function') saveAll();
+}
+window.setRowCols = setRowCols;
 
 // Build the size + shape segmented controls for the active image slot
 // and wire the action buttons. Re-runs on every selection change so
@@ -3657,7 +3768,9 @@ function buildHTML(proj){
   clone.querySelectorAll('.iov,.idel,#font-ctrl,#sec-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-img-size,.riverz-vid-edit,.riverz-vid-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
   clone.querySelectorAll('.riverz-sec-active').forEach(function(el){ el.classList.remove('riverz-sec-active'); });
   clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
-  clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired],[data-rz-kind]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired','data-rz-kind'].forEach(function(a){ el.removeAttribute(a); }); });
+  clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired'].forEach(function(a){ el.removeAttribute(a); }); });
+  // Keep data-rz-kind / data-rz-cols on the published page — the
+  // row CSS in RIVERZ_SIZE_CSS uses them to drive the responsive grid.
   clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
   // Bake responsive <picture>/<source> wrappers for any slot with a
   // mobile-only override BEFORE we strip data-v-img — we need that attribute
@@ -3710,7 +3823,9 @@ function buildPublishPayload(proj){
   clone.querySelectorAll('.iov,.idel,#font-ctrl,#sec-ctrl,.riverz-img-edit,.riverz-img-del,.riverz-img-size,.riverz-vid-edit,.riverz-vid-del,.riverz-section-handle').forEach(function(el){el.parentNode&&el.parentNode.removeChild(el);});
   clone.querySelectorAll('.riverz-sec-active').forEach(function(el){ el.classList.remove('riverz-sec-active'); });
   clone.querySelectorAll('[draggable]').forEach(function(el){ el.removeAttribute('draggable'); });
-  clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired],[data-rz-kind]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired','data-rz-kind'].forEach(function(a){ el.removeAttribute(a); }); });
+  clone.querySelectorAll('[data-section-id],[data-section-handle],[data-has-comment],[data-reorder-container],[data-drag-wired]').forEach(function(el){ ['data-section-id','data-section-handle','data-has-comment','data-reorder-container','data-drag-wired'].forEach(function(a){ el.removeAttribute(a); }); });
+  // Keep data-rz-kind / data-rz-cols on the published page — the
+  // row CSS in RIVERZ_SIZE_CSS uses them to drive the responsive grid.
   clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
   clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
   clone.classList.remove('edit-mode');
@@ -4397,6 +4512,18 @@ function initKeys(){
 }
 
 document.addEventListener('DOMContentLoaded',function(){
+  // Inject the Riverz runtime CSS (per-slot size/shape/video utilities
+  // + responsive multi-column row rules) into a global <style> so
+  // non-template projects (Vitalu) also get the rules. For template
+  // projects applyTemplateContent already appends the same string into
+  // its own data-tpl block, so the duplication is harmless and ensures
+  // the published HTML always carries the rules whichever path it took.
+  if (!document.getElementById('riverz-runtime-css')){
+    var s = document.createElement('style');
+    s.id = 'riverz-runtime-css';
+    s.textContent = (typeof RIVERZ_SIZE_CSS === 'string') ? RIVERZ_SIZE_CSS : '';
+    document.head.appendChild(s);
+  }
   initEdit(); initKeys(); loadAll(); initStickyScroll();
   // Wire the block palette once on first paint — even before a template
   // mounts, so the drag-source items are immediately interactive. The

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   LANDING_TEMPLATES,
@@ -19,6 +19,10 @@ export default function TemplatePreviewPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params?.id || '';
+  // Preview viewport — same toggle pattern as the editor's vp-desk /
+  // vp-mob buttons. Mobile = 390px wide phone-shape sheet so the user
+  // can preview the template's mobile breakpoints before cloning.
+  const [viewport, setViewport] = useState<'desktop' | 'mobile'>('desktop');
 
   const template = useMemo(
     () => LANDING_TEMPLATES.find((t) => t.id === id),
@@ -81,19 +85,72 @@ export default function TemplatePreviewPage() {
             </span>
             <span className="text-sm font-semibold">{template.name}</span>
           </div>
-          <div style={{ width: 130 }} />
+          {/* Desktop / Mobile preview toggle. Same UX as the editor's
+              viewport switcher — clicking Movil shrinks the iframe to
+              390px wide so the user can sanity-check the template's
+              responsive layout before cloning. */}
+          <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-0.5">
+            <button
+              onClick={() => setViewport('desktop')}
+              className={
+                'rounded px-3 py-1 text-xs font-semibold transition ' +
+                (viewport === 'desktop'
+                  ? 'bg-white text-black'
+                  : 'text-white/65 hover:text-white')
+              }
+              title="Vista escritorio"
+            >
+              🖥 Desktop
+            </button>
+            <button
+              onClick={() => setViewport('mobile')}
+              className={
+                'rounded px-3 py-1 text-xs font-semibold transition ' +
+                (viewport === 'mobile'
+                  ? 'bg-white text-black'
+                  : 'text-white/65 hover:text-white')
+              }
+              title="Vista móvil"
+            >
+              📱 Movil
+            </button>
+          </div>
         </div>
 
         {/* Body: preview + action panel */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Live preview iframe */}
-          <div className="flex-1 overflow-hidden bg-white">
-            <iframe
-              src={template.htmlUrl}
-              title={`${template.name} preview`}
-              className="h-full w-full"
-              style={{ border: 0 }}
-            />
+          {/* Live preview iframe — desktop fills the pane, mobile renders
+              as a centered 390px phone-shape sheet on a dark backdrop. */}
+          <div
+            className={
+              'flex flex-1 overflow-auto ' +
+              (viewport === 'mobile'
+                ? 'items-start justify-center bg-[#1a1d28] py-6'
+                : 'overflow-hidden bg-white')
+            }
+          >
+            {viewport === 'mobile' ? (
+              <iframe
+                src={template.htmlUrl}
+                title={`${template.name} preview`}
+                style={{
+                  width: 390,
+                  height: 'calc(100vh - 120px)',
+                  border: 0,
+                  borderRadius: 18,
+                  boxShadow:
+                    '0 12px 40px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.04)',
+                  background: '#fff',
+                }}
+              />
+            ) : (
+              <iframe
+                src={template.htmlUrl}
+                title={`${template.name} preview`}
+                className="h-full w-full"
+                style={{ border: 0 }}
+              />
+            )}
           </div>
 
           {/* Right panel: details + actions */}
