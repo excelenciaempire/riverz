@@ -330,6 +330,12 @@ body.has-selection #inspector{flex:0 0 240px;width:240px}
 .in-seg .seg-b{flex:1;min-width:48px;height:28px;padding:0 8px;background:#111420;border:1px solid #252840;color:#9AA3C0;border-radius:5px;font-family:inherit;font-size:10.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .12s}
 .in-seg .seg-b:hover{background:#1E2436;color:#fff;border-color:#3a3f55}
 .in-seg .seg-b.is-on{background:#f7ff9e;color:#0a0a0a;border-color:#f7ff9e}
+.in-seg-mini .seg-b{min-width:28px;height:24px;font-size:10px;padding:0 4px}
+/* Sub-headings inside the image inspector — group "Tamaño" / "Forma" */
+.in-sub-h{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9AA3C0;font-weight:800;margin:18px 0 10px;padding-top:12px;border-top:1px solid #14171f}
+.in-mini-label{font-size:10px;color:#9AA3C0;letter-spacing:.04em;font-weight:600;align-self:center}
+.in-grid-2{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:center;margin-top:8px}
+.in-grid-2 + .in-grid-2{margin-top:6px}
 .in-close{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:4px;border:0;background:transparent;color:#5B6490;cursor:pointer;font-size:13px;line-height:1}
 .in-close:hover{background:rgba(255,255,255,.06);color:#C8CAD8}
 .in-head{position:relative}
@@ -651,11 +657,59 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         <div class="in-row" style="margin-top:6px">
           <button class="in-btn flex" type="button" id="ins-img-ai" title="Generar con IA">✨ Generar con IA</button>
         </div>
-        <div class="in-label" style="margin-top:14px">Tamaño</div>
-        <div class="in-row in-seg" id="ins-img-size-seg"></div>
-        <div class="in-label" style="margin-top:14px">Forma</div>
-        <div class="in-row in-seg" id="ins-img-shape-seg"></div>
-        <div class="in-row" style="margin-top:10px">
+
+        <!-- Tamaño group: Marco (shape) + Ancho/Altura with px/% toggle -->
+        <div class="in-sub-h">Tamaño</div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Marco</span>
+          <select class="in-btn flex" id="ins-img-marco">
+            <option value="original">Original</option>
+            <option value="square">Cuadrado</option>
+            <option value="circle">Círculo</option>
+          </select>
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Ancho</span>
+          <div class="in-row" style="gap:4px">
+            <input type="number" inputmode="numeric" class="in-num" id="ins-img-w" placeholder="Auto" />
+            <div class="in-seg in-seg-mini" id="ins-img-w-unit"></div>
+          </div>
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Altura</span>
+          <div class="in-row" style="gap:4px">
+            <input type="number" inputmode="numeric" class="in-num" id="ins-img-h" placeholder="Auto" />
+            <div class="in-seg in-seg-mini" id="ins-img-h-unit"></div>
+          </div>
+        </div>
+
+        <!-- Forma group: Esquina (radius) + Sombra (preset shadow) + Escalar (object-fit) -->
+        <div class="in-sub-h">Forma</div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Esquina</span>
+          <div class="in-row" style="gap:4px">
+            <input type="number" inputmode="numeric" min="0" max="200" class="in-num" id="ins-img-radius" placeholder="0" />
+            <span style="font-size:10px;color:#5B6490;font-weight:700;letter-spacing:.06em">px</span>
+          </div>
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Sombra</span>
+          <select class="in-btn flex" id="ins-img-shadow">
+            <option value="none">Ninguna</option>
+            <option value="sm">Suave</option>
+            <option value="md">Media</option>
+            <option value="lg">Pronunciada</option>
+          </select>
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Escalar</span>
+          <div class="in-seg" id="ins-img-fit-seg">
+            <button type="button" class="seg-b" data-val="cover" title="Llenar (cover)">⬛</button>
+            <button type="button" class="seg-b" data-val="contain" title="Ajustar (contain)">▣</button>
+          </div>
+        </div>
+
+        <div class="in-row" style="margin-top:14px">
           <button class="in-btn flex danger" type="button" id="ins-img-del" title="Borrar imagen">🗑 Eliminar imagen</button>
         </div>
       </div>
@@ -680,6 +734,19 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         <div class="in-label">Columnas</div>
         <div class="in-row in-seg" id="ins-row-cols-seg"></div>
         <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.4">Las filas colapsan a 1 columna en móvil automáticamente.</p>
+      </div>
+      <!-- Alignment controls — visible for every selection. Writes
+           text-align on the element so child text + inline-block media
+           re-justify; for blocks where text-align does nothing (grid
+           cells, etc.) we also flip justify-self / margin auto so the
+           block itself slides left / right / center. -->
+      <div class="in-section" id="ins-align-section">
+        <div class="in-label">Alineación</div>
+        <div class="in-row in-seg" id="ins-align-seg">
+          <button type="button" class="seg-b" data-val="left" title="Izquierda">⇤</button>
+          <button type="button" class="seg-b" data-val="center" title="Centro">⇔</button>
+          <button type="button" class="seg-b" data-val="right" title="Derecha">⇥</button>
+        </div>
       </div>
       <div class="in-section">
         <div class="in-label">Acciones</div>
@@ -1670,6 +1737,7 @@ function applyTemplateContent(tpl){
   decorateVideoSlots();
   // Apply the active project's per-slot size + shape overrides (if any).
   if (typeof applyImageSizes === 'function') applyImageSizes();
+  if (typeof applyImageStyles === 'function') applyImageStyles();
   if (typeof applyVideoSizes === 'function') applyVideoSizes();
   // initEdit re-attaches contentEditable to the new [data-v-text] nodes.
   if (typeof initEdit === 'function') initEdit();
@@ -1898,8 +1966,11 @@ var BLOCK_TEMPLATES = {
 };
 function nextAutoSlug(){
   var max = 0;
-  document.querySelectorAll('#page-wrap [data-v-text^="auto-"], #page-wrap [data-v-img^="auto-"]').forEach(function(el){
-    var attr = el.getAttribute('data-v-text') || el.getAttribute('data-v-img') || '';
+  // Include data-v-video too — without it, two video drops would collide
+  // on the same auto-N slot key (proj.videos / VIDEO_KEYS would treat
+  // them as one), and the second drop appeared to "not work".
+  document.querySelectorAll('#page-wrap [data-v-text^="auto-"], #page-wrap [data-v-img^="auto-"], #page-wrap [data-v-video^="auto-"]').forEach(function(el){
+    var attr = el.getAttribute('data-v-text') || el.getAttribute('data-v-img') || el.getAttribute('data-v-video') || '';
     var m = attr.match(/^auto-(\d+)/);
     if (m) max = Math.max(max, parseInt(m[1], 10));
   });
@@ -2463,7 +2534,52 @@ function insRefresh(){
   var rowSec = document.getElementById('ins-row-section');
   if (rowSec) rowSec.style.display = rowEl ? '' : 'none';
   if (rowEl) _insRenderRowSection(rowEl);
+  // Alignment — always visible so any block can be left/center/right
+  // aligned. Highlights whichever value is currently in effect on the
+  // element's inline style or computed text-align.
+  _insRenderAlignSection(_insEl);
 }
+
+// Apply an alignment value to the selected element. Sets text-align so
+// inner text + inline-block media re-justify, and also tweaks margin /
+// justify-self so block-level images / cards slide visually. Negative
+// transitions: clearing back to "default" wipes the inline style.
+function _insRenderAlignSection(el){
+  var wrap = document.getElementById('ins-align-seg');
+  if (!wrap || !el) return;
+  var cur = (el.style && el.style.textAlign) || '';
+  if (!cur){
+    var ta = window.getComputedStyle(el).textAlign;
+    if (ta === 'left' || ta === 'center' || ta === 'right') cur = ta;
+  }
+  Array.prototype.forEach.call(wrap.querySelectorAll('.seg-b'), function(b){
+    b.classList.toggle('is-on', b.dataset.val === cur);
+    b.onclick = function(){ setBlockAlign(el, b.dataset.val); _insRenderAlignSection(el); };
+  });
+}
+function setBlockAlign(el, val){
+  if (!el) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  el.style.textAlign = val;
+  // Block-level slot containers (images / videos with explicit width)
+  // also need margin auto + justify-self overrides so they actually
+  // slide instead of just realigning their inner text.
+  if (val === 'center'){
+    el.style.marginLeft = 'auto';
+    el.style.marginRight = 'auto';
+    el.style.justifySelf = 'center';
+  } else if (val === 'right'){
+    el.style.marginLeft = 'auto';
+    el.style.marginRight = '0';
+    el.style.justifySelf = 'end';
+  } else {
+    el.style.marginLeft = '0';
+    el.style.marginRight = 'auto';
+    el.style.justifySelf = 'start';
+  }
+  if (typeof saveAll === 'function') saveAll();
+}
+window.setBlockAlign = setBlockAlign;
 
 // Build the columns segmented control for the active row. Clicking a
 // value rewrites data-rz-cols on the row + reconciles the number of
@@ -2525,33 +2641,75 @@ function setRowCols(rowEl, n){
 }
 window.setRowCols = setRowCols;
 
-// Build the size + shape segmented controls for the active image slot
-// and wire the action buttons. Re-runs on every selection change so
-// .is-on always reflects the current proj.imageSizes / proj.imageShapes.
+// Build the rich image inspector: Marco (shape) / Ancho-Altura with
+// px or % unit / Esquina (border-radius) / Sombra (preset box-shadow) /
+// Escalar (object-fit on the inner img). All values persist into
+// proj.imageStyles[slot] so they survive reload + republish, and get
+// applied to the live DOM by applyImageStyles().
 function _insRenderImageSection(slot){
   var proj = (typeof getActive === 'function') ? getActive() : null;
-  var curSize = (proj && proj.imageSizes && proj.imageSizes[slot]) || '0';
-  var curShape = (proj && proj.imageShapes && proj.imageShapes[slot]) || 'original';
-  var sizeWrap = document.getElementById('ins-img-size-seg');
-  if (sizeWrap){
-    sizeWrap.innerHTML = IMG_SIZE_OPTIONS.map(function(o){
-      var on = (o.value === curSize) ? ' is-on' : '';
-      return '<button type="button" class="seg-b'+on+'" data-val="'+o.value+'">'+o.label+'</button>';
-    }).join('');
-    sizeWrap.querySelectorAll('.seg-b').forEach(function(b){
-      b.onclick = function(){ setImgSize(slot, b.dataset.val); _insRenderImageSection(slot); };
+  var st = (proj && proj.imageStyles && proj.imageStyles[slot]) || {};
+  // Back-compat: shape used to live on imageShapes; widen the read so
+  // existing projects don't lose their selection on first paint.
+  var marco = st.marco || (proj && proj.imageShapes && proj.imageShapes[slot]) || 'original';
+  // Marco dropdown
+  var marcoEl = document.getElementById('ins-img-marco');
+  if (marcoEl){
+    marcoEl.value = marco;
+    marcoEl.onchange = function(){ setImgStyle(slot, 'marco', marcoEl.value); };
+  }
+  // Width / Height with px/% unit toggle
+  function wireSize(prefix, propVal, propUnit){
+    var input = document.getElementById('ins-img-'+prefix);
+    var unitWrap = document.getElementById('ins-img-'+prefix+'-unit');
+    if (input){
+      var v = st[propVal];
+      input.value = (v === undefined || v === null || v === '') ? '' : v;
+      input.oninput = function(){
+        var raw = input.value.trim();
+        var num = raw === '' ? '' : parseInt(raw, 10);
+        setImgStyle(slot, propVal, raw === '' ? '' : (isNaN(num) ? '' : num));
+      };
+    }
+    if (unitWrap){
+      var curUnit = st[propUnit] || 'px';
+      unitWrap.innerHTML = ['px','%'].map(function(u){
+        var on = (u === curUnit) ? ' is-on' : '';
+        return '<button type="button" class="seg-b'+on+'" data-val="'+u+'">'+u+'</button>';
+      }).join('');
+      unitWrap.querySelectorAll('.seg-b').forEach(function(b){
+        b.onclick = function(){ setImgStyle(slot, propUnit, b.dataset.val); _insRenderImageSection(slot); };
+      });
+    }
+  }
+  wireSize('w', 'width', 'widthUnit');
+  wireSize('h', 'height', 'heightUnit');
+  // Esquina (radius)
+  var rEl = document.getElementById('ins-img-radius');
+  if (rEl){
+    rEl.value = (st.radius === undefined || st.radius === null) ? '' : st.radius;
+    rEl.oninput = function(){
+      var raw = rEl.value.trim();
+      var num = raw === '' ? '' : parseInt(raw, 10);
+      setImgStyle(slot, 'radius', raw === '' ? '' : (isNaN(num) ? '' : num));
+    };
+  }
+  // Sombra
+  var shEl = document.getElementById('ins-img-shadow');
+  if (shEl){
+    shEl.value = st.shadow || 'none';
+    shEl.onchange = function(){ setImgStyle(slot, 'shadow', shEl.value); };
+  }
+  // Escalar (object-fit)
+  var fitWrap = document.getElementById('ins-img-fit-seg');
+  if (fitWrap){
+    var curFit = st.fit || 'cover';
+    fitWrap.querySelectorAll('.seg-b').forEach(function(b){
+      b.classList.toggle('is-on', b.dataset.val === curFit);
+      b.onclick = function(){ setImgStyle(slot, 'fit', b.dataset.val); _insRenderImageSection(slot); };
     });
   }
-  var shapeWrap = document.getElementById('ins-img-shape-seg');
-  if (shapeWrap){
-    shapeWrap.innerHTML = IMG_SHAPE_OPTIONS.map(function(o){
-      var on = (o.value === curShape) ? ' is-on' : '';
-      return '<button type="button" class="seg-b'+on+'" data-val="'+o.value+'">'+o.label+'</button>';
-    }).join('');
-    shapeWrap.querySelectorAll('.seg-b').forEach(function(b){
-      b.onclick = function(){ setImgShape(slot, b.dataset.val); _insRenderImageSection(slot); };
-    });
-  }
+  // Action buttons
   var changeBtn = document.getElementById('ins-img-change');
   if (changeBtn) changeBtn.onclick = function(){ if (typeof pickImg === 'function') pickImg(slot); };
   var aiBtn = document.getElementById('ins-img-ai');
@@ -2559,6 +2717,78 @@ function _insRenderImageSection(slot){
   var delBtn = document.getElementById('ins-img-del');
   if (delBtn) delBtn.onclick = function(e){ if (typeof delImg === 'function') delImg(e || {stopPropagation:function(){},preventDefault:function(){}}, slot); };
 }
+
+// Single setter for any image-style property. Marco still updates the
+// legacy proj.imageShapes dict so old serialized projects keep working,
+// and applyImageStyles re-writes inline styles on the slot afterwards.
+function setImgStyle(slot, key, val){
+  var proj = getActive(); if (!proj) return;
+  if (!proj.imageStyles) proj.imageStyles = {};
+  if (!proj.imageStyles[slot]) proj.imageStyles[slot] = {};
+  if (val === '' || val === null || val === undefined) delete proj.imageStyles[slot][key];
+  else proj.imageStyles[slot][key] = val;
+  if (key === 'marco'){
+    if (!proj.imageShapes) proj.imageShapes = {};
+    if (val === 'original' || val === '' || val === null || val === undefined) delete proj.imageShapes[slot];
+    else proj.imageShapes[slot] = val;
+  }
+  applyImageStyles();
+  if (typeof applyImageSizes === 'function') applyImageSizes();
+  if (typeof qSave === 'function') qSave();
+}
+window.setImgStyle = setImgStyle;
+
+// Walk every [data-v-img] slot and rewrite its inline width/height/
+// border-radius/box-shadow/object-fit based on proj.imageStyles. Idempotent.
+function applyImageStyles(){
+  var proj = getActive(); if (!proj) return;
+  var styles = proj.imageStyles || {};
+  document.querySelectorAll('#page-wrap [data-v-img]').forEach(function(el){
+    var slot = el.getAttribute('data-v-img');
+    var st = styles[slot] || {};
+    // Width
+    if (st.width !== undefined && st.width !== ''){
+      el.style.width = st.width + (st.widthUnit || 'px');
+      el.style.maxWidth = '100%';
+    } else {
+      // Don't blow away widths set by riverz-size-NN classes — those
+      // live in proj.imageSizes and apply through CSS, so just clear
+      // the inline override.
+      if (el.style.width) el.style.width = '';
+    }
+    // Height
+    if (st.height !== undefined && st.height !== ''){
+      el.style.height = st.height + (st.heightUnit || 'px');
+    } else {
+      if (el.style.height) el.style.height = '';
+    }
+    // Esquina (radius)
+    if (st.radius !== undefined && st.radius !== ''){
+      el.style.borderRadius = st.radius + 'px';
+    } else if (el.style.borderRadius && !el.classList.contains('riverz-shape-circle') && !el.classList.contains('riverz-shape-square')){
+      el.style.borderRadius = '';
+    }
+    // Sombra
+    var shadowMap = {
+      'none': '',
+      'sm': '0 2px 8px rgba(0,0,0,.12)',
+      'md': '0 8px 24px rgba(0,0,0,.18)',
+      'lg': '0 18px 48px rgba(0,0,0,.28)'
+    };
+    if (st.shadow && st.shadow !== 'none' && shadowMap[st.shadow] !== undefined){
+      el.style.boxShadow = shadowMap[st.shadow];
+    } else if (el.style.boxShadow){
+      el.style.boxShadow = '';
+    }
+    // Escalar (object-fit on the inner img)
+    var img = el.querySelector('img');
+    if (img){
+      if (st.fit) img.style.objectFit = st.fit;
+      else if (img.style.objectFit && !img.closest('[class*="riverz-shape-"]')) img.style.objectFit = '';
+    }
+  });
+}
+window.applyImageStyles = applyImageStyles;
 
 // Same idea for video slots: change button opens the upload modal,
 // size segs route to setVideoSize, delete clears the slot.
@@ -3071,7 +3301,14 @@ function saveAll(){
     return false;
   }
 }
-function qSave(){if(isRestoring)return;isDirty=true;dot('dirty');clearTimeout(saveT);saveT=setTimeout(function(){collectTexts();snapshot();saveAll();},700);}
+function qSave(){if(isRestoring)return;isDirty=true;dot('dirty');clearTimeout(saveT);saveT=setTimeout(function(){collectTexts();snapshot();saveAll();saveT=null;},700);}
+// Cancel a pending qSave timer. Call this before doing your own
+// synchronous snapshot+saveAll so we don't end up with two history
+// entries for the same end state (the immediate one + the debounced
+// one firing 700ms later). Without this, the user sees the first
+// undo "do nothing" because both snapshots look identical.
+function flushQSavePending(){ if (saveT){ clearTimeout(saveT); saveT=null; } }
+window.flushQSavePending = flushQSavePending;
 
 // ── PROJECTS ─────────────────────────────────────────────────
 function uid(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
@@ -3220,7 +3457,9 @@ function activateProject(id){
   if(!proj.imageSizes) proj.imageSizes={};
   if(!proj.imageShapes) proj.imageShapes={};
   if(!proj.videoSizes) proj.videoSizes={};
+  if(!proj.imageStyles) proj.imageStyles={};
   applyImageSizes();
+  if (typeof applyImageStyles === 'function') applyImageStyles();
   if (typeof applyVideoSizes === 'function') applyVideoSizes();
   applyCTA(proj.ctaUrl);
   if (typeof reapplyBlockComments === 'function') reapplyBlockComments();
@@ -3628,6 +3867,11 @@ function delImg(e,key){
 // stick after undo because applyTexts only touches existing nodes.
 function snapshot(){
   if(isRestoring||!activeId)return;
+  // Cancel any pending debounced qSave snapshot — this synchronous
+  // snapshot subsumes it, so letting the timer fire later would just
+  // push a duplicate history entry that makes undo feel like it's
+  // skipping (the first undo "does nothing", the second finally moves).
+  if (typeof flushQSavePending === 'function') flushQSavePending();
   collectTexts();
   var proj=getActive();
   if(!proj)return;
@@ -3648,15 +3892,36 @@ function snapshot(){
     videos:JSON.parse(JSON.stringify(proj.videos||{})),
     imageSizes:JSON.parse(JSON.stringify(proj.imageSizes||{})),
     imageShapes:JSON.parse(JSON.stringify(proj.imageShapes||{})),
+    imageStyles:JSON.parse(JSON.stringify(proj.imageStyles||{})),
     videoSizes:JSON.parse(JSON.stringify(proj.videoSizes||{})),
     layoutOrder:proj.layoutOrder?JSON.parse(JSON.stringify(proj.layoutOrder)):null,
     html:rawHtml
   };
   if(!histMap[activeId]){histMap[activeId]=[];histIdx[activeId]=-1;}
+  // Skip if this snapshot is byte-identical to the most recent one in
+  // history. Multiple paths call snapshot() in quick succession (an
+  // action's manual snapshot + the post-action qSave that we already
+  // try to cancel), and a duplicate entry makes the first undo feel
+  // like a no-op because the user has to step past it before anything
+  // visible changes.
+  if (histMap[activeId].length > 0 && histIdx[activeId] === histMap[activeId].length - 1) {
+    var last = histMap[activeId][histIdx[activeId]];
+    if (last
+      && last.html === snap.html
+      && JSON.stringify(last.texts) === JSON.stringify(snap.texts)
+      && JSON.stringify(last.images) === JSON.stringify(snap.images)
+      && JSON.stringify(last.videos) === JSON.stringify(snap.videos)
+      && JSON.stringify(last.imageSizes) === JSON.stringify(snap.imageSizes)
+      && JSON.stringify(last.imageShapes) === JSON.stringify(snap.imageShapes)
+      && JSON.stringify(last.imageStyles) === JSON.stringify(snap.imageStyles)
+      && JSON.stringify(last.videoSizes) === JSON.stringify(snap.videoSizes)) {
+      return;
+    }
+  }
   histMap[activeId].splice(histIdx[activeId]+1);
   histMap[activeId].push(snap);
   // Cap at 40 (down from 60) since each entry now carries page-wrap
-  // HTML — keeps localStorage from blowing past quota on long sessions.
+  // HTML — keeps memory bounded on long sessions.
   if(histMap[activeId].length>40)histMap[activeId].shift();
   histIdx[activeId]=histMap[activeId].length-1;
   updateUR();
@@ -3684,11 +3949,18 @@ function applySnap(snap){
   isRestoring=true;
   var proj=getActive();
   if(!proj){isRestoring=false;return;}
+  // Capture scroll position BEFORE the innerHTML swap so we can restore
+  // it once the new content is laid out. Without this the user lands at
+  // the top of the page on every undo/redo even when the diff was small.
+  var paEl = g('page-area');
+  var preMax = paEl ? Math.max(1, paEl.scrollHeight - paEl.clientHeight) : 1;
+  var preRatio = paEl ? (paEl.scrollTop / preMax) : 0;
   proj.texts=JSON.parse(JSON.stringify(snap.texts||{}));
   proj.images=JSON.parse(JSON.stringify(snap.images||{}));
   proj.videos=JSON.parse(JSON.stringify(snap.videos||{}));
   proj.imageSizes=JSON.parse(JSON.stringify(snap.imageSizes||{}));
   proj.imageShapes=JSON.parse(JSON.stringify(snap.imageShapes||{}));
+  proj.imageStyles=JSON.parse(JSON.stringify(snap.imageStyles||{}));
   proj.videoSizes=JSON.parse(JSON.stringify(snap.videoSizes||{}));
   // Restore the captured DOM first so palette drops / deletes / row
   // column changes roll back; THEN re-decorate + re-apply the data
@@ -3712,6 +3984,7 @@ function applySnap(snap){
   applySlotsForViewport(proj,vp);
   applyVideoSlots(proj);
   if(typeof applyImageSizes==='function') applyImageSizes();
+  if(typeof applyImageStyles==='function') applyImageStyles();
   if(typeof applyVideoSizes==='function') applyVideoSizes();
   // Selection survives only if the captured HTML still has the same
   // node tree; safest to clear it so the inspector doesn't render
@@ -3719,6 +3992,17 @@ function applySnap(snap){
   if(typeof insClear==='function') insClear();
   saveAll();
   isRestoring=false;
+  // Project the previously-captured scroll ratio back onto the new
+  // scrollHeight after the layout has reflowed. Two RAFs because
+  // restored CSS + slot decoration both kick a relayout.
+  if (paEl){
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        var newMax = Math.max(1, paEl.scrollHeight - paEl.clientHeight);
+        paEl.scrollTop = Math.round(newMax * preRatio);
+      });
+    });
+  }
 }
 function updateUR(){var id=activeId;var u=g('btn-undo'),r=g('btn-redo');if(u)u.disabled=!id||(histIdx[id]||0)<=0;if(r)r.disabled=!id||(histIdx[id]||0)>=((histMap[id]||[]).length-1);}
 
@@ -3782,15 +4066,35 @@ function closeStickyPanel(){var p=g('sticky-panel');if(p)p.classList.remove('sho
 
 // ── VIEWPORT ─────────────────────────────────────────────────
 function setVP(mode){
+  // Capture the current scroll position as a fraction of total scrollable
+  // height so we can restore the same *relative* position after the layout
+  // change (mobile is tall + narrow, desktop is wide; an absolute scrollTop
+  // would land somewhere completely different visually). The user complained
+  // the toggle was sending them back to the top of the page on every flip.
+  var pa = g('page-area');
+  var ratio = 0;
+  if (pa){
+    var max = Math.max(1, pa.scrollHeight - pa.clientHeight);
+    ratio = pa.scrollTop / max;
+  }
   vp=mode;
   g('vp-desk').classList.toggle('on',mode==='desktop');
   g('vp-mob').classList.toggle('on',mode==='mobile');
   document.body.classList.toggle('mob-mode',mode==='mobile');
-  if(mode==='mobile'){var pa=g('page-area');if(pa)pa.scrollTop=0;}
   // Re-apply each slot so projects with mobile-only image overrides actually
   // swap the visible <img src> when the user toggles the viewport.
   var proj=getActive();
   if(proj){applySlotsForViewport(proj,vp);}
+  // Wait two frames so the layout has reflowed before we project the
+  // captured ratio back onto the new scrollHeight.
+  if (pa){
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        var newMax = Math.max(1, pa.scrollHeight - pa.clientHeight);
+        pa.scrollTop = Math.round(newMax * ratio);
+      });
+    });
+  }
 }
 function toggleSidebar(){sidebarOpen=!sidebarOpen;var sb=g('sidebar'),btn=g('sb-toggle');if(sb)sb.classList.toggle('collapsed',!sidebarOpen);if(btn)btn.textContent=sidebarOpen?'\u2630':'\u276F';}
 function goToDashboard(){
@@ -4666,7 +4970,7 @@ function initEdit(){
   pw.addEventListener('blur',function(e){if(e.target.hasAttribute('data-v-text'))setTimeout(function(){if(!g('font-ctrl').matches(':hover'))hideFontCtrl();},200);},true);
 
   pw.addEventListener('input',function(e){if(isRestoring||!e.target.hasAttribute('data-v-text'))return;qSave();});
-  pw.addEventListener('blur',function(e){if(isRestoring||!e.target.hasAttribute('data-v-text'))return;collectTexts();snapshot();saveAll();},true);
+  pw.addEventListener('blur',function(e){if(isRestoring||!e.target.hasAttribute('data-v-text'))return;flushQSavePending();collectTexts();snapshot();saveAll();},true);
   pw.addEventListener('paste',function(e){if(!e.target.hasAttribute('data-v-text'))return;e.preventDefault();var t=(e.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,t);});
   var iui=g('im-url-in');if(iui)iui.addEventListener('input',function(){var v=this.value.trim(),p=g('im-prev');if(v){p.src=v;p.style.display='block';}else{p.src='';p.style.display='none';}});
 }
