@@ -287,15 +287,16 @@ body.mob-mode:not(.riverz-tpl-active) .cta-btn{padding:14px 28px!important;font-
 #sec-ctrl .sc-sep{width:1px;height:16px;background:#252840;margin:0 2px}
 #sec-ctrl .sc-mini{font-size:10px;color:#5B6490;padding:0 3px;font-weight:700;letter-spacing:.04em}
 #sec-ctrl button.sc-danger:hover{background:rgba(228,78,58,.15);color:#ff7a64;border-color:rgba(228,78,58,.4)}
-.riverz-sec-active{outline:2px dashed rgba(247,255,158,.85)!important;outline-offset:2px;background:rgba(247,255,158,.06)!important;position:relative}
-/* Hover affordance: a soft blue dashed outline on the deepest block
-   under the cursor so the user knows what would be selected. JS picks
-   the closest [data-section-id] / [data-rz-kind] / [data-v-*] / section
-   ancestor and tags it with .riverz-hover (only the innermost match
-   gets the class, never multiple nested at once).
-   The active selection (yellow) wins — riverz-sec-active overrides. */
-#page-wrap .riverz-hover{outline:1.5px dashed rgba(74,144,226,.65)!important;outline-offset:2px;cursor:pointer}
-#page-wrap .riverz-hover.riverz-sec-active{outline:2px dashed rgba(247,255,158,.85)!important}
+/* Selected block: solid blue outline + soft blue tint background.
+   The hover affordance below uses the SAME blue but dashed + lighter
+   so the active selection always wins visually. */
+.riverz-sec-active{outline:2px solid #4A90E2!important;outline-offset:2px;background:rgba(74,144,226,.06)!important;position:relative;box-shadow:0 0 0 1px rgba(74,144,226,.15) inset}
+/* Hover affordance: a faint blue dashed outline on the deepest block
+   under the cursor. JS picks the closest [data-section-id] /
+   [data-rz-kind] / [data-v-*] / section ancestor and tags it with
+   .riverz-hover (only the innermost match gets the class). */
+#page-wrap .riverz-hover{outline:1.5px dashed rgba(74,144,226,.55)!important;outline-offset:2px;cursor:pointer}
+#page-wrap .riverz-hover.riverz-sec-active{outline:2px solid #4A90E2!important}
 /* Floating tag in the corner of whichever block is hovered, so the
    user sees what TYPE of block they're about to grab (Sección, Fila,
    Columna, Imagen, Video, Texto). Pure CSS, content from data attr. */
@@ -347,8 +348,34 @@ body.has-selection #inspector{flex:0 0 240px;width:240px}
 /* Sub-headings inside the image inspector — group "Tamaño" / "Forma" */
 .in-sub-h{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9AA3C0;font-weight:800;margin:18px 0 10px;padding-top:12px;border-top:1px solid #14171f}
 .in-mini-label{font-size:10px;color:#9AA3C0;letter-spacing:.04em;font-weight:600;align-self:center}
-.in-grid-2{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:center;margin-top:8px}
+.in-grid-2{display:grid;grid-template-columns:72px 1fr;gap:8px;align-items:center;margin-top:8px}
 .in-grid-2 + .in-grid-2{margin-top:6px}
+.in-color{flex:0 0 30px;width:30px;height:30px;padding:0;border:1px solid #1E2130;border-radius:5px;background:#080910;cursor:pointer}
+.in-color::-webkit-color-swatch-wrapper{padding:2px}
+.in-color::-webkit-color-swatch{border:0;border-radius:3px}
+/* B/I/U toggles flash blue when active */
+#ins-text-section .in-btn.is-on{background:#4A90E2;color:#fff;border-color:#4A90E2}
+/* Box-model spacing visualizer. Outer ring = margin, inner ring =
+   padding. Each side has a small numeric input positioned where the
+   user expects (top center, right middle, bottom center, left middle).
+   The link button in the middle toggles "edit all 4 sides at once". */
+.in-bx{position:relative;width:100%;aspect-ratio:1.4/1;background:#0a0c12;border:1px solid #1E2130;border-radius:8px;padding:16px;margin-top:6px}
+.in-bx-mlbl{position:absolute;top:4px;left:8px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:#5B6490;font-weight:700;pointer-events:none}
+.in-bx-pad{position:absolute;left:42px;right:42px;top:30px;bottom:30px;background:#11141d;border:1px dashed #252840;border-radius:6px}
+.in-bx-plbl{position:absolute;top:3px;left:8px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:#5B6490;font-weight:700;pointer-events:none}
+.in-bx-side{position:absolute;width:40px;height:22px;background:#080910;border:1px solid #1E2130;color:#C8CAD8;border-radius:4px;font-family:inherit;font-size:11px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;outline:none;-moz-appearance:textfield}
+.in-bx-side:focus{border-color:#4A90E2}
+.in-bx-side::-webkit-outer-spin-button,.in-bx-side::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.in-bx-mt{top:6px;left:50%;transform:translateX(-50%)}
+.in-bx-mr{top:50%;right:4px;transform:translateY(-50%)}
+.in-bx-mb{bottom:6px;left:50%;transform:translateX(-50%)}
+.in-bx-ml{top:50%;left:4px;transform:translateY(-50%)}
+.in-bx-pt{top:-12px;left:50%;transform:translateX(-50%)}
+.in-bx-pr{top:50%;right:-12px;transform:translateY(-50%)}
+.in-bx-pb{bottom:-12px;left:50%;transform:translateX(-50%)}
+.in-bx-pl{top:50%;left:-12px;transform:translateY(-50%)}
+.in-bx-link{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30px;height:24px;background:#1E2436;border:1px solid #2a2e38;color:#9AA3C0;border-radius:4px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.in-bx-link.is-on{background:#4A90E2;color:#fff;border-color:#4A90E2}
 .in-close{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:4px;border:0;background:transparent;color:#5B6490;cursor:pointer;font-size:13px;line-height:1}
 .in-close:hover{background:rgba(255,255,255,.06);color:#C8CAD8}
 .in-head{position:relative}
@@ -630,33 +657,107 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         <div class="in-name" id="ins-name">—</div>
         <div class="in-crumbs" id="ins-crumbs"></div>
       </div>
+      <!-- Box-model spacing: per-side margin (outer) + padding (inner)
+           visualizer. Each ring labels its sides; numeric inputs accept
+           negative values for margins (padding clamps to 0). The center
+           link icon toggles "all 4 sides linked" so editing one updates
+           all. Available for EVERY block, not just text. -->
       <div class="in-section">
-        <div class="in-label">Espaciado vertical (px)</div>
-        <div class="in-row">
-          <button class="in-btn" type="button" onclick="insPad(-1,0)" title="−1px arriba/abajo">&minus;</button>
-          <input id="ins-pad-y" class="in-num" type="number" step="1" inputmode="numeric"
-                 oninput="insPadSet(this.value, null)" onkeydown="if(event.key==='Enter')this.blur()" />
-          <button class="in-btn" type="button" onclick="insPad(1,0)" title="+1px arriba/abajo">&plus;</button>
+        <div class="in-label">Espaciado (px)</div>
+        <div class="in-bx">
+          <div class="in-bx-mlbl">margin</div>
+          <input class="in-bx-side in-bx-mt" type="number" inputmode="numeric" id="ins-bx-mt" oninput="insBoxSet('mt',this.value)" placeholder="0" />
+          <input class="in-bx-side in-bx-mr" type="number" inputmode="numeric" id="ins-bx-mr" oninput="insBoxSet('mr',this.value)" placeholder="0" />
+          <input class="in-bx-side in-bx-mb" type="number" inputmode="numeric" id="ins-bx-mb" oninput="insBoxSet('mb',this.value)" placeholder="0" />
+          <input class="in-bx-side in-bx-ml" type="number" inputmode="numeric" id="ins-bx-ml" oninput="insBoxSet('ml',this.value)" placeholder="0" />
+          <div class="in-bx-pad">
+            <div class="in-bx-plbl">padding</div>
+            <input class="in-bx-side in-bx-pt" type="number" inputmode="numeric" min="0" id="ins-bx-pt" oninput="insBoxSet('pt',this.value)" placeholder="0" />
+            <input class="in-bx-side in-bx-pr" type="number" inputmode="numeric" min="0" id="ins-bx-pr" oninput="insBoxSet('pr',this.value)" placeholder="0" />
+            <input class="in-bx-side in-bx-pb" type="number" inputmode="numeric" min="0" id="ins-bx-pb" oninput="insBoxSet('pb',this.value)" placeholder="0" />
+            <input class="in-bx-side in-bx-pl" type="number" inputmode="numeric" min="0" id="ins-bx-pl" oninput="insBoxSet('pl',this.value)" placeholder="0" />
+            <button class="in-bx-link" type="button" id="ins-bx-link" title="Vincular los 4 lados" onclick="insBoxToggleLink()" aria-label="Link sides">⌭</button>
+          </div>
         </div>
-        <div class="in-label" style="margin-top:14px">Espaciado horizontal (px)</div>
-        <div class="in-row">
-          <button class="in-btn" type="button" onclick="insPad(0,-1)" title="−1px izq/der">&minus;</button>
-          <input id="ins-pad-x" class="in-num" type="number" step="1" inputmode="numeric"
-                 oninput="insPadSet(null, this.value)" onkeydown="if(event.key==='Enter')this.blur()" />
-          <button class="in-btn" type="button" onclick="insPad(0,1)" title="+1px izq/der">&plus;</button>
-        </div>
-        <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.45">Valores negativos reducen el espacio (margin negativo).</p>
+        <p class="in-help" style="font-size:10px;color:#5B6490;margin:10px 0 0;line-height:1.45">Margin acepta negativos (acerca al elemento al vecino). Padding ≥ 0.</p>
       </div>
+      <!-- Text formatting: shown when the selection is (or contains) a
+           [data-v-text]. Mirrors the layout of a typical page-builder
+           text panel: family, size, B/I/U, color, weight, line-height,
+           letter-spacing, transform, shadow. -->
       <div class="in-section" id="ins-text-section" style="display:none">
-        <div class="in-label">Tamaño de texto</div>
-        <div class="in-row">
-          <button class="in-btn flex" type="button" onclick="insFontSize(-1)">A&minus;</button>
-          <span class="in-val" id="ins-font-size">—</span>
-          <button class="in-btn flex" type="button" onclick="insFontSize(1)">A&plus;</button>
-        </div>
-        <div class="in-label" style="margin-top:14px">Familia tipográfica</div>
-        <div class="in-row">
+        <div class="in-grid-2">
+          <span class="in-mini-label">Fuente</span>
           <select id="ins-font-fam" class="in-btn flex" onchange="insFontFamily(this.value)"></select>
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Tamaño</span>
+          <div class="in-row" style="gap:4px">
+            <button class="in-btn" type="button" onclick="insFontSize(-1)">&minus;</button>
+            <input type="number" inputmode="numeric" min="6" max="200" class="in-num" id="ins-font-size-num" oninput="insFontSizeSet(this.value)" />
+            <button class="in-btn" type="button" onclick="insFontSize(1)">&plus;</button>
+          </div>
+        </div>
+        <div class="in-row" style="margin-top:10px;gap:4px">
+          <button class="in-btn flex" type="button" id="ins-text-bold" onclick="insTextStyle('bold')" title="Negrita"><b>B</b></button>
+          <button class="in-btn flex" type="button" id="ins-text-italic" onclick="insTextStyle('italic')" title="Cursiva"><i>I</i></button>
+          <button class="in-btn flex" type="button" id="ins-text-underline" onclick="insTextStyle('underline')" title="Subrayado"><u>U</u></button>
+          <button class="in-btn flex" type="button" id="ins-text-strike" onclick="insTextStyle('strike')" title="Tachado"><s>S</s></button>
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Color</span>
+          <div class="in-row" style="gap:4px">
+            <input type="color" class="in-color" id="ins-text-color-pick" oninput="insTextColor(this.value)" />
+            <input type="text" class="in-num" id="ins-text-color-text" placeholder="#000000" oninput="insTextColor(this.value)" />
+          </div>
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Alinear</span>
+          <div class="in-seg" id="ins-text-align-seg">
+            <button type="button" class="seg-b" data-val="left" title="Izquierda">⇤</button>
+            <button type="button" class="seg-b" data-val="center" title="Centro">⇔</button>
+            <button type="button" class="seg-b" data-val="right" title="Derecha">⇥</button>
+            <button type="button" class="seg-b" data-val="justify" title="Justificado">≡</button>
+          </div>
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Peso</span>
+          <select id="ins-text-weight" class="in-btn flex" onchange="insTextWeight(this.value)">
+            <option value="">Auto</option>
+            <option value="300">Ligero (300)</option>
+            <option value="400">Normal (400)</option>
+            <option value="500">Medio (500)</option>
+            <option value="600">Semibold (600)</option>
+            <option value="700">Bold (700)</option>
+            <option value="800">Extrabold (800)</option>
+            <option value="900">Black (900)</option>
+          </select>
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Altura línea</span>
+          <input type="text" class="in-num" id="ins-text-lh" placeholder="1.5 / 180%" oninput="insTextLineHeight(this.value)" />
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Espaciado</span>
+          <input type="text" class="in-num" id="ins-text-ls" placeholder="0.04em" oninput="insTextLetterSpacing(this.value)" />
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Transformar</span>
+          <div class="in-seg" id="ins-text-transform-seg">
+            <button type="button" class="seg-b" data-val="" title="Sin transformar">−</button>
+            <button type="button" class="seg-b" data-val="uppercase" title="MAYÚSCULAS">AA</button>
+            <button type="button" class="seg-b" data-val="capitalize" title="Capitalizar">Aa</button>
+            <button type="button" class="seg-b" data-val="lowercase" title="minúsculas">aa</button>
+          </div>
+        </div>
+        <div class="in-grid-2">
+          <span class="in-mini-label">Sombra</span>
+          <select id="ins-text-shadow" class="in-btn flex" onchange="insTextShadow(this.value)">
+            <option value="">Ninguna</option>
+            <option value="sm">Suave</option>
+            <option value="md">Media</option>
+            <option value="lg">Pronunciada</option>
+          </select>
         </div>
       </div>
       <!-- Image-slot controls: appears only when the selected element is
@@ -764,8 +865,8 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
       <div class="in-section">
         <div class="in-label">Acciones</div>
         <div class="in-row">
-          <button class="in-btn flex" type="button" onclick="insParent()" title="Subir un nivel — ir al contenedor padre">&uarr; Padre</button>
-          <button class="in-btn flex" type="button" onclick="insChild()" title="Bajar un nivel — entrar al primer bloque hijo">&darr; Hijo</button>
+          <button class="in-btn flex" type="button" onclick="insMoveUp()" title="Mover arriba — intercambia con el bloque anterior">&uarr; Subir</button>
+          <button class="in-btn flex" type="button" onclick="insMoveDown()" title="Mover abajo — intercambia con el bloque siguiente">&darr; Bajar</button>
         </div>
         <div class="in-row">
           <button class="in-btn flex" type="button" onclick="insDuplicate()" title="Duplicar bloque">&#x29C9; Duplicar</button>
@@ -2170,16 +2271,27 @@ function _onSecDragStart(e){
 // outlining the whole target.
 var _dropLine = null;
 function _showDropLine(target, before){
-  if (!_dropLine) {
+  // Append the drop-line into #page-area so it scrolls with the canvas
+  // and is positioned relative to a known containing block. The earlier
+  // version appended to document.body and used window.scrollY, but the
+  // editor's iframe body never scrolls (it's #page-area that scrolls),
+  // so the line was offset by hundreds of pixels and effectively hidden
+  // off-screen as the user scrolled.
+  var pa = document.getElementById('page-area') || document.body;
+  if (!_dropLine || _dropLine.parentNode !== pa) {
+    if (_dropLine && _dropLine.parentNode) _dropLine.parentNode.removeChild(_dropLine);
     _dropLine = document.createElement('div');
     _dropLine.className = 'riverz-drop-line';
-    _dropLine.style.display = 'none';
-    document.body.appendChild(_dropLine);
+    pa.appendChild(_dropLine);
+    if (getComputedStyle(pa).position === 'static') pa.style.position = 'relative';
   }
+  var paRect = pa.getBoundingClientRect();
   var r = target.getBoundingClientRect();
+  var top = (before ? r.top : r.bottom) - paRect.top + pa.scrollTop - 1.5;
+  var left = r.left - paRect.left + pa.scrollLeft;
   _dropLine.style.display = 'block';
-  _dropLine.style.top = (before ? r.top - 1.5 : r.bottom - 1.5) + window.scrollY + 'px';
-  _dropLine.style.left = r.left + window.scrollX + 'px';
+  _dropLine.style.top = top + 'px';
+  _dropLine.style.left = left + 'px';
   _dropLine.style.width = r.width + 'px';
   _dropLine.dataset.before = before ? '1' : '0';
 }
@@ -2532,29 +2644,24 @@ function insRefresh(){
       });
     });
   }
-  // Spacing values — show whichever is "in effect" for this element:
-  // negative margin trumps positive padding, otherwise positive padding.
-  // Skip writing the input that's currently focused so we don't yank
-  // the user's typing cursor mid-edit.
-  var py = _readSpaceY(_insEl);
-  var px = _readSpaceX(_insEl);
-  var pyEl = document.getElementById('ins-pad-y');
-  if (pyEl && document.activeElement !== pyEl) pyEl.value = String(py);
-  var pxEl = document.getElementById('ins-pad-x');
-  if (pxEl && document.activeElement !== pxEl) pxEl.value = String(px);
-  // Text-only section: show font controls when the selection is a text
-  // slot (or contains one immediate child that's a text slot).
+  // Box-model spacing — populates 8 per-side inputs (margin top/right/
+  // bottom/left + padding top/right/bottom/left). The legacy
+  // ins-pad-y / ins-pad-x inputs are gone; this is the new control.
+  _insRenderBox();
+  // Text section: show whenever the selection is or contains a
+  // [data-v-text]. Populates every control in the panel from the
+  // computed style of the target so the inspector always reflects
+  // what the user is actually looking at.
   var textSec = document.getElementById('ins-text-section');
-  var textTarget = (_insEl.hasAttribute && _insEl.hasAttribute('data-v-text')) ? _insEl
-                 : _insEl.querySelector ? _insEl.querySelector(':scope > [data-v-text]') : null;
+  var textTarget = _insTextTarget();
   if (textSec) textSec.style.display = textTarget ? '' : 'none';
   if (textTarget){
-    var fs = Math.round(parseFloat(window.getComputedStyle(textTarget).fontSize)||16);
-    var fsEl = document.getElementById('ins-font-size'); if (fsEl) fsEl.textContent = fs + 'px';
+    var ts = window.getComputedStyle(textTarget);
+    // Font family
     _insBuildFontPicker();
     var sel = document.getElementById('ins-font-fam');
     if (sel){
-      var fam = (textTarget.style.fontFamily || window.getComputedStyle(textTarget).fontFamily || '').trim();
+      var fam = (textTarget.style.fontFamily || ts.fontFamily || '').trim();
       var matched = false;
       for (var i=0;i<sel.options.length;i++){
         var optFirst = (sel.options[i].value.split(',')[0] || '').replace(/^["']|["']$/g,'').toLowerCase().trim();
@@ -2563,6 +2670,72 @@ function insRefresh(){
       }
       if (!matched) sel.selectedIndex = 0;
     }
+    // Size
+    var fs = Math.round(parseFloat(ts.fontSize)||16);
+    var fsNum = document.getElementById('ins-font-size-num');
+    if (fsNum && document.activeElement !== fsNum) fsNum.value = String(fs);
+    // B/I/U/S toggles — light up via .is-on class
+    var w = parseInt(ts.fontWeight, 10) || 400;
+    var deco = (ts.textDecorationLine || ts.textDecoration || '');
+    var bEl = document.getElementById('ins-text-bold'); if (bEl) bEl.classList.toggle('is-on', w >= 600);
+    var iEl = document.getElementById('ins-text-italic'); if (iEl) iEl.classList.toggle('is-on', ts.fontStyle === 'italic');
+    var uEl = document.getElementById('ins-text-underline'); if (uEl) uEl.classList.toggle('is-on', deco.indexOf('underline') !== -1);
+    var sEl = document.getElementById('ins-text-strike'); if (sEl) sEl.classList.toggle('is-on', deco.indexOf('line-through') !== -1);
+    // Color — convert rgb() to hex for the picker, keep raw for the text input
+    function _rgbToHex(rgb){
+      var m = (rgb || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (!m) return '';
+      var h = '#' + [m[1],m[2],m[3]].map(function(n){ return ('0'+parseInt(n,10).toString(16)).slice(-2); }).join('');
+      return h;
+    }
+    var hex = _rgbToHex(ts.color);
+    var colorPick = document.getElementById('ins-text-color-pick');
+    var colorText = document.getElementById('ins-text-color-text');
+    if (colorPick && hex && document.activeElement !== colorPick) colorPick.value = hex;
+    if (colorText && document.activeElement !== colorText) colorText.value = hex.toUpperCase();
+    // Align
+    var alignWrap = document.getElementById('ins-text-align-seg');
+    if (alignWrap){
+      var ta = textTarget.style.textAlign || ts.textAlign || '';
+      Array.prototype.forEach.call(alignWrap.querySelectorAll('.seg-b'), function(b){
+        b.classList.toggle('is-on', b.dataset.val === ta);
+      });
+    }
+    // Weight dropdown
+    var wEl = document.getElementById('ins-text-weight');
+    if (wEl){
+      var inline = textTarget.style.fontWeight;
+      wEl.value = inline || '';
+    }
+    // Line height
+    var lhEl = document.getElementById('ins-text-lh');
+    if (lhEl && document.activeElement !== lhEl){
+      lhEl.value = textTarget.style.lineHeight || '';
+    }
+    // Letter spacing
+    var lsEl = document.getElementById('ins-text-ls');
+    if (lsEl && document.activeElement !== lsEl){
+      lsEl.value = textTarget.style.letterSpacing || '';
+    }
+    // Transform segmented control
+    var trWrap = document.getElementById('ins-text-transform-seg');
+    if (trWrap){
+      var tt = textTarget.style.textTransform || '';
+      Array.prototype.forEach.call(trWrap.querySelectorAll('.seg-b'), function(b){
+        b.classList.toggle('is-on', b.dataset.val === tt);
+        b.onclick = function(){ insTextTransform(b.dataset.val); };
+      });
+    }
+    // Re-bind align + transform handlers each refresh so they always
+    // operate on the current selection.
+    if (alignWrap){
+      Array.prototype.forEach.call(alignWrap.querySelectorAll('.seg-b'), function(b){
+        b.onclick = function(){ if (textTarget) textTarget.style.textAlign = b.dataset.val; insRefresh(); if (typeof qSave === 'function') qSave(); };
+      });
+    }
+    // Shadow dropdown — current value from inline style only (no preset detection)
+    var shEl = document.getElementById('ins-text-shadow');
+    if (shEl){ shEl.value = ''; }
   }
   // Image-slot controls — show + populate when the selection (or its
   // closest ancestor) is a [data-v-img]. Click handlers route to
@@ -2880,6 +3053,8 @@ function insClear(){
   _insEl = null;
   document.body.classList.remove('has-selection');
 }
+// Legacy single-axis nudgers (kept for compat with any callsites that
+// still use them, but the new box-model controls are insBoxSet below).
 function insPad(dy, dx){
   if (!_insEl){ toast('Seleccioná un bloque primero',1); return; }
   if (typeof snapshot === 'function' && !isRestoring) snapshot();
@@ -2887,8 +3062,6 @@ function insPad(dy, dx){
   insRefresh();
   if (typeof saveAll === 'function') saveAll();
 }
-// Direct set from the editable number input. Pass null on the axis
-// you don't want to touch. Strings come in from <input>; coerce + clamp.
 function insPadSet(yVal, xVal){
   if (!_insEl){ return; }
   if (typeof snapshot === 'function' && !isRestoring) snapshot();
@@ -2900,23 +3073,185 @@ function insPadSet(yVal, xVal){
     var x = parseInt(xVal, 10);
     if (!isNaN(x)) _writeSpaceX(_insEl, Math.max(-500, Math.min(500, x)));
   }
-  // Don't call insRefresh here — that'd overwrite the input the user
-  // is typing in. The next selection / commit will resync.
   if (typeof qSave === 'function') qSave();
 }
 window.insPadSet = insPadSet;
-function insFontSize(delta){
+
+// ── BOX-MODEL SPACING (per-side) ─────────────────────────────
+// Available for ANY block. Maps the 8 inputs (mt/mr/mb/ml/pt/pr/pb/pl)
+// to inline margin-* / padding-* on the selected element. Margins
+// accept negative values; paddings clamp to 0. The "link" toggle
+// makes editing one side write to all four (saves the user from
+// changing 4 numbers when they want a uniform value).
+var _insBoxLink = false;
+function insBoxToggleLink(){
+  _insBoxLink = !_insBoxLink;
+  var b = document.getElementById('ins-bx-link');
+  if (b) b.classList.toggle('is-on', _insBoxLink);
+  toast(_insBoxLink ? '🔗 Lados vinculados' : 'Lados independientes');
+}
+window.insBoxToggleLink = insBoxToggleLink;
+function _bxKindOf(side){ return side[0] === 'm' ? 'margin' : 'padding'; }
+function _bxSideName(side){
+  return { t:'Top', r:'Right', b:'Bottom', l:'Left' }[side[1]];
+}
+function insBoxSet(side, raw){
   if (!_insEl) return;
-  var t = (_insEl.hasAttribute && _insEl.hasAttribute('data-v-text')) ? _insEl
-        : _insEl.querySelector ? _insEl.querySelector(':scope > [data-v-text]') : null;
-  if (!t) return;
+  var n;
+  if (raw === '' || raw === null || raw === undefined) n = '';
+  else { n = parseInt(raw, 10); if (isNaN(n)) return; }
+  // Padding can't go negative.
+  if (side[0] === 'p' && n !== '' && n < 0) n = 0;
+  // First user keystroke per session triggers a snapshot; subsequent
+  // typing within the debounce window goes through qSave's timer.
   if (typeof snapshot === 'function' && !isRestoring) snapshot();
-  var sz = Math.round(parseFloat(window.getComputedStyle(t).fontSize)||16) + delta*2;
-  sz = Math.max(8, Math.min(120, sz));
+  var sides = _insBoxLink ? ['t','r','b','l'] : [side[1]];
+  var kind = _bxKindOf(side);
+  sides.forEach(function(s){
+    var prop = kind + '-' + ({t:'top',r:'right',b:'bottom',l:'left'}[s]);
+    if (n === '') _insEl.style.removeProperty(prop);
+    else _insEl.style.setProperty(prop, n + 'px');
+  });
+  // Mirror the value into the linked inputs without re-firing oninput.
+  if (_insBoxLink){
+    sides.forEach(function(s){
+      var id = 'ins-bx-' + side[0] + s;
+      var el = document.getElementById(id);
+      if (el && document.activeElement !== el) el.value = (n === '' ? '' : String(n));
+    });
+  }
+  if (typeof qSave === 'function') qSave();
+}
+window.insBoxSet = insBoxSet;
+// Read the current 8 sides from the selected element and populate the
+// inputs. Skips the input the user is typing into so the cursor stays.
+function _insRenderBox(){
+  if (!_insEl) return;
+  var cs = window.getComputedStyle(_insEl);
+  var pairs = {
+    mt: parseFloat(_insEl.style.marginTop || cs.marginTop) || 0,
+    mr: parseFloat(_insEl.style.marginRight || cs.marginRight) || 0,
+    mb: parseFloat(_insEl.style.marginBottom || cs.marginBottom) || 0,
+    ml: parseFloat(_insEl.style.marginLeft || cs.marginLeft) || 0,
+    pt: parseFloat(_insEl.style.paddingTop || cs.paddingTop) || 0,
+    pr: parseFloat(_insEl.style.paddingRight || cs.paddingRight) || 0,
+    pb: parseFloat(_insEl.style.paddingBottom || cs.paddingBottom) || 0,
+    pl: parseFloat(_insEl.style.paddingLeft || cs.paddingLeft) || 0
+  };
+  Object.keys(pairs).forEach(function(k){
+    var el = document.getElementById('ins-bx-' + k);
+    if (el && document.activeElement !== el) el.value = String(Math.round(pairs[k]));
+  });
+}
+// Resolve the text node we should style — _insEl itself if it's a
+// [data-v-text], else its first descendant text slot.
+function _insTextTarget(){
+  if (!_insEl) return null;
+  if (_insEl.hasAttribute && _insEl.hasAttribute('data-v-text')) return _insEl;
+  if (_insEl.querySelector){
+    var direct = _insEl.querySelector(':scope > [data-v-text]');
+    if (direct) return direct;
+    return _insEl.querySelector('[data-v-text]');
+  }
+  return null;
+}
+function insFontSize(delta){
+  var t = _insTextTarget(); if (!t) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  var sz = Math.round(parseFloat(window.getComputedStyle(t).fontSize)||16) + delta;
+  sz = Math.max(6, Math.min(200, sz));
   t.style.fontSize = sz + 'px';
   insRefresh();
   if (typeof qSave === 'function') qSave();
 }
+function insFontSizeSet(val){
+  var t = _insTextTarget(); if (!t) return;
+  var n = parseInt(val, 10);
+  if (isNaN(n)) return;
+  n = Math.max(6, Math.min(200, n));
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  t.style.fontSize = n + 'px';
+  if (typeof qSave === 'function') qSave();
+}
+window.insFontSizeSet = insFontSizeSet;
+// B / I / U / Strike toggles. Each one flips the corresponding inline
+// style; we don't use document.execCommand because we're operating on
+// whole [data-v-text] blocks, not text selections inside them.
+function insTextStyle(kind){
+  var t = _insTextTarget(); if (!t) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  var cs = window.getComputedStyle(t);
+  if (kind === 'bold'){
+    var w = parseInt(cs.fontWeight, 10) || 400;
+    t.style.fontWeight = (w >= 600) ? '400' : '700';
+  } else if (kind === 'italic'){
+    t.style.fontStyle = (cs.fontStyle === 'italic') ? 'normal' : 'italic';
+  } else if (kind === 'underline' || kind === 'strike'){
+    var has = (cs.textDecorationLine || cs.textDecoration || '').indexOf(kind === 'underline' ? 'underline' : 'line-through') !== -1;
+    t.style.textDecoration = has ? 'none' : (kind === 'underline' ? 'underline' : 'line-through');
+  }
+  insRefresh();
+  if (typeof qSave === 'function') qSave();
+}
+window.insTextStyle = insTextStyle;
+function insTextColor(val){
+  var t = _insTextTarget(); if (!t) return;
+  var v = (val || '').trim();
+  if (v && v[0] !== '#' && /^[0-9a-f]{3,6}$/i.test(v)) v = '#' + v;
+  if (!v) { t.style.color = ''; }
+  else t.style.color = v;
+  // Sync the picker + text input in lockstep without re-firing oninput.
+  var p = document.getElementById('ins-text-color-pick');
+  var x = document.getElementById('ins-text-color-text');
+  if (p && /^#[0-9a-f]{6}$/i.test(v)) p.value = v;
+  if (x && document.activeElement !== x) x.value = v;
+  if (typeof qSave === 'function') qSave();
+}
+window.insTextColor = insTextColor;
+function insTextWeight(val){
+  var t = _insTextTarget(); if (!t) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (!val) t.style.fontWeight = '';
+  else t.style.fontWeight = String(val);
+  insRefresh();
+  if (typeof qSave === 'function') qSave();
+}
+window.insTextWeight = insTextWeight;
+function insTextLineHeight(val){
+  var t = _insTextTarget(); if (!t) return;
+  var v = (val || '').trim();
+  if (!v){ t.style.lineHeight = ''; return; }
+  // Accept "1.5", "180%", "24px"
+  if (/^\d+(\.\d+)?$/.test(v)) t.style.lineHeight = v;
+  else t.style.lineHeight = v;
+  if (typeof qSave === 'function') qSave();
+}
+window.insTextLineHeight = insTextLineHeight;
+function insTextLetterSpacing(val){
+  var t = _insTextTarget(); if (!t) return;
+  var v = (val || '').trim();
+  if (!v) t.style.letterSpacing = '';
+  else if (/^-?\d+(\.\d+)?$/.test(v)) t.style.letterSpacing = v + 'px';
+  else t.style.letterSpacing = v;
+  if (typeof qSave === 'function') qSave();
+}
+window.insTextLetterSpacing = insTextLetterSpacing;
+function insTextTransform(val){
+  var t = _insTextTarget(); if (!t) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  t.style.textTransform = val || '';
+  insRefresh();
+  if (typeof qSave === 'function') qSave();
+}
+window.insTextTransform = insTextTransform;
+function insTextShadow(val){
+  var t = _insTextTarget(); if (!t) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  var map = {'':'','sm':'0 1px 2px rgba(0,0,0,.18)','md':'0 2px 6px rgba(0,0,0,.28)','lg':'0 6px 18px rgba(0,0,0,.42)'};
+  t.style.textShadow = map[val] !== undefined ? map[val] : '';
+  if (typeof qSave === 'function') qSave();
+}
+window.insTextShadow = insTextShadow;
 function insFontFamily(value){
   if (!_insEl) return;
   var t = (_insEl.hasAttribute && _insEl.hasAttribute('data-v-text')) ? _insEl
@@ -2934,18 +3269,48 @@ function insParent(){
   }
   toast('Ya estás en el contenedor más alto',0);
 }
-// Navigate INTO the selected element — picks the first block-like
-// child (data-section-id / data-rz-kind / data-v-text / data-v-img /
-// data-v-video) so the user can drill from a section into its row,
-// from a row into its first column, from a column into its first
-// paragraph, etc. The inverse of insParent.
-function insChild(){
-  if (!_insEl) return;
-  var match = _insEl.querySelector('[data-section-id], [data-rz-kind], [data-v-text], [data-v-img], [data-v-video]');
-  if (!match){ toast('No hay bloques hijos para entrar',0); return; }
-  insSelect(match);
+// Move the selected element UP or DOWN within its parent. Skips
+// editor-injected siblings (drag handles, comment badges) so a "swap"
+// always lands on a real content block. Snapshots before the move so
+// undo works. Saves layout order so a reload preserves the new
+// position. The buttons replaced the previous Padre/Hijo navigation
+// because users wanted to reorder, not navigate the tree.
+function _isEditorChrome(el){
+  return !!(el && el.classList && (
+    el.classList.contains('riverz-section-handle') ||
+    el.classList.contains('riverz-img-edit') ||
+    el.classList.contains('riverz-img-del') ||
+    el.classList.contains('riverz-vid-edit') ||
+    el.classList.contains('riverz-vid-del') ||
+    el.classList.contains('riverz-img-size')
+  ));
 }
-window.insChild = insChild;
+function insMoveUp(){
+  if (!_insEl){ toast('Seleccioná un bloque primero',1); return; }
+  var prev = _insEl.previousElementSibling;
+  while (prev && _isEditorChrome(prev)) prev = prev.previousElementSibling;
+  if (!prev){ toast('Ya está al inicio de su contenedor',0); return; }
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  _insEl.parentNode.insertBefore(_insEl, prev);
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
+  if (typeof saveAll === 'function') saveAll();
+  toast('↑ Movido arriba');
+}
+function insMoveDown(){
+  if (!_insEl){ toast('Seleccioná un bloque primero',1); return; }
+  var next = _insEl.nextElementSibling;
+  while (next && _isEditorChrome(next)) next = next.nextElementSibling;
+  if (!next){ toast('Ya está al final de su contenedor',0); return; }
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  // insertBefore "(next, _insEl)" + insertBefore "(_insEl, next.nextSibling)"
+  // = swap. Simpler: move next BEFORE _insEl which puts _insEl after next.
+  _insEl.parentNode.insertBefore(next, _insEl);
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
+  if (typeof saveAll === 'function') saveAll();
+  toast('↓ Movido abajo');
+}
+window.insMoveUp = insMoveUp;
+window.insMoveDown = insMoveDown;
 function insDuplicate(){
   if (!_insEl) return;
   curEditEl = _insEl;
