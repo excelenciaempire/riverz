@@ -3733,6 +3733,11 @@ window.applyImageSizes = applyImageSizes;
 // ── STORAGE ──────────────────────────────────────────────────
 async function loadAll(){
   try{ var s=localStorage.getItem(SK); if(s){var d=JSON.parse(s);projects=d.projects||[];activeId=d.activeId||null;} }catch(e){}
+  // ObjectURL-based pending videos die on reload — clear them from
+  // proj.videos so the slot shows its placeholder and the user knows
+  // to re-pick. Runs before any project mounts so the bad URLs never
+  // hit setVidSlot / applyVideoSlots.
+  if (typeof _purgeStaleBlobVideos === 'function') _purgeStaleBlobVideos();
   // No auto-seed. Users now arrive here from /landing-lab (template
   // dashboard) or /landing-lab/mis-paginas — both paths supply either
   // ?template=<id> (new project) or ?p=<id> (existing). Seeding
@@ -4119,32 +4124,100 @@ function applyVideoUrl(){
   snapshot(); saveAll(); closeVidModal();
   toast('Video aplicado');
 }
+// Pending video files held in memory until publish. Per user request:
+// "que cuando se anada un video al editor no se anade a shopify sino
+// solamente cuando se le da clic a publicar". Keys are slot keys, values
+// are { file, name, objectUrl }. Lost on reload — see _purgeStaleBlobVideos.
+var _pendingVideos = {};
 async function onVideoFilePick(e){
-  var file=e.target.files[0];
+  var file = e.target.files[0];
   try{
     if(!file || !curVidKey) return;
     if(!/^video\//.test(file.type)) return toast('Solo videos',1);
     if(file.size > 60*1024*1024) return toast('Video muy grande (max 60MB)',1);
-    var st=g('vid-upload-status');
-    if(st){ st.style.display='block'; st.textContent='Subiendo a Shopify Files…'; }
-    toast('Subiendo video a Shopify…',0);
-    var url=await uploadVideoToShopifyFiles(file, file.name, curVidKey);
-    setVidSlot(curVidKey, url);
-    var proj=getActive();
+    // Hold the file in memory + show a local preview via ObjectURL.
+    // The Shopify Files upload is deferred to publishToShopify so a
+    // user can iterate on a draft without spending Files quota.
+    var prev = _pendingVideos[curVidKey];
+    if (prev && prev.objectUrl) { try { URL.revokeObjectURL(prev.objectUrl); } catch(_){} }
+    var objectUrl = URL.createObjectURL(file);
+    _pendingVideos[curVidKey] = { file: file, name: file.name, objectUrl: objectUrl };
+    setVidSlot(curVidKey, objectUrl);
+    var proj = getActive();
     if(proj){
       if(!proj.videos) proj.videos={};
-      proj.videos[curVidKey] = url;
+      // Mark as pending so _purgeStaleBlobVideos can detect it on reload.
+      proj.videos[curVidKey] = { src: objectUrl, _pending: true, name: file.name };
     }
-    snapshot(); saveAll(); closeVidModal();
-    toast('✓ Video subido');
-  }catch(err){
-    console.error('onVideoFilePick',err);
-    var st2=g('vid-upload-status'); if(st2) st2.textContent='Error: '+(err.message||'no se pudo subir');
-    toast('Error: '+(err.message||'no se pudo subir'),1);
+    snapshot();
+    saveAll();
+    closeVidModal();
+    toast('🎬 Video listo · se sube a Shopify al publicar');
+  } catch(err){
+    console.error('onVideoFilePick', err);
+    var st2 = g('vid-upload-status'); if(st2) st2.textContent = 'Error: ' + (err.message || 'no se pudo cargar');
+    toast('Error: ' + (err.message || 'no se pudo cargar'), 1);
   } finally {
-    if(e && e.target) e.target.value='';
+    if(e && e.target) e.target.value = '';
   }
 }
+
+// On reload, blob: URLs in proj.videos are dead (the ObjectURL was
+// revoked when the editor frame closed). Walk every project once at
+// load time and clear any video entries marked _pending so the slot
+// shows its placeholder instead of a broken video. The user gets a
+// gentle toast so they know to re-pick.
+function _purgeStaleBlobVideos(){
+  if (!Array.isArray(projects)) return;
+  var purged = 0;
+  projects.forEach(function(p){
+    if (!p || !p.videos) return;
+    Object.keys(p.videos).forEach(function(k){
+      var v = p.videos[k];
+      if (v && typeof v === 'object' && v._pending) {
+        delete p.videos[k];
+        purged++;
+      } else if (typeof v === 'string' && v.indexOf('blob:') === 0) {
+        delete p.videos[k];
+        purged++;
+      }
+    });
+  });
+  if (purged){
+    try { localStorage.setItem(SK, JSON.stringify({ projects: projects, activeId: activeId })); } catch(_){}
+    // Defer the toast a tick so the editor UI is mounted to receive it.
+    setTimeout(function(){ toast('Algunos videos pendientes se perdieron al recargar — volvelos a subir', 1); }, 600);
+  }
+}
+window._purgeStaleBlobVideos = _purgeStaleBlobVideos;
+
+// Walks _pendingVideos and uploads each file to Shopify Files via the
+// existing /api/landing-lab/upload-video endpoint. Replaces every
+// project entry's objectUrl with the returned CDN URL so buildPublishPayload
+// emits permanent URLs in the body_html. Called at the start of
+// publishToShopify; if any upload fails we throw so the publish aborts
+// (better than publishing a page with dead blob: URLs).
+async function flushPendingVideos(){
+  var keys = Object.keys(_pendingVideos);
+  if (!keys.length) return;
+  toast('Subiendo ' + keys.length + ' video(s) a Shopify Files…', 0);
+  var proj = getActive();
+  for (var i = 0; i < keys.length; i++){
+    var slot = keys[i];
+    var entry = _pendingVideos[slot];
+    if (!entry || !entry.file) continue;
+    var url = await uploadVideoToShopifyFiles(entry.file, entry.name || 'video', slot);
+    if (proj){
+      if (!proj.videos) proj.videos = {};
+      proj.videos[slot] = url;
+    }
+    setVidSlot(slot, url);
+    try { URL.revokeObjectURL(entry.objectUrl); } catch(_){}
+    delete _pendingVideos[slot];
+  }
+  saveAll();
+}
+window.flushPendingVideos = flushPendingVideos;
 async function uploadVideoToShopifyFiles(file, originalName, slotKey){
   var proj=getActive();
   var fd=new FormData();
@@ -4773,8 +4846,17 @@ function buildHTML(proj){
   clone.querySelectorAll('[data-v-text],[data-v-img]').forEach(function(el){el.removeAttribute('data-v-text');el.removeAttribute('data-v-img');});
   clone.classList.remove('edit-mode');clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
   var ctaUrl=proj.ctaUrl||'#';clone.querySelectorAll('a.cta-btn,a.sticky-btn').forEach(function(a){a.href=ctaUrl;});
-  var allCSS='';document.querySelectorAll('style').forEach(function(s){allCSS+=s.textContent;});
+  var allCSS='';document.querySelectorAll('style').forEach(function(s){
+    if (s.id === 'riverz-runtime-css') return; // re-appended below
+    allCSS+=s.textContent;
+  });
   var cut=allCSS.indexOf('/* EDITOR UI */');if(cut>-1)allCSS=allCSS.substring(0,cut);
+  // Always include the Riverz runtime CSS (riverz-size-NN / riverz-shape-X /
+  // riverz-vsize-NN / data-rz-cols grid rules) so a Vitalu / non-tpl page
+  // exported via Exportar HTML still applies them after the EDITOR UI cut.
+  if (typeof RIVERZ_SIZE_CSS === 'string' && allCSS.indexOf('riverz-size-50') === -1) {
+    allCSS += '\n' + RIVERZ_SIZE_CSS;
+  }
   var SO='<'+'scri'+'pt>',SC='<'+'/scri'+'pt>';
   var code='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh=0.22;function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
   var galleryCode = (typeof RIVERZ_GALLERY_CODE === 'string') ? RIVERZ_GALLERY_CODE : '';
@@ -4887,9 +4969,20 @@ function buildPublishPayload(proj){
   } else {
     document.querySelectorAll('style').forEach(function(s){
       if (s.hasAttribute('data-tpl')) return; // never leak another template's CSS
+      if (s.id === 'riverz-runtime-css') return; // re-injected explicitly below
       allCSS += s.textContent;
     });
     var cut=allCSS.indexOf('/* EDITOR UI */'); if(cut>-1) allCSS=allCSS.substring(0,cut);
+  }
+  // Always append the Riverz runtime CSS at the end of allCSS so the
+  // riverz-size-NN / riverz-shape-X / riverz-vsize-NN / data-rz-cols
+  // grid rules ship with EVERY published page — not just template
+  // projects. Without this, a Vitalu user who dropped a multi-column
+  // row from the palette would see the row stuck in single-column on
+  // their published page because the rz-row CSS was trimmed out by
+  // the /* EDITOR UI */ cut above.
+  if (typeof RIVERZ_SIZE_CSS === 'string' && allCSS.indexOf('riverz-size-50') === -1) {
+    allCSS += '\n' + RIVERZ_SIZE_CSS;
   }
   // Scope the styles to a wrapper so they don't leak into the merchant's
   // theme (e.g. the merchant's body{} rules vs ours).
@@ -4960,10 +5053,38 @@ async function publishToShopify(){
   var proj=getActive();
   if(!proj){ toast('Selecciona una landing',1); return; }
   var imgCount=Object.values(proj.images||{}).filter(function(v){return typeof v==='string' && v;}).length;
-  if(!confirm('Publicar "'+proj.name+'" en Shopify?\n'+imgCount+' imagen(es) se subirán a Shopify Files.\nEsto puede tardar 20-40 segundos.')) return;
+  var pendingVidCount = Object.keys(_pendingVideos || {}).length;
+  var confirmMsg = 'Publicar "'+proj.name+'" en Shopify?\n'+
+    imgCount+' imagen(es) se subirán a Shopify Files.';
+  if (pendingVidCount){
+    confirmMsg += '\n' + pendingVidCount + ' video(s) pendientes también se subirán ahora.';
+  }
+  confirmMsg += '\nEsto puede tardar 20-40 segundos.';
+  if(!confirm(confirmMsg)) return;
+
+  // Upload any deferred videos FIRST so buildPublishPayload sees the
+  // permanent CDN URLs in proj.videos instead of dead blob: URLs that
+  // would render as broken video tags on the published Shopify page.
+  if (pendingVidCount){
+    try {
+      await flushPendingVideos();
+    } catch(e){
+      console.error('[Riverz] flushPendingVideos failed:', e);
+      toast('Error subiendo video: ' + (e && e.message || e), 1);
+      return;
+    }
+  }
 
   var payload=buildPublishPayload(proj);
   if(!payload){ toast('No se pudo preparar la landing',1); return; }
+
+  // Safety net: if any blob: URL slipped into the payload (e.g., a
+  // pending video without a backing _pendingVideos entry after a
+  // partial reload), abort instead of publishing a broken page.
+  if (payload.body_html && payload.body_html.indexOf('"blob:') !== -1){
+    toast('Hay videos pendientes sin archivo — re-subilos antes de publicar', 1);
+    return;
+  }
 
   toast('Publicando en Shopify...',0);
   try{
@@ -5278,15 +5399,43 @@ window.setStickyPct = setStickyPct;
 // small window where unsaved keystrokes can be lost on refresh / tab
 // close. saveDraftNow() forces an immediate flush, used by the toolbar
 // "💾 Guardar" button + Ctrl+S + beforeunload guard.
+// Wrapped in try/catch + explicit logging because the user reported the
+// button "no funciona". Most likely cause: a downstream call (collectTexts,
+// snapshot, JSON.stringify) throws on something we silently swallowed
+// before, leaving no toast feedback. Now any failure surfaces visibly
+// instead of falling through to nothing.
 function saveDraftNow(){
-  if (typeof collectTexts === 'function') collectTexts();
-  // saveAll returns false (and shows its own toast) when localStorage is
-  // full — don't overwrite that error with a false-positive success.
-  var ok = (typeof saveAll === 'function') ? saveAll() : false;
+  // Cancel any pending qSave timer so we don't double-snapshot.
+  if (typeof flushQSavePending === 'function') flushQSavePending();
+  try {
+    if (typeof collectTexts === 'function') collectTexts();
+  } catch(e){
+    console.error('[Riverz] collectTexts threw during saveDraftNow:', e);
+    toast('Error preparando el borrador: ' + (e && e.message || e), 1);
+    return;
+  }
+  if (!activeId){
+    toast('No hay landing activa para guardar', 1);
+    return;
+  }
+  var ok = false;
+  try {
+    ok = (typeof saveAll === 'function') ? saveAll() : false;
+  } catch(e){
+    console.error('[Riverz] saveAll threw during saveDraftNow:', e);
+    toast('Error al guardar: ' + (e && e.message || e), 1);
+    return;
+  }
   if (ok) {
     isDirty = false;
     if (typeof dot === 'function') dot('ok');
     toast('💾 Borrador guardado');
+  } else {
+    // saveAll already shows its own quota-error toast; this branch
+    // means saveAll returned false without throwing (typically the
+    // QuotaExceededError catch). Re-emphasise so the user knows the
+    // button click registered.
+    toast('No se pudo guardar — revisá el almacenamiento', 1);
   }
 }
 window.saveDraftNow = saveDraftNow;
