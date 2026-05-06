@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+/* Container query root — lets the editor's mobile preview (390px wrapper) trigger this template's mobile breakpoints even though the iframe viewport is desktop-sized. */
+#page-wrap, .pp-doc { container-type: inline-size; container-name: pp; }
+
 /* ─── RESET / TOKENS ─────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -42,20 +45,20 @@ ul{margin:0;padding:0;list-style:none}
 
 /* ─── PAGE WRAPPER ───────────────────────────────────────────── */
 .pp{max-width:1200px;margin:0 auto;padding:0 20px}
-@media (min-width:760px){ .pp{padding:0 32px} }
+@container pp (min-width:760px){ .pp{padding:0 32px} }
 
 /* ─── 1. ANNOUNCEMENT BAR ────────────────────────────────────── */
 .pp-announce{background:var(--accent);color:var(--accent-fg);text-align:center;padding:10px 16px;font-size:13px;font-weight:600;letter-spacing:0.02em}
 
 /* ─── 2. HERO: gallery + buy box ─────────────────────────────── */
 .pp-hero{display:grid;grid-template-columns:1fr;gap:32px;padding:28px 0 56px}
-@media (min-width:900px){ .pp-hero{grid-template-columns:1.05fr .95fr;gap:48px;padding:48px 0 80px} }
+@container pp (min-width:900px){ .pp-hero{grid-template-columns:1.05fr .95fr;gap:48px;padding:48px 0 80px} }
 
 .pp-gallery{display:flex;flex-direction:column;gap:12px}
 .gallery-main{aspect-ratio:1/1;background:var(--bg-soft);border-radius:var(--r-md);overflow:hidden;position:relative}
 .gallery-main img{width:100%;height:100%;object-fit:cover}
 .gallery-thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-@media (min-width:900px){ .gallery-thumbs{grid-template-columns:repeat(5,1fr)} }
+@container pp (min-width:900px){ .gallery-thumbs{grid-template-columns:repeat(5,1fr)} }
 .thumb{aspect-ratio:1/1;background:var(--bg-soft);border:2px solid transparent;border-radius:var(--r-sm);overflow:hidden;padding:0;transition:border-color .15s}
 .thumb:hover,.thumb.is-active{border-color:var(--ink)}
 .thumb img{width:100%;height:100%;object-fit:cover}
@@ -72,7 +75,7 @@ ul{margin:0;padding:0;list-style:none}
 .tp-logo::before{content:"★";font-size:15px}
 
 .prod-name{font-size:30px;font-weight:800;letter-spacing:-0.02em;line-height:1.15;margin:0}
-@media (min-width:760px){ .prod-name{font-size:34px} }
+@container pp (min-width:760px){ .prod-name{font-size:34px} }
 
 .prod-price-row{display:flex;align-items:baseline;flex-wrap:wrap;gap:10px}
 .price{font-size:28px;font-weight:800;color:var(--price);letter-spacing:-0.02em}
@@ -123,7 +126,7 @@ ul{margin:0;padding:0;list-style:none}
 .ugc{margin-top:8px}
 .ugc-title{font-size:18px;font-weight:800;margin:0 0 12px;letter-spacing:-0.01em}
 .ugc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-@media (min-width:900px){ .ugc-grid{grid-template-columns:repeat(4,1fr)} }
+@container pp (min-width:900px){ .ugc-grid{grid-template-columns:repeat(4,1fr)} }
 .ugc-card{aspect-ratio:9/16;background:var(--bg-soft);border-radius:var(--r-md);overflow:hidden;position:relative}
 .ugc-card img{width:100%;height:100%;object-fit:cover}
 .ugc-card::after{content:"";position:absolute;left:50%;top:50%;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.92);transform:translate(-50%,-50%);box-shadow:0 4px 14px rgba(0,0,0,.18)}
@@ -143,23 +146,23 @@ ul{margin:0;padding:0;list-style:none}
 .press-title{font-size:13px;font-weight:600;color:var(--ink);letter-spacing:0.02em;margin:0 0 18px}
 .press-marquee{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:28px;max-width:960px;margin:0 auto}
 .press-logo{font-family:'Times New Roman',Georgia,serif;font-size:20px;font-weight:700;letter-spacing:0.02em;color:var(--ink);text-transform:uppercase}
-@media (min-width:760px){ .press-logo{font-size:24px} .press-marquee{gap:44px} }
+@container pp (min-width:760px){ .press-logo{font-size:24px} .press-marquee{gap:44px} }
 
 /* ─── SECTION GENERIC ────────────────────────────────────────── */
 .section{padding:64px 0}
-@media (min-width:760px){ .section{padding:80px 0} }
+@container pp (min-width:760px){ .section{padding:80px 0} }
 .section-cream{background:var(--bg-cream)}
 .section-h2{font-size:28px;font-weight:800;text-align:center;letter-spacing:-0.02em;margin:0}
-@media (min-width:760px){ .section-h2{font-size:36px} }
+@container pp (min-width:760px){ .section-h2{font-size:36px} }
 .section-sub{font-size:15px;color:var(--ink-2);text-align:center;max-width:560px;margin:8px auto 0}
-@media (min-width:760px){ .section-sub{font-size:16px} }
+@container pp (min-width:760px){ .section-sub{font-size:16px} }
 
 .section-cta{display:flex;justify-content:center;margin-top:36px}
 .section-cta .cta-btn{display:inline-flex;width:auto;max-width:340px;padding:16px 28px}
 
 /* ─── 4. ROUTINE STEPS — 4 numbered cards ────────────────────── */
 .steps-4{display:grid;grid-template-columns:1fr;gap:20px;margin-top:36px}
-@media (min-width:760px){ .steps-4{grid-template-columns:repeat(4,1fr)} }
+@container pp (min-width:760px){ .steps-4{grid-template-columns:repeat(4,1fr)} }
 .step-card{display:flex;flex-direction:column}
 .step-img{aspect-ratio:1/1;background:var(--bg-soft);border-radius:var(--r-md);position:relative;overflow:hidden}
 .step-img img{width:100%;height:100%;object-fit:cover}
@@ -170,8 +173,8 @@ ul{margin:0;padding:0;list-style:none}
 
 /* ─── 5. INGREDIENT CARDS — 6 in a 3-col grid ────────────────── */
 .ing-grid{display:grid;grid-template-columns:1fr;gap:20px;margin-top:32px}
-@media (min-width:760px){ .ing-grid{grid-template-columns:repeat(2,1fr)} }
-@media (min-width:1100px){ .ing-grid{grid-template-columns:repeat(3,1fr)} }
+@container pp (min-width:760px){ .ing-grid{grid-template-columns:repeat(2,1fr)} }
+@container pp (min-width:1100px){ .ing-grid{grid-template-columns:repeat(3,1fr)} }
 .ing-card{background:var(--bg);border-radius:var(--r-md);padding:22px 22px 24px;display:flex;flex-direction:column;gap:14px}
 .ing-head{display:flex;flex-direction:column;gap:2px}
 .ing-name{font-size:18px;font-weight:800;letter-spacing:-0.01em;margin:0}
@@ -186,7 +189,7 @@ ul{margin:0;padding:0;list-style:none}
 
 /* ─── 6. PAIN-POINTS section ─────────────────────────────────── */
 .pain-wrap{display:grid;grid-template-columns:1fr;gap:32px;align-items:center}
-@media (min-width:900px){ .pain-wrap{grid-template-columns:1fr 1fr;gap:60px} }
+@container pp (min-width:900px){ .pain-wrap{grid-template-columns:1fr 1fr;gap:60px} }
 .pain-list{display:flex;flex-direction:column;gap:12px;margin-top:18px}
 .pain-item{display:flex;gap:14px;background:var(--bg-cream);border-radius:var(--r-md);padding:14px 16px}
 .pain-icon{flex:0 0 32px;width:32px;height:32px;border-radius:50%;background:var(--check) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='2.5 7.5 6 11 11.5 4.5'/></svg>") center/16px no-repeat;margin-top:2px}
@@ -211,7 +214,7 @@ ul{margin:0;padding:0;list-style:none}
 
 /* ─── 8. TIMELINE ────────────────────────────────────────────── */
 .timeline-wrap{display:grid;grid-template-columns:1fr;gap:32px;margin-top:32px}
-@media (min-width:900px){ .timeline-wrap{grid-template-columns:1fr 1fr;gap:60px;align-items:center} }
+@container pp (min-width:900px){ .timeline-wrap{grid-template-columns:1fr 1fr;gap:60px;align-items:center} }
 .timeline-img{aspect-ratio:4/5;background:var(--bg-soft);border-radius:var(--r-md);overflow:hidden}
 .timeline-img img{width:100%;height:100%;object-fit:cover}
 .timeline{display:flex;flex-direction:column;gap:18px;position:relative;padding-left:24px}
@@ -224,7 +227,7 @@ ul{margin:0;padding:0;list-style:none}
 
 /* ─── 9. FAQ (big) ───────────────────────────────────────────── */
 .faq-wrap{display:grid;grid-template-columns:1fr;gap:24px;margin-top:24px}
-@media (min-width:900px){ .faq-wrap{grid-template-columns:.4fr .6fr;gap:48px;align-items:start} }
+@container pp (min-width:900px){ .faq-wrap{grid-template-columns:.4fr .6fr;gap:48px;align-items:start} }
 .faq-side h2{margin:0 0 8px}
 .faq-side .cta-btn{display:inline-flex;width:auto;max-width:340px;margin-top:18px;padding:16px 28px}
 .faq{display:flex;flex-direction:column;gap:8px}
@@ -254,7 +257,7 @@ ul{margin:0;padding:0;list-style:none}
 </head>
 <body>
 
-<div id="page-wrap">
+<div id="page-wrap" class="pp-doc">
 
   <!-- 1. Announcement bar -->
   <div class="pp-announce" data-v-text="announce">Envío gratis · Garantía 30 días · Stock limitado</div>

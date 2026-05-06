@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;800&display=swap" rel="stylesheet">
 <style>
+/* Container query root — lets the editor's mobile preview (390px wrapper) trigger this template's mobile breakpoints even though the iframe viewport is desktop-sized. */
+#page-wrap, .pp-doc { container-type: inline-size; container-name: pp; }
+
 /* ─── RESET / TOKENS ─────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -39,7 +42,7 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 
 /* ─── PAGE CONTAINER ─────────────────────────────────────────── */
 .adv{max-width:var(--max);margin:0 auto;padding:0 22px 80px}
-@media (min-width:760px){ .adv{padding:0 32px 120px} }
+@container pp (min-width:760px){ .adv{padding:0 32px 120px} }
 
 /* ─── 1. TOP BAR + HERO ──────────────────────────────────────── */
 .adv-top-bar{background:var(--navy);height:56px;width:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;letter-spacing:0.06em;text-transform:uppercase}
@@ -48,7 +51,7 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 .adv-hero{padding-top:36px}
 .adv-hero .kicker{display:inline-block;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--rose);margin-bottom:14px}
 .adv-hero h1{font-size:32px;line-height:1.08;letter-spacing:-0.02em;font-weight:900}
-@media (min-width:760px){ .adv-hero h1{font-size:44px} }
+@container pp (min-width:760px){ .adv-hero h1{font-size:44px} }
 .adv-hero .subline{display:block;color:var(--muted);font-weight:600;font-size:18px;margin-top:14px}
 .adv-hero hr{border:0;border-top:1px solid var(--rule);margin:28px 0}
 
@@ -70,9 +73,9 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 .reason-img{margin-bottom:20px;border-radius:8px;overflow:hidden;background:#f3f4f5}
 .reason-img img{width:100%}
 .reason h2{font-size:25px;font-weight:800;margin-bottom:14px;line-height:1.2}
-@media (min-width:760px){ .reason h2{font-size:30px} }
+@container pp (min-width:760px){ .reason h2{font-size:30px} }
 .reason h2 .num{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;background:var(--rose);color:#fff;border-radius:50%;font-size:16px;font-weight:900;margin-right:10px;vertical-align:middle}
-@media (min-width:760px){ .reason h2 .num{width:40px;height:40px;font-size:18px} }
+@container pp (min-width:760px){ .reason h2 .num{width:40px;height:40px;font-size:18px} }
 .reason p{margin:0 0 1em}
 
 /* quote callout */
@@ -94,7 +97,7 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 /* ─── BRIDGE / WHY-IT-HAPPENS section ────────────────────────── */
 .bridge{margin:64px 0;padding:32px 24px;background:var(--navy);color:#fff;border-radius:var(--r-lg)}
 .bridge h2{color:#fff;font-size:26px;line-height:1.2}
-@media (min-width:760px){ .bridge h2{font-size:32px} }
+@container pp (min-width:760px){ .bridge h2{font-size:32px} }
 .bridge p{font-size:17px;color:rgba(255,255,255,.88);line-height:1.6}
 .bridge p strong{color:var(--gold)}
 .bridge .brand-mark{display:inline-block;font-weight:900;letter-spacing:0.02em;color:var(--gold);font-size:22px;margin-top:6px}
@@ -103,7 +106,7 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 .ingredients{margin:56px 0}
 .ingredients h3{font-size:14px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;text-align:center}
 .ingredients h2{font-size:26px;text-align:center;margin-bottom:8px}
-@media (min-width:760px){ .ingredients h2{font-size:32px} }
+@container pp (min-width:760px){ .ingredients h2{font-size:32px} }
 .ing-list{display:flex;flex-direction:column;gap:14px;margin-top:28px}
 .ing-row{display:flex;gap:16px;align-items:flex-start;padding:18px 18px;background:#fbf7ec;border:1px solid rgba(216,176,89,.35);border-radius:var(--r-md)}
 .ing-icon{flex:0 0 44px;width:44px;height:44px;border-radius:50%;background:var(--cream);display:flex;align-items:center;justify-content:center;color:var(--cream-deep);font-weight:900;font-size:14px;letter-spacing:0.02em}
@@ -152,7 +155,7 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 .final{margin:64px 0 24px;text-align:center}
 .final-logo{font-family:'Inter',sans-serif;font-weight:300;font-size:64px;letter-spacing:-0.04em;line-height:1;margin-bottom:8px}
 .final-logo .reg{font-size:26px;vertical-align:top;margin-left:4px;font-weight:400}
-@media (min-width:760px){ .final-logo{font-size:84px} }
+@container pp (min-width:760px){ .final-logo{font-size:84px} }
 .final-q{font-size:22px;font-weight:300;color:var(--ink);margin-bottom:28px}
 .final-cta{display:inline-block;width:100%;max-width:420px;background:var(--ink);color:#fff;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:0.04em;text-transform:uppercase;padding:16px 24px;border-radius:4px;margin:0 auto}
 
@@ -177,7 +180,7 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 
 <div class="prog-wrap"><div id="prog" class="prog"></div></div>
 
-<div id="page-wrap">
+<div id="page-wrap" class="pp-doc">
 
   <!-- 1. TOP BAR -->
   <div class="adv-top-bar"><span data-v-text="topbar-pre">Publicado en</span><strong data-v-text="topbar-strong">Salud Masculina Argentina</strong></div>

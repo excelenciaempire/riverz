@@ -211,35 +211,44 @@ body.mob-mode.riverz-tpl-active #page-wrap{width:390px;max-width:390px;margin:24
    we strip on mount). Force it visible so the user sees it while editing. */
 body.riverz-tpl-active #page-wrap .sticky-bar,
 body.riverz-tpl-active #page-wrap aside#sticky{transform:none!important;position:absolute!important;left:0;right:0;bottom:0}
-body.mob-mode .hero{grid-template-columns:1fr!important;min-height:auto}
-body.mob-mode .hero-txt{padding:40px 20px 32px!important;order:2}
-body.mob-mode .hero-img-col{order:1}
-body.mob-mode .split{grid-template-columns:1fr!important}
-body.mob-mode .prod-feat{grid-template-columns:1fr!important}
-body.mob-mode .gift{grid-template-columns:1fr!important}
-body.mob-mode .split-cnt,.prod-info,.gift-cnt{padding:32px 20px!important}
-body.mob-mode .ing-grid{grid-template-columns:repeat(2,1fr)!important}
-body.mob-mode .testi-grid{grid-template-columns:1fr!important}
-body.mob-mode .stat-row{grid-template-columns:1fr!important}
-body.mob-mode .v-grid{grid-template-columns:1fr!important}
+/* Legacy Vitalu mobile overrides — scoped to :not(.riverz-tpl-active)
+   so they don't fight the container-query rules that ship with each
+   modern template (product-page-*, advertorial-listicle, listicle-*).
+   Without this scope, !important here beats the templates' own
+   responsive CSS and the mobile preview renders broken. */
+body.mob-mode:not(.riverz-tpl-active) .hero{grid-template-columns:1fr!important;min-height:auto}
+body.mob-mode:not(.riverz-tpl-active) .hero-txt{padding:40px 20px 32px!important;order:2}
+body.mob-mode:not(.riverz-tpl-active) .hero-img-col{order:1}
+body.mob-mode:not(.riverz-tpl-active) .split{grid-template-columns:1fr!important}
+body.mob-mode:not(.riverz-tpl-active) .prod-feat{grid-template-columns:1fr!important}
+body.mob-mode:not(.riverz-tpl-active) .gift{grid-template-columns:1fr!important}
+body.mob-mode:not(.riverz-tpl-active) .split-cnt,
+body:not(.riverz-tpl-active) .prod-info,
+body:not(.riverz-tpl-active) .gift-cnt{padding:32px 20px!important}
+body.mob-mode:not(.riverz-tpl-active) .ing-grid{grid-template-columns:repeat(2,1fr)!important}
+body.mob-mode:not(.riverz-tpl-active) .testi-grid{grid-template-columns:1fr!important}
+body.mob-mode:not(.riverz-tpl-active) .stat-row{grid-template-columns:1fr!important}
+body.mob-mode:not(.riverz-tpl-active) .v-grid{grid-template-columns:1fr!important}
 body.mob-mode:not(.riverz-tpl-active) section{padding:44px 20px!important}
-body.mob-mode .wrap{max-width:100%}
-body.mob-mode #sticky,body.mob-mode #prog{display:none}
-body.mob-mode .hero-dn{display:none}
-body.mob-mode .disp{font-size:clamp(26px,8vw,40px)!important;line-height:1.15!important}
-body.mob-mode .hl{font-size:clamp(20px,6.5vw,30px)!important;line-height:1.2!important}
-body.mob-mode .bl{font-size:13px!important}
-body.mob-mode .hero h1{font-size:clamp(28px,8vw,44px)!important;line-height:1.1!important}
-body.mob-mode .hero-em{font-size:clamp(22px,7vw,36px)!important}
-body.mob-mode .hero-sub,.pq p{font-size:12px!important}
-body.mob-mode .stat-n{font-size:clamp(32px,9vw,48px)!important}
-body.mob-mode .stat-l{font-size:11px!important}
-body.mob-mode .sebo-word{font-size:clamp(40px,13vw,60px)!important}
-body.mob-mode .ing-name{font-size:15px!important}
-body.mob-mode .ing-desc{font-size:11px!important}
-body.mob-mode .prod-name{font-size:clamp(22px,6vw,32px)!important}
-body.mob-mode .testi-txt{font-size:14px!important}
-body.mob-mode .cta-btn{padding:14px 28px!important;font-size:11px!important}
+body.mob-mode:not(.riverz-tpl-active) .wrap{max-width:100%}
+body.mob-mode:not(.riverz-tpl-active) #sticky,
+body.mob-mode:not(.riverz-tpl-active) #prog{display:none}
+body.mob-mode:not(.riverz-tpl-active) .hero-dn{display:none}
+body.mob-mode:not(.riverz-tpl-active) .disp{font-size:clamp(26px,8vw,40px)!important;line-height:1.15!important}
+body.mob-mode:not(.riverz-tpl-active) .hl{font-size:clamp(20px,6.5vw,30px)!important;line-height:1.2!important}
+body.mob-mode:not(.riverz-tpl-active) .bl{font-size:13px!important}
+body.mob-mode:not(.riverz-tpl-active) .hero h1{font-size:clamp(28px,8vw,44px)!important;line-height:1.1!important}
+body.mob-mode:not(.riverz-tpl-active) .hero-em{font-size:clamp(22px,7vw,36px)!important}
+body.mob-mode:not(.riverz-tpl-active) .hero-sub,
+body.mob-mode:not(.riverz-tpl-active) .pq p{font-size:12px!important}
+body.mob-mode:not(.riverz-tpl-active) .stat-n{font-size:clamp(32px,9vw,48px)!important}
+body.mob-mode:not(.riverz-tpl-active) .stat-l{font-size:11px!important}
+body.mob-mode:not(.riverz-tpl-active) .sebo-word{font-size:clamp(40px,13vw,60px)!important}
+body.mob-mode:not(.riverz-tpl-active) .ing-name{font-size:15px!important}
+body.mob-mode:not(.riverz-tpl-active) .ing-desc{font-size:11px!important}
+body.mob-mode:not(.riverz-tpl-active) .prod-name{font-size:clamp(22px,6vw,32px)!important}
+body.mob-mode:not(.riverz-tpl-active) .testi-txt{font-size:14px!important}
+body.mob-mode:not(.riverz-tpl-active) .cta-btn{padding:14px 28px!important;font-size:11px!important}
 /* CRITICAL: image overlays */
 .img-ph{position:relative;overflow:hidden}
 .iov{position:absolute;inset:0;z-index:10;background:rgba(6,4,2,.6);opacity:0;transition:opacity .22s;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;pointer-events:auto}

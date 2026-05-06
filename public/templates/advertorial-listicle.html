@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;800&display=swap" rel="stylesheet">
 <style>
+/* Container query root — lets the editor's mobile preview (390px wrapper) trigger this template's mobile breakpoints even though the iframe viewport is desktop-sized. */
+#page-wrap, .pp-doc { container-type: inline-size; container-name: pp; }
+
 /* ─── RESET / TOKENS ─────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -37,13 +40,13 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 
 /* ─── PAGE CONTAINER ─────────────────────────────────────────── */
 .adv{max-width:var(--max);margin:0 auto;padding:0 22px 80px}
-@media (min-width:760px){ .adv{padding:0 32px 120px} }
+@container pp (min-width:760px){ .adv{padding:0 32px 120px} }
 
 /* ─── 1. TOP BAR + HERO ──────────────────────────────────────── */
 .adv-top-bar{background:var(--navy);height:56px;width:100%}
 .adv-hero{padding-top:36px}
 .adv-hero h1{font-size:34px;line-height:1.1;letter-spacing:-0.02em;font-weight:900}
-@media (min-width:760px){ .adv-hero h1{font-size:46px} }
+@container pp (min-width:760px){ .adv-hero h1{font-size:46px} }
 .adv-hero hr{border:0;border-top:1px solid var(--rule);margin:28px 0}
 
 /* byline */
@@ -63,7 +66,7 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 .reason-img{margin-bottom:20px;border-radius:8px;overflow:hidden;background:#f3f4f5}
 .reason-img img{width:100%}
 .reason h2{font-size:26px;font-weight:800;margin-bottom:14px}
-@media (min-width:760px){ .reason h2{font-size:30px} }
+@container pp (min-width:760px){ .reason h2{font-size:30px} }
 .reason p{margin:0 0 1em}
 
 /* quote callout */
@@ -121,7 +124,7 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 .final{margin:64px 0 24px;text-align:center}
 .final-logo{font-family:'Inter',sans-serif;font-weight:300;font-size:74px;letter-spacing:-0.04em;line-height:1;margin-bottom:8px}
 .final-logo .reg{font-size:30px;vertical-align:top;margin-left:4px;font-weight:400}
-@media (min-width:760px){ .final-logo{font-size:96px} }
+@container pp (min-width:760px){ .final-logo{font-size:96px} }
 .final-q{font-size:24px;font-weight:300;color:var(--ink);margin-bottom:28px}
 .final-cta{display:inline-block;width:100%;max-width:420px;background:var(--ink);color:#fff;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:0.04em;text-transform:uppercase;padding:16px 24px;border-radius:4px;margin:0 auto}
 
@@ -146,7 +149,7 @@ h1,h2,h3,h4{margin:0 0 .4em;line-height:1.18;letter-spacing:-0.01em;font-weight:
 
 <div class="prog-wrap"><div id="prog" class="prog"></div></div>
 
-<div id="page-wrap">
+<div id="page-wrap" class="pp-doc">
 
   <!-- 1. TOP BAR -->
   <div class="adv-top-bar"></div>
