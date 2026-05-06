@@ -148,6 +148,8 @@ function rowToClient(r: ProjectRow) {
     imageStyles: (data.imageStyles as Record<string, unknown>) || {},
     videoSizes: (data.videoSizes as Record<string, unknown>) || {},
     layoutOrder: (data.layoutOrder as Record<string, unknown>) || null,
+    // Captured #page-wrap HTML so palette-dropped blocks survive reload.
+    html: typeof data.html === 'string' ? (data.html as string) : null,
     updatedAt: r.updated_at,
     createdAt: r.created_at,
   };

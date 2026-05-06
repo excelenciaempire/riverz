@@ -3816,8 +3816,30 @@ function _projectDataPayload(proj){
     imageShapes: proj.imageShapes || {},
     imageStyles: proj.imageStyles || {},
     videoSizes: proj.videoSizes || {},
-    layoutOrder: proj.layoutOrder || null
+    layoutOrder: proj.layoutOrder || null,
+    // The rendered #page-wrap HTML — captured by saveAll on every save
+    // so palette-dropped blocks (Imagen, Video, Texto, etc.) survive
+    // reload. Without this, the editor falls back to the template's
+    // pristine source HTML on boot and any block the user added is gone,
+    // even though proj.images / proj.texts kept their data.
+    html: typeof proj.html === 'string' ? proj.html : null
   };
+}
+
+// Capture the live #page-wrap into proj.html, stripping editor-only chrome
+// (delete buttons, drag handles, contentEditable flags) so re-applying on
+// reload doesn't double-inject UI. Same scrubber as snapshot() — if you
+// touch one, touch both.
+function _captureProjectHtml(proj){
+  if (!proj || isRestoring) return;
+  var pw = (typeof g === 'function') ? g('page-wrap') : document.getElementById('page-wrap');
+  if (!pw) return;
+  var clone = pw.cloneNode(true);
+  clone.querySelectorAll('.iov,.idel,.riverz-img-edit,.riverz-img-del,.riverz-img-size,.riverz-vid-edit,.riverz-vid-del,.riverz-section-handle').forEach(function(el){ el.parentNode && el.parentNode.removeChild(el); });
+  clone.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
+  clone.querySelectorAll('.riverz-hover').forEach(function(el){ el.classList.remove('riverz-hover'); el.removeAttribute('data-rz-hover-label'); });
+  clone.querySelectorAll('.riverz-sec-active').forEach(function(el){ el.classList.remove('riverz-sec-active'); });
+  proj.html = clone.innerHTML;
 }
 function _projectMetaPayload(proj){
   return {
@@ -4080,11 +4102,18 @@ function _normalizeServerProject(sp){
     imageShapes: sp.imageShapes || {},
     imageStyles: sp.imageStyles || {},
     videoSizes: sp.videoSizes || {},
-    layoutOrder: sp.layoutOrder || null
+    layoutOrder: sp.layoutOrder || null,
+    html: typeof sp.html === 'string' ? sp.html : null
   };
 }
 function saveAll(){
   collectTexts();
+  // Capture the rendered DOM so palette-dropped blocks and other
+  // structural mutations survive reload. The template's source HTML is
+  // just the starting point — this is what the user actually sees and
+  // expects to come back to.
+  var _activeProj = getActive();
+  if (_activeProj) _captureProjectHtml(_activeProj);
   // Schedule a debounced PUT for the active project so the server has
   // the latest state. New projects (not yet known to the server) hit
   // POST inside _pushNow on the first call.
@@ -4298,12 +4327,49 @@ async function bootProject(id){
   activateProject(id);
 }
 
+// Replace the live #page-wrap with the user's captured HTML and re-run
+// every wiring step that applyTemplateContent normally does. Idempotent:
+// no-op if proj.html is empty.
+function _restoreProjectHtml(proj){
+  if (!proj || typeof proj.html !== 'string' || !proj.html) return;
+  var pw = g('page-wrap'); if (!pw) return;
+  var wasRestoring = isRestoring;
+  isRestoring = true;
+  try {
+    pw.innerHTML = proj.html;
+    // Templates ship .rv reveal-on-scroll classes that start invisible
+    // until an IntersectionObserver toggles them. The editor strips the
+    // observer script, so force them visible here — same trick
+    // applyTemplateContent uses on first mount.
+    pw.querySelectorAll('.rv').forEach(function(el){ el.classList.add('on'); });
+    // Refresh the slot key tables so applySlotsForViewport / IMG_KEYS /
+    // VIDEO_KEYS see the restored DOM (including any palette-dropped
+    // auto-N slots) before activateProject runs its applyTexts /
+    // applySlotsForViewport pass.
+    if (typeof rebuildSlotTables === 'function') rebuildSlotTables();
+    if (typeof decorateImageSlots === 'function') decorateImageSlots();
+    if (typeof decorateVideoSlots === 'function') decorateVideoSlots();
+    if (typeof initEdit === 'function') initEdit();
+    if (typeof makeSectionsDraggable === 'function') makeSectionsDraggable();
+    if (typeof wireBlockPalette === 'function') wireBlockPalette();
+    if (typeof wireGalleryCarousel === 'function') wireGalleryCarousel();
+    if (typeof wireIngCarousel === 'function') wireIngCarousel();
+  } finally {
+    isRestoring = wasRestoring;
+  }
+}
+
 // ── ACTIVATE ─────────────────────────────────────────────────
 function activateProject(id){
   if(activeId&&activeId!==id){collectTexts();saveAll();}
   activeId=id; var proj=getActive(); if(!proj){showEmpty();return;}
   if(!histMap[id]){histMap[id]=[];histIdx[id]=-1;}
   isRestoring=true;
+  // Restore captured DOM if the user has structural edits (palette
+  // drops, duplicates, deletes, column splits). bootProject already
+  // mounted the template's source HTML above; this overlays the user's
+  // actual page. No-op when proj.html is empty (just-cloned-from-template).
+  if (typeof _restoreProjectHtml === 'function') _restoreProjectHtml(proj);
   // Replay the saved layout order (drag-and-drop reorders for both top-
   // level sections AND nested rows/columns) before applyTexts so the
   // [data-v-text] / [data-v-img] queries hit elements in their final
@@ -6679,21 +6745,19 @@ async function igpFileApply() {
   igpToast('Procesando imagen…', 0);
   try {
     var blob = await window.compressImageFile(igpPendingFileObj, 1920, 0.85);
-    // Store as data URL — uploaded to Shopify only at publish time so
-    // the user can iterate without burning Files quota.
-    var url = await new Promise(function(res, rej){
-      var r = new FileReader();
-      r.onload = function(){ res(r.result); };
-      r.onerror = function(){ rej(new Error('No se pudo leer el archivo')); };
-      r.readAsDataURL(blob);
-    });
-    window.setSlot(igpSlot, url);
+    // Upload to Supabase Storage so the URL we save in proj.images is a
+    // tiny ~120-char public URL instead of a 300-400KB base64 data URL.
+    // Same pipeline as onFilePick — keeps localStorage / project_data
+    // small and lets the publish flow CDN-substitute on Shopify.
+    igpToast('Subiendo…', 0);
+    var publicUrl = await window.uploadImageToSupabase(blob, igpPendingFileObj.name || 'image.jpg', igpSlot);
+    window.setSlot(igpSlot, publicUrl);
     var proj = window.getActive();
-    if (proj) window.setProjImage(proj, igpSlot, url, window.vp || 'desktop');
+    if (proj) window.setProjImage(proj, igpSlot, publicUrl, window.vp || 'desktop');
     window.snapshot(); window.saveAll();
     igpFileReset();
     closeImgGen();
-    igpToast((window.vp==='mobile'?'✓ Imagen aplicada solo en mobile · se sube al publicar':'✓ Imagen aplicada · se sube al publicar'));
+    igpToast((window.vp==='mobile'?'✓ Imagen aplicada solo en mobile':'✓ Imagen aplicada'));
   } catch (err) {
     console.error('igpFileApply', err);
     igpToast('Error: ' + (err.message || 'no se pudo subir'), 1);
