@@ -4670,13 +4670,24 @@ async function uploadImageToSupabase(blob, originalName, slotKey){
   fd.append('file', blob, clean);
   if (proj) fd.append('project_id', proj.id || 'landing');
   if (slotKey) fd.append('slot', slotKey);
-  var res = await fetch('/api/landing-lab/upload-asset', { method: 'POST', body: fd });
-  var data = null;
-  try { data = await res.json(); } catch(_){}
-  if (!res.ok){
-    throw new Error((data && data.error) || ('Subida fallida (' + res.status + ')'));
+  var res, data = null, raw = '';
+  try {
+    res = await fetch('/api/landing-lab/upload-asset', { method: 'POST', body: fd, credentials: 'same-origin' });
+    raw = await res.text();
+    try { data = JSON.parse(raw); } catch(_){ /* server returned non-JSON */ }
+  } catch (netErr) {
+    console.error('[Riverz] upload-asset network failure:', netErr);
+    throw new Error('Sin red — no se pudo contactar al servidor');
   }
-  if (!data || !data.url) throw new Error('Respuesta sin URL');
+  if (!res.ok){
+    var msg = (data && data.error) || raw || ('Subida fallida (' + res.status + ')');
+    console.error('[Riverz] upload-asset rejected (' + res.status + '):', msg);
+    throw new Error(msg);
+  }
+  if (!data || !data.url) {
+    console.error('[Riverz] upload-asset missing url in response:', raw);
+    throw new Error('Respuesta sin URL');
+  }
   return data.url;
 }
 window.uploadImageToSupabase = uploadImageToSupabase;

@@ -25,7 +25,14 @@ const ALLOWED_MIME = new Set([
   'image/webp',
   'image/gif',
 ]);
-const BUCKET = 'user-uploads';
+// public-images is the Riverz convention for static, publicly-readable
+// assets. Setup SQL lives in lib/supabase/public-images-storage-setup.sql
+// (bucket public=true + RLS policies for authenticated upload). Pinned
+// here instead of using user-uploads because the user-uploads bucket
+// has a 50MB private cap and inconsistent public-access policy across
+// environments — uploads succeeded server-side but the returned URL
+// 403'd at the browser, making it look like the image "didn't save".
+const BUCKET = 'public-images';
 const MAX_BYTES = 15 * 1024 * 1024;
 
 export async function POST(req: Request) {
@@ -64,17 +71,32 @@ export async function POST(req: Request) {
     );
   }
 
+  // Fail loud (and visibly) if the Supabase env vars aren't configured.
+  // Without this the createAdminClient() call returns a client with
+  // undefined creds and the upload silently fails ~30s later — looking
+  // exactly like "the image didn't save" from the user's side.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('[upload-asset] Supabase env vars missing');
+    return NextResponse.json(
+      { error: 'Configuración de Supabase incompleta en el servidor (falta SUPABASE_SERVICE_ROLE_KEY o NEXT_PUBLIC_SUPABASE_URL).' },
+      { status: 500 },
+    );
+  }
+
   const projectId = (form.get('project_id') as string) || 'landing';
   const slot = (form.get('slot') as string) || 'image';
 
-  // Path: user-uploads/<clerkUserId>/landing-lab/<projectId>/<slot>-<timestamp>.<ext>
-  // Slug + timestamp prevents accidental overwrites between uploads to
-  // the same slot (the editor immediately swaps to the new URL anyway).
+  // Path: public-images/landing-lab/<userId>/<projectId>/<slot>-<timestamp>.<ext>
+  // landing-lab/ prefix scopes our usage of the shared public-images
+  // bucket. <userId> sub-path keeps every user's assets separate even
+  // though the bucket itself is public-read. Timestamp prevents
+  // overwrites between rapid uploads to the same slot.
   const ext = (file.type.split('/')[1] || 'bin').replace('jpeg', 'jpg');
+  const safeUser = userId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
   const safeProj = projectId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) || 'landing';
   const safeSlot = slot.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'image';
   const objectPath =
-    `${userId}/landing-lab/${safeProj}/${safeSlot}-${Date.now()}.${ext}`;
+    `landing-lab/${safeUser}/${safeProj}/${safeSlot}-${Date.now()}.${ext}`;
 
   const supabase = createAdminClient();
 
@@ -94,8 +116,16 @@ export async function POST(req: Request) {
     upsert: false,
   });
   if (upErr) {
+    // Surface the underlying error message + hint at the most common
+    // root cause so the user (or a dev tailing logs) can fix it
+    // immediately. "Bucket not found" → run the SQL migration.
+    const msg = upErr.message || String(upErr);
+    console.error('[upload-asset] Supabase upload failed:', msg);
+    const hint = /not found/i.test(msg)
+      ? ' (Asegurate de haber corrido lib/supabase/public-images-storage-setup.sql)'
+      : '';
     return NextResponse.json(
-      { error: 'Falla al subir a Supabase: ' + upErr.message },
+      { error: 'Falla al subir a Supabase: ' + msg + hint },
       { status: 502 },
     );
   }
