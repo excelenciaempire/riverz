@@ -892,10 +892,17 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
           <button type="button" class="seg-b" data-val="5">5</button>
           <button type="button" class="seg-b" data-val="6">6</button>
         </div>
+        <div class="in-label" style="margin-top:10px">Visibles en móvil</div>
+        <div class="in-row in-seg" id="ins-rzc-cards-mobile-seg">
+          <button type="button" class="seg-b" data-val="1">1</button>
+          <button type="button" class="seg-b" data-val="2">2</button>
+          <button type="button" class="seg-b" data-val="3">3</button>
+          <button type="button" class="seg-b" data-val="4">4</button>
+        </div>
         <div class="in-row" style="margin-top:10px">
           <button class="in-btn flex" type="button" id="ins-rzc-nav" onclick="rzCarouselToggleNav()" title="Mostrar / ocultar las flechas de navegación">Flechas: On</button>
         </div>
-        <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.4">En móvil siempre se muestra como scroll horizontal con snap.</p>
+        <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.4">El track siempre hace scroll horizontal con snap; el número visible controla el ancho de cada slide.</p>
       </div>
       <!-- Alignment controls — visible for every selection. Writes
            text-align on the element so child text + inline-block media
@@ -1638,10 +1645,22 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
       <button id="vid-tab-url" class="igp-tab" onclick="vidSetMode('url')">🔗 URL</button>
     </div>
     <div id="vid-file-section">
-      <div onclick="document.getElementById('vid-file-input').click()" style="border:1.5px dashed #2a3140;border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;background:#0a0d14;transition:border-color .15s" onmouseover="this.style.borderColor='#3d4760'" onmouseout="this.style.borderColor='#2a3140'">
+      <!-- Currently-uploaded video preview. Shown when openVidModal sees
+           that proj.videos[slot] already has a value. The user can
+           replace or remove it from here without leaving the modal. -->
+      <div id="vid-current-preview" style="display:none;border:1px solid #1f2530;border-radius:10px;padding:14px;background:#0a0d14;margin-bottom:12px">
+        <div style="font-size:11px;color:#7A82A0;margin-bottom:8px;letter-spacing:.05em;text-transform:uppercase">Video actual</div>
+        <video id="vid-current-preview-el" controls playsinline preload="metadata" style="width:100%;max-height:280px;background:#000;border-radius:6px;display:block"></video>
+        <div id="vid-current-preview-meta" style="font-size:11px;color:#5A6280;margin-top:8px;word-break:break-all"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="tb tb-acc" type="button" onclick="document.getElementById('vid-file-input').click()" style="flex:1">📁 Reemplazar archivo</button>
+          <button class="tb tb-ghost" type="button" onclick="removeCurrentVideo()" title="Quitar video del slot">🗑 Quitar</button>
+        </div>
+      </div>
+      <div id="vid-drop-zone" onclick="document.getElementById('vid-file-input').click()" style="border:1.5px dashed #2a3140;border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;background:#0a0d14;transition:border-color .15s" onmouseover="this.style.borderColor='#3d4760'" onmouseout="this.style.borderColor='#2a3140'">
         <div style="font-size:30px;margin-bottom:8px">🎬</div>
         <div style="font-size:13px;color:#C8CAD8;margin-bottom:4px">Haz clic para subir un video</div>
-        <div style="font-size:11px;color:#5A6280">MP4 · MOV · WEBM · hasta 60MB · se sube directo a Shopify Files</div>
+        <div style="font-size:11px;color:#5A6280">MP4 · MOV · WEBM · hasta 60MB · se conserva la proporción original del archivo</div>
         <input type="file" id="vid-file-input" accept="video/mp4,video/quicktime,video/webm,video/ogg" style="display:none" onchange="onVideoFilePick(event)">
       </div>
       <div id="vid-upload-status" style="margin-top:10px;font-size:11.5px;color:#7A82A0;text-align:center;display:none"></div>
@@ -1787,7 +1806,13 @@ var RIVERZ_SIZE_CSS =
   '.rz-carousel-track{display:flex;flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:16px;padding:8px 4px 16px;scrollbar-width:thin}\n' +
   '.rz-carousel-track::-webkit-scrollbar{height:6px}\n' +
   '.rz-carousel-track::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22);border-radius:3px}\n' +
+  /* Default: 1 card visible on mobile (with peek). data-rz-cards-mobile
+     overrides when set explicitly. */
   '.rz-carousel-card{flex:0 0 84%;scroll-snap-align:start;background:rgba(0,0,0,.04);border-radius:12px;padding:22px;min-width:0}\n' +
+  '.rz-carousel[data-rz-cards-mobile="1"] .rz-carousel-card{flex:0 0 84%}\n' +
+  '.rz-carousel[data-rz-cards-mobile="2"] .rz-carousel-card{flex:0 0 calc(50% - 8px)}\n' +
+  '.rz-carousel[data-rz-cards-mobile="3"] .rz-carousel-card{flex:0 0 calc(33.333% - 11px)}\n' +
+  '.rz-carousel[data-rz-cards-mobile="4"] .rz-carousel-card{flex:0 0 calc(25% - 12px)}\n' +
   '@media (min-width:760px){\n' +
   '  .rz-carousel[data-rz-cards-desktop="2"] .rz-carousel-card{flex:0 0 calc(50% - 8px)}\n' +
   '  .rz-carousel[data-rz-cards-desktop="3"] .rz-carousel-card{flex:0 0 calc(33.333% - 11px)}\n' +
@@ -2239,7 +2264,7 @@ var BLOCK_TEMPLATES = {
   // is a [data-rz-kind="col"] so it gets the same drag/select behaviour
   // as a row column — drop content into it from the palette.
   carousel:
-    '<div class="rz-carousel" data-rz-kind="carousel" data-rz-cards-desktop="3" data-rz-nav="on">' +
+    '<div class="rz-carousel" data-rz-kind="carousel" data-rz-cards-desktop="3" data-rz-cards-mobile="1" data-rz-nav="on">' +
       '<div class="rz-carousel-track">' +
         '<div class="rz-carousel-card" data-rz-kind="col">' +
           '<h3 data-v-text="auto-{slug}-1-h" style="font-size:18px;font-weight:700;margin:0 0 6px">Slide 1</h3>' +
@@ -3203,6 +3228,16 @@ function _insRenderCarouselSection(carEl){
       b.onclick = function(){ rzCarouselSetCardsDesktop(b.dataset.val); };
     });
   }
+  // Mobile counterpart — same pattern, capped at 4 (smaller cards on
+  // narrow viewports start to lose readability past that).
+  var curM = carEl.getAttribute('data-rz-cards-mobile') || '1';
+  var segM = document.getElementById('ins-rzc-cards-mobile-seg');
+  if (segM){
+    Array.prototype.forEach.call(segM.querySelectorAll('.seg-b'), function(b){
+      b.classList.toggle('is-on', b.dataset.val === String(curM));
+      b.onclick = function(){ rzCarouselSetCardsMobile(b.dataset.val); };
+    });
+  }
   // Nav-arrows toggle button label flips with the data-rz-nav attr.
   var navBtn = document.getElementById('ins-rzc-nav');
   if (navBtn){
@@ -3760,10 +3795,14 @@ function wireInspectorClicks(){
   pw.dataset.insWired = '1';
   pw.addEventListener('click', function(e){
     // Pick the most specific block-like target the user clicked. Text /
-    // image slots win over section ancestors so the inspector shows the
-    // controls that match the click. If we miss all three the click is
-    // probably on raw template chrome — just bail.
-    var el = e.target.closest && e.target.closest('[data-v-text],[data-v-img],[data-v-video],[data-section-id]');
+    // image / video slots win over section ancestors so the inspector
+    // shows the controls that match the click. [data-rz-kind] is in the
+    // selector so layout primitives (rows, cols, carousels, sections)
+    // are clickable for selection even when they don't carry an
+    // explicit section-id — important for carousels which need their
+    // own inspector controls (Add slide, Visibles, etc.) without being
+    // taggable as reorder containers.
+    var el = e.target.closest && e.target.closest('[data-v-text],[data-v-img],[data-v-video],[data-section-id],[data-rz-kind]');
     if (!el) return;
     insSelect(el);
   });
@@ -3998,6 +4037,15 @@ function rzCarouselSetCardsDesktop(n){
   if (typeof saveAll === 'function') saveAll();
   if (typeof insRefresh === 'function') insRefresh();
 }
+function rzCarouselSetCardsMobile(n){
+  if (!_insEl || _insEl.getAttribute('data-rz-kind') !== 'carousel') return;
+  var v = parseInt(n, 10); if (!v || v < 1) v = 1; if (v > 4) v = 4;
+  _insEl.setAttribute('data-rz-cards-mobile', String(v));
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (typeof saveAll === 'function') saveAll();
+  if (typeof insRefresh === 'function') insRefresh();
+}
+window.rzCarouselSetCardsMobile = rzCarouselSetCardsMobile;
 function rzCarouselToggleNav(){
   if (!_insEl || _insEl.getAttribute('data-rz-kind') !== 'carousel') return;
   var on = _insEl.getAttribute('data-rz-nav') !== 'off';
@@ -5066,12 +5114,50 @@ function openVidModal(k){
   var urlIn=g('vid-url-input'); if(urlIn) urlIn.value='';
   var posIn=g('vid-poster-input'); if(posIn) posIn.value='';
   var st=g('vid-upload-status'); if(st){ st.style.display='none'; st.textContent=''; }
+  // If the slot already has a video, show its preview + replace/remove
+  // controls and collapse the drop-zone. The upload flow still works
+  // because the file input lives outside the drop zone.
+  var proj=getActive();
+  var entry = proj && proj.videos ? proj.videos[k] : null;
+  var url = entry ? (typeof entry === 'string' ? entry : (entry.src || null)) : null;
+  var prev = g('vid-current-preview');
+  var prevEl = g('vid-current-preview-el');
+  var prevMeta = g('vid-current-preview-meta');
+  var dropZone = g('vid-drop-zone');
+  if (url){
+    if (prev) prev.style.display = '';
+    if (prevEl){ prevEl.src = url; }
+    if (prevMeta){
+      var name = (entry && entry.name) ? entry.name : url.split('/').pop().split('?')[0];
+      prevMeta.textContent = name;
+    }
+    if (dropZone) dropZone.style.display = 'none';
+  } else {
+    if (prev) prev.style.display = 'none';
+    if (prevEl) prevEl.removeAttribute('src');
+    if (dropZone) dropZone.style.display = '';
+  }
   m.style.display='flex';
 }
 function closeVidModal(){
   var m=g('vid-modal'); if(m) m.style.display='none';
+  // Pause + clear the preview <video> so it doesn't keep buffering in
+  // the background after the modal closes. Faster modal reopens too.
+  var prevEl = g('vid-current-preview-el');
+  if (prevEl){ try { prevEl.pause(); } catch(_){} prevEl.removeAttribute('src'); }
   curVidKey=null;
 }
+function removeCurrentVideo(){
+  if (!curVidKey) return;
+  var proj = getActive();
+  if (proj && proj.videos) { delete proj.videos[curVidKey]; }
+  if (typeof resetVidSlot === 'function') resetVidSlot(curVidKey);
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (typeof saveAll === 'function') saveAll();
+  closeVidModal();
+  if (typeof toast === 'function') toast('Video quitado del slot');
+}
+window.removeCurrentVideo = removeCurrentVideo;
 function vidSetMode(mode){
   vidMode=mode;
   var fs=g('vid-file-section'), us=g('vid-url-section');
@@ -5107,6 +5193,77 @@ function applyVideoUrl(){
 // goes into the published page directly. The map is kept around as a
 // no-op for any old code paths still pushing into it.
 var _pendingVideos = {};
+
+// Read a video file's natural width/height by mounting it in a hidden
+// <video> and waiting for loadedmetadata. Resolves to {w, h, ratio}
+// or null if the metadata never arrives (unsupported codec, etc.).
+function _readVideoNaturalRatio(objectUrl){
+  return new Promise(function(resolve){
+    var v = document.createElement('video');
+    v.preload = 'metadata';
+    v.muted = true;
+    v.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px';
+    var done = false;
+    var finish = function(value){
+      if (done) return; done = true;
+      try { v.removeAttribute('src'); v.load(); } catch(_){}
+      try { if (v.parentNode) v.parentNode.removeChild(v); } catch(_){}
+      resolve(value);
+    };
+    v.addEventListener('loadedmetadata', function(){
+      var w = v.videoWidth || 0, h = v.videoHeight || 0;
+      if (!w || !h) return finish(null);
+      finish({ w: w, h: h, ratio: w / h });
+    });
+    v.addEventListener('error', function(){ finish(null); });
+    setTimeout(function(){ finish(null); }, 4000); // safety timeout
+    v.src = objectUrl;
+    document.body.appendChild(v);
+  });
+}
+
+// Apply the natural aspect ratio to the slot. Picks one of the existing
+// preset classes when the ratio rounds to 9:16 / 16:9 / 1:1 / 4:3 (so
+// the user can still toggle between presets via the inspector if they
+// want), otherwise stamps an exact `aspect-ratio:<w>/<h>` inline style
+// on the wrapper so portrait phone clips render at their true shape
+// instead of being squeezed into the default 16/9 letterbox.
+function _applyVideoNaturalAspect(proj, slot, natural){
+  if (!proj || !slot) return;
+  var slotEl = document.querySelector('#page-wrap [data-v-video="' + slot + '"]');
+  if (!slotEl) return;
+  // Always clear prior inline aspect override + preset classes so we
+  // start from a clean slate.
+  slotEl.style.removeProperty('aspect-ratio');
+  if (typeof VID_ASPECT_CLASSES !== 'undefined'){
+    VID_ASPECT_CLASSES.forEach(function(c){ slotEl.classList.remove(c); });
+  }
+  if (proj.videoAspect) delete proj.videoAspect[slot];
+  if (!natural || !natural.ratio) return;
+  // 0.05 tolerance so a 1080×1920 reel (0.5625) cleanly maps to the
+  // 9:16 preset, a 1920×1080 hero to 16:9, etc.
+  var presets = [
+    { v: '916', r: 9/16 },
+    { v: '169', r: 16/9 },
+    { v: '11',  r: 1 },
+    { v: '43',  r: 4/3 }
+  ];
+  var match = null;
+  for (var i = 0; i < presets.length; i++){
+    if (Math.abs(natural.ratio - presets[i].r) <= 0.05) { match = presets[i].v; break; }
+  }
+  if (match){
+    slotEl.classList.add('riverz-vaspect-' + match);
+    if (!proj.videoAspect) proj.videoAspect = {};
+    proj.videoAspect[slot] = match;
+  } else {
+    // Custom ratio (4:5, 21:9, 1.85:1, etc.) → exact inline style.
+    slotEl.style.setProperty('aspect-ratio', natural.w + '/' + natural.h, 'important');
+  }
+}
+window._readVideoNaturalRatio = _readVideoNaturalRatio;
+window._applyVideoNaturalAspect = _applyVideoNaturalAspect;
+
 async function uploadVideoToSupabase(file, originalName, slotKey){
   var proj = (typeof getActive === 'function') ? getActive() : null;
   var fd = new FormData();
@@ -5148,13 +5305,16 @@ async function onVideoFilePick(e){
     // it's back.
     var objectUrl = URL.createObjectURL(file);
     setVidSlot(curVidKey, objectUrl);
+    // Read the file's intrinsic dimensions so the slot adopts the
+    // video's natural aspect ratio instead of being letterboxed by the
+    // template's default 16/9 box. If metadata can't be read (rare:
+    // unsupported codec) we fall through to the default behaviour.
+    var natural = await _readVideoNaturalRatio(objectUrl);
     toast('Subiendo video a Supabase…', 0);
     var publicUrl;
     try {
       publicUrl = await uploadVideoToSupabase(file, file.name, curVidKey);
     } catch (upErr){
-      // Roll back the preview src so the slot doesn't show a now-revoked
-      // blob URL after the failure.
       try { URL.revokeObjectURL(objectUrl); } catch(_){}
       throw upErr;
     }
@@ -5164,6 +5324,11 @@ async function onVideoFilePick(e){
     if(proj){
       if(!proj.videos) proj.videos={};
       proj.videos[curVidKey] = { src: publicUrl, name: file.name };
+      // Apply natural aspect: pick the matching preset class when the
+      // ratio is close to 9:16 / 16:9 / 1:1 / 4:3, otherwise stamp an
+      // exact aspect-ratio inline on the wrapper. Persists via proj.html
+      // because the inline style lives in the captured DOM.
+      _applyVideoNaturalAspect(proj, curVidKey, natural);
     }
     snapshot();
     saveAll();
