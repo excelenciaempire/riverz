@@ -7,6 +7,7 @@ const PREVIEW_MODE = false;
 
 const isPublicRoute = createRouteMatcher([
   '/',
+  '/v3',
   '/landing-lab',
   '/sign-in(.*)',
   '/sign-up(.*)',

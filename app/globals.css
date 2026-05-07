@@ -834,3 +834,181 @@ html[data-theme="dark"] { color-scheme: dark; }
   }
   .lv2-rv { opacity: 1; transform: none; }
 }
+
+/* ============================================================
+   Riverz Landing v3 — scroll-driven storytelling + 3D
+   Layered on top of lv2-* (which is reused for typography & color).
+   ============================================================ */
+
+/* Page chrome shared by all v3 sections */
+.lv3-page {
+  background: #fafaf7;
+  color: #0a0a0a;
+  font-family: var(--font-inter-tight), sans-serif;
+}
+
+/* Pinned scene scaffolding.
+   Outer wrapper sets the scroll length; inner stage is sticky and stays
+   within viewport while ScrollTrigger scrubs the timeline. */
+.lv3-scene {
+  position: relative;
+  width: 100%;
+}
+.lv3-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Cream / dark / sage backgrounds reused from lv2 — alias for clarity. */
+.lv3-bg-cream { background: #fafaf7; color: #0a0a0a; }
+.lv3-bg-cream2 { background: #f5f3ec; color: #0a0a0a; }
+.lv3-bg-dark { background: #0e0e13; color: #fafaf7; }
+.lv3-bg-ink { background: #0a0a0a; color: #fafaf7; }
+.lv3-bg-sage { background: #b6bba6; color: #0a0a0a; }
+
+/* Hero canvas dimensions — reserve space so swapping poster ↔ canvas
+   produces zero CLS. */
+.lv3-hero-canvas-wrap {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.lv3-hero-poster {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 50% 45%, rgba(20, 224, 204, 0.18), transparent 70%),
+    radial-gradient(40% 30% at 50% 60%, rgba(247, 255, 158, 0.22), transparent 70%),
+    #fafaf7;
+}
+
+/* CSS 3D phone mockup wrapper — used by UGC section without Three.js. */
+.lv3-phone-stage {
+  perspective: 1400px;
+  transform-style: preserve-3d;
+}
+.lv3-phone {
+  width: 230px;
+  aspect-ratio: 9 / 19.5;
+  border-radius: 36px;
+  background: #0a0a0a;
+  padding: 8px;
+  box-shadow:
+    0 30px 60px -20px rgba(10, 10, 10, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  transform-style: preserve-3d;
+}
+.lv3-phone-screen {
+  width: 100%;
+  height: 100%;
+  border-radius: 28px;
+  overflow: hidden;
+  background: #15151b;
+  position: relative;
+}
+
+/* Browser chrome used by Research + Landing Lab sections. */
+.lv3-browser {
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow:
+    0 40px 80px -30px rgba(10, 10, 10, 0.35),
+    0 0 0 1px rgba(10, 10, 10, 0.06);
+  overflow: hidden;
+}
+.lv3-browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f3f3ee;
+  border-bottom: 1px solid rgba(10, 10, 10, 0.06);
+  font-size: 12px;
+  color: #6b6b6b;
+  font-family: var(--font-poppins), sans-serif;
+}
+.lv3-browser-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.12);
+}
+.lv3-browser-url {
+  flex: 1;
+  background: rgba(10, 10, 10, 0.05);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--font-poppins), sans-serif;
+  font-size: 11.5px;
+  color: #555;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Generic frame for editorial screenshots (cream-bg shadow + ring). */
+.lv3-frame {
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow:
+    0 30px 70px -25px rgba(10, 10, 10, 0.35),
+    0 0 0 1px rgba(10, 10, 10, 0.05);
+}
+
+/* Soft glow under hero / CTA — picks up brand teal + yellow. */
+.lv3-glow-cream::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 80%;
+  background:
+    radial-gradient(35% 60% at 30% 30%, rgba(247, 255, 158, 0.45), transparent 70%),
+    radial-gradient(45% 60% at 70% 50%, rgba(20, 224, 204, 0.18), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Pill / chip used across feature cards. */
+.lv3-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.06);
+  font-family: var(--font-poppins), sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #2a2a2a;
+}
+.lv3-pill-dark {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Sticky-driven elements need a starting state visible only after JS hydrates.
+   We hide them until the gsap context tags `data-lv3-ready`. */
+.lv3-step {
+  opacity: 0;
+  transform: translateY(24px);
+  will-change: opacity, transform;
+}
+[data-lv3-ready="true"] .lv3-step {
+  /* GSAP takes over — initial values come from the timeline. */
+  transform: none;
+  opacity: 1;
+}
+
+/* Reduced-motion: disable all v3 scenes' scrub feel; show end-state. */
+@media (prefers-reduced-motion: reduce) {
+  .lv3-stage { position: relative; height: auto; }
+  .lv3-scene { height: auto !important; }
+  .lv3-step { opacity: 1 !important; transform: none !important; }
+}
