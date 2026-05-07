@@ -1888,19 +1888,25 @@ var RIVERZ_SIZE_CSS =
   '.rz-carousel-nav button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:#fff;font-size:18px;color:#0a0a0a;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s}\n' +
   '.rz-carousel-nav button:hover{background:#f3f4f5;border-color:rgba(0,0,0,.22)}\n' +
   '.rz-carousel[data-rz-nav="off"] .rz-carousel-nav{display:none}\n' +
-  /* Sticky CTA — appears fixed at the bottom of the viewport once
-     the user scrolls past data-rz-threshold (% of page). The reveal
-     script that wires the scroll observer ships inline at publish
-     time AND is wired in the editor by wireRzSticky() so the user
-     can preview the behaviour. */
-  '.rz-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;padding:14px 16px;background:rgba(15,17,22,.92);backdrop-filter:blur(8px);transform:translateY(110%);transition:transform .25s ease;pointer-events:none}\n' +
-  '.rz-sticky-cta.show{transform:translateY(0);pointer-events:auto}\n' +
+  /* Sticky CTA — in the editor it uses position:sticky so it pins to
+     the bottom of #page-area's scrolling viewport without escaping
+     into the parent layout (which would cover the inspector sidebar).
+     The published page swaps to position:fixed via the
+     [data-rz-published] selector that the inline reveal script stamps,
+     so the real sticky behaviour kicks in for end users. */
+  '.rz-sticky-cta{position:sticky;bottom:0;z-index:60;display:flex;justify-content:center;padding:14px 16px;background:rgba(15,17,22,.92);backdrop-filter:blur(8px);margin-top:24px;width:100%;box-sizing:border-box}\n' +
+  /* Editor preview: always shown so the user can interact + edit. */
+  '.rz-sticky-cta:not([data-rz-published]){opacity:1}\n' +
+  /* Published page: pin to the viewport, hidden until the scroll
+     observer flips .show on after data-rz-threshold% of page. */
+  '.rz-sticky-cta[data-rz-published]{position:fixed;left:0;right:0;bottom:0;width:auto;margin:0;transform:translateY(110%);transition:transform .25s ease;pointer-events:none}\n' +
+  '.rz-sticky-cta[data-rz-published].show{transform:translateY(0);pointer-events:auto}\n' +
   '.rz-sticky-cta .rz-sticky-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#0a0a0a;color:#fff;font-weight:800;font-size:14px;letter-spacing:.04em;padding:14px 24px;border-radius:8px;text-decoration:none;text-transform:uppercase;text-align:center;min-width:240px;max-width:100%;box-shadow:0 8px 28px rgba(0,0,0,.35)}\n' +
   '.rz-sticky-cta .rz-sticky-btn:hover{filter:brightness(1.08)}\n' +
   /* Editor-only hint badge so the user remembers the sticky lives at
      viewport bottom even when they scroll the canvas. Stripped at
-     publish time via the [data-rz-edit-only] selector in the publish
-     stripper. */
+     publish time via the [data-rz-published] flag the inline script
+     stamps when it takes over. */
   '.rz-sticky-cta::before{content:"📌 Sticky · aparece al "attr(data-rz-threshold)"%";position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:#f7ff9e;color:#0a0a0a;font-size:10px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:4px;white-space:nowrap;pointer-events:none}\n' +
   '.rz-sticky-cta[data-rz-published]::before{display:none}\n';
 
