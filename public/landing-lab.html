@@ -662,6 +662,7 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
     <button class="bp-item" draggable="true" data-block-type="image" type="button" title="Imagen única"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="2" y="3" width="16" height="14" rx="1.5" stroke="currentColor" stroke-width="1.5"/><circle cx="7" cy="8" r="1.5" fill="currentColor"/><path d="M3 14l4-3 4 3 3-2 4 3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span><span class="bp-label">Imagen</span></button>
     <button class="bp-item" draggable="true" data-block-type="video" type="button" title="Video — subí archivo o pegá URL"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/><polygon points="8.5,7.5 13.5,10 8.5,12.5" fill="currentColor"/></svg></span><span class="bp-label">Video</span></button>
     <button class="bp-item" draggable="true" data-block-type="gallery" type="button" title="Galería de 3 imágenes"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="4.5" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="7.75" y="4" width="4.5" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="13.5" y="4" width="4.5" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/></svg></span><span class="bp-label">Galería</span></button>
+    <button class="bp-item" draggable="true" data-block-type="carousel" type="button" title="Carrusel — slides con scroll horizontal"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="0.5" y="5" width="3" height="10" rx="0.8" fill="currentColor" opacity=".35"/><rect x="4.5" y="3.5" width="11" height="13" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="16.5" y="5" width="3" height="10" rx="0.8" fill="currentColor" opacity=".35"/></svg></span><span class="bp-label">Carrusel</span></button>
 
     <div class="bp-group-label">Conversión</div>
     <button class="bp-item" draggable="true" data-block-type="cta" type="button" title="Botón de compra"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="6" width="17" height="8" rx="2" fill="currentColor"/><path d="M7 10h6m-2-2.2L13.2 10 11 12.2" stroke="#0D0E14" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="bp-label">Botón</span></button>
@@ -870,6 +871,31 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         <div class="in-label">Columnas</div>
         <div class="in-row in-seg" id="ins-row-cols-seg"></div>
         <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.4">Las filas colapsan a 1 columna en móvil automáticamente.</p>
+      </div>
+      <!-- Carrusel controls — show whenever the selection is (or sits
+           inside) a [data-rz-kind="carousel"]. The user can grow / shrink
+           the slide count, decide how many slides are visible at once on
+           desktop, and toggle the prev/next nav arrows on or off. -->
+      <div class="in-section" id="ins-carousel-section" style="display:none">
+        <div class="in-label">Carrusel</div>
+        <div class="in-row" style="gap:6px">
+          <button class="in-btn flex" type="button" onclick="rzCarouselRemoveSlide()" title="Quitar el último slide">– Slide</button>
+          <span id="ins-rzc-count" class="in-btn" style="flex:0 0 auto;cursor:default;background:transparent;color:#9aa3b8">3 slides</span>
+          <button class="in-btn flex" type="button" onclick="rzCarouselAddSlide()" title="Agregar un nuevo slide">+ Slide</button>
+        </div>
+        <div class="in-label" style="margin-top:10px">Visibles en desktop</div>
+        <div class="in-row in-seg" id="ins-rzc-cards-seg">
+          <button type="button" class="seg-b" data-val="1">1</button>
+          <button type="button" class="seg-b" data-val="2">2</button>
+          <button type="button" class="seg-b" data-val="3">3</button>
+          <button type="button" class="seg-b" data-val="4">4</button>
+          <button type="button" class="seg-b" data-val="5">5</button>
+          <button type="button" class="seg-b" data-val="6">6</button>
+        </div>
+        <div class="in-row" style="margin-top:10px">
+          <button class="in-btn flex" type="button" id="ins-rzc-nav" onclick="rzCarouselToggleNav()" title="Mostrar / ocultar las flechas de navegación">Flechas: On</button>
+        </div>
+        <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.4">En móvil siempre se muestra como scroll horizontal con snap.</p>
       </div>
       <!-- Alignment controls — visible for every selection. Writes
            text-align on the element so child text + inline-block media
@@ -1752,7 +1778,27 @@ var RIVERZ_SIZE_CSS =
   '@media (min-width:900px){\n' +
   '  [data-rz-kind="row"][data-rz-cols="3"]{grid-template-columns:repeat(3,1fr)}\n' +
   '  [data-rz-kind="row"][data-rz-cols="4"]{grid-template-columns:repeat(4,1fr)}\n' +
-  '}\n';
+  '}\n' +
+  /* Generic Carrusel block. Any palette-dropped carousel uses these
+     rules (template-shipped .ing-grid carousels keep their own CSS).
+     Mobile/tablet → horizontal scroll with snap. Desktop → flex row
+     with N visible cards driven by the data-rz-cards-desktop attr. */
+  '.rz-carousel{position:relative;width:100%;margin:24px 0}\n' +
+  '.rz-carousel-track{display:flex;flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:16px;padding:8px 4px 16px;scrollbar-width:thin}\n' +
+  '.rz-carousel-track::-webkit-scrollbar{height:6px}\n' +
+  '.rz-carousel-track::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22);border-radius:3px}\n' +
+  '.rz-carousel-card{flex:0 0 84%;scroll-snap-align:start;background:rgba(0,0,0,.04);border-radius:12px;padding:22px;min-width:0}\n' +
+  '@media (min-width:760px){\n' +
+  '  .rz-carousel[data-rz-cards-desktop="2"] .rz-carousel-card{flex:0 0 calc(50% - 8px)}\n' +
+  '  .rz-carousel[data-rz-cards-desktop="3"] .rz-carousel-card{flex:0 0 calc(33.333% - 11px)}\n' +
+  '  .rz-carousel[data-rz-cards-desktop="4"] .rz-carousel-card{flex:0 0 calc(25% - 12px)}\n' +
+  '  .rz-carousel[data-rz-cards-desktop="5"] .rz-carousel-card{flex:0 0 calc(20% - 13px)}\n' +
+  '  .rz-carousel[data-rz-cards-desktop="6"] .rz-carousel-card{flex:0 0 calc(16.666% - 14px)}\n' +
+  '}\n' +
+  '.rz-carousel-nav{display:flex;justify-content:center;gap:10px;margin-top:8px}\n' +
+  '.rz-carousel-nav button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:#fff;font-size:18px;color:#0a0a0a;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s}\n' +
+  '.rz-carousel-nav button:hover{background:#f3f4f5;border-color:rgba(0,0,0,.22)}\n' +
+  '.rz-carousel[data-rz-nav="off"] .rz-carousel-nav{display:none}\n';
 
 // Load JSON data from script tags (avoids JS string escaping issues)
 var DEFAULT_TEXTS = JSON.parse(document.getElementById('data-default').textContent);
@@ -1936,6 +1982,7 @@ function applyTemplateContent(tpl){
   // re-implement it here for the editor preview.
   if (typeof wireGalleryCarousel === 'function') wireGalleryCarousel();
   if (typeof wireIngCarousel === 'function') wireIngCarousel();
+  if (typeof wireRzCarousel === 'function') wireRzCarousel();
 }
 
 // Restore the inline Vitalu HTML when switching from a dynamic template
@@ -2187,6 +2234,31 @@ var BLOCK_TEMPLATES = {
   list_no: '<ul class="crosses" style="list-style:none;padding:0;margin:18px 0"><li data-v-text="auto-{slug}-1" style="padding-left:32px;position:relative;margin:10px 0;font-size:16px;line-height:1.5">Lo que tu producto NO tiene (problema común)</li><li data-v-text="auto-{slug}-2" style="padding-left:32px;position:relative;margin:10px 0;font-size:16px;line-height:1.5">Otro problema que evita</li></ul>',
   cta: '<div style="text-align:center;margin:32px 0"><a href="#" class="cta-btn" data-v-text="auto-{slug}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:14px 32px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;letter-spacing:.05em;text-transform:uppercase">Comprar ahora →</a></div>',
   gallery: '<div class="bp-gallery" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0"><div class="reason-img" data-v-img="auto-{slug}-1" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div><div class="reason-img" data-v-img="auto-{slug}-2" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div><div class="reason-img" data-v-img="auto-{slug}-3" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div></div>',
+  // Carrusel: slides scroll horizontally on mobile (snap), display N
+  // visible cards on desktop driven by data-rz-cards-desktop. Each card
+  // is a [data-rz-kind="col"] so it gets the same drag/select behaviour
+  // as a row column — drop content into it from the palette.
+  carousel:
+    '<div class="rz-carousel" data-rz-kind="carousel" data-rz-cards-desktop="3" data-rz-nav="on">' +
+      '<div class="rz-carousel-track">' +
+        '<div class="rz-carousel-card" data-rz-kind="col">' +
+          '<h3 data-v-text="auto-{slug}-1-h" style="font-size:18px;font-weight:700;margin:0 0 6px">Slide 1</h3>' +
+          '<p data-v-text="auto-{slug}-1-p" style="margin:0;font-size:14.5px;line-height:1.55">Texto del primer slide. Editá o arrastrá otros bloques.</p>' +
+        '</div>' +
+        '<div class="rz-carousel-card" data-rz-kind="col">' +
+          '<h3 data-v-text="auto-{slug}-2-h" style="font-size:18px;font-weight:700;margin:0 0 6px">Slide 2</h3>' +
+          '<p data-v-text="auto-{slug}-2-p" style="margin:0;font-size:14.5px;line-height:1.55">Texto del segundo slide.</p>' +
+        '</div>' +
+        '<div class="rz-carousel-card" data-rz-kind="col">' +
+          '<h3 data-v-text="auto-{slug}-3-h" style="font-size:18px;font-weight:700;margin:0 0 6px">Slide 3</h3>' +
+          '<p data-v-text="auto-{slug}-3-p" style="margin:0;font-size:14.5px;line-height:1.55">Texto del tercer slide.</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="rz-carousel-nav" aria-hidden="true">' +
+        '<button type="button" data-rz-prev aria-label="Anterior">‹</button>' +
+        '<button type="button" data-rz-next aria-label="Siguiente">›</button>' +
+      '</div>' +
+    '</div>',
   review: '<div style="background:#f6f7f9;border-radius:12px;padding:20px 22px;margin:18px 0"><div style="color:#f5a623;font-size:15px;letter-spacing:2px;margin-bottom:10px">★★★★★</div><div data-v-text="auto-{slug}-body" style="font-size:15px;line-height:1.5;color:#1c1f24;font-style:italic">"Una reseña genuina del cliente. Editá esto con un testimonio real que conecte con tu audiencia."</div><div style="margin-top:14px;padding-top:14px;border-top:1px solid #e6e8eb;font-size:13px;display:flex;gap:8px;align-items:center"><div style="width:32px;height:32px;border-radius:50%;background:#e0e3e8;flex:0 0 32px"></div><div><strong data-v-text="auto-{slug}-name" style="display:block;font-weight:700">Nombre Cliente</strong><span data-v-text="auto-{slug}-meta" style="color:#5a6068;font-size:12px">Cliente verificado</span></div></div></div>',
   faq: '<details class="riverz-faq" style="border:1px solid #e6e8eb;border-radius:12px;margin:10px 0;background:#fff;overflow:hidden;transition:border-color .2s,box-shadow .2s"><summary data-v-text="auto-{slug}-q" style="padding:18px 22px;font-weight:600;cursor:pointer;list-style:none;font-size:16px;display:flex;justify-content:space-between;align-items:center;color:#0d0f12;-webkit-tap-highlight-color:transparent">¿Pregunta frecuente sobre tu producto?<span style="flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#f3f4f5;display:inline-flex;align-items:center;justify-content:center;font-size:18px;font-weight:300;color:#5a6068;transition:transform .25s ease,background .2s">+</span></summary><div data-v-text="auto-{slug}-a" style="padding:0 22px 20px;font-size:15px;color:#3a414c;line-height:1.65">Respuesta detallada que aclara la duda del cliente y reduce fricción para comprar.</div></details>'
 };
@@ -3042,6 +3114,14 @@ function insRefresh(){
   var rowSec = document.getElementById('ins-row-section');
   if (rowSec) rowSec.style.display = rowEl ? '' : 'none';
   if (rowEl) _insRenderRowSection(rowEl);
+  // Carousel controls — visible whenever the selection lands inside a
+  // [data-rz-kind="carousel"]. Walks up so clicking a card / its inner
+  // text still surfaces the carousel-level inspector.
+  var carEl = (_insEl.matches && _insEl.matches('[data-rz-kind="carousel"]')) ? _insEl
+            : (_insEl.closest ? _insEl.closest('[data-rz-kind="carousel"]') : null);
+  var carSec = document.getElementById('ins-carousel-section');
+  if (carSec) carSec.style.display = carEl ? '' : 'none';
+  if (carEl) _insRenderCarouselSection(carEl);
   // Alignment — always visible so any block can be left/center/right
   // aligned. Highlights whichever value is currently in effect on the
   // element's inline style or computed text-align.
@@ -3104,6 +3184,31 @@ function _insRenderRowSection(rowEl){
   wrap.querySelectorAll('.seg-b').forEach(function(b){
     b.onclick = function(){ setRowCols(rowEl, parseInt(b.dataset.val,10)); _insRenderRowSection(rowEl); };
   });
+}
+
+function _insRenderCarouselSection(carEl){
+  // Slide count (read from the live track so add/remove reflects
+  // immediately even before insRefresh re-runs).
+  var track = carEl.querySelector('.rz-carousel-track');
+  var count = track ? track.children.length : 0;
+  var counter = document.getElementById('ins-rzc-count');
+  if (counter) counter.textContent = count + ' slide' + (count === 1 ? '' : 's');
+  // Visible-on-desktop segmented control. is-on highlights the active
+  // value so the user sees the current setting at a glance.
+  var cur = carEl.getAttribute('data-rz-cards-desktop') || '3';
+  var seg = document.getElementById('ins-rzc-cards-seg');
+  if (seg){
+    Array.prototype.forEach.call(seg.querySelectorAll('.seg-b'), function(b){
+      b.classList.toggle('is-on', b.dataset.val === String(cur));
+      b.onclick = function(){ rzCarouselSetCardsDesktop(b.dataset.val); };
+    });
+  }
+  // Nav-arrows toggle button label flips with the data-rz-nav attr.
+  var navBtn = document.getElementById('ins-rzc-nav');
+  if (navBtn){
+    var on = carEl.getAttribute('data-rz-nav') !== 'off';
+    navBtn.textContent = 'Flechas: ' + (on ? 'On' : 'Off');
+  }
 }
 
 function setRowCols(rowEl, n){
@@ -3820,6 +3925,91 @@ function wireIngCarousel(){
 window.wireIngCarousel = wireIngCarousel;
 var RIVERZ_ING_CODE = '(function(){document.querySelectorAll(".ing-nav").forEach(function(nav){var grid=nav.previousElementSibling;while(grid&&!grid.classList.contains("ing-grid"))grid=grid.previousElementSibling;if(!grid)return;nav.querySelectorAll("button").forEach(function(btn){btn.addEventListener("click",function(){var fc=grid.querySelector(".ing-card");if(!fc)return;var step=fc.getBoundingClientRect().width+18;var dir=btn.hasAttribute("data-ing-prev")?-1:1;grid.scrollBy({left:step*dir,behavior:"smooth"});});});});})();';
 window.RIVERZ_ING_CODE = RIVERZ_ING_CODE;
+
+// Generic .rz-carousel wiring — same scroll-by-card-width pattern as
+// wireIngCarousel but keyed off the [data-rz-prev]/[data-rz-next]
+// buttons inside .rz-carousel-nav. Idempotent via the rzcWired flag.
+function wireRzCarousel(){
+  var pw = document.getElementById('page-wrap'); if (!pw) return;
+  pw.querySelectorAll('.rz-carousel').forEach(function(carousel){
+    if (carousel.dataset.rzcWired) return;
+    carousel.dataset.rzcWired = '1';
+    var track = carousel.querySelector('.rz-carousel-track');
+    if (!track) return;
+    carousel.querySelectorAll('.rz-carousel-nav button').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        var card = track.querySelector('.rz-carousel-card');
+        if (!card) return;
+        var step = card.getBoundingClientRect().width + 16;
+        var dir = btn.hasAttribute('data-rz-prev') ? -1 : 1;
+        track.scrollBy({ left: step * dir, behavior: 'smooth' });
+      });
+    });
+  });
+}
+window.wireRzCarousel = wireRzCarousel;
+// String-form for the published page — buildPublishPayload / buildHTML
+// inline this so the deployed Shopify page wires its arrows the same way.
+var RIVERZ_CAROUSEL_CODE = '(function(){document.querySelectorAll(".rz-carousel").forEach(function(c){var t=c.querySelector(".rz-carousel-track");if(!t)return;c.querySelectorAll(".rz-carousel-nav button").forEach(function(b){b.addEventListener("click",function(){var card=t.querySelector(".rz-carousel-card");if(!card)return;var step=card.getBoundingClientRect().width+16;var dir=b.hasAttribute("data-rz-prev")?-1:1;t.scrollBy({left:step*dir,behavior:"smooth"});});});});})();';
+window.RIVERZ_CAROUSEL_CODE = RIVERZ_CAROUSEL_CODE;
+
+// ── CARRUSEL: add / remove slide + visible-on-desktop count ──
+// Inspector controls call these against the currently-selected carousel
+// (_insEl when its data-rz-kind === 'carousel'). Each mutation is
+// followed by snapshot+saveAll so undo + the server save catch the
+// structural change.
+function rzCarouselAddSlide(){
+  if (!_insEl || _insEl.getAttribute('data-rz-kind') !== 'carousel') return;
+  var track = _insEl.querySelector('.rz-carousel-track'); if (!track) return;
+  var last = track.querySelector('.rz-carousel-card:last-child');
+  var slug = (typeof nextAutoSlug === 'function') ? ('c'+Date.now().toString(36).slice(-5)) : Date.now().toString(36);
+  var card = document.createElement('div');
+  card.className = 'rz-carousel-card';
+  card.setAttribute('data-rz-kind', 'col');
+  card.innerHTML =
+    '<h3 data-v-text="auto-' + slug + '-h" style="font-size:18px;font-weight:700;margin:0 0 6px">Slide ' + (track.children.length + 1) + '</h3>' +
+    '<p data-v-text="auto-' + slug + '-p" style="margin:0;font-size:14.5px;line-height:1.55">Texto del slide.</p>';
+  track.appendChild(card);
+  if (typeof rebuildSlotTables === 'function') rebuildSlotTables();
+  if (typeof initEdit === 'function') initEdit();
+  if (typeof makeSectionsDraggable === 'function') makeSectionsDraggable();
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
+  if (typeof saveAll === 'function') saveAll();
+  if (typeof insRefresh === 'function') insRefresh();
+}
+function rzCarouselRemoveSlide(){
+  if (!_insEl || _insEl.getAttribute('data-rz-kind') !== 'carousel') return;
+  var track = _insEl.querySelector('.rz-carousel-track'); if (!track) return;
+  if (track.children.length <= 1) return;
+  track.removeChild(track.lastElementChild);
+  if (typeof rebuildSlotTables === 'function') rebuildSlotTables();
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
+  if (typeof saveAll === 'function') saveAll();
+  if (typeof insRefresh === 'function') insRefresh();
+}
+function rzCarouselSetCardsDesktop(n){
+  if (!_insEl || _insEl.getAttribute('data-rz-kind') !== 'carousel') return;
+  var v = parseInt(n, 10); if (!v || v < 1) v = 1; if (v > 6) v = 6;
+  _insEl.setAttribute('data-rz-cards-desktop', String(v));
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (typeof saveAll === 'function') saveAll();
+  if (typeof insRefresh === 'function') insRefresh();
+}
+function rzCarouselToggleNav(){
+  if (!_insEl || _insEl.getAttribute('data-rz-kind') !== 'carousel') return;
+  var on = _insEl.getAttribute('data-rz-nav') !== 'off';
+  _insEl.setAttribute('data-rz-nav', on ? 'off' : 'on');
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (typeof saveAll === 'function') saveAll();
+  if (typeof insRefresh === 'function') insRefresh();
+}
+window.rzCarouselAddSlide = rzCarouselAddSlide;
+window.rzCarouselRemoveSlide = rzCarouselRemoveSlide;
+window.rzCarouselSetCardsDesktop = rzCarouselSetCardsDesktop;
+window.rzCarouselToggleNav = rzCarouselToggleNav;
 
 // Same logic, but as a string so it can be inlined in the published
 // HTML by buildHTML / buildPublishPayload. Kept verbatim from
@@ -4643,6 +4833,7 @@ function _restoreProjectHtml(proj){
     if (typeof wireBlockPalette === 'function') wireBlockPalette();
     if (typeof wireGalleryCarousel === 'function') wireGalleryCarousel();
     if (typeof wireIngCarousel === 'function') wireIngCarousel();
+    if (typeof wireRzCarousel === 'function') wireRzCarousel();
   } finally {
     isRestoring = wasRestoring;
   }
@@ -5610,6 +5801,7 @@ function applySnap(snap){
     if(typeof makeSectionsDraggable==='function') makeSectionsDraggable();
     if(typeof wireGalleryCarousel==='function') wireGalleryCarousel();
     if(typeof wireIngCarousel==='function') wireIngCarousel();
+    if(typeof wireRzCarousel==='function') wireRzCarousel();
   }
   if(snap.layoutOrder){
     proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));
@@ -5936,7 +6128,8 @@ function buildHTML(proj){
   var code='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh=0.22;function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
   var galleryCode = (typeof RIVERZ_GALLERY_CODE === 'string') ? RIVERZ_GALLERY_CODE : '';
   var ingCode = (typeof RIVERZ_ING_CODE === 'string') ? RIVERZ_ING_CODE : '';
-  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<title>'+proj.name+' \u2014 Vital\u00fa</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">\n'+globalFontLink+'\n<style>'+allCSS+'</style>\n</head>\n<body>\n'+clone.outerHTML+'\n'+SO+code+SC+'\n'+(galleryCode?(SO+galleryCode+SC):'')+(ingCode?(SO+ingCode+SC):'')+'\n</body>\n</html>';
+  var rzcCode = (typeof RIVERZ_CAROUSEL_CODE === 'string') ? RIVERZ_CAROUSEL_CODE : '';
+  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<title>'+proj.name+' \u2014 Vital\u00fa</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">\n'+globalFontLink+'\n<style>'+allCSS+'</style>\n</head>\n<body>\n'+clone.outerHTML+'\n'+SO+code+SC+'\n'+(galleryCode?(SO+galleryCode+SC):'')+(ingCode?(SO+ingCode+SC):'')+(rzcCode?(SO+rzcCode+SC):'')+'\n</body>\n</html>';
 }
 function exportCurrent(){var proj=getActive();if(!proj){toast('Selecciona una landing',1);return;}cpTxt(buildHTML(proj),'"'+proj.name+'" copiado');}
 function exportAll(){toast(projects.length+' landings — exporta cada una con Exportar HTML',0);}
@@ -6118,6 +6311,7 @@ function buildPublishPayload(proj){
   }
   var galleryCode = (typeof RIVERZ_GALLERY_CODE === 'string') ? RIVERZ_GALLERY_CODE : '';
   var ingCode = (typeof RIVERZ_ING_CODE === 'string') ? RIVERZ_ING_CODE : '';
+  var rzcCode = (typeof RIVERZ_CAROUSEL_CODE === 'string') ? RIVERZ_CAROUSEL_CODE : '';
   var body_html =
     fontsLink +
     '<style>'+allCSS+'</style>' +
@@ -6125,6 +6319,7 @@ function buildPublishPayload(proj){
     SO+stickyCode+SC +
     (galleryCode ? (SO+galleryCode+SC) : '') +
     (ingCode ? (SO+ingCode+SC) : '') +
+    (rzcCode ? (SO+rzcCode+SC) : '') +
     (shopifyCode ? (SO+shopifyCode+SC) : '');
 
   return {
