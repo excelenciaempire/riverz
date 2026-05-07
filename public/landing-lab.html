@@ -1674,6 +1674,22 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
     </div>
   </div>
 </div>
+<!-- Floating upload progress bar — visible whenever an image or video
+     is mid-upload to Shopify Files. Three states the JS toggles:
+       .ru-running  → indeterminate / determinate fill while uploading
+       .ru-done     → green flash, auto-hides after 1s
+       .ru-error    → red, persists with a Cerrar button
+     Sits above the toast so an upload-in-progress is unmissable. -->
+<div id="riverz-upload" class="" role="status" aria-live="polite">
+  <div class="ru-row">
+    <span class="ru-icon" aria-hidden="true">⬆</span>
+    <div class="ru-body">
+      <div class="ru-label" id="ru-label">Subiendo…</div>
+      <div class="ru-track"><div class="ru-fill" id="ru-fill"></div></div>
+    </div>
+    <button type="button" class="ru-close" id="ru-close" aria-label="Cerrar" onclick="hideUploadProgress()">×</button>
+  </div>
+</div>
 <div id="toast"></div>
 <script>
 (function(){
@@ -5801,6 +5817,11 @@ async function resolveIDBImages(){
 window.resolveIDBImages = resolveIDBImages;
 async function compressImageFile(file, maxDim, quality){
   if(!/^image\//.test(file.type)) return file;
+  // GIFs go through untouched — canvas re-encode flattens to a single
+  // frame and forces image/jpeg, which kills the animation. The server
+  // accepts image/gif on the staged upload path; uploadImageToSupabase
+  // preserves the extension when the original name ends in .gif.
+  if(file.type === 'image/gif') return file;
   var url=URL.createObjectURL(file);
   try{
     var img=await new Promise(function(resolve,reject){var im=new Image();im.onload=function(){resolve(im);};im.onerror=function(){reject(new Error('No se pudo decodificar la imagen'));};im.src=url;});
@@ -5885,11 +5906,17 @@ async function _resolveBlobUrlsToDataUrls(proj){
 // which is what was filling localStorage and breaking saveAll.
 async function uploadImageToSupabase(blob, originalName, slotKey){
   // Naming kept for back-compat — same Shopify-direct flow as videos.
-  // compressImageFile returns a Blob with type='image/jpeg'; we wrap
-  // it in a File so the multipart upload to GCS knows the filename.
+  // compressImageFile returns a Blob with type='image/jpeg' for the JPEG
+  // path, but GIFs come through untouched as image/gif — derive the
+  // extension fallback from the mime so we don't stamp .jpg onto a GIF.
+  var mime = blob.type || 'image/jpeg';
+  var extFromMime = mime === 'image/gif' ? '.gif'
+                  : mime === 'image/png' ? '.png'
+                  : mime === 'image/webp' ? '.webp'
+                  : '.jpg';
   var name = (originalName || 'image').replace(/[^a-zA-Z0-9._-]+/g, '_');
-  if (!/\.\w+$/.test(name)) name += '.jpg';
-  var fileLike = (typeof File === 'function') ? new File([blob], name, { type: blob.type || 'image/jpeg' }) : blob;
+  if (!/\.\w+$/.test(name)) name += extFromMime;
+  var fileLike = (typeof File === 'function') ? new File([blob], name, { type: mime }) : blob;
   return _shopifyDirectUpload(fileLike, name, slotKey, 'image');
 }
 window.uploadImageToSupabase = uploadImageToSupabase;
