@@ -853,6 +853,9 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         <div class="in-row">
           <button class="in-btn flex" type="button" id="ins-vid-change" title="Subir video o pegar URL">🎬 Cambiar video</button>
         </div>
+        <div class="in-label" style="margin-top:14px">Proporción</div>
+        <div class="in-row in-seg" id="ins-vid-aspect-seg"></div>
+        <p class="in-help" style="font-size:10px;color:#5B6490;margin:6px 0 0;line-height:1.4">9:16 para reels verticales, 16:9 para horizontal.</p>
         <div class="in-label" style="margin-top:14px">Tamaño</div>
         <div class="in-row in-seg" id="ins-vid-size-seg"></div>
         <div class="in-row" style="margin-top:10px">
@@ -1691,6 +1694,16 @@ var IMG_SHAPE_OPTIONS = [
   { value: 'square',   label: 'Cuadrada' },
   { value: 'circle',   label: 'Círculo' }
 ];
+// Per-slot video aspect ratio. value '0' = template default (no class added,
+// inline aspect-ratio:16/9 from the block template wins). Other values map to
+// riverz-vaspect-* classes that override with !important.
+var VID_ASPECT_OPTIONS = [
+  { value: '0',   label: 'Auto' },
+  { value: '916', label: '9:16' },
+  { value: '169', label: '16:9' },
+  { value: '11',  label: '1:1' },
+  { value: '43',  label: '4:3' }
+];
 var RIVERZ_SIZE_CSS =
   '/* Riverz per-slot image sizing — set via the inspector sidebar. */\n' +
   '[data-v-img].riverz-size-50,[data-v-img].riverz-size-70,[data-v-img].riverz-size-85{margin-left:auto!important;margin-right:auto!important;display:block}\n' +
@@ -1709,6 +1722,13 @@ var RIVERZ_SIZE_CSS =
   '[data-v-video].riverz-vsize-50{max-width:50%!important;width:50%}\n' +
   '[data-v-video].riverz-vsize-70{max-width:70%!important;width:70%}\n' +
   '[data-v-video].riverz-vsize-85{max-width:85%!important;width:85%}\n' +
+  '/* Riverz per-slot video aspect ratio. Override the inline aspect-ratio:16/9\n' +
+  '   shipped by the block template. Portrait ratios get a max-height so a\n' +
+  '   full-width 9:16 video does not blow out the page. */\n' +
+  '[data-v-video].riverz-vaspect-916{aspect-ratio:9/16!important;max-height:80vh!important;max-width:min(100%,calc(80vh*9/16))!important;margin-left:auto!important;margin-right:auto!important;display:block}\n' +
+  '[data-v-video].riverz-vaspect-169{aspect-ratio:16/9!important}\n' +
+  '[data-v-video].riverz-vaspect-11{aspect-ratio:1/1!important;max-height:80vh!important;max-width:min(100%,80vh)!important;margin-left:auto!important;margin-right:auto!important;display:block}\n' +
+  '[data-v-video].riverz-vaspect-43{aspect-ratio:4/3!important}\n' +
   '/* Responsive multi-column rows. data-rz-cols="N" picks the column count.\n' +
   '   Always 1fr on narrow containers; ramp up at 600px / 900px so the row\n' +
   '   collapses cleanly on phones inside templates that use container queries. */\n' +
@@ -3253,6 +3273,17 @@ window.applyImageStyles = applyImageStyles;
 function _insRenderVideoSection(slot){
   var proj = (typeof getActive === 'function') ? getActive() : null;
   var curSize = (proj && proj.videoSizes && proj.videoSizes[slot]) || '0';
+  var curAsp  = (proj && proj.videoAspect && proj.videoAspect[slot]) || '0';
+  var aspWrap = document.getElementById('ins-vid-aspect-seg');
+  if (aspWrap){
+    aspWrap.innerHTML = VID_ASPECT_OPTIONS.map(function(o){
+      var on = (o.value === curAsp) ? ' is-on' : '';
+      return '<button type="button" class="seg-b'+on+'" data-val="'+o.value+'">'+o.label+'</button>';
+    }).join('');
+    aspWrap.querySelectorAll('.seg-b').forEach(function(b){
+      b.onclick = function(){ setVideoAspect(slot, b.dataset.val); _insRenderVideoSection(slot); };
+    });
+  }
   var sizeWrap = document.getElementById('ins-vid-size-seg');
   if (sizeWrap){
     sizeWrap.innerHTML = IMG_SIZE_OPTIONS.map(function(o){
@@ -4016,6 +4047,7 @@ function _projectDataPayload(proj){
     imageShapes: proj.imageShapes || {},
     imageStyles: proj.imageStyles || {},
     videoSizes: proj.videoSizes || {},
+    videoAspect: proj.videoAspect || {},
     layoutOrder: proj.layoutOrder || null,
     // Global typography pick (font-family CSS string from FONT_OPTIONS).
     // Empty string = template default. applyGlobalFont injects a
@@ -4307,6 +4339,7 @@ function _normalizeServerProject(sp){
     imageShapes: sp.imageShapes || {},
     imageStyles: sp.imageStyles || {},
     videoSizes: sp.videoSizes || {},
+    videoAspect: sp.videoAspect || {},
     layoutOrder: sp.layoutOrder || null,
     globalFont: typeof sp.globalFont === 'string' ? sp.globalFont : '',
     html: typeof sp.html === 'string' ? sp.html : null
@@ -4602,10 +4635,12 @@ function activateProject(id){
   if(!proj.imageSizes) proj.imageSizes={};
   if(!proj.imageShapes) proj.imageShapes={};
   if(!proj.videoSizes) proj.videoSizes={};
+  if(!proj.videoAspect) proj.videoAspect={};
   if(!proj.imageStyles) proj.imageStyles={};
   applyImageSizes();
   if (typeof applyImageStyles === 'function') applyImageStyles();
   if (typeof applyVideoSizes === 'function') applyVideoSizes();
+  if (typeof applyVideoAspect === 'function') applyVideoAspect();
   applyCTA(proj.ctaUrl);
   // Re-apply the project's global font (if set). Idempotent — the
   // styleEl gets removed when value is empty so switching projects
@@ -4757,6 +4792,31 @@ function setVideoSize(slot, size){
 }
 window.setVideoSize = setVideoSize;
 window.applyVideoSizes = applyVideoSizes;
+
+// Per-slot video aspect ratio. Mirrors applyVideoSizes; classes shipped in
+// RIVERZ_SIZE_CSS use !important so they beat the inline aspect-ratio:16/9
+// the block template ships with.
+var VID_ASPECT_CLASSES = ['riverz-vaspect-916','riverz-vaspect-169','riverz-vaspect-11','riverz-vaspect-43'];
+function applyVideoAspect(){
+  var proj = getActive();
+  document.querySelectorAll('#page-wrap [data-v-video]').forEach(function(el){
+    var slot = el.getAttribute('data-v-video');
+    var asp = proj && proj.videoAspect ? (proj.videoAspect[slot] || '0') : '0';
+    el.classList.remove.apply(el.classList, VID_ASPECT_CLASSES);
+    if (asp && asp !== '0') el.classList.add('riverz-vaspect-' + asp);
+  });
+}
+function setVideoAspect(slot, asp){
+  var proj = getActive(); if (!proj) return;
+  if (!proj.videoAspect) proj.videoAspect = {};
+  if (!asp || asp === '0') delete proj.videoAspect[slot];
+  else proj.videoAspect[slot] = asp;
+  applyVideoAspect();
+  if (typeof snapshot === 'function') snapshot();
+  if (typeof saveAll === 'function') saveAll();
+}
+window.setVideoAspect = setVideoAspect;
+window.applyVideoAspect = applyVideoAspect;
 function openVidModal(k){
   curVidKey=k;
   var m=g('vid-modal'); if(!m) return;
@@ -5416,6 +5476,7 @@ function snapshot(){
     imageShapes:JSON.parse(JSON.stringify(proj.imageShapes||{})),
     imageStyles:JSON.parse(JSON.stringify(proj.imageStyles||{})),
     videoSizes:JSON.parse(JSON.stringify(proj.videoSizes||{})),
+    videoAspect:JSON.parse(JSON.stringify(proj.videoAspect||{})),
     layoutOrder:proj.layoutOrder?JSON.parse(JSON.stringify(proj.layoutOrder)):null,
     html:rawHtml
   };
@@ -5436,7 +5497,8 @@ function snapshot(){
       && JSON.stringify(last.imageSizes) === JSON.stringify(snap.imageSizes)
       && JSON.stringify(last.imageShapes) === JSON.stringify(snap.imageShapes)
       && JSON.stringify(last.imageStyles) === JSON.stringify(snap.imageStyles)
-      && JSON.stringify(last.videoSizes) === JSON.stringify(snap.videoSizes)) {
+      && JSON.stringify(last.videoSizes) === JSON.stringify(snap.videoSizes)
+      && JSON.stringify(last.videoAspect) === JSON.stringify(snap.videoAspect)) {
       return;
     }
   }
@@ -5484,6 +5546,7 @@ function applySnap(snap){
   proj.imageShapes=JSON.parse(JSON.stringify(snap.imageShapes||{}));
   proj.imageStyles=JSON.parse(JSON.stringify(snap.imageStyles||{}));
   proj.videoSizes=JSON.parse(JSON.stringify(snap.videoSizes||{}));
+  proj.videoAspect=JSON.parse(JSON.stringify(snap.videoAspect||{}));
   // Restore the captured DOM first so palette drops / deletes / row
   // column changes roll back; THEN re-decorate + re-apply the data
   // dicts on top of the restored structure.
@@ -5508,6 +5571,7 @@ function applySnap(snap){
   if(typeof applyImageSizes==='function') applyImageSizes();
   if(typeof applyImageStyles==='function') applyImageStyles();
   if(typeof applyVideoSizes==='function') applyVideoSizes();
+  if(typeof applyVideoAspect==='function') applyVideoAspect();
   // Selection survives only if the captured HTML still has the same
   // node tree; safest to clear it so the inspector doesn't render
   // controls against a stale element reference.
@@ -6027,10 +6091,18 @@ function buildPublishPayload(proj){
 async function publishToShopify(){
   var proj=getActive();
   if(!proj){ toast('Selecciona una landing',1); return; }
+  // Product-page projects publish as Shopify THEME custom templates so
+  // bundle / upsell / review apps that target real product pages render
+  // natively. Everything else (advertorials, listicles, plain landings)
+  // stays on the existing Page-based publish — that flow is untouched.
+  var isProductPage = !!(proj.templateId && /^product-page-/.test(proj.templateId));
   var imgCount=Object.values(proj.images||{}).filter(function(v){return typeof v==='string' && v;}).length;
   var pendingVidCount = Object.keys(_pendingVideos || {}).length;
   var confirmMsg = 'Publicar "'+proj.name+'" en Shopify?\n'+
     imgCount+' imagen(es) se subirán a Shopify Files.';
+  if (isProductPage) {
+    confirmMsg += '\n📦 Como product page (theme template). En Shopify Admin → Producto → Theme template, vas a poder elegir esta plantilla.';
+  }
   if (pendingVidCount){
     confirmMsg += '\n' + pendingVidCount + ' video(s) pendientes también se subirán ahora.';
   }
@@ -6073,9 +6145,18 @@ async function publishToShopify(){
     return;
   }
 
+  // Pick endpoint based on project type. Product-page projects target
+  // /publish-theme (which uploads sections/templates to the merchant's
+  // theme); everything else hits the legacy /publish (Shopify Pages).
+  // Shopify_handle is forwarded only on the theme path so the response
+  // can build /products/<handle>?view=<template> preview URLs.
+  var endpoint = isProductPage ? '/api/landing-lab/publish-theme' : '/api/landing-lab/publish';
+  if (isProductPage) {
+    payload.shopify_handle = (proj.shopifyProductHandle || '').trim();
+  }
   toast('Publicando en Shopify...',0);
   try{
-    var res=await fetch('/api/landing-lab/publish',{
+    var res=await fetch(endpoint,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(payload),
@@ -6083,15 +6164,32 @@ async function publishToShopify(){
     var data=await res.json();
     if(!res.ok){
       if(data.requiresReconnect){
-        if(confirm((data.error||'Conecta tu Shopify primero')+'\n\n¿Ir a Configuración para conectar?')){
+        var hint = data.error || 'Conecta tu Shopify primero';
+        if(data.missingScopes && data.missingScopes.length){
+          hint = 'Permisos faltantes: ' + data.missingScopes.join(', ') + '. ' + hint;
+        }
+        if(confirm(hint+'\n\n¿Ir a Configuración para reconectar?')){
           try{ (window.top||window.parent||window).location.href='/configuracion?tab=integrations'; }catch(e){ window.location.href='/configuracion?tab=integrations'; }
         }
         return;
       }
       throw new Error(data.error||'Error al publicar');
     }
-    var url=data.page && data.page.url;
-    toast('✓ Publicado en Shopify');
+    // Page publish returns data.page.url; theme publish returns
+    // data.preview_url + data.public_url + data.next_steps.
+    var url = isProductPage
+      ? (data.public_url || data.preview_url || null)
+      : (data.page && data.page.url);
+    if (isProductPage) {
+      toast('✓ Theme template publicado');
+      if (data.next_steps && typeof window.alert === 'function') {
+        // Surface the "go to Admin → Producto → Theme template" instructions
+        // since the user has to do that one-time step before the URL is live.
+        setTimeout(function(){ window.alert(data.next_steps); }, 200);
+      }
+    } else {
+      toast('✓ Publicado en Shopify');
+    }
     if(url){
       // Persist the published URL on the project so we can show "View live page" later.
       proj.shopifyUrl = url;
