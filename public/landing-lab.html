@@ -684,6 +684,7 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
 
     <div class="bp-group-label">Conversión</div>
     <button class="bp-item" draggable="true" data-block-type="cta" type="button" title="Botón de compra"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="6" width="17" height="8" rx="2" fill="currentColor"/><path d="M7 10h6m-2-2.2L13.2 10 11 12.2" stroke="#0D0E14" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="bp-label">Botón</span></button>
+    <button class="bp-item" draggable="true" data-block-type="sticky" type="button" title="Sticky CTA — aparece fijo al fondo tras X% de scroll"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="14" width="17" height="4.5" rx="1.2" fill="currentColor"/><rect x="4" y="2.5" width="12" height="2" rx="0.6" fill="currentColor" opacity=".35"/><rect x="3" y="6" width="14" height="6" rx="0.8" stroke="currentColor" stroke-width="1.2" fill="none" opacity=".55"/></svg></span><span class="bp-label">Sticky</span></button>
     <button class="bp-item" draggable="true" data-block-type="review" type="button" title="Reseña con estrellas"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><polygon points="10,2 12.2,7 17.5,7.4 13.5,11 14.7,16.3 10,13.5 5.3,16.3 6.5,11 2.5,7.4 7.8,7" fill="#f5a623"/></svg></span><span class="bp-label">Reseña</span></button>
     <button class="bp-item" draggable="true" data-block-type="faq" type="button" title="Pregunta frecuente (acordeón)"><span class="bp-icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.2" stroke="currentColor" stroke-width="1.5"/><text x="10" y="13.5" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="currentColor">?</text></svg></span><span class="bp-label">FAQ</span></button>
   </aside>
@@ -889,6 +890,21 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         <div class="in-label">Columnas</div>
         <div class="in-row in-seg" id="ins-row-cols-seg"></div>
         <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.4">Las filas colapsan a 1 columna en móvil automáticamente.</p>
+      </div>
+      <!-- Sticky CTA controls — appears whenever the selection is (or
+           sits inside) a [data-rz-kind="sticky"]. Lets the user pick
+           the scroll % at which the bar reveals + the link target. -->
+      <div class="in-section" id="ins-sticky-section" style="display:none">
+        <div class="in-label">Sticky CTA</div>
+        <label class="set-field" style="display:block;margin:0 0 8px">
+          <span style="font-size:11px;color:#9aa3c0;display:block;margin-bottom:4px">Aparecer al <strong id="ins-rzs-thresh-val">70</strong>% de scroll</span>
+          <input type="range" id="ins-rzs-thresh" min="0" max="95" value="70" oninput="rzStickySetThreshold(this.value)" style="width:100%;accent-color:#f7ff9e">
+        </label>
+        <label class="set-field" style="display:block">
+          <span style="font-size:11px;color:#9aa3c0;display:block;margin-bottom:4px">Enlace del botón</span>
+          <input type="text" id="ins-rzs-url" oninput="rzStickySetUrl(this.value)" placeholder="https://tu-tienda.com/products/..." style="width:100%;padding:8px 10px;background:#0e1015;border:1px solid #2a2e38;border-radius:6px;color:#fff;font-size:12px;font-family:inherit">
+        </label>
+        <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.4">El texto del botón se edita inline (clic en el botón para escribir). En el editor siempre se ve; en la página publicada aparece tras el % indicado.</p>
       </div>
       <!-- Carrusel controls — show whenever the selection is (or sits
            inside) a [data-rz-kind="carousel"]. The user can grow / shrink
@@ -1871,7 +1887,22 @@ var RIVERZ_SIZE_CSS =
   '.rz-carousel-nav{display:flex;justify-content:center;gap:10px;margin-top:8px}\n' +
   '.rz-carousel-nav button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:#fff;font-size:18px;color:#0a0a0a;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s}\n' +
   '.rz-carousel-nav button:hover{background:#f3f4f5;border-color:rgba(0,0,0,.22)}\n' +
-  '.rz-carousel[data-rz-nav="off"] .rz-carousel-nav{display:none}\n';
+  '.rz-carousel[data-rz-nav="off"] .rz-carousel-nav{display:none}\n' +
+  /* Sticky CTA — appears fixed at the bottom of the viewport once
+     the user scrolls past data-rz-threshold (% of page). The reveal
+     script that wires the scroll observer ships inline at publish
+     time AND is wired in the editor by wireRzSticky() so the user
+     can preview the behaviour. */
+  '.rz-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;padding:14px 16px;background:rgba(15,17,22,.92);backdrop-filter:blur(8px);transform:translateY(110%);transition:transform .25s ease;pointer-events:none}\n' +
+  '.rz-sticky-cta.show{transform:translateY(0);pointer-events:auto}\n' +
+  '.rz-sticky-cta .rz-sticky-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#0a0a0a;color:#fff;font-weight:800;font-size:14px;letter-spacing:.04em;padding:14px 24px;border-radius:8px;text-decoration:none;text-transform:uppercase;text-align:center;min-width:240px;max-width:100%;box-shadow:0 8px 28px rgba(0,0,0,.35)}\n' +
+  '.rz-sticky-cta .rz-sticky-btn:hover{filter:brightness(1.08)}\n' +
+  /* Editor-only hint badge so the user remembers the sticky lives at
+     viewport bottom even when they scroll the canvas. Stripped at
+     publish time via the [data-rz-edit-only] selector in the publish
+     stripper. */
+  '.rz-sticky-cta::before{content:"📌 Sticky · aparece al "attr(data-rz-threshold)"%";position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:#f7ff9e;color:#0a0a0a;font-size:10px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:4px;white-space:nowrap;pointer-events:none}\n' +
+  '.rz-sticky-cta[data-rz-published]::before{display:none}\n';
 
 // Load JSON data from script tags (avoids JS string escaping issues)
 var DEFAULT_TEXTS = JSON.parse(document.getElementById('data-default').textContent);
@@ -2056,6 +2087,7 @@ function applyTemplateContent(tpl){
   if (typeof wireGalleryCarousel === 'function') wireGalleryCarousel();
   if (typeof wireIngCarousel === 'function') wireIngCarousel();
   if (typeof wireRzCarousel === 'function') wireRzCarousel();
+  if (typeof wireRzSticky === 'function') wireRzSticky();
 }
 
 // Restore the inline Vitalu HTML when switching from a dynamic template
@@ -2307,6 +2339,14 @@ var BLOCK_TEMPLATES = {
   list_no: '<ul class="crosses" style="list-style:none;padding:0;margin:18px 0"><li data-v-text="auto-{slug}-1" style="padding-left:32px;position:relative;margin:10px 0;font-size:16px;line-height:1.5">Lo que tu producto NO tiene (problema común)</li><li data-v-text="auto-{slug}-2" style="padding-left:32px;position:relative;margin:10px 0;font-size:16px;line-height:1.5">Otro problema que evita</li></ul>',
   cta: '<div style="text-align:center;margin:32px 0"><a href="#" class="cta-btn" data-v-text="auto-{slug}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:14px 32px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;letter-spacing:.05em;text-transform:uppercase">Comprar ahora →</a></div>',
   gallery: '<div class="bp-gallery" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0"><div class="reason-img" data-v-img="auto-{slug}-1" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div><div class="reason-img" data-v-img="auto-{slug}-2" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div><div class="reason-img" data-v-img="auto-{slug}-3" style="aspect-ratio:1/1;background:#f3f4f5;border-radius:8px;overflow:hidden"><img src="https://placehold.co/400x400/eef0f3/9ca3af?text=Imagen" alt="Imagen" style="width:100%;height:100%;object-fit:cover"></div></div>',
+  // Sticky CTA — single button pinned to viewport bottom, hidden until
+  // the visitor scrolls past data-rz-threshold (% of total page). The
+  // editor renders it always visible for editing; the published page
+  // wires a scroll observer that toggles the .show class.
+  sticky:
+    '<div class="rz-sticky-cta" data-rz-kind="sticky" data-rz-threshold="70">' +
+      '<a href="#" class="rz-sticky-btn" data-v-text="auto-{slug}">VER OFERTA — 60% OFF</a>' +
+    '</div>',
   // Carrusel: slides scroll horizontally on mobile (snap), display N
   // visible cards on desktop driven by data-rz-cards-desktop. Each card
   // is a [data-rz-kind="col"] so it gets the same drag/select behaviour
@@ -3195,6 +3235,14 @@ function insRefresh(){
   var carSec = document.getElementById('ins-carousel-section');
   if (carSec) carSec.style.display = carEl ? '' : 'none';
   if (carEl) _insRenderCarouselSection(carEl);
+  // Sticky CTA controls — same pattern. Click anywhere on the sticky
+  // bar (button label, padding, badge) and the inspector surfaces the
+  // threshold + link controls.
+  var stEl = (_insEl.matches && _insEl.matches('[data-rz-kind="sticky"]')) ? _insEl
+           : (_insEl.closest ? _insEl.closest('[data-rz-kind="sticky"]') : null);
+  var stSec = document.getElementById('ins-sticky-section');
+  if (stSec) stSec.style.display = stEl ? '' : 'none';
+  if (stEl) _insRenderStickySection(stEl);
   // Background colour — populate the picker + text input with whatever
   // is on the selected element right now (inline first, computed style
   // as fallback so template defaults are visible). Always rendered.
@@ -4068,6 +4116,33 @@ window.wireIngCarousel = wireIngCarousel;
 var RIVERZ_ING_CODE = '(function(){document.querySelectorAll(".ing-nav").forEach(function(nav){var grid=nav.previousElementSibling;while(grid&&!grid.classList.contains("ing-grid"))grid=grid.previousElementSibling;if(!grid)return;nav.querySelectorAll("button").forEach(function(btn){btn.addEventListener("click",function(){var fc=grid.querySelector(".ing-card");if(!fc)return;var step=fc.getBoundingClientRect().width+18;var dir=btn.hasAttribute("data-ing-prev")?-1:1;grid.scrollBy({left:step*dir,behavior:"smooth"});});});});})();';
 window.RIVERZ_ING_CODE = RIVERZ_ING_CODE;
 
+// Sticky CTA wiring — in the editor we always reveal the bar so the
+// user can see what it looks like and click it for the inspector.
+// The published page gets its own observer (RIVERZ_STICKY_CODE) that
+// toggles .show after data-rz-threshold% of scroll. Idempotent via
+// the rzsWired flag so re-mounts don't double-wire.
+function wireRzSticky(){
+  var pw = document.getElementById('page-wrap'); if (!pw) return;
+  pw.querySelectorAll('.rz-sticky-cta').forEach(function(el){
+    if (el.dataset.rzsWired) return;
+    el.dataset.rzsWired = '1';
+    // Editor preview — always show so the user can interact with it.
+    el.classList.add('show');
+    // Mirror the data-rz-url onto the inner anchor every paint, in case
+    // the user just changed it via the inspector.
+    var url = el.getAttribute('data-rz-url') || '#';
+    var btn = el.querySelector('.rz-sticky-btn'); if (btn) btn.setAttribute('href', url);
+  });
+}
+window.wireRzSticky = wireRzSticky;
+// Inline script for the published page. Reads data-rz-threshold off
+// each .rz-sticky-cta and toggles .show once the visitor scrolls past
+// that fraction of the page. Mirrors the existing sticky-bar logic
+// but per-element so a single page can host multiple stickies (e.g.
+// a top-of-page mini bar + a checkout-area conversion bar).
+var RIVERZ_STICKY_CODE = '(function(){var bars=document.querySelectorAll(".rz-sticky-cta");if(!bars.length)return;var pa=document.scrollingElement||document.documentElement;function tick(){var max=Math.max(1,pa.scrollHeight-pa.clientHeight);var r=pa.scrollTop/max;bars.forEach(function(b){b.setAttribute("data-rz-published","1");var t=parseFloat(b.getAttribute("data-rz-threshold")||"70")/100;b.classList.toggle("show",r>=t);});}window.addEventListener("scroll",tick,{passive:true});window.addEventListener("resize",tick);tick();})();';
+window.RIVERZ_STICKY_CODE = RIVERZ_STICKY_CODE;
+
 // Generic .rz-carousel wiring — same scroll-by-card-width pattern as
 // wireIngCarousel but keyed off the [data-rz-prev]/[data-rz-next]
 // buttons inside .rz-carousel-nav. Idempotent via the rzcWired flag.
@@ -4149,6 +4224,42 @@ function rzCarouselSetCardsMobile(n){
   if (typeof insRefresh === 'function') insRefresh();
 }
 window.rzCarouselSetCardsMobile = rzCarouselSetCardsMobile;
+// Sticky CTA setters — bound to the inspector controls when the
+// selection lands on a [data-rz-kind="sticky"]. Each mutation fires
+// snapshot+saveAll so the change persists to proj.html (the attribute
+// values round-trip through cloneNode innerHTML).
+function rzStickySetThreshold(val){
+  if (!_insEl) return;
+  var el = (_insEl.matches && _insEl.matches('[data-rz-kind="sticky"]')) ? _insEl : (_insEl.closest ? _insEl.closest('[data-rz-kind="sticky"]') : null);
+  if (!el) return;
+  var v = parseInt(val, 10); if (isNaN(v) || v < 0) v = 0; if (v > 95) v = 95;
+  el.setAttribute('data-rz-threshold', String(v));
+  var lbl = document.getElementById('ins-rzs-thresh-val'); if (lbl) lbl.textContent = String(v);
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (typeof saveAll === 'function') saveAll();
+}
+function rzStickySetUrl(val){
+  if (!_insEl) return;
+  var el = (_insEl.matches && _insEl.matches('[data-rz-kind="sticky"]')) ? _insEl : (_insEl.closest ? _insEl.closest('[data-rz-kind="sticky"]') : null);
+  if (!el) return;
+  var url = (val || '').trim() || '#';
+  el.setAttribute('data-rz-url', url);
+  var btn = el.querySelector('.rz-sticky-btn');
+  if (btn) btn.setAttribute('href', url);
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (typeof saveAll === 'function') saveAll();
+}
+window.rzStickySetThreshold = rzStickySetThreshold;
+window.rzStickySetUrl = rzStickySetUrl;
+function _insRenderStickySection(stEl){
+  var thr = parseInt(stEl.getAttribute('data-rz-threshold') || '70', 10);
+  if (isNaN(thr)) thr = 70;
+  var range = document.getElementById('ins-rzs-thresh'); if (range) range.value = String(thr);
+  var lbl = document.getElementById('ins-rzs-thresh-val'); if (lbl) lbl.textContent = String(thr);
+  var url = stEl.getAttribute('data-rz-url') || (stEl.querySelector('.rz-sticky-btn') ? stEl.querySelector('.rz-sticky-btn').getAttribute('href') : '') || '';
+  var inp = document.getElementById('ins-rzs-url'); if (inp) inp.value = url;
+}
+
 function rzCarouselToggleNav(){
   if (!_insEl || _insEl.getAttribute('data-rz-kind') !== 'carousel') return;
   var on = _insEl.getAttribute('data-rz-nav') !== 'off';
@@ -4986,6 +5097,7 @@ function _restoreProjectHtml(proj){
     if (typeof wireGalleryCarousel === 'function') wireGalleryCarousel();
     if (typeof wireIngCarousel === 'function') wireIngCarousel();
     if (typeof wireRzCarousel === 'function') wireRzCarousel();
+    if (typeof wireRzSticky === 'function') wireRzSticky();
   } finally {
     isRestoring = wasRestoring;
   }
@@ -6315,6 +6427,7 @@ function applySnap(snap){
     if(typeof wireGalleryCarousel==='function') wireGalleryCarousel();
     if(typeof wireIngCarousel==='function') wireIngCarousel();
     if(typeof wireRzCarousel==='function') wireRzCarousel();
+    if(typeof wireRzSticky==='function') wireRzSticky();
   }
   if(snap.layoutOrder){
     proj.layoutOrder=JSON.parse(JSON.stringify(snap.layoutOrder));
@@ -6642,7 +6755,8 @@ function buildHTML(proj){
   var galleryCode = (typeof RIVERZ_GALLERY_CODE === 'string') ? RIVERZ_GALLERY_CODE : '';
   var ingCode = (typeof RIVERZ_ING_CODE === 'string') ? RIVERZ_ING_CODE : '';
   var rzcCode = (typeof RIVERZ_CAROUSEL_CODE === 'string') ? RIVERZ_CAROUSEL_CODE : '';
-  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<title>'+proj.name+' \u2014 Vital\u00fa</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">\n'+globalFontLink+'\n<style>'+allCSS+'</style>\n</head>\n<body>\n'+clone.outerHTML+'\n'+SO+code+SC+'\n'+(galleryCode?(SO+galleryCode+SC):'')+(ingCode?(SO+ingCode+SC):'')+(rzcCode?(SO+rzcCode+SC):'')+'\n</body>\n</html>';
+  var rzsCode = (typeof RIVERZ_STICKY_CODE === 'string') ? RIVERZ_STICKY_CODE : '';
+  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<title>'+proj.name+' \u2014 Vital\u00fa</title>\n<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">\n'+globalFontLink+'\n<style>'+allCSS+'</style>\n</head>\n<body>\n'+clone.outerHTML+'\n'+SO+code+SC+'\n'+(galleryCode?(SO+galleryCode+SC):'')+(ingCode?(SO+ingCode+SC):'')+(rzcCode?(SO+rzcCode+SC):'')+(rzsCode?(SO+rzsCode+SC):'')+'\n</body>\n</html>';
 }
 function exportCurrent(){var proj=getActive();if(!proj){toast('Selecciona una landing',1);return;}cpTxt(buildHTML(proj),'"'+proj.name+'" copiado');}
 function exportAll(){toast(projects.length+' landings — exporta cada una con Exportar HTML',0);}
@@ -6833,6 +6947,7 @@ function buildPublishPayload(proj){
     (galleryCode ? (SO+galleryCode+SC) : '') +
     (ingCode ? (SO+ingCode+SC) : '') +
     (rzcCode ? (SO+rzcCode+SC) : '') +
+    (typeof RIVERZ_STICKY_CODE === 'string' ? (SO+RIVERZ_STICKY_CODE+SC) : '') +
     (shopifyCode ? (SO+shopifyCode+SC) : '');
 
   return {
