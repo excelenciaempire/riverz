@@ -40,15 +40,23 @@ export function getShopifyEnv(): ShopifyEnv {
       'Shopify OAuth no está configurado: faltan SHOPIFY_API_KEY, SHOPIFY_API_SECRET o SHOPIFY_OAUTH_REDIRECT_URI.',
     );
   }
-  // Minimal scopes for the publish flow + product picker:
-  //   write_files   → Files API (image uploads via stagedUploadsCreate)
-  //   write_content → Online Store Pages (pageCreate / pageUpdate)
-  //   read_products → list products in the editor's "Elegir producto" picker
-  //                   so users can wire the published page's CTA / variants
-  //                   to a real product without typing a handle by hand.
-  // Existing connections won't have read_products until the user reconnects;
-  // the products API surfaces a "Reconnect Shopify" hint when the call 403s.
-  const scopes = process.env.SHOPIFY_SCOPES || 'write_files,write_content,read_products';
+  // Minimal scopes for the publish flow + product picker + theme publishes:
+  //   write_files    → Files API (image uploads via stagedUploadsCreate)
+  //   write_content  → Online Store Pages (pageCreate / pageUpdate)
+  //   read_products  → list products in the editor's "Elegir producto" picker
+  //                    so users can wire the published page's CTA / variants
+  //                    to a real product without typing a handle by hand.
+  //   read_themes    → resolve the merchant's MAIN theme so we know where
+  //                    the template upload lands.
+  //   write_themes   → upload custom product templates + sections via
+  //                    the REST Asset API. Required for product-page
+  //                    projects so apps like Kaching Bundles render
+  //                    natively (Shopify Pages don't trigger them).
+  // Existing connections were granted before read_themes/write_themes were
+  // added; product-page publishes surface a "Reconnect Shopify" hint when
+  // they detect missing scopes (the old Page-publish flow keeps working
+  // unchanged on the legacy scope set).
+  const scopes = process.env.SHOPIFY_SCOPES || 'write_files,write_content,read_products,read_themes,write_themes';
   const apiVersion = process.env.SHOPIFY_API_VERSION || '2025-10';
   return { apiKey, apiSecret, redirectUri, scopes, apiVersion };
 }

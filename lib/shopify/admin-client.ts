@@ -15,6 +15,11 @@ export class ShopifyAdminClient {
     private readonly apiVersion: string = DEFAULT_API_VERSION,
   ) {}
 
+  /** REST helpers (themes, etc.) need raw access to host/token/version. */
+  get shopDomain(): string { return this.shop; }
+  get accessToken(): string { return this.token; }
+  get version(): string { return this.apiVersion; }
+
   async graphql<T = any>(query: string, variables?: Record<string, any>): Promise<T> {
     const url = `https://${this.shop}/admin/api/${this.apiVersion}/graphql.json`;
     const res = await fetch(url, {
