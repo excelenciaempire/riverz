@@ -5265,33 +5265,74 @@ window._readVideoNaturalRatio = _readVideoNaturalRatio;
 window._applyVideoNaturalAspect = _applyVideoNaturalAspect;
 
 async function uploadVideoToSupabase(file, originalName, slotKey){
+  // Two-step upload that bypasses Render's memory ceiling: ask the
+  // Next.js function for a signed URL (tiny JSON request, no body
+  // buffering), then PUT the file BYTES directly to Supabase Storage
+  // from the browser. The previous flow buffered the 60MB file inside
+  // the function and was OOM-ing the Render dyno (memory exceeded →
+  // auto-restart → 502 to the user mid-upload).
+  return _signedUpload(file, originalName, slotKey, 'video');
+}
+
+async function _signedUpload(file, originalName, slotKey, kind){
   var proj = (typeof getActive === 'function') ? getActive() : null;
-  var fd = new FormData();
-  var clean = (originalName || 'video').replace(/[^a-zA-Z0-9._-]+/g, '_');
-  if (!/\.\w+$/.test(clean)) clean += '.mp4';
-  fd.append('file', file, clean);
-  if (proj) fd.append('project_id', proj.id || 'landing');
-  if (slotKey) fd.append('slot', slotKey);
-  var res, data = null, raw = '';
+  var clean = (originalName || (kind === 'video' ? 'video' : 'image')).replace(/[^a-zA-Z0-9._-]+/g, '_');
+  if (!/\.\w+$/.test(clean)) clean += (kind === 'video' ? '.mp4' : '.jpg');
+  var signRes, signData = null, signRaw = '';
   try {
-    res = await fetch('/api/landing-lab/upload-video-draft', { method: 'POST', body: fd, credentials: 'same-origin' });
-    raw = await res.text();
-    try { data = JSON.parse(raw); } catch(_){ /* server returned non-JSON */ }
+    signRes = await fetch('/api/landing-lab/sign-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        kind: kind,
+        filename: clean,
+        mime: file.type,
+        size: file.size,
+        project_id: proj ? (proj.id || 'landing') : 'landing',
+        slot: slotKey || (kind === 'video' ? 'video' : 'image')
+      })
+    });
+    signRaw = await signRes.text();
+    try { signData = JSON.parse(signRaw); } catch(_){}
   } catch (netErr) {
-    console.error('[Riverz] upload-video-draft network failure:', netErr);
+    console.error('[Riverz] sign-upload network failure:', netErr);
     throw new Error('Sin red — no se pudo contactar al servidor');
   }
-  if (!res.ok){
-    var msg = (data && data.error) || raw || ('Subida fallida (' + res.status + ')');
-    console.error('[Riverz] upload-video-draft rejected (' + res.status + '):', msg);
-    throw new Error(msg);
+  if (!signRes.ok){
+    var smsg = (signData && signData.error) || signRaw || ('Sign failed (' + signRes.status + ')');
+    console.error('[Riverz] sign-upload rejected (' + signRes.status + '):', smsg);
+    throw new Error(smsg);
   }
-  if (!data || !data.url){
-    console.error('[Riverz] upload-video-draft missing url in response:', raw);
-    throw new Error('Respuesta sin URL');
+  if (!signData || !signData.upload_url || !signData.public_url){
+    console.error('[Riverz] sign-upload missing fields:', signRaw);
+    throw new Error('Respuesta de firma incompleta');
   }
-  return data.url;
+  // PUT the file straight to Supabase. supabase-js's signed-upload
+  // endpoint accepts the body via PUT with a Bearer token (signedUrl
+  // already has the token baked in as a query param) — we use raw
+  // fetch instead of `uploadToSignedUrl` to avoid pulling another
+  // 80kB of SDK into the editor bundle.
+  var putRes;
+  try {
+    putRes = await fetch(signData.upload_url, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type, 'x-upsert': 'false' },
+      body: file
+    });
+  } catch (putErr) {
+    console.error('[Riverz] direct upload network failure:', putErr);
+    throw new Error('Sin red al subir el archivo');
+  }
+  if (!putRes.ok){
+    var pbody = '';
+    try { pbody = await putRes.text(); } catch(_){}
+    console.error('[Riverz] direct upload rejected (' + putRes.status + '):', pbody.slice(0, 400));
+    throw new Error('Falla al subir el archivo (' + putRes.status + ')');
+  }
+  return signData.public_url;
 }
+
 window.uploadVideoToSupabase = uploadVideoToSupabase;
 
 async function onVideoFilePick(e){
@@ -5764,32 +5805,18 @@ async function _resolveBlobUrlsToDataUrls(proj){
 // string in proj.images[slot] instead of a 300-400KB base64 data URL,
 // which is what was filling localStorage and breaking saveAll.
 async function uploadImageToSupabase(blob, originalName, slotKey){
-  var proj = (typeof getActive === 'function') ? getActive() : null;
-  var fd = new FormData();
-  var clean = (originalName || 'image').replace(/[^a-zA-Z0-9._-]+/g, '_');
-  if (!/\.\w+$/.test(clean)) clean += '.jpg';
-  fd.append('file', blob, clean);
-  if (proj) fd.append('project_id', proj.id || 'landing');
-  if (slotKey) fd.append('slot', slotKey);
-  var res, data = null, raw = '';
-  try {
-    res = await fetch('/api/landing-lab/upload-asset', { method: 'POST', body: fd, credentials: 'same-origin' });
-    raw = await res.text();
-    try { data = JSON.parse(raw); } catch(_){ /* server returned non-JSON */ }
-  } catch (netErr) {
-    console.error('[Riverz] upload-asset network failure:', netErr);
-    throw new Error('Sin red — no se pudo contactar al servidor');
-  }
-  if (!res.ok){
-    var msg = (data && data.error) || raw || ('Subida fallida (' + res.status + ')');
-    console.error('[Riverz] upload-asset rejected (' + res.status + '):', msg);
-    throw new Error(msg);
-  }
-  if (!data || !data.url) {
-    console.error('[Riverz] upload-asset missing url in response:', raw);
-    throw new Error('Respuesta sin URL');
-  }
-  return data.url;
+  // Same signed-URL pipeline as videos — keeps the Render function out
+  // of the image-bytes path so a burst of large hero photos can't OOM
+  // the dyno. The Blob from compressImageFile always carries
+  // type='image/jpeg', which the sign-upload endpoint accepts.
+  // Force a .jpg/.png/.webp extension so the server-side MIME check
+  // and the server-side filename match.
+  var name = (originalName || 'image').replace(/[^a-zA-Z0-9._-]+/g, '_');
+  if (!/\.\w+$/.test(name)) name += '.jpg';
+  // Wrap the blob in a File so the underlying fetch() exposes a .type
+  // identical to what we sent in the sign-upload request.
+  var fileLike = (typeof File === 'function') ? new File([blob], name, { type: blob.type || 'image/jpeg' }) : blob;
+  return _signedUpload(fileLike, name, slotKey, 'image');
 }
 window.uploadImageToSupabase = uploadImageToSupabase;
 async function onFilePick(e){
