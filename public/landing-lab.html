@@ -922,6 +922,20 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
         </div>
         <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.4">El track siempre hace scroll horizontal con snap; el número visible controla el ancho de cada slide.</p>
       </div>
+      <!-- Background colour — visible for every selection. Writes
+           background-color (and inherits-friendly color overrides)
+           inline on the element so the colour saves into proj.html. -->
+      <div class="in-section" id="ins-bg-section">
+        <div class="in-label">Fondo</div>
+        <div class="in-row" style="gap:4px">
+          <input type="color" class="in-color" id="ins-bg-pick" oninput="setBlockBg(this.value)" title="Color de fondo del bloque seleccionado" />
+          <input type="text" class="in-num" id="ins-bg-text" placeholder="#000 / transparent" oninput="setBlockBg(this.value)" />
+        </div>
+        <div class="in-row" style="margin-top:6px">
+          <button class="in-btn flex" type="button" onclick="setBlockBg('')" title="Volver al color del template">Quitar</button>
+        </div>
+        <p class="in-help" style="font-size:10px;color:#5B6490;margin:6px 0 0;line-height:1.4">Aplica al bloque seleccionado. Para columnas o secciones, primero hacé click en el área (no sobre el texto).</p>
+      </div>
       <!-- Alignment controls — visible for every selection. Writes
            text-align on the element so child text + inline-block media
            re-justify; for blocks where text-align does nothing (grid
@@ -3181,11 +3195,66 @@ function insRefresh(){
   var carSec = document.getElementById('ins-carousel-section');
   if (carSec) carSec.style.display = carEl ? '' : 'none';
   if (carEl) _insRenderCarouselSection(carEl);
+  // Background colour — populate the picker + text input with whatever
+  // is on the selected element right now (inline first, computed style
+  // as fallback so template defaults are visible). Always rendered.
+  _insRenderBgSection(_insEl);
   // Alignment — always visible so any block can be left/center/right
   // aligned. Highlights whichever value is currently in effect on the
   // element's inline style or computed text-align.
   _insRenderAlignSection(_insEl);
 }
+
+// Convert the browser's computed `rgb(r,g,b)` / `rgba(r,g,b,a)` form
+// into a 6-digit hex so the <input type="color"> can adopt it. Returns
+// '' for transparent / unset so the picker doesn't lock to black.
+function _bgToHex(val){
+  if (!val) return '';
+  var s = String(val).trim();
+  if (!s || s === 'transparent' || s === 'rgba(0, 0, 0, 0)') return '';
+  if (/^#[0-9a-fA-F]{6}$/.test(s)) return s.toLowerCase();
+  if (/^#[0-9a-fA-F]{3}$/.test(s)){
+    return ('#' + s[1]+s[1]+s[2]+s[2]+s[3]+s[3]).toLowerCase();
+  }
+  var m = s.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (!m) return '';
+  function h(n){ var x = parseInt(n,10).toString(16); return x.length===1?'0'+x:x; }
+  return ('#' + h(m[1]) + h(m[2]) + h(m[3])).toLowerCase();
+}
+function _insRenderBgSection(el){
+  if (!el) return;
+  var pick = document.getElementById('ins-bg-pick');
+  var txt  = document.getElementById('ins-bg-text');
+  if (!pick && !txt) return;
+  var inline = (el.style && el.style.backgroundColor) || '';
+  var current = inline || (window.getComputedStyle ? window.getComputedStyle(el).backgroundColor : '');
+  var hex = _bgToHex(current);
+  if (pick) pick.value = hex || '#ffffff';
+  if (txt)  txt.value  = inline || '';
+}
+// Write a background colour onto the currently-selected element. Empty
+// string clears the inline override so the template default re-takes
+// over. Snapshots before mutating so undo can roll the change back.
+function setBlockBg(val){
+  if (!_insEl) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  var v = (val == null) ? '' : String(val).trim();
+  if (!v || v === 'transparent') {
+    _insEl.style.backgroundColor = '';
+  } else {
+    _insEl.style.backgroundColor = v;
+  }
+  // Keep the two inputs in sync so editing the hex text also slides
+  // the colour picker, and vice-versa.
+  var pick = document.getElementById('ins-bg-pick');
+  var txt  = document.getElementById('ins-bg-text');
+  var hex  = _bgToHex(_insEl.style.backgroundColor);
+  if (pick && hex) pick.value = hex;
+  if (txt) txt.value = _insEl.style.backgroundColor || '';
+  if (typeof qSave === 'function') qSave();
+  else if (typeof saveAll === 'function') saveAll();
+}
+window.setBlockBg = setBlockBg;
 
 // Apply an alignment value to the selected element. Sets text-align so
 // inner text + inline-block media re-justify, and also tweaks margin /
