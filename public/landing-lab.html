@@ -450,6 +450,24 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
 .go-step.done .go-step-dot{background:#4CAF7D}
 #toast{position:fixed;bottom:18px;right:18px;background:#4CAF7D;color:#fff;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:500;transform:translateY(8px);opacity:0;transition:all .2s;z-index:99999;pointer-events:none;font-family:'Instrument Sans',sans-serif}
 #toast.on{transform:translateY(0);opacity:1}#toast.err{background:#E85555}#toast.info{background:#4A90E2}
+/* Floating upload progress — pinned bottom-right above the toast.
+   Wide enough to read but doesn't dominate the canvas. */
+#riverz-upload{position:fixed;bottom:64px;right:18px;width:340px;background:#0E1118;border:1px solid #1f2530;color:#C8CAD8;border-radius:10px;padding:12px 14px;font-family:'Instrument Sans',sans-serif;font-size:12px;box-shadow:0 12px 38px rgba(0,0,0,.45);transform:translateY(8px);opacity:0;transition:transform .2s,opacity .2s;z-index:99998;pointer-events:none}
+#riverz-upload.on{transform:translateY(0);opacity:1;pointer-events:auto}
+#riverz-upload .ru-row{display:flex;align-items:center;gap:10px}
+#riverz-upload .ru-icon{font-size:14px;color:#9aa3c0;flex:0 0 auto}
+#riverz-upload .ru-body{flex:1;min-width:0}
+#riverz-upload .ru-label{font-size:11.5px;color:#C8CAD8;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#riverz-upload .ru-track{height:6px;background:#1a1f2a;border-radius:3px;overflow:hidden;position:relative}
+#riverz-upload .ru-fill{height:100%;width:0;background:linear-gradient(90deg,#f7ff9e,#5ec46b);border-radius:3px;transition:width .25s ease}
+#riverz-upload.ru-indeterminate .ru-fill{width:35%;animation:ru-pulse 1.2s ease-in-out infinite}
+@keyframes ru-pulse{0%{margin-left:-35%}100%{margin-left:100%}}
+#riverz-upload .ru-close{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.06);border:0;color:#9aa3c0;cursor:pointer;font-size:14px;display:none;align-items:center;justify-content:center}
+#riverz-upload.ru-error .ru-close,#riverz-upload.ru-done .ru-close{display:flex}
+#riverz-upload.ru-done .ru-fill{background:#4CAF7D;width:100%!important}
+#riverz-upload.ru-error{border-color:#5a2a2a;background:#1a0f10}
+#riverz-upload.ru-error .ru-fill{background:#E85555;width:100%!important;animation:none}
+#riverz-upload.ru-error .ru-label{color:#ffb8b8}
 /* ══ IMAGE GENERATION MODAL ══ */
 /* SETTINGS MODAL */
 .set-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);z-index:99996;display:none;align-items:center;justify-content:center;padding:20px}
@@ -1687,7 +1705,7 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
       <div class="ru-label" id="ru-label">Subiendo…</div>
       <div class="ru-track"><div class="ru-fill" id="ru-fill"></div></div>
     </div>
-    <button type="button" class="ru-close" id="ru-close" aria-label="Cerrar" onclick="hideUploadProgress()">×</button>
+    <button type="button" class="ru-close" id="ru-close" aria-label="Cerrar" onclick="(function(){var e=document.getElementById('riverz-upload');if(e){e.className='';}var f=document.getElementById('ru-fill');if(f){f.style.width='0';}})()">×</button>
   </div>
 </div>
 <div id="toast"></div>
@@ -4482,6 +4500,7 @@ async function loadAll(){
   // to re-pick. Runs before any project mounts so the bad URLs never
   // hit setVidSlot / applyVideoSlots.
   if (typeof _purgeStaleBlobVideos === 'function') _purgeStaleBlobVideos();
+  if (typeof _purgeStaleBlobImages === 'function') _purgeStaleBlobImages();
   // Resolve any "idb:<key>" image sentinels back to ObjectURLs (legacy
   // pre-Supabase saves stored data: URLs in IndexedDB to dodge the 5MB
   // localStorage cap). Must run before bootProject so applySlotsForViewport
@@ -5284,7 +5303,10 @@ async function uploadVideoToSupabase(file, originalName, slotKey){
   // Naming kept for back-compat — the actual destination is now the
   // merchant's own Shopify Files (no Riverz storage cost, no Supabase
   // Free-tier 50MB limit, no Render bytes-buffering).
-  return _shopifyDirectUpload(file, originalName, slotKey, 'video');
+  // Routed through the Safe wrapper so the floating progress bar
+  // flips to red on any failure even when the caller's catch is doing
+  // its own toast.
+  return _shopifyDirectUploadSafe(file, originalName, slotKey, 'video');
 }
 
 // Upload a file directly to the merchant's Shopify Files via a 3-step
@@ -5308,12 +5330,84 @@ async function uploadVideoToSupabase(file, originalName, slotKey){
 //     uploading there directly we skip the publish-time re-upload
 //     dance and the user pays storage costs to Shopify (where they
 //     already have a quota), not to Riverz.
+// ── UPLOAD PROGRESS BAR ─────────────────────────────────────
+// Floating bar pinned bottom-right. The state machine:
+//   showUploadProgress(label)            → on, indeterminate pulse
+//   setUploadProgress(pct, [label])      → on, determinate fill 0..100
+//   finishUploadProgress(label)          → green flash, auto-hide 1s
+//   failUploadProgress(label)            → red, persists with × button
+//   hideUploadProgress()                 → reset + hide
+function _ru(){ return document.getElementById('riverz-upload'); }
+function _ruLabel(){ return document.getElementById('ru-label'); }
+function _ruFill(){ return document.getElementById('ru-fill'); }
+function showUploadProgress(label){
+  var el = _ru(); if (!el) return;
+  el.className = 'on ru-running ru-indeterminate';
+  if (label && _ruLabel()) _ruLabel().textContent = label;
+  if (_ruFill()) _ruFill().style.width = '';
+}
+function setUploadProgress(pct, label){
+  var el = _ru(); if (!el) return;
+  // First determinate update flips off the indeterminate pulse.
+  el.classList.remove('ru-indeterminate');
+  el.classList.add('on', 'ru-running');
+  el.classList.remove('ru-done', 'ru-error');
+  if (label && _ruLabel()) _ruLabel().textContent = label;
+  var fill = _ruFill();
+  if (fill) fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+}
+function finishUploadProgress(label){
+  var el = _ru(); if (!el) return;
+  el.classList.remove('ru-running','ru-indeterminate','ru-error');
+  el.classList.add('on','ru-done');
+  if (label && _ruLabel()) _ruLabel().textContent = label;
+  setTimeout(hideUploadProgress, 1100);
+}
+function failUploadProgress(label){
+  var el = _ru(); if (!el) return;
+  el.classList.remove('ru-running','ru-indeterminate','ru-done');
+  el.classList.add('on','ru-error');
+  if (_ruLabel()) _ruLabel().textContent = label || 'Falla en la subida';
+}
+function hideUploadProgress(){
+  var el = _ru(); if (!el) return;
+  el.className = '';
+  if (_ruFill()) _ruFill().style.width = '0';
+}
+window.showUploadProgress = showUploadProgress;
+window.setUploadProgress = setUploadProgress;
+window.finishUploadProgress = finishUploadProgress;
+window.failUploadProgress = failUploadProgress;
+window.hideUploadProgress = hideUploadProgress;
+
+// XHR-based POST that surfaces real upload progress via the browser's
+// xhr.upload.onprogress events. fetch() doesn't expose upload progress
+// (only ReadableStream-based requests can, and Safari still doesn't
+// support it), so XHR is the path of least friction.
+function _xhrUpload(url, body, onProgress){
+  return new Promise(function(resolve, reject){
+    var xhr = new XMLHttpRequest();
+    if (xhr.upload && typeof onProgress === 'function'){
+      xhr.upload.addEventListener('progress', function(e){
+        if (e.lengthComputable) onProgress(e.loaded, e.total);
+      });
+    }
+    xhr.addEventListener('load', function(){
+      resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, text: xhr.responseText });
+    });
+    xhr.addEventListener('error', function(){ reject(new Error('Network error')); });
+    xhr.addEventListener('abort', function(){ reject(new Error('Upload abortada')); });
+    xhr.open('POST', url);
+    xhr.send(body);
+  });
+}
+
 async function _shopifyDirectUpload(file, originalName, slotKey, kind){
   var clean = (originalName || (kind === 'video' ? 'video' : 'image')).replace(/[^a-zA-Z0-9._-]+/g, '_');
   if (!/\.\w+$/.test(clean)) clean += (kind === 'video' ? '.mp4' : '.jpg');
 
   // Step 1: ask the server for a staged target.
-  if (typeof toast === 'function') toast('1/3 Pidiendo target a Shopify…', 0);
+  showUploadProgress((kind === 'video' ? '🎬 ' : '🖼 ') + 'Preparando subida… (' + Math.round(file.size/1024/1024 * 10) / 10 + ' MB)');
   var stageRes, stage = null, stageRaw = '';
   try {
     stageRes = await fetch('/api/landing-lab/shopify-stage-upload', {
@@ -5349,8 +5443,9 @@ async function _shopifyDirectUpload(file, originalName, slotKey, kind){
   // Step 2: POST the file body to Shopify's staged target. GCS expects
   // multipart form-data with every parameter from `stage.parameters`
   // appended FIRST and the file LAST. Order matters — Google validates
-  // them in sequence.
-  if (typeof toast === 'function') toast('2/3 Subiendo bytes (' + Math.round(file.size/1024/1024) + 'MB)…', 0);
+  // them in sequence. We use XMLHttpRequest (not fetch) so the browser
+  // surfaces real progress events, which we feed to the floating bar.
+  setUploadProgress(2, 'Subiendo a Shopify… 0%');
   var form = new FormData();
   for (var i = 0; i < stage.parameters.length; i++){
     form.append(stage.parameters[i].name, stage.parameters[i].value);
@@ -5358,22 +5453,29 @@ async function _shopifyDirectUpload(file, originalName, slotKey, kind){
   form.append('file', file, clean);
   var putRes;
   try {
-    putRes = await fetch(stage.upload_url, { method: 'POST', body: form });
+    putRes = await _xhrUpload(stage.upload_url, form, function(loaded, total){
+      // Map upload progress into the 5%-90% slice of the bar so we
+      // leave room for stage (0-5%) and finalize (90-100%) below.
+      var pct = total ? (loaded / total) : 0;
+      var mapped = 5 + pct * 85;
+      var mb = (loaded / 1024 / 1024).toFixed(1);
+      var totalMb = (total / 1024 / 1024).toFixed(1);
+      setUploadProgress(mapped, 'Subiendo a Shopify… ' + Math.round(pct * 100) + '%  (' + mb + ' / ' + totalMb + ' MB)');
+    });
   } catch (putErr) {
     console.error('[Riverz] GCS upload network failure:', putErr);
     throw new Error('Sin red al subir el archivo a Shopify');
   }
   if (!putRes.ok){
-    var pbody = '';
-    try { pbody = await putRes.text(); } catch(_){}
-    console.error('[Riverz] GCS upload rejected (' + putRes.status + '):', pbody.slice(0, 400));
+    console.error('[Riverz] GCS upload rejected (' + putRes.status + '):', (putRes.text || '').slice(0, 400));
     throw new Error('Shopify rechazó la subida (' + putRes.status + ')');
   }
 
   // Step 3: register the staged upload as a permanent Shopify File.
   // For videos this can take 10-40s while Shopify processes the file —
-  // surface that to the user so they don't bail thinking it stalled.
-  if (typeof toast === 'function') toast(kind === 'video' ? '3/3 Shopify procesando video (puede tardar 30s)…' : '3/3 Registrando archivo…', 0);
+  // we hold the bar at 92% with a "procesando" label so the user
+  // doesn't think it stalled.
+  setUploadProgress(92, kind === 'video' ? 'Shopify está procesando el video…' : 'Registrando archivo…');
   var finRes, fin = null, finRaw = '';
   try {
     finRes = await fetch('/api/landing-lab/shopify-finalize-upload', {
@@ -5400,9 +5502,23 @@ async function _shopifyDirectUpload(file, originalName, slotKey, kind){
   if (!fin || !fin.url){
     throw new Error('Finalize sin URL');
   }
+  finishUploadProgress((kind === 'video' ? '🎬 ' : '🖼 ') + 'Subido a Shopify');
   return fin.url;
 }
+
+// Wrapper that catches throws so the bar always lands in the right
+// state (red on failure, green on success). Callers should catch the
+// re-thrown error if they need to roll back additional state.
+async function _shopifyDirectUploadSafe(file, originalName, slotKey, kind){
+  try {
+    return await _shopifyDirectUpload(file, originalName, slotKey, kind);
+  } catch (err){
+    failUploadProgress((err && err.message) || 'Falla en la subida');
+    throw err;
+  }
+}
 window._shopifyDirectUpload = _shopifyDirectUpload;
+window._shopifyDirectUploadSafe = _shopifyDirectUploadSafe;
 
 window.uploadVideoToSupabase = uploadVideoToSupabase;
 
@@ -5434,7 +5550,7 @@ async function onVideoFilePick(e){
     // template's default 16/9 box. If metadata can't be read (rare:
     // unsupported codec) we fall through to the default behaviour.
     var natural = await _readVideoNaturalRatio(objectUrl);
-    toast('Subiendo a Shopify…', 0);
+    // Progress bar takes over from here — no toast needed.
     var publicUrl;
     try {
       publicUrl = await uploadVideoToSupabase(file, file.name, curVidKey);
@@ -5497,8 +5613,19 @@ function _purgeStaleBlobVideos(){
       } else if (typeof v === 'string' && v.indexOf('blob:') === 0) {
         delete p.videos[k];
         purged++;
+      } else if (v && typeof v === 'object' && typeof v.src === 'string' && v.src.indexOf('blob:') === 0) {
+        // Object form { src, poster, name } — wipe whenever src points at
+        // a dead blob:, otherwise the slot 404s on every paint.
+        delete p.videos[k];
+        purged++;
       }
     });
+    // Saved DOM (proj.html) carries inline src="blob:..." attributes from
+    // mid-upload previews that were never finalized. Strip them so the
+    // restored DOM doesn't fire ERR_FILE_NOT_FOUND on every reload.
+    if (typeof p.html === 'string' && p.html.indexOf('"blob:') !== -1){
+      p.html = p.html.replace(/(src|poster)\s*=\s*"blob:[^"]*"/g, '$1=""');
+    }
   });
   if (purged){
     try { localStorage.setItem(SK, JSON.stringify({ projects: projects, activeId: activeId })); } catch(_){}
@@ -5507,6 +5634,30 @@ function _purgeStaleBlobVideos(){
   }
 }
 window._purgeStaleBlobVideos = _purgeStaleBlobVideos;
+// Same idea for proj.images. Stale blob: entries (from a mid-upload that
+// never finalized, or a save that captured a preview URL) 404 on every
+// reload; clear them so the slot falls back to its placeholder.
+function _purgeStaleBlobImages(){
+  if (!Array.isArray(projects)) return;
+  var purged = 0;
+  projects.forEach(function(p){
+    if (!p || !p.images) return;
+    Object.keys(p.images).forEach(function(k){
+      var v = p.images[k];
+      if (typeof v === 'string' && v.indexOf('blob:') === 0){
+        p.images[k] = null;
+        purged++;
+      } else if (v && typeof v === 'object'){
+        if (typeof v.d === 'string' && v.d.indexOf('blob:') === 0){ v.d = ''; purged++; }
+        if (typeof v.m === 'string' && v.m.indexOf('blob:') === 0){ v.m = ''; purged++; }
+      }
+    });
+  });
+  if (purged){
+    try { localStorage.setItem(SK, JSON.stringify({ projects: projects, activeId: activeId })); } catch(_){}
+  }
+}
+window._purgeStaleBlobImages = _purgeStaleBlobImages;
 
 // Walks _pendingVideos and uploads each file to Shopify Files via the
 // existing /api/landing-lab/upload-video endpoint. Replaces every
@@ -5917,7 +6068,7 @@ async function uploadImageToSupabase(blob, originalName, slotKey){
   var name = (originalName || 'image').replace(/[^a-zA-Z0-9._-]+/g, '_');
   if (!/\.\w+$/.test(name)) name += extFromMime;
   var fileLike = (typeof File === 'function') ? new File([blob], name, { type: mime }) : blob;
-  return _shopifyDirectUpload(fileLike, name, slotKey, 'image');
+  return _shopifyDirectUploadSafe(fileLike, name, slotKey, 'image');
 }
 window.uploadImageToSupabase = uploadImageToSupabase;
 async function onFilePick(e){
@@ -5937,7 +6088,7 @@ async function onFilePick(e){
     // public URL string — no 5MB cap to worry about, and the URL works
     // across browsers/devices because Supabase is per-user.
     var blob = await compressImageFile(file, 1920, 0.85);
-    toast('Subiendo a Supabase…', 0);
+    // The floating progress bar (#riverz-upload) takes over from here.
     var publicUrl = await uploadImageToSupabase(blob, file.name, curImgKey);
     setSlot(curImgKey, publicUrl);
     var proj = getActive();
@@ -7707,14 +7858,10 @@ function igpFileChange(e) {
 
 async function igpFileApply() {
   if (!igpPendingFileObj || !igpSlot) { igpToast('Elige una imagen', 1); return; }
-  igpToast('Procesando imagen…', 0);
   try {
     var blob = await window.compressImageFile(igpPendingFileObj, 1920, 0.85);
-    // Upload to Supabase Storage so the URL we save in proj.images is a
-    // tiny ~120-char public URL instead of a 300-400KB base64 data URL.
-    // Same pipeline as onFilePick — keeps localStorage / project_data
-    // small and lets the publish flow CDN-substitute on Shopify.
-    igpToast('Subiendo…', 0);
+    // The floating progress bar (#riverz-upload) handles status from
+    // here on — no extra modal toast needed.
     var publicUrl = await window.uploadImageToSupabase(blob, igpPendingFileObj.name || 'image.jpg', igpSlot);
     window.setSlot(igpSlot, publicUrl);
     var proj = window.getActive();
