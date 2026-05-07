@@ -2434,6 +2434,12 @@ function spawnBlockFromPalette(blockType, parent, beforeEl){
   if (typeof decorateVideoSlots === 'function') decorateVideoSlots();
   if (typeof initEdit === 'function') initEdit();
   if (typeof makeSectionsDraggable === 'function') makeSectionsDraggable();
+  // Wire interactive blocks (carousel arrows, sticky CTA reveal) so
+  // a freshly-dropped element is immediately usable. Without this, a
+  // palette-dropped sticky stayed translateY(110%) (its CSS default)
+  // and the user couldn't see it at the bottom.
+  if (typeof wireRzCarousel === 'function') wireRzCarousel();
+  if (typeof wireRzSticky === 'function') wireRzSticky();
   if (typeof snapshot === 'function' && !isRestoring) snapshot();
   // Persist the new layout order so applyLayoutOrder on reload re-stages
   // every container with the new block in its dropped position. Without
