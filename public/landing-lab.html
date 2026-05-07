@@ -5297,6 +5297,7 @@ async function _shopifyDirectUpload(file, originalName, slotKey, kind){
   if (!/\.\w+$/.test(clean)) clean += (kind === 'video' ? '.mp4' : '.jpg');
 
   // Step 1: ask the server for a staged target.
+  if (typeof toast === 'function') toast('1/3 Pidiendo target a Shopify…', 0);
   var stageRes, stage = null, stageRaw = '';
   try {
     stageRes = await fetch('/api/landing-lab/shopify-stage-upload', {
@@ -5333,6 +5334,7 @@ async function _shopifyDirectUpload(file, originalName, slotKey, kind){
   // multipart form-data with every parameter from `stage.parameters`
   // appended FIRST and the file LAST. Order matters — Google validates
   // them in sequence.
+  if (typeof toast === 'function') toast('2/3 Subiendo bytes (' + Math.round(file.size/1024/1024) + 'MB)…', 0);
   var form = new FormData();
   for (var i = 0; i < stage.parameters.length; i++){
     form.append(stage.parameters[i].name, stage.parameters[i].value);
@@ -5353,6 +5355,9 @@ async function _shopifyDirectUpload(file, originalName, slotKey, kind){
   }
 
   // Step 3: register the staged upload as a permanent Shopify File.
+  // For videos this can take 10-40s while Shopify processes the file —
+  // surface that to the user so they don't bail thinking it stalled.
+  if (typeof toast === 'function') toast(kind === 'video' ? '3/3 Shopify procesando video (puede tardar 30s)…' : '3/3 Registrando archivo…', 0);
   var finRes, fin = null, finRaw = '';
   try {
     finRes = await fetch('/api/landing-lab/shopify-finalize-upload', {
@@ -5387,38 +5392,48 @@ window.uploadVideoToSupabase = uploadVideoToSupabase;
 
 async function onVideoFilePick(e){
   var file = e.target.files[0];
+  // Snapshot the slot's pre-upload state so we can roll the <video src>
+  // back if the upload fails — otherwise the blob: preview URL gets
+  // captured into proj.html on the next save and the user sees an
+  // empty slot after reload (the preview blob dies on page close).
+  var revertKey = curVidKey;
+  var proj0 = (revertKey && typeof getActive === 'function') ? getActive() : null;
+  var prevEntry = proj0 && proj0.videos ? proj0.videos[revertKey] : undefined;
+  var prevSrc = (function(){
+    var el = (typeof vidEl === 'function') ? vidEl(revertKey) : null;
+    return el ? (el.getAttribute('src') || '') : '';
+  })();
+  var objectUrl = null;
   try{
     if(!file || !curVidKey) return;
     if(!/^video\//.test(file.type)) return toast('Solo videos',1);
     if(file.size > 60*1024*1024) return toast('Video muy grande (max 60MB)',1);
     // Show a local preview via ObjectURL while the upload runs so the
-    // user gets immediate feedback. We swap to the Supabase URL once
-    // it's back.
-    var objectUrl = URL.createObjectURL(file);
+    // user gets immediate feedback. We swap to the Shopify URL once
+    // it's back; on failure the catch branch reverts the slot.
+    objectUrl = URL.createObjectURL(file);
     setVidSlot(curVidKey, objectUrl);
     // Read the file's intrinsic dimensions so the slot adopts the
     // video's natural aspect ratio instead of being letterboxed by the
     // template's default 16/9 box. If metadata can't be read (rare:
     // unsupported codec) we fall through to the default behaviour.
     var natural = await _readVideoNaturalRatio(objectUrl);
-    toast('Subiendo video a Supabase…', 0);
+    toast('Subiendo a Shopify…', 0);
     var publicUrl;
     try {
       publicUrl = await uploadVideoToSupabase(file, file.name, curVidKey);
     } catch (upErr){
       try { URL.revokeObjectURL(objectUrl); } catch(_){}
+      objectUrl = null;
       throw upErr;
     }
     try { URL.revokeObjectURL(objectUrl); } catch(_){}
+    objectUrl = null;
     setVidSlot(curVidKey, publicUrl);
     var proj = getActive();
     if(proj){
       if(!proj.videos) proj.videos={};
       proj.videos[curVidKey] = { src: publicUrl, name: file.name };
-      // Apply natural aspect: pick the matching preset class when the
-      // ratio is close to 9:16 / 16:9 / 1:1 / 4:3, otherwise stamp an
-      // exact aspect-ratio inline on the wrapper. Persists via proj.html
-      // because the inline style lives in the captured DOM.
       _applyVideoNaturalAspect(proj, curVidKey, natural);
     }
     snapshot();
@@ -5427,8 +5442,22 @@ async function onVideoFilePick(e){
     toast('🎬 Video guardado');
   } catch(err){
     console.error('onVideoFilePick', err);
-    var st2 = g('vid-upload-status'); if(st2) st2.textContent = 'Error: ' + (err.message || 'no se pudo cargar');
-    toast('Error: ' + (err.message || 'no se pudo cargar'), 1);
+    // Roll the slot back to whatever was there before this upload
+    // attempt. Without this the blob: preview URL (which dies on
+    // reload) leaks into proj.html on the next save and the user sees
+    // an empty slot after refresh, with no clear indication that the
+    // upload had failed.
+    try { if (objectUrl) URL.revokeObjectURL(objectUrl); } catch(_){}
+    try {
+      var prevUrl = '';
+      if (prevEntry && typeof prevEntry === 'string') prevUrl = prevEntry;
+      else if (prevEntry && typeof prevEntry === 'object') prevUrl = prevEntry.src || '';
+      else if (prevSrc && prevSrc.indexOf('blob:') !== 0) prevUrl = prevSrc;
+      if (prevUrl) setVidSlot(revertKey, prevUrl);
+      else if (typeof resetVidSlot === 'function') resetVidSlot(revertKey);
+    } catch(_){}
+    var st2 = g('vid-upload-status'); if(st2){ st2.style.display=''; st2.textContent = 'Error: ' + (err.message || 'no se pudo cargar'); }
+    toast('Error subiendo video: ' + (err.message || 'no se pudo cargar'), 1);
   } finally {
     if(e && e.target) e.target.value = '';
   }

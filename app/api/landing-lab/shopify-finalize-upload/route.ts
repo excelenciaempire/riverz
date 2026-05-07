@@ -46,10 +46,18 @@ export async function POST(req: Request) {
   }
   const client = new ShopifyAdminClient(conn.shop, conn.token);
 
-  // Register the staged upload as a Shopify File. contentType=IMAGE
-  // for image MIMEs (gives us a MediaImage with image.url), FILE for
-  // everything else (GenericFile with .url) — the polling step below
-  // reads the right field per __typename.
+  // Register the staged upload as a Shopify File. contentType picks
+  // which Shopify type wraps the asset:
+  //   IMAGE  → MediaImage (image.url)
+  //   VIDEO  → Video      (sources[].url, transcoded)
+  //   FILE   → GenericFile (.url, raw)
+  // Using VIDEO for mp4/mov/webm gives us Shopify's transcoded HLS-
+  // ready URLs, which are smaller + stream cleaner than the raw file.
+  const contentType = body.mime.startsWith('image/')
+    ? 'IMAGE'
+    : body.mime.startsWith('video/')
+      ? 'VIDEO'
+      : 'FILE';
   type FileCreateRes = {
     fileCreate: {
       files: Array<{ id: string; fileStatus: string }>;
@@ -69,7 +77,7 @@ export async function POST(req: Request) {
         files: [
           {
             alt: body.alt || '',
-            contentType: body.mime.startsWith('image/') ? 'IMAGE' : 'FILE',
+            contentType,
             originalSource: body.resource_url,
           },
         ],
@@ -95,28 +103,36 @@ export async function POST(req: Request) {
   }
 
   // Poll until the file is processed. Shopify normally finishes in
-  // <2s for images, 5-15s for videos. We give it 40s before giving up.
+  // <2s for images and 5-30s for videos. We allow up to 50s — Render's
+  // 60s function ceiling caps how high we can push this. If the user
+  // hits the timeout we return a 504 with the file_id so a future
+  // retry can re-poll instead of re-uploading the bytes.
   type FileNodeRes = {
     node:
       | { __typename: 'MediaImage'; id: string; fileStatus: string; image: { url: string } | null }
       | { __typename: 'GenericFile'; id: string; fileStatus: string; url: string | null }
+      | { __typename: 'Video'; id: string; fileStatus: string; sources: Array<{ url: string }> }
       | null;
   };
   const start = Date.now();
-  while (Date.now() - start < 40_000) {
+  while (Date.now() - start < 50_000) {
     const data = await client.graphql<FileNodeRes>(
       `query File($id: ID!) {
          node(id: $id) {
            __typename
            ... on MediaImage { id fileStatus image { url } }
            ... on GenericFile { id fileStatus url }
+           ... on Video      { id fileStatus sources { url } }
          }
        }`,
       { id: fileId },
     );
     const n = data.node;
     if (n && n.fileStatus === 'READY') {
-      const url = n.__typename === 'MediaImage' ? n.image?.url : n.url;
+      let url: string | null | undefined = null;
+      if (n.__typename === 'MediaImage') url = n.image?.url;
+      else if (n.__typename === 'GenericFile') url = n.url;
+      else if (n.__typename === 'Video') url = n.sources?.[0]?.url;
       if (url) {
         return NextResponse.json({ ok: true, url, file_id: fileId });
       }
@@ -127,5 +143,11 @@ export async function POST(req: Request) {
     }
     await new Promise((r) => setTimeout(r, 1500));
   }
-  return NextResponse.json({ error: 'Timeout esperando que Shopify procese el archivo' }, { status: 504 });
+  return NextResponse.json(
+    {
+      error: 'Shopify se está tomando más de lo esperado para procesar el archivo. Intentá de nuevo en un minuto.',
+      file_id: fileId,
+    },
+    { status: 504 },
+  );
 }

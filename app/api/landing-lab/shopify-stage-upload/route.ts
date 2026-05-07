@@ -97,8 +97,21 @@ export async function POST(req: Request) {
   // stagedUploadsCreate accepts httpMethod: POST or PUT. POST is the
   // canonical option — Shopify routes it to a Google Cloud Storage
   // form-multipart endpoint that wants every key from `parameters`
-  // appended along with the file last (matches uploadImageToShopify
-  // in lib/shopify/files.ts).
+  // appended along with the file last.
+  // resource MUST match the eventual fileCreate contentType for Shopify
+  // to wire the upload through the right pipeline:
+  //   IMAGE → MediaImage (transcoded variants)
+  //   VIDEO → Video      (transcoded HLS sources)
+  //   FILE  → GenericFile (raw passthrough)
+  // Using VIDEO for video MIMEs unlocks Shopify's video transcoder —
+  // without it Shopify treats the file as a generic blob, which is
+  // why the earlier flow returned no playback URL even after the bytes
+  // landed in Files.
+  const resource = mime.startsWith('image/')
+    ? 'IMAGE'
+    : mime.startsWith('video/')
+      ? 'VIDEO'
+      : 'FILE';
   type StagedRes = {
     stagedUploadsCreate: {
       stagedTargets: Array<{
@@ -124,10 +137,7 @@ export async function POST(req: Request) {
             filename,
             mimeType: mime,
             httpMethod: 'POST',
-            // FILE handles both images and videos uniformly. The
-            // subsequent fileCreate picks IMAGE vs FILE based on the
-            // mime type so previewing still works for images.
-            resource: 'FILE',
+            resource,
             fileSize: String(size),
           },
         ],
