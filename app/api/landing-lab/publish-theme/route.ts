@@ -215,6 +215,15 @@ export async function POST(req: Request) {
       { onConflict: 'clerk_user_id,shop_domain,local_project_id' },
     );
 
+  // The publish itself ALWAYS succeeded by the time we reach this
+  // point — section + template assets are live in the merchant's
+  // theme. Whether or not the user passed a shopify_handle only
+  // affects the preview URL we suggest. The next_steps message used
+  // to imply the publish failed when no handle was set ("Configurá
+  // un producto…"), confusing users who already had a product in
+  // Shopify but hadn't linked it inside Riverz Settings. New copy
+  // makes the success explicit and gives the same Admin → assign
+  // template instructions either way.
   return NextResponse.json({
     ok: true,
     template: {
@@ -226,8 +235,8 @@ export async function POST(req: Request) {
     public_url: publicUrl,
     image_map: imageMap,
     next_steps: handle
-      ? `Andá a Shopify Admin → Productos → "${handle}" → Online store → Theme template y elegí "${templateName}". Mientras tanto podés ver el preview en ${previewUrl}.`
-      : `Configurá un producto en Ajustes y republicá para tener una URL pública. Preview directo: ${previewUrl}`,
+      ? '✓ Theme template publicado.\n\nPara que tu producto "' + handle + '" use esta plantilla:\n1. Andá a Shopify Admin → Productos → "' + handle + '" → en "Online store" elegí Theme template = "' + templateName + '".\n\nMientras tanto, preview directo:\n' + previewUrl
+      : '✓ Theme template publicado en tu theme.\n\nPara usarlo en cualquier producto:\n1. Andá a Shopify Admin → Productos → tu producto.\n2. En "Online store" cambiá "Theme template" a "' + templateName + '".\n3. (Opcional) Cargá el handle del producto en Ajustes → "Producto Shopify" para que Riverz arme la URL pública automáticamente.\n\nPreview sin asignar:\n' + previewUrl,
   });
 }
 
