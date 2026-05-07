@@ -66,23 +66,21 @@ export async function POST(req: Request) {
     );
   }
 
-  // Theme writes need write_themes (and the read counterpart for the
-  // active-theme lookup). Existing connections were granted before this
-  // flow existed and won't have those scopes — surface a clear reconnect
-  // hint instead of letting the GraphQL/REST call 403 on its own.
+  // Theme writes need write_themes. Shopify collapses paired scopes —
+  // when you request `read_themes,write_themes` the granted-scope
+  // string only echoes `write_themes` (write implies read), so we
+  // ONLY require write_themes here. The earlier 'read_themes' check
+  // produced false-negative reconnect prompts after a successful
+  // re-auth (the user's connection had write_themes but the granted
+  // scope list omitted the implied read_themes).
   const scopes = new Set((conn.scope || '').split(',').map((s) => s.trim()).filter(Boolean));
-  const missingScopes: string[] = [];
-  if (!scopes.has('write_themes')) missingScopes.push('write_themes');
-  if (!scopes.has('read_themes')) missingScopes.push('read_themes');
-  if (missingScopes.length && !payload.ignore_scope_warning) {
+  if (!scopes.has('write_themes') && !payload.ignore_scope_warning) {
     return NextResponse.json(
       {
         error:
-          'Reconectá Shopify para activar Product Pages — falta el permiso ' +
-          missingScopes.join(' + ') +
-          '. Andá a Configuración → Integraciones → Reconectar Shopify y autorizá los nuevos permisos.',
+          'Reconectá Shopify para activar Product Pages — falta el permiso write_themes. Andá a Configuración → Integraciones → Reconectar Shopify y autorizá los nuevos permisos.',
         requiresReconnect: true,
-        missingScopes,
+        missingScopes: ['write_themes'],
       },
       { status: 403 },
     );
