@@ -28,13 +28,22 @@ const buildCsp = (frameAncestors: string) =>
     // to a merchant's Shopify Files — those URLs replace the placehold.co
     // defaults in the landing-lab editor. Without this the editor can't
     // render its own freshly-uploaded images.
-    "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://*.kie.ai https://*.aiquickdraw.com https://*.googleusercontent.com https://*.cloudfront.net https://*.amazonaws.com https://*.elevenlabs.io https://riverzai.com https://cdn.riverzai.com https://placehold.co https://cdn.shopify.com https://*.myshopify.com https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://*.fbcdn.net https://*.cdninstagram.com https://graph.facebook.com",
-    "media-src 'self' blob: https://*.supabase.co https://*.supabase.in https://*.kie.ai https://*.aiquickdraw.com https://*.cloudfront.net https://*.amazonaws.com https://*.fbcdn.net https://*.cdninstagram.com",
+    "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://*.kie.ai https://*.aiquickdraw.com https://*.googleusercontent.com https://*.cloudfront.net https://*.amazonaws.com https://*.elevenlabs.io https://riverzai.com https://cdn.riverzai.com https://placehold.co https://cdn.shopify.com https://*.myshopify.com https://shopify-staged-uploads.storage.googleapis.com https://*.googleapis.com https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://*.fbcdn.net https://*.cdninstagram.com https://graph.facebook.com",
+    // cdn.shopify.com is the CDN that serves video/image files after the
+    // editor uploads them via stagedUploadsCreate → fileCreate. Without it
+    // the <video src="https://cdn.shopify.com/...mp4"> in the slot blocks
+    // on media-src and the user sees a black box / "video not supported".
+    "media-src 'self' blob: https://*.supabase.co https://*.supabase.in https://*.kie.ai https://*.aiquickdraw.com https://*.cloudfront.net https://*.amazonaws.com https://*.fbcdn.net https://*.cdninstagram.com https://cdn.shopify.com https://*.myshopify.com",
     // connect-src governs fetch() / XHR / WebSocket. The Descargar button
     // calls fetch() against Meta's CDN to bundle the asset into a Blob, so
     // *.fbcdn.net + *.cdninstagram.com need to be here too — img-src/media-src
     // alone don't cover programmatic fetches.
-    "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.riverzai.com https://api.stripe.com https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.kie.ai https://api.elevenlabs.io https://api.openai.com https://graph.facebook.com https://*.fbcdn.net https://*.cdninstagram.com",
+    // shopify-staged-uploads.storage.googleapis.com is where the editor
+    // POSTs file bytes during the direct-to-Shopify upload (stagedUploadsCreate
+    // returns a Google Cloud Storage URL on that host). Without this entry
+    // the browser blocks the upload with "Refused to connect because it
+    // violates the document's Content Security Policy".
+    "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.riverzai.com https://api.stripe.com https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.kie.ai https://api.elevenlabs.io https://api.openai.com https://graph.facebook.com https://*.fbcdn.net https://*.cdninstagram.com https://shopify-staged-uploads.storage.googleapis.com https://*.googleapis.com https://cdn.shopify.com",
     // *.facebook.com is allowed so the Meta Ads viewer can fall back to
     // Facebook's official preview iframe when /{video_id}?fields=source
     // returns null. Depending on the ad and the user's role, the iframe
