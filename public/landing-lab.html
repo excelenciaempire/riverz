@@ -2368,30 +2368,60 @@ function makeSectionsDraggable(){
       if (!child.dataset.sectionId) return;
       if (child.dataset.dragWired) return;
       child.dataset.dragWired = '1';
-      child.setAttribute('draggable', 'true');
-      // Show a drag handle on hover. Bigger + center-top for top-level
-      // sections, smaller + corner for nested cards.
+      // Drag-by-handle only. The element stays draggable=false by default
+      // so clicks on its body / text / images select it for the inspector
+      // (or edit text) instead of accidentally starting a drag — that's
+      // what was launching pp-gallery into pp-info during a normal click.
+      // The handle's mousedown flips draggable=true just long enough for
+      // the browser to recognise the drag gesture, and dragend flips it
+      // back. Without this two-step, a stray click on a span inside a
+      // column was treated as the start of a section drag.
+      child.setAttribute('draggable', 'false');
+      var handle;
       if (!child.querySelector(':scope > .riverz-section-handle')) {
-        var handle = document.createElement('div');
+        handle = document.createElement('div');
         handle.className = 'riverz-section-handle';
         handle.contentEditable = 'false';
-        handle.title = 'Arrastrá para reordenar';
+        handle.title = 'Arrastrá desde acá para reordenar';
         handle.innerHTML = '⋮⋮';
+        // pointer-events:auto (was :none). We WANT the handle to receive
+        // mousedown so it can opt the parent into draggable=true.
         if (isTop) {
-          handle.style.cssText = 'position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:25;background:rgba(0,0,0,.7);color:#fff;width:36px;height:22px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:grab;pointer-events:none;letter-spacing:1px;opacity:0;transition:opacity .15s';
+          handle.style.cssText = 'position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:25;background:rgba(0,0,0,.7);color:#fff;width:36px;height:22px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:grab;pointer-events:auto;letter-spacing:1px;opacity:0;transition:opacity .15s;user-select:none';
         } else {
-          handle.style.cssText = 'position:absolute;top:6px;left:6px;z-index:25;background:rgba(0,0,0,.6);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;cursor:grab;pointer-events:none;letter-spacing:0;opacity:0;transition:opacity .15s';
+          handle.style.cssText = 'position:absolute;top:6px;left:6px;z-index:25;background:rgba(0,0,0,.6);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;cursor:grab;pointer-events:auto;letter-spacing:0;opacity:0;transition:opacity .15s;user-select:none';
         }
         if (getComputedStyle(child).position === 'static') child.style.position = 'relative';
         child.appendChild(handle);
         child.addEventListener('mouseenter', function(){ handle.style.opacity = '.85'; });
         child.addEventListener('mouseleave', function(){ handle.style.opacity = '0'; });
+      } else {
+        handle = child.querySelector(':scope > .riverz-section-handle');
+        // Existing handles from earlier loads had pointer-events:none.
+        // Upgrade them in-place so the new drag-by-handle flow works.
+        if (handle) handle.style.pointerEvents = 'auto';
+      }
+      if (handle) {
+        handle.addEventListener('mousedown', function(e){
+          // Activate drag mode on the parent. The browser will pick up
+          // the immediate dragstart on the same gesture.
+          child.setAttribute('draggable', 'true');
+          e.stopPropagation();
+        });
+        // Clicks on the handle shouldn't bubble up to the inspector
+        // selection logic — the user is reordering, not selecting.
+        handle.addEventListener('click', function(e){ e.stopPropagation(); });
       }
       child.addEventListener('dragstart', _onSecDragStart);
       child.addEventListener('dragover', _onSecDragOver);
       child.addEventListener('dragleave', _onSecDragLeave);
       child.addEventListener('drop', _onSecDrop);
-      child.addEventListener('dragend', _onSecDragEnd);
+      child.addEventListener('dragend', function(){
+        // Reset draggability so the next click on the body doesn't
+        // initiate another drag.
+        child.setAttribute('draggable', 'false');
+        _onSecDragEnd.call(child);
+      });
     });
   });
 }
@@ -4076,6 +4106,18 @@ function _captureProjectHtml(proj){
   clone.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
   clone.querySelectorAll('.riverz-hover').forEach(function(el){ el.classList.remove('riverz-hover'); el.removeAttribute('data-rz-hover-label'); });
   clone.querySelectorAll('.riverz-sec-active').forEach(function(el){ el.classList.remove('riverz-sec-active'); });
+  // Strip listener-tracking data attrs so makeSectionsDraggable /
+  // _onContainerDragOver re-attach their handlers on load. Without
+  // this, the restored DOM keeps the dataset flags but loses the
+  // listeners (cloneNode → innerHTML doesn't preserve event handlers),
+  // and drag silently breaks for everything that was wired before.
+  // We KEEP data-section-id + data-reorder-container because
+  // applyLayoutOrder / tagAllReorderable rely on them.
+  clone.querySelectorAll('[data-drag-wired]').forEach(function(el){ el.removeAttribute('data-drag-wired'); });
+  clone.querySelectorAll('[data-container-drop-wired]').forEach(function(el){ el.removeAttribute('data-container-drop-wired'); });
+  // Reset draggable=true left behind by the drag-by-handle gesture so
+  // the restored body doesn't ship in "armed for drag" state.
+  clone.querySelectorAll('[draggable="true"]').forEach(function(el){ el.setAttribute('draggable', 'false'); });
   proj.html = clone.innerHTML;
 }
 function _projectMetaPayload(proj){
@@ -4576,6 +4618,14 @@ function _restoreProjectHtml(proj){
   isRestoring = true;
   try {
     pw.innerHTML = proj.html;
+    // Old saves carried data-drag-wired / data-container-drop-wired /
+    // draggable="true" inside proj.html, so the freshly mounted DOM
+    // looked "wired" to makeSectionsDraggable even though cloneNode
+    // dropped every event listener. Strip them so the wiring re-runs
+    // and picks up the current handler set (e.g. drag-by-handle).
+    pw.querySelectorAll('[data-drag-wired]').forEach(function(el){ el.removeAttribute('data-drag-wired'); });
+    pw.querySelectorAll('[data-container-drop-wired]').forEach(function(el){ el.removeAttribute('data-container-drop-wired'); });
+    pw.querySelectorAll('[draggable="true"]').forEach(function(el){ el.setAttribute('draggable', 'false'); });
     // Templates ship .rv reveal-on-scroll classes that start invisible
     // until an IntersectionObserver toggles them. The editor strips the
     // observer script, so force them visible here — same trick
