@@ -5265,22 +5265,41 @@ window._readVideoNaturalRatio = _readVideoNaturalRatio;
 window._applyVideoNaturalAspect = _applyVideoNaturalAspect;
 
 async function uploadVideoToSupabase(file, originalName, slotKey){
-  // Two-step upload that bypasses Render's memory ceiling: ask the
-  // Next.js function for a signed URL (tiny JSON request, no body
-  // buffering), then PUT the file BYTES directly to Supabase Storage
-  // from the browser. The previous flow buffered the 60MB file inside
-  // the function and was OOM-ing the Render dyno (memory exceeded →
-  // auto-restart → 502 to the user mid-upload).
-  return _signedUpload(file, originalName, slotKey, 'video');
+  // Naming kept for back-compat — the actual destination is now the
+  // merchant's own Shopify Files (no Riverz storage cost, no Supabase
+  // Free-tier 50MB limit, no Render bytes-buffering).
+  return _shopifyDirectUpload(file, originalName, slotKey, 'video');
 }
 
-async function _signedUpload(file, originalName, slotKey, kind){
-  var proj = (typeof getActive === 'function') ? getActive() : null;
+// Upload a file directly to the merchant's Shopify Files via a 3-step
+// flow that NEVER passes the bytes through our Next.js function:
+//   1. POST /api/landing-lab/shopify-stage-upload (JSON metadata)
+//      → server calls stagedUploadsCreate, returns GCS target + params
+//   2. POST <target> with the file body (browser → Google Cloud Storage)
+//   3. POST /api/landing-lab/shopify-finalize-upload (JSON resourceUrl)
+//      → server calls fileCreate + polls READY, returns CDN URL
+//
+// Why direct-to-Shopify instead of Supabase Storage:
+//   - Free-tier Supabase has a 50MB hard cap per file (videos > 50MB
+//     fail mid-upload with no warning).
+//   - Free-tier Supabase has a 1GB total cap shared across the whole
+//     Riverz instance — every merchant's assets compete for that
+//     budget.
+//   - Render's small dyno was OOM-ing on 60MB videos when we proxied
+//     them through formData (memory limit exceeded → auto-restart →
+//     502 to the user mid-upload).
+//   - Assets need to be in Shopify Files at publish time anyway. By
+//     uploading there directly we skip the publish-time re-upload
+//     dance and the user pays storage costs to Shopify (where they
+//     already have a quota), not to Riverz.
+async function _shopifyDirectUpload(file, originalName, slotKey, kind){
   var clean = (originalName || (kind === 'video' ? 'video' : 'image')).replace(/[^a-zA-Z0-9._-]+/g, '_');
   if (!/\.\w+$/.test(clean)) clean += (kind === 'video' ? '.mp4' : '.jpg');
-  var signRes, signData = null, signRaw = '';
+
+  // Step 1: ask the server for a staged target.
+  var stageRes, stage = null, stageRaw = '';
   try {
-    signRes = await fetch('/api/landing-lab/sign-upload', {
+    stageRes = await fetch('/api/landing-lab/shopify-stage-upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
@@ -5289,49 +5308,80 @@ async function _signedUpload(file, originalName, slotKey, kind){
         filename: clean,
         mime: file.type,
         size: file.size,
-        project_id: proj ? (proj.id || 'landing') : 'landing',
-        slot: slotKey || (kind === 'video' ? 'video' : 'image')
+        alt: slotKey || ''
       })
     });
-    signRaw = await signRes.text();
-    try { signData = JSON.parse(signRaw); } catch(_){}
+    stageRaw = await stageRes.text();
+    try { stage = JSON.parse(stageRaw); } catch(_){}
   } catch (netErr) {
-    console.error('[Riverz] sign-upload network failure:', netErr);
+    console.error('[Riverz] stage-upload network failure:', netErr);
     throw new Error('Sin red — no se pudo contactar al servidor');
   }
-  if (!signRes.ok){
-    var smsg = (signData && signData.error) || signRaw || ('Sign failed (' + signRes.status + ')');
-    console.error('[Riverz] sign-upload rejected (' + signRes.status + '):', smsg);
+  if (!stageRes.ok){
+    var smsg = (stage && stage.error) || stageRaw || ('Stage failed (' + stageRes.status + ')');
+    if (stage && stage.requiresReconnect) {
+      throw new Error(smsg + ' — conectá tu Shopify para subir archivos.');
+    }
+    console.error('[Riverz] stage-upload rejected (' + stageRes.status + '):', smsg);
     throw new Error(smsg);
   }
-  if (!signData || !signData.upload_url || !signData.public_url){
-    console.error('[Riverz] sign-upload missing fields:', signRaw);
-    throw new Error('Respuesta de firma incompleta');
+  if (!stage || !stage.upload_url || !stage.resource_url || !Array.isArray(stage.parameters)){
+    throw new Error('Respuesta de stage incompleta');
   }
-  // PUT the file straight to Supabase. supabase-js's signed-upload
-  // endpoint accepts the body via PUT with a Bearer token (signedUrl
-  // already has the token baked in as a query param) — we use raw
-  // fetch instead of `uploadToSignedUrl` to avoid pulling another
-  // 80kB of SDK into the editor bundle.
+
+  // Step 2: POST the file body to Shopify's staged target. GCS expects
+  // multipart form-data with every parameter from `stage.parameters`
+  // appended FIRST and the file LAST. Order matters — Google validates
+  // them in sequence.
+  var form = new FormData();
+  for (var i = 0; i < stage.parameters.length; i++){
+    form.append(stage.parameters[i].name, stage.parameters[i].value);
+  }
+  form.append('file', file, clean);
   var putRes;
   try {
-    putRes = await fetch(signData.upload_url, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type, 'x-upsert': 'false' },
-      body: file
-    });
+    putRes = await fetch(stage.upload_url, { method: 'POST', body: form });
   } catch (putErr) {
-    console.error('[Riverz] direct upload network failure:', putErr);
-    throw new Error('Sin red al subir el archivo');
+    console.error('[Riverz] GCS upload network failure:', putErr);
+    throw new Error('Sin red al subir el archivo a Shopify');
   }
   if (!putRes.ok){
     var pbody = '';
     try { pbody = await putRes.text(); } catch(_){}
-    console.error('[Riverz] direct upload rejected (' + putRes.status + '):', pbody.slice(0, 400));
-    throw new Error('Falla al subir el archivo (' + putRes.status + ')');
+    console.error('[Riverz] GCS upload rejected (' + putRes.status + '):', pbody.slice(0, 400));
+    throw new Error('Shopify rechazó la subida (' + putRes.status + ')');
   }
-  return signData.public_url;
+
+  // Step 3: register the staged upload as a permanent Shopify File.
+  var finRes, fin = null, finRaw = '';
+  try {
+    finRes = await fetch('/api/landing-lab/shopify-finalize-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        resource_url: stage.resource_url,
+        mime: stage.mime || file.type,
+        alt: slotKey || ''
+      })
+    });
+    finRaw = await finRes.text();
+    try { fin = JSON.parse(finRaw); } catch(_){}
+  } catch (netErr) {
+    console.error('[Riverz] finalize-upload network failure:', netErr);
+    throw new Error('Subida a Shopify completa pero no pudimos registrar el archivo (sin red)');
+  }
+  if (!finRes.ok){
+    var fmsg = (fin && fin.error) || finRaw || ('Finalize failed (' + finRes.status + ')');
+    console.error('[Riverz] finalize-upload rejected (' + finRes.status + '):', fmsg);
+    throw new Error(fmsg);
+  }
+  if (!fin || !fin.url){
+    throw new Error('Finalize sin URL');
+  }
+  return fin.url;
 }
+window._shopifyDirectUpload = _shopifyDirectUpload;
 
 window.uploadVideoToSupabase = uploadVideoToSupabase;
 
@@ -5805,18 +5855,13 @@ async function _resolveBlobUrlsToDataUrls(proj){
 // string in proj.images[slot] instead of a 300-400KB base64 data URL,
 // which is what was filling localStorage and breaking saveAll.
 async function uploadImageToSupabase(blob, originalName, slotKey){
-  // Same signed-URL pipeline as videos — keeps the Render function out
-  // of the image-bytes path so a burst of large hero photos can't OOM
-  // the dyno. The Blob from compressImageFile always carries
-  // type='image/jpeg', which the sign-upload endpoint accepts.
-  // Force a .jpg/.png/.webp extension so the server-side MIME check
-  // and the server-side filename match.
+  // Naming kept for back-compat — same Shopify-direct flow as videos.
+  // compressImageFile returns a Blob with type='image/jpeg'; we wrap
+  // it in a File so the multipart upload to GCS knows the filename.
   var name = (originalName || 'image').replace(/[^a-zA-Z0-9._-]+/g, '_');
   if (!/\.\w+$/.test(name)) name += '.jpg';
-  // Wrap the blob in a File so the underlying fetch() exposes a .type
-  // identical to what we sent in the sign-upload request.
   var fileLike = (typeof File === 'function') ? new File([blob], name, { type: blob.type || 'image/jpeg' }) : blob;
-  return _signedUpload(fileLike, name, slotKey, 'image');
+  return _shopifyDirectUpload(fileLike, name, slotKey, 'image');
 }
 window.uploadImageToSupabase = uploadImageToSupabase;
 async function onFilePick(e){
