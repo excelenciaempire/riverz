@@ -6659,6 +6659,23 @@ function initEdit(){
   autoTag('.stat-l,.v-h,.v-list li,.ing-name,.ing-desc');
   autoTag('.t-day,.t-txt,.prod-desc,.testi-txt,.testi-au strong,.testi-au span');
 
+  // Listener registration is once-per-page-wrap. initEdit is called from
+  // many places (template swap, palette drop, HTML restore, duplicate
+  // block, etc.) — without this guard each call stacked another paste
+  // / input / blur listener, so paste fired N times in a row and the
+  // pasted text was inserted N times. The contentEditable assignment +
+  // autoTag passes ABOVE are idempotent and need to keep running on
+  // every call (new DOM nodes from a template / drop need wiring).
+  if (pw.dataset.editListenersWired) {
+    var iuiOnce=g('im-url-in');
+    if(iuiOnce && !iuiOnce.dataset.editListenersWired){
+      iuiOnce.dataset.editListenersWired='1';
+      iuiOnce.addEventListener('input',function(){var v=this.value.trim(),p=g('im-prev');if(v){p.src=v;p.style.display='block';}else{p.src='';p.style.display='none';}});
+    }
+    return;
+  }
+  pw.dataset.editListenersWired='1';
+
   // Focus/blur: show font size control
   pw.addEventListener('focus',function(e){if(e.target.hasAttribute('data-v-text'))showFontCtrl(e.target);},true);
   pw.addEventListener('blur',function(e){if(e.target.hasAttribute('data-v-text'))setTimeout(function(){if(!g('font-ctrl').matches(':hover'))hideFontCtrl();},200);},true);
@@ -6666,7 +6683,7 @@ function initEdit(){
   pw.addEventListener('input',function(e){if(isRestoring||!e.target.hasAttribute('data-v-text'))return;qSave();});
   pw.addEventListener('blur',function(e){if(isRestoring||!e.target.hasAttribute('data-v-text'))return;flushQSavePending();collectTexts();snapshot();saveAll();},true);
   pw.addEventListener('paste',function(e){if(!e.target.hasAttribute('data-v-text'))return;e.preventDefault();var t=(e.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,t);});
-  var iui=g('im-url-in');if(iui)iui.addEventListener('input',function(){var v=this.value.trim(),p=g('im-prev');if(v){p.src=v;p.style.display='block';}else{p.src='';p.style.display='none';}});
+  var iui=g('im-url-in');if(iui && !iui.dataset.editListenersWired){iui.dataset.editListenersWired='1';iui.addEventListener('input',function(){var v=this.value.trim(),p=g('im-prev');if(v){p.src=v;p.style.display='block';}else{p.src='';p.style.display='none';}});}
 }
 
 // ── UTILS ────────────────────────────────────────────────────
