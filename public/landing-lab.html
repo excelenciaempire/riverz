@@ -636,6 +636,7 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
     <button class="tb tb-ghost" onclick="openVersionsModal()" title="Historial de versiones">&#x1F570; Versiones</button>
     <button class="tb tb-ghost" onclick="openSettings()" title="Ajustes de la página">&#x2699; Ajustes</button>
     <button class="tb tb-blue" onclick="exportCurrent()">&#x2B07; Exportar HTML</button>
+    <button class="tb tb-blue" onclick="exportProjectJSON()" title="Descarga un .riverz.json con todo el proyecto (texto, imágenes, videos, layout). Importable desde Mis páginas.">&#x1F4E6; Descargar proyecto</button>
     <button class="tb tb-acc" onclick="saveDraftNow()" title="Guardar el borrador actual (Ctrl+S)">&#x1F4BE; Guardar</button>
     <button class="tb tb-grn" onclick="publishToShopify()" title="Publicar como página en tu Shopify">&#x1F6D2; Publicar en Shopify</button>
     <input type="file" id="file-in" accept="image/*" style="display:none" onchange="onFilePick(event)">
@@ -2396,6 +2397,21 @@ function nextAutoSlug(){
 function spawnBlockFromPalette(blockType, parent, beforeEl){
   var html = BLOCK_TEMPLATES[blockType];
   if (!html || !parent) return null;
+  // Sticky CTA is a singleton — only one allowed per page, and it
+  // always pins to the very end of #page-wrap so position:sticky
+  // bottom:0 actually anchors to the canvas bottom (dropping it in
+  // the middle would let it stick to the next sibling instead).
+  if (blockType === 'sticky') {
+    var pwForSticky = document.getElementById('page-wrap');
+    var existing = pwForSticky ? pwForSticky.querySelector('[data-rz-kind="sticky"]') : null;
+    if (existing) {
+      if (typeof toast === 'function') toast('Ya hay un Sticky en esta página. Solo se permite uno.', 1);
+      if (typeof insSelect === 'function') insSelect(existing);
+      return null;
+    }
+    parent = pwForSticky || parent;
+    beforeEl = null;
+  }
   html = html.replace(/\{slug\}/g, nextAutoSlug());
   var tmp = document.createElement('div');
   tmp.innerHTML = html.trim();
@@ -3925,7 +3941,15 @@ function insDelete(){
   // walk up to a section ancestor and nuke more than the user expects.
   // The inspector already shows them what's highlighted in yellow;
   // that's what should disappear.
+  // EXCEPTION: when the selection is the inner button/text of a sticky
+  // CTA, the user obviously means "delete the whole sticky". Without
+  // this hop, deleting the <a> left an empty .rz-sticky-cta wrapper
+  // pinned to the bottom — the user couldn't get rid of it.
   var target = _insEl;
+  var stickyAncestor = (target.closest && target !== target.closest('[data-rz-kind="sticky"]'))
+    ? target.closest('[data-rz-kind="sticky"]')
+    : null;
+  if (stickyAncestor) target = stickyAncestor;
   if (!target.parentNode) return;
   var isTop = target.dataset && target.dataset.sectionId && target.dataset.sectionId.indexOf('top-') === 0;
   if (isTop && !confirm('¿Eliminar esta sección entera? Podés deshacerlo con Ctrl+Z.')) return;
@@ -6772,6 +6796,63 @@ function buildHTML(proj){
 }
 function exportCurrent(){var proj=getActive();if(!proj){toast('Selecciona una landing',1);return;}cpTxt(buildHTML(proj),'"'+proj.name+'" copiado');}
 function exportAll(){toast(projects.length+' landings — exporta cada una con Exportar HTML',0);}
+
+// ── PROJECT EXPORT (.riverz JSON) ─────────────────────────────
+// Serializes the active project into a portable JSON bundle the
+// user can re-import on another account / shop / device. Image and
+// video URLs stay as cdn.shopify.com links pointing at the original
+// merchant's Shopify Files — when re-imported on a different
+// merchant's account those URLs still resolve (Shopify CDN is
+// public) but the assets remain "owned" by the original shop. For a
+// truly self-contained portable bundle we'd need to re-upload assets
+// at import time; that's a separate flow.
+function exportProjectJSON(){
+  var proj = getActive();
+  if (!proj){ toast('Selecciona una landing primero', 1); return; }
+  // Capture the latest in-memory state before serialising — the
+  // user might have typed something since the last debounced save.
+  if (typeof collectTexts === 'function') collectTexts();
+  if (typeof _captureProjectHtml === 'function') _captureProjectHtml(proj);
+  var bundle = {
+    riverzExportVersion: 1,
+    exportedAt: new Date().toISOString(),
+    project: {
+      name: proj.name || 'Sin nombre',
+      angle: proj.angle || '',
+      ctaUrl: proj.ctaUrl || '',
+      templateId: proj.templateId || null,
+      texts: proj.texts || {},
+      images: proj.images || {},
+      videos: proj.videos || {},
+      imageSizes: proj.imageSizes || {},
+      imageShapes: proj.imageShapes || {},
+      imageStyles: proj.imageStyles || {},
+      videoSizes: proj.videoSizes || {},
+      videoAspect: proj.videoAspect || {},
+      layoutOrder: proj.layoutOrder || null,
+      globalFont: typeof proj.globalFont === 'string' ? proj.globalFont : '',
+      html: typeof proj.html === 'string' ? proj.html : null,
+      handle: proj.handle || '',
+      shopifyProductHandle: proj.shopifyProductHandle || '',
+      seoTitle: proj.seoTitle || '',
+      metaDescription: proj.metaDescription || '',
+      stickyThresh: typeof proj.stickyThresh === 'number' ? proj.stickyThresh : null
+    }
+  };
+  var json = JSON.stringify(bundle, null, 2);
+  var safe = (proj.name || 'landing').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'landing';
+  var stamp = new Date().toISOString().slice(0, 10);
+  var filename = 'riverz-' + safe + '-' + stamp + '.riverz.json';
+  var blob = new Blob([json], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
+  toast('⬇ ' + filename + ' descargado');
+}
+window.exportProjectJSON = exportProjectJSON;
 
 // ── PUBLISH TO SHOPIFY ────────────────────────────────────────
 // We build the HTML normally but rewrite each <img> src to a unique sentinel

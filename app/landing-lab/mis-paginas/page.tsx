@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SideNav } from '../_side-nav';
 
@@ -23,6 +23,9 @@ export default function MisPaginasPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -168,9 +171,90 @@ export default function MisPaginasPage() {
     }
   }
 
+  // Read a .riverz.json bundle from the user's disk and POST it as a
+  // new project. The export-side serialiser lives in the editor
+  // (exportProjectJSON in landing-lab.html) and emits the same shape
+  // the projects POST endpoint already accepts (name, angle, cta_url,
+  // template_id, project_data {...}). After the create succeeds we
+  // route into the editor on the new id so the user sees their import
+  // immediately, just like a fresh template clone.
+  function pickImportFile() {
+    setImportError(null);
+    importInputRef.current?.click();
+  }
+
+  async function handleImportFile(file: File) {
+    setImportError(null);
+    if (!file) return;
+    if (!/\.json$/i.test(file.name) && !/^application\/json/.test(file.type)) {
+      setImportError('El archivo debe ser un .json (.riverz.json) exportado del editor.');
+      return;
+    }
+    setImporting(true);
+    try {
+      const text = await file.text();
+      let bundle: any;
+      try { bundle = JSON.parse(text); }
+      catch { throw new Error('JSON inválido — el archivo está corrupto o no es un export de Riverz.'); }
+      // Accept either the v1 wrapped shape ({ project: {...} }) or the
+      // raw project object — whichever the user dropped in.
+      const p = bundle?.project || bundle;
+      if (!p || typeof p !== 'object') throw new Error('El archivo no contiene un proyecto válido.');
+      // Build the create payload. POST /api/landing-lab/projects mints
+      // a fresh id automatically when we don't pass one — that's what
+      // we want here so the import doesn't clobber an existing project.
+      const body = {
+        name: (p.name || 'Importado') + ' (importado)',
+        angle: p.angle || '',
+        cta_url: p.ctaUrl || p.cta_url || '',
+        template_id: p.templateId || p.template_id || null,
+        project_data: {
+          texts: p.texts || {},
+          images: p.images || {},
+          videos: p.videos || {},
+          imageSizes: p.imageSizes || {},
+          imageShapes: p.imageShapes || {},
+          imageStyles: p.imageStyles || {},
+          videoSizes: p.videoSizes || {},
+          videoAspect: p.videoAspect || {},
+          layoutOrder: p.layoutOrder || null,
+          globalFont: typeof p.globalFont === 'string' ? p.globalFont : '',
+          html: typeof p.html === 'string' ? p.html : null,
+        },
+      };
+      const res = await fetch('/api/landing-lab/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.project?.id) {
+        throw new Error(data?.error || `No se pudo importar (HTTP ${res.status})`);
+      }
+      // Drop into the editor on the new project id.
+      router.push(`/landing-lab/edit?p=${encodeURIComponent(data.project.id)}`);
+    } catch (e: any) {
+      console.error('[mis-paginas] import failed:', e);
+      setImportError(e?.message || 'Falla al importar el proyecto');
+      setImporting(false);
+    }
+  }
+
   return (
     <div className="app-v2 fixed inset-0 z-[9999]">
       <SideNav active="mis-paginas" />
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".json,application/json"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleImportFile(f);
+          e.target.value = '';
+        }}
+      />
       <div className="ml-0 h-full overflow-y-auto sm:ml-56">
         <main className="mx-auto max-w-[960px] px-6 pt-10 pb-24 sm:px-8">
           <div className="flex items-start justify-between gap-4">
@@ -210,16 +294,31 @@ export default function MisPaginasPage() {
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => setEditMode(true)}
-                    className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)]"
-                  >
-                    Seleccionar
-                  </button>
+                  <>
+                    <button
+                      onClick={pickImportFile}
+                      disabled={importing}
+                      className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)] disabled:opacity-50"
+                      title="Subí un .riverz.json exportado del editor"
+                    >
+                      {importing ? 'Importando…' : '⬆ Importar'}
+                    </button>
+                    <button
+                      onClick={() => setEditMode(true)}
+                      className="rounded-lg border border-[var(--rvz-card-border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--rvz-ink-muted)] transition hover:border-[var(--rvz-card-hover-border)] hover:text-[var(--rvz-ink)]"
+                    >
+                      Seleccionar
+                    </button>
+                  </>
                 )}
               </div>
             )}
           </div>
+          {importError && (
+            <div className="card-cream mt-4 border-red-300 p-3 text-[12px] text-red-700">
+              {importError}
+            </div>
+          )}
 
           {loadError && (
             <div className="card-cream mt-6 border-red-300 p-4 text-[13px] text-red-700">
@@ -235,7 +334,15 @@ export default function MisPaginasPage() {
                 className="font-semibold text-[var(--rvz-ink)] underline underline-offset-2 hover:text-[var(--rvz-ink)]"
               >
                 Empezá una desde el inicio
-              </a>
+              </a>{' '}
+              o{' '}
+              <button
+                onClick={pickImportFile}
+                disabled={importing}
+                className="font-semibold text-[var(--rvz-ink)] underline underline-offset-2 hover:text-[var(--rvz-ink)] disabled:opacity-50"
+              >
+                {importing ? 'importando…' : 'importá un .riverz.json'}
+              </button>
               .
             </div>
           )}
