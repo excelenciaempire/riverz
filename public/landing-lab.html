@@ -1971,8 +1971,17 @@ var RIVERZ_SIZE_CSS =
      rules (template-shipped .ing-grid carousels keep their own CSS).
      Mobile/tablet → horizontal scroll with snap. Desktop → flex row
      with N visible cards driven by the data-rz-cards-desktop attr. */
-  '.rz-carousel{position:relative;width:100%;margin:24px 0}\n' +
-  '.rz-carousel-track{display:flex;flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:16px;padding:8px 4px 16px;scrollbar-width:thin}\n' +
+  // overflow:hidden clips the track inside the carousel box so the
+  // partial third card can never poke past the wrapper and create
+  // horizontal page-scroll on mobile (the symptom the user reported:
+  // swiping the carousel dragged the whole product page sideways).
+  '.rz-carousel{position:relative;width:100%;max-width:100%;margin:24px 0;overflow:hidden}\n' +
+  // overscroll-behavior-x:contain stops the iOS rubber-band from
+  // chaining horizontal scroll up to <body>, which is what actually
+  // pulled the live page sideways even with overflow:hidden on
+  // ancestors. touch-action:pan-x pan-y keeps both axes responsive
+  // (pan-x alone would block vertical scroll on the carousel itself).
+  '.rz-carousel-track{display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;touch-action:pan-x pan-y;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:16px;padding:8px 4px 16px;scrollbar-width:thin}\n' +
   '.rz-carousel-track::-webkit-scrollbar{height:6px}\n' +
   '.rz-carousel-track::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22);border-radius:3px}\n' +
   /* Default: 1 card visible on mobile (with peek). data-rz-cards-mobile
@@ -1989,6 +1998,38 @@ var RIVERZ_SIZE_CSS =
   '  .rz-carousel[data-rz-cards-desktop="5"] .rz-carousel-card{flex:0 0 calc(20% - 13px)}\n' +
   '  .rz-carousel[data-rz-cards-desktop="6"] .rz-carousel-card{flex:0 0 calc(16.666% - 14px)}\n' +
   '}\n' +
+  // Lock horizontal page scroll on mobile only — desktop edit canvas
+  // already isolates inside #page-area. Scoped to riverz-landing wrappers
+  // so we don't fight the merchant theme's body styles on the rest of the
+  // store. The wrapper itself is overflow-x:hidden so the track's internal
+  // scroll never leaks into a body-level horizontal motion.
+  '@media (max-width:768px){[id^="riverz-landing-"]{overflow-x:hidden!important;max-width:100vw!important}}\n' +
+  // Same containment treatment for the product gallery thumbnails — they
+  // grid on desktop but on mobile we want the strip swipeable without
+  // dragging the page sideways.
+  '.gallery-thumbs{overscroll-behavior-x:contain}\n' +
+  // Hero gallery swipe + tap-to-zoom polish. The main image gets a
+  // pointer cursor + subtle press-down feedback so users discover the
+  // tap-to-open behaviour. The lightbox overlay below renders the
+  // selected image full-screen with backdrop blur — tap anywhere to
+  // dismiss. swipe-arrows on the lightbox cycle through the gallery
+  // (sourced from .gallery-thumbs imgs in document order).
+  '.gallery-main{cursor:zoom-in;-webkit-tap-highlight-color:transparent;touch-action:pan-y;user-select:none}\n' +
+  '.gallery-main img{transition:transform .25s ease}\n' +
+  '.gallery-main:active img{transform:scale(.985)}\n' +
+  // Lightbox — body-level overlay so it sits above any sticky bars or
+  // theme chrome. JS appends it to <body> on first open.
+  '.rz-lightbox{position:fixed;inset:0;z-index:1000000;background:rgba(8,9,14,.94);display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:rzLbFade .18s ease}\n' +
+  '.rz-lightbox.is-open{display:flex}\n' +
+  '@keyframes rzLbFade{from{opacity:0}to{opacity:1}}\n' +
+  '.rz-lightbox img{max-width:100%;max-height:100%;width:auto;height:auto;border-radius:8px;box-shadow:0 20px 80px rgba(0,0,0,.6);object-fit:contain;touch-action:pan-y}\n' +
+  '.rz-lightbox-close{position:absolute;top:16px;right:16px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;border:0;font-size:24px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}\n' +
+  '.rz-lightbox-close:hover{background:rgba(255,255,255,.22)}\n' +
+  '.rz-lightbox-arrow{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;border:0;font-size:28px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:300}\n' +
+  '.rz-lightbox-arrow:hover{background:rgba(255,255,255,.22)}\n' +
+  '.rz-lightbox-arrow.prev{left:16px}\n' +
+  '.rz-lightbox-arrow.next{right:16px}\n' +
+  '@media (max-width:480px){.rz-lightbox-arrow{width:40px;height:40px;font-size:22px}.rz-lightbox-arrow.prev{left:8px}.rz-lightbox-arrow.next{right:8px}.rz-lightbox-close{top:12px;right:12px}}\n' +
   '.rz-carousel-nav{display:flex;justify-content:center;gap:10px;margin-top:8px}\n' +
   '.rz-carousel-nav button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:#fff;font-size:18px;color:#0a0a0a;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s}\n' +
   '.rz-carousel-nav button:hover{background:#f3f4f5;border-color:rgba(0,0,0,.22)}\n' +
@@ -4613,7 +4654,39 @@ window.rzCarouselToggleNav = rzCarouselToggleNav;
 // Same logic, but as a string so it can be inlined in the published
 // HTML by buildHTML / buildPublishPayload. Kept verbatim from
 // wireGalleryCarousel above (sans editor-only inspector hooks).
-var RIVERZ_GALLERY_CODE = '(function(){var pw=document;var main=pw.querySelector(".gallery-main img");var thumbs=Array.prototype.slice.call(pw.querySelectorAll(".gallery-thumbs .thumb"));if(!main||!thumbs.length)return;function set(i){var t=thumbs[i];if(!t)return;var img=t.querySelector("img");if(!img)return;main.setAttribute("src",img.getAttribute("src")||img.src||"");thumbs.forEach(function(x){x.classList.remove("is-active");});t.classList.add("is-active");main.dataset.galleryIdx=String(i);}thumbs.forEach(function(t,i){t.addEventListener("click",function(){set(i);});});pw.querySelectorAll(".gallery-arrows button").forEach(function(btn){btn.addEventListener("click",function(){var cur=parseInt(main.dataset.galleryIdx||"0",10)||0;var lbl=(btn.getAttribute("aria-label")||btn.textContent||"").toLowerCase();var dir=(lbl.indexOf("siguiente")>=0||lbl.indexOf("next")>=0||lbl.indexOf("›")>=0)?1:-1;var n=thumbs.length;set((cur+dir+n)%n);});});var ai=thumbs.findIndex(function(t){return t.classList.contains("is-active");});if(ai<0)ai=0;thumbs.forEach(function(x){x.classList.remove("is-active");});thumbs[ai].classList.add("is-active");main.dataset.galleryIdx=String(ai);})();';
+// Hero gallery wiring for the published page — same logic as
+// wireGalleryCarousel above, plus touch-swipe (left/right cycles
+// images) and tap-to-zoom (opens a body-level lightbox with prev/next
+// arrows + Esc/click-to-close). Sourced from .gallery-thumbs imgs in
+// document order so it stays in sync with whatever the Shopify wiring
+// script populates.
+var RIVERZ_GALLERY_CODE = '(function(){'+
+  'var pw=document;var mainWrap=pw.querySelector(".gallery-main");if(!mainWrap)return;'+
+  'var main=mainWrap.querySelector("img");if(!main)return;'+
+  'var thumbs=Array.prototype.slice.call(pw.querySelectorAll(".gallery-thumbs .thumb"));'+
+  'function urls(){return thumbs.map(function(t){var i=t.querySelector("img");return i?(i.getAttribute("src")||i.src||""):"";}).filter(Boolean);}'+
+  'function set(i){var t=thumbs[i];if(!t)return;var img=t.querySelector("img");if(!img)return;main.setAttribute("src",img.getAttribute("src")||img.src||"");thumbs.forEach(function(x){x.classList.remove("is-active");});t.classList.add("is-active");main.dataset.galleryIdx=String(i);}'+
+  'thumbs.forEach(function(t,i){t.addEventListener("click",function(){set(i);});});'+
+  'pw.querySelectorAll(".gallery-arrows button").forEach(function(btn){btn.addEventListener("click",function(e){e.stopPropagation();var cur=parseInt(main.dataset.galleryIdx||"0",10)||0;var lbl=(btn.getAttribute("aria-label")||btn.textContent||"").toLowerCase();var dir=(lbl.indexOf("siguiente")>=0||lbl.indexOf("next")>=0||lbl.indexOf("›")>=0)?1:-1;var n=thumbs.length;set((cur+dir+n)%n);});});'+
+  'var ai=thumbs.findIndex(function(t){return t.classList.contains("is-active");});if(ai<0)ai=0;thumbs.forEach(function(x){x.classList.remove("is-active");});if(thumbs[ai])thumbs[ai].classList.add("is-active");main.dataset.galleryIdx=String(ai);'+
+  // Touch-swipe on the main image — horizontal swipe cycles thumbs,
+  // vertical swipe yields to the page so the user can scroll past.
+  'var sx=0,sy=0,st=0,swiping=false;'+
+  'mainWrap.addEventListener("touchstart",function(e){var t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();swiping=true;},{passive:true});'+
+  'mainWrap.addEventListener("touchend",function(e){if(!swiping||!thumbs.length)return;swiping=false;var t=(e.changedTouches&&e.changedTouches[0])||null;if(!t)return;var dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;if(Math.abs(dx)<35||Math.abs(dx)<Math.abs(dy)||dt>600)return;var cur=parseInt(main.dataset.galleryIdx||"0",10)||0;var n=thumbs.length;set((cur+(dx<0?1:-1)+n)%n);},{passive:true});'+
+  // Tap-to-zoom lightbox. Lazy-built on first tap. Swipe inside the
+  // lightbox + arrow buttons cycle. Tap on the backdrop closes; tap on
+  // the image alone does NOT close (so users can still pinch-zoom).
+  'var lb=null,lbImg=null,lbIdx=0;'+
+  'function buildLb(){if(lb)return;lb=document.createElement("div");lb.className="rz-lightbox";lb.innerHTML="<button class=\\"rz-lightbox-arrow prev\\" aria-label=\\"Anterior\\">\\u2039</button><img alt=\\"\\"><button class=\\"rz-lightbox-arrow next\\" aria-label=\\"Siguiente\\">\\u203A</button><button class=\\"rz-lightbox-close\\" aria-label=\\"Cerrar\\">\\u00D7</button>";document.body.appendChild(lb);lbImg=lb.querySelector("img");lb.addEventListener("click",function(e){if(e.target===lb||e.target.classList.contains("rz-lightbox-close"))close();});lb.querySelector(".prev").addEventListener("click",function(e){e.stopPropagation();step(-1);});lb.querySelector(".next").addEventListener("click",function(e){e.stopPropagation();step(1);});var lsx=0,lsy=0;lbImg.addEventListener("touchstart",function(e){var t=e.touches[0];lsx=t.clientX;lsy=t.clientY;},{passive:true});lbImg.addEventListener("touchend",function(e){var t=(e.changedTouches&&e.changedTouches[0]);if(!t)return;var dx=t.clientX-lsx,dy=t.clientY-lsy;if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy))step(dx<0?1:-1);},{passive:true});document.addEventListener("keydown",function(e){if(!lb||!lb.classList.contains("is-open"))return;if(e.key==="Escape")close();else if(e.key==="ArrowRight")step(1);else if(e.key==="ArrowLeft")step(-1);});}'+
+  'function open(i){buildLb();var u=urls();if(!u.length)return;lbIdx=Math.max(0,Math.min(i,u.length-1));lbImg.src=u[lbIdx];lb.classList.add("is-open");document.documentElement.style.overflow="hidden";}'+
+  'function close(){if(!lb)return;lb.classList.remove("is-open");document.documentElement.style.overflow="";}'+
+  'function step(d){var u=urls();if(!u.length)return;var n=u.length;lbIdx=(lbIdx+d+n)%n;lbImg.src=u[lbIdx];set(lbIdx);}'+
+  // Click on the main image opens the lightbox at the current index.
+  // Gate by movement threshold so a swipe-end click doesn’t trigger.
+  'var clickDx=0;mainWrap.addEventListener("touchmove",function(e){var t=e.touches[0];clickDx=Math.abs(t.clientX-sx);},{passive:true});'+
+  'main.addEventListener("click",function(e){if(clickDx>10){clickDx=0;return;}var cur=parseInt(main.dataset.galleryIdx||"0",10)||0;open(cur);});'+
+'})();';
 window.RIVERZ_GALLERY_CODE = RIVERZ_GALLERY_CODE;
 
 // Per-block comments. Stored on proj.blockComments keyed by

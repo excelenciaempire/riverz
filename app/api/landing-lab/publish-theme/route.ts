@@ -416,10 +416,20 @@ function sanitizeSectionTag(projectId: string): string {
  */
 function buildThemeReset(): string {
   return `
-[id^="riverz-landing-"] { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+[id^="riverz-landing-"] { width: 100% !important; max-width: 100vw !important; margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; }
 [id^="riverz-landing-"] img,
 [id^="riverz-landing-"] video,
 [id^="riverz-landing-"] picture { max-width: 100% !important; height: auto; }
+/* Belt-and-suspenders: contain the horizontal scroll of internal carousels
+   and gallery thumb strips so an iOS rubber-band swipe on the carousel
+   never chains up to <body> and drags the whole product page sideways
+   (the symptom users hit on mobile). */
+[id^="riverz-landing-"] .rz-carousel { overflow: hidden !important }
+[id^="riverz-landing-"] .rz-carousel-track,
+[id^="riverz-landing-"] .gallery-thumbs { overscroll-behavior-x: contain !important }
+@media (max-width: 768px) {
+  body, html { overflow-x: hidden !important; max-width: 100vw !important; }
+}
 [id^="riverz-landing-"] .vid-ph video { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
 .shopify-section--main-product .page-width,
 .shopify-section--main-product .container,
