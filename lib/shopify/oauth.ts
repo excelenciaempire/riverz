@@ -46,6 +46,11 @@ export function getShopifyEnv(): ShopifyEnv {
   //   read_products  → list products in the editor's "Elegir producto" picker
   //                    so users can wire the published page's CTA / variants
   //                    to a real product without typing a handle by hand.
+  //   write_products → set Product.templateSuffix at publish time, so
+  //                    the freshly-uploaded theme template starts
+  //                    rendering on /products/<handle> automatically.
+  //                    Without this, the merchant has to assign the
+  //                    template by hand in Shopify Admin.
   //   read_themes    → resolve the merchant's MAIN theme so we know where
   //                    the template upload lands.
   //   write_themes   → upload custom product templates + sections via
@@ -56,7 +61,7 @@ export function getShopifyEnv(): ShopifyEnv {
   // added; product-page publishes surface a "Reconnect Shopify" hint when
   // they detect missing scopes (the old Page-publish flow keeps working
   // unchanged on the legacy scope set).
-  const scopes = process.env.SHOPIFY_SCOPES || 'write_files,write_content,read_products,read_themes,write_themes';
+  const scopes = process.env.SHOPIFY_SCOPES || 'write_files,write_content,read_products,write_products,read_themes,write_themes';
   const apiVersion = process.env.SHOPIFY_API_VERSION || '2025-10';
   return { apiKey, apiSecret, redirectUri, scopes, apiVersion };
 }

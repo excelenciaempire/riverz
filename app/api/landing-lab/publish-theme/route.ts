@@ -197,7 +197,16 @@ export async function POST(req: Request) {
   //     user can always assign the template manually as a fallback.
   let assignedToProduct = false;
   let assignError: string | null = null;
-  if (handle) {
+  // Only attempt the auto-assign if the connection actually has
+  // write_products. Existing connections from before this feature
+  // shipped only have read_products → productUpdate would 403.
+  // Skipping cleanly here keeps the user out of a confusing "publish
+  // succeeded BUT productUpdate threw access denied" error path.
+  const canWriteProducts = scopes.has('write_products');
+  if (handle && !canWriteProducts) {
+    assignError = 'Tu conexión Shopify no incluye write_products todavía. Reconectá Shopify (Configuración → Integraciones) para activar la asignación automática del template; mientras tanto asigná el template manualmente.';
+  }
+  if (handle && canWriteProducts) {
     try {
       type ProductByHandleRes = {
         productByHandle: { id: string; title: string; templateSuffix: string | null } | null;
