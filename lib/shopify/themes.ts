@@ -487,12 +487,60 @@ shopper picks a different bundle. {% endcomment %}
         .catch(function(){ return null; });
       return window.RIVERZ_PRODUCT_FETCH;
     }
+    // Extract bundle qty from the visible label of the selected radio.
+    // Kaching's offers like "Compra 2 y Recibe 3" / "Compra 3 y Recibe 4"
+    // encode the quantity-the-buyer-walks-with right in the title;
+    // pulling the largest sane integer out of the title text covers
+    // BOGO / B2G1 / B3G2 etc. when no data-attribute exposes the qty.
+    function parseQtyFromLabel(node){
+      if (!node) return null;
+      var container = node.closest && (node.closest('label') || node.closest('li') || node.closest('[class*="bundle"], [class*="deal"], [class*="bar"]'));
+      var text = (container || node).textContent || '';
+      var nums = text.match(/\d+/g);
+      if (!nums) return null;
+      var max = 0;
+      for (var i=0; i<nums.length; i++){
+        var n = parseInt(nums[i], 10);
+        // Cap at 50 — bigger numbers are prices ($89.900) and we don't
+        // want to use the price as the cart quantity.
+        if (!isNaN(n) && n > max && n < 50) max = n;
+      }
+      return max > 0 ? max : null;
+    }
     function readKachingSelection(){
-      var checked=document.querySelector('[data-rz-kaching-mounted="1"] input[type="radio"]:checked, [data-rz-kaching-slot] input[type="radio"]:checked, .kaching-bundles input[type="radio"]:checked');
+      // 1) Kaching's JS API if exposed — different versions ship under
+      //    different namespaces, so we try a few. Returns lines in the
+      //    standard Storefront Cart shape.
+      try {
+        var kg = window.KachingBundles || window.kachingBundles || window.Kaching || null;
+        if (kg) {
+          var sel = (typeof kg.getSelectedLines === 'function' && kg.getSelectedLines())
+                 || (typeof kg.getSelection === 'function' && kg.getSelection())
+                 || kg.selectedLine || kg.selection || null;
+          if (sel) {
+            var ln = Array.isArray(sel) ? sel[0] : sel;
+            if (ln) {
+              var rawId = ln.merchandiseId || ln.variantId || ln.id;
+              var idStr = String(rawId || '').replace(/^gid:\/\/shopify\/ProductVariant\//, '');
+              var qty = parseInt(ln.quantity || 1, 10) || 1;
+              var dealAttr = (ln.attributes || []).find && (ln.attributes || []).find(function(a){ return a && a.key === '__kaching_bundles'; });
+              var dealId = ln.dealId || null;
+              if (dealAttr) {
+                try { dealId = (JSON.parse(dealAttr.value || '{}') || {}).id || null; } catch(e){}
+              }
+              if (isVariantId(idStr)) {
+                return { id: idStr, quantity: qty, dealId: dealId || null };
+              }
+            }
+          }
+        }
+      } catch(e){}
+
+      // 2) DOM scrape — checked radio + walk ancestors.
+      var checked=document.querySelector('[data-rz-kaching-mounted="1"] input[type="radio"]:checked, [data-rz-kaching-slot] input[type="radio"]:checked, .kaching-bundles input[type="radio"]:checked, .kb-bar input[type="radio"]:checked');
       var hidden=document.querySelector('[data-rz-kaching-mounted="1"] input[type="hidden"][name="id"], [data-rz-kaching-slot] input[type="hidden"][name="id"]');
       var src = hidden || checked;
       if(!src) return null;
-      // Walk current node + ancestors for a valid Shopify variant id.
       var node = src, found=null, qty=null, dealId=null;
       while (node && node !== document.body) {
         var cand = pickVariantId(
@@ -505,16 +553,36 @@ shopper picks a different bundle. {% endcomment %}
         );
         if (!found && cand) found = cand;
         if (!qty && node.getAttribute) {
-          var qa = node.getAttribute('data-kaching-quantity') || node.getAttribute('data-quantity');
+          var qa = node.getAttribute('data-kaching-quantity')
+                || node.getAttribute('data-quantity')
+                || node.getAttribute('data-bundle-quantity')
+                || node.getAttribute('data-bar-quantity');
           if (qa && /^\d+$/.test(qa)) qty = parseInt(qa, 10);
         }
         if (!dealId && node.getAttribute) {
-          dealId = node.getAttribute('data-kaching-deal-id') || node.getAttribute('data-deal-id') || dealId;
+          dealId = node.getAttribute('data-kaching-deal-id')
+                || node.getAttribute('data-deal-id')
+                || node.getAttribute('data-bar-id')
+                || dealId;
         }
         if (found && qty && dealId) break;
         node = node.parentElement;
       }
+      // 3) Last-resort qty parser — read it from the bundle's title.
+      if (!qty) qty = parseQtyFromLabel(checked || src);
       if (!dealId && src.value && !isVariantId(src.value)) dealId = src.value;
+      // 4) If we still don't have a variant id, fall back to the
+      //    product default — at least the qty from the label is right
+      //    for single-variant products even when the bundle widget
+      //    doesn't expose the variant id directly.
+      if (!found) {
+        try {
+          if (window.RIVERZ_PRODUCT && window.RIVERZ_PRODUCT.defaultVariantId) {
+            var defId = pickVariantId(window.RIVERZ_PRODUCT.defaultVariantId);
+            if (defId) found = defId;
+          }
+        } catch(e){}
+      }
       if (!found) return null;
       return { id: found, quantity: qty || 1, dealId: dealId || null };
     }
