@@ -274,36 +274,52 @@ export function buildSectionLiquid(opts: {
   // that's the only anchor present), so the user can position it
   // precisely from the editor by dropping a Buy-button block — same
   // pattern as the Kaching slot.
-  // Buy flow on the published page:
-  //   1) The user can drop one or more "Comprar" buttons in the Riverz
-  //      editor — they render as `[data-rz-buy="checkout"]`. Click goes
-  //      direct to /checkout with the Kaching-selected variant.
-  //   2) If they don't drop one (or for backwards compat), an auto
-  //      product form is appended to the section. Same direct-checkout
-  //      flow, just rendered for them.
+  // Buy flow on the published page is split into two separate buttons,
+  // both editable from the Riverz palette:
+  //   • [data-rz-buy="addtocart"] → POST /cart/add.js, redirect /cart
+  //     so the merchant's cart drawer (or /cart page) shows the bundle.
+  //     Carries name="add" + .product-form__submit so Kaching Bundles'
+  //     auto-detector finds it without manual selector configuration.
+  //   • [data-rz-buy="checkout"]  → POST /cart/add.js, redirect /checkout
+  //     directly. Bypasses /cart for one-click purchase intent.
   //
-  // The auto form is only emitted when section.settings.show_buy_button
-  // is on AND the body_html doesn't already contain an editor button —
-  // duplicates would let two buy CTAs compete for the same click.
-  const editorButtonAlreadyPresent = /data-rz-buy=["']checkout["']/.test(opts.bodyHtml);
+  // Auto-form fallback only fires when section.settings.show_buy_button
+  // is on AND the body_html doesn't already contain an editor button.
+  const editorButtonAlreadyPresent = /data-rz-buy=["'](?:checkout|addtocart)["']/.test(opts.bodyHtml);
   const autoFormGuard = editorButtonAlreadyPresent
     ? '{% assign rz_show_auto_form = false %}'
     : "{% assign rz_show_auto_form = section.settings.show_buy_button %}";
   const buyButtonLiquid = `${autoFormGuard}
 <span hidden data-rz-product-handle="{{ product.handle }}" data-rz-default-variant="{{ product.selected_or_first_available_variant.id }}"></span>
+{% comment %} Standard hidden product form so Kaching Bundles' default
+selectors (button[name="add"], form[action*="/cart/add"]) auto-detect.
+The visible buttons above wire their clicks through our JS handler, but
+this hidden form gives Kaching a stable anchor for live price updates. {% endcomment %}
+<form action="/cart/add" method="post" data-rz-shadow-form style="display:none" id="riverz-shadow-form">
+  <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}" data-rz-shadow-id>
+  <input type="hidden" name="quantity" value="1" data-rz-shadow-qty>
+</form>
 {% if rz_show_auto_form %}
 <div data-rz-buy-form class="riverz-buy-form" style="display:contents">
   <button type="button"
-    class="riverz-buy-btn"
-    data-rz-buy="checkout"
+    name="add"
+    class="riverz-buy-btn product-form__submit add-to-cart-button"
+    data-rz-buy="addtocart"
     {% unless product.selected_or_first_available_variant.available %}disabled{% endunless %}
-    style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:420px;background:#0a0a0a;color:#fff;font-family:inherit;font-weight:800;font-size:15px;letter-spacing:.04em;text-transform:uppercase;padding:16px 24px;border-radius:8px;border:0;cursor:pointer;margin:14px auto;transition:filter .12s;box-shadow:0 8px 24px rgba(0,0,0,.18)">
+    style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:420px;background:#0a0a0a;color:#fff;font-family:inherit;font-weight:800;font-size:15px;letter-spacing:.04em;text-transform:uppercase;padding:16px 24px;border-radius:8px;border:0;cursor:pointer;margin:14px auto 6px;transition:filter .12s;box-shadow:0 8px 24px rgba(0,0,0,.18)">
     {% if product.selected_or_first_available_variant.available %}
-      {{ section.settings.buy_button_text | default: 'Comprar ahora' }}
+      {{ section.settings.buy_button_text | default: 'Agregar al carrito' }}
       <span style="opacity:.85" data-rz-buy-price>· {{ product.selected_or_first_available_variant.price | money }}</span>
     {% else %}
       Agotado
     {% endif %}
+  </button>
+  <button type="button"
+    class="riverz-buy-btn shopify-payment-button__button"
+    data-rz-buy="checkout"
+    {% unless product.selected_or_first_available_variant.available %}disabled{% endunless %}
+    style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:420px;background:#f7ff9e;color:#0a0a0a;font-family:inherit;font-weight:800;font-size:14.5px;letter-spacing:.04em;text-transform:uppercase;padding:14px 22px;border-radius:8px;border:0;cursor:pointer;margin:0 auto 14px;transition:filter .12s;box-shadow:0 6px 18px rgba(247,255,158,.28)">
+    Comprar ahora →
   </button>
 </div>
 <script>
@@ -335,7 +351,7 @@ export function buildSectionLiquid(opts: {
     // (Kaching's internal deal ids like "ZhUk", base36 hashes, GIDs we
     // forgot to strip) hard-fails /cart/add.js and the cart permalink.
     function isVariantId(v){ return typeof v === 'string' && /^\d{6,}$/.test(v); }
-    function pickVariantId(/*…attrs*/){
+    function pickVariantId(){
       for (var i=0;i<arguments.length;i++){
         var v = arguments[i];
         if (typeof v === 'number') v = String(v);
@@ -350,18 +366,24 @@ export function buildSectionLiquid(opts: {
         handle: meta ? meta.getAttribute('data-rz-product-handle') : null,
       };
     }
+    // Highest fidelity source: the shadow product form. If Kaching has
+    // wired up to it (auto-detection via name="add"/form[action]) the
+    // hidden id input reflects whichever bundle the user just picked.
+    function readShadowForm(){
+      var idInput=document.querySelector('[data-rz-shadow-id], #riverz-shadow-form input[name="id"]');
+      var qtyInput=document.querySelector('[data-rz-shadow-qty], #riverz-shadow-form input[name="quantity"]');
+      if(!idInput) return null;
+      var id=pickVariantId(idInput.value);
+      if(!id) return null;
+      var q=parseInt((qtyInput && qtyInput.value) || '1', 10);
+      return { id: id, quantity: isNaN(q)?1:q };
+    }
     function readKachingSelection(){
-      // Kaching's deal block exposes the selected line in a few places
-      // depending on version. We try the highest-fidelity sources first
-      // and validate every candidate as a real Shopify variant id.
       var checked=document.querySelector('[data-rz-kaching-mounted="1"] input[type="radio"]:checked, [data-rz-kaching-slot] input[type="radio"]:checked, .kaching-bundles input[type="radio"]:checked');
       var hidden=document.querySelector('[data-rz-kaching-mounted="1"] input[type="hidden"][name="id"], [data-rz-kaching-slot] input[type="hidden"][name="id"]');
       var src = hidden || checked;
       if(!src) return null;
-      // Walk current node + ancestors for a valid Shopify variant id —
-      // Kaching's checked radio often carries its own deal id in
-      // value/data-id, with the actual variant id sitting on a wrapping
-      // <label> or <li>.
+      // Walk current node + ancestors for a valid Shopify variant id.
       var node = src, found=null, qty=null, dealId=null;
       while (node && node !== document.body) {
         var cand = pickVariantId(
@@ -383,27 +405,35 @@ export function buildSectionLiquid(opts: {
         if (found && qty && dealId) break;
         node = node.parentElement;
       }
-      // If the radio's value itself is the deal id (non-numeric), keep
-      // it as the dealId hint for the __kaching_bundles attribute.
       if (!dealId && src.value && !isVariantId(src.value)) dealId = src.value;
       if (!found) return null;
       return { id: found, quantity: qty || 1, dealId: dealId || null };
     }
     function buildLine(){
+      // Order of preference:
+      //   1) Shadow form (Kaching auto-wires here when its detector
+      //      finds button[name="add"]) — single source of truth once
+      //      Kaching is in control.
+      //   2) Manual scrape of the deal block radios (older Kaching
+      //      versions / when auto-detection failed).
+      //   3) Product default — keeps the buy buttons functional even
+      //      with zero Kaching integration.
+      var s=readShadowForm();
       var k=readKachingSelection();
       var d=getDefaults();
-      var id = (k && k.id) || (isVariantId(d.id) ? d.id : null);
+      var id = (s && s.id) || (k && k.id) || (isVariantId(d.id) ? d.id : null);
+      var qty = (s && s.quantity) || (k && k.quantity) || 1;
       if (!id) return null;
-      var line = { id: id, quantity: (k && k.quantity) || 1 };
+      var line = { id: id, quantity: qty };
       if (k && k.dealId) {
         line.properties = { __kaching_bundles: JSON.stringify({ id: k.dealId }) };
       }
       return line;
     }
-    async function go(btn){
+    async function go(btn, mode){
       var line=buildLine();
       if (!line) {
-        console.warn('[Riverz] no valid Shopify variant id available; skipping checkout');
+        console.warn('[Riverz] no valid Shopify variant id available; skipping ' + mode);
         return;
       }
       var prevLabel=btn.innerHTML;
@@ -419,22 +449,28 @@ export function buildSectionLiquid(opts: {
           var err=await res.json().catch(function(){ return {}; });
           throw new Error(err.description || ('cart/add ' + res.status));
         }
-        window.location.href='/checkout';
+        // Mode controls the post-add destination:
+        //   addtocart → /cart (drawer / cart page)
+        //   checkout  → /checkout (one-click intent)
+        window.location.href = (mode === 'checkout') ? '/checkout' : '/cart';
       } catch(e){
-        console.error('[Riverz] checkout failed:', e);
+        console.error('[Riverz] ' + mode + ' failed:', e);
         btn.disabled=false;
         btn.innerHTML=prevLabel;
-        // Permalink fallback ONLY when we have a real numeric variant id.
         if (isVariantId(line.id)) {
-          window.location.href='/cart/' + line.id + ':' + line.quantity + '?return_to=/checkout';
+          // Permalink fallback — appends to cart server-side.
+          var ret = (mode === 'checkout') ? '/checkout' : '/cart';
+          window.location.href = '/cart/' + line.id + ':' + line.quantity + '?return_to=' + encodeURIComponent(ret);
         }
       }
     }
     document.addEventListener('click', function(e){
-      var btn=e.target && e.target.closest && e.target.closest('[data-rz-buy="checkout"]');
+      var btn=e.target && e.target.closest && e.target.closest('[data-rz-buy]');
       if (!btn) return;
+      var mode = btn.getAttribute('data-rz-buy');
+      if (mode !== 'checkout' && mode !== 'addtocart') return;
       e.preventDefault();
-      go(btn);
+      go(btn, mode);
     });
   })();
 </script>`;
