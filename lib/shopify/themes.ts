@@ -182,11 +182,16 @@ export function buildSectionLiquid(opts: {
   // Liquid comments use {% comment %} ... {% endcomment %}. The schema
   // sits at the bottom in a {% schema %} block per OS 2.0 convention.
   // Render any merchant-added app blocks (e.g. Kaching Bundles) into the
-  // [data-rz-kaching-slot] placeholder if it exists, otherwise just append
-  // them at the end of the section. The MutationObserver-friendly placement
-  // means Kaching Bundles' web component lands inside the buy-box column
-  // alongside the Riverz product info instead of being orphaned at the
-  // bottom of the page.
+  // [data-rz-kaching-slot] placeholder so the offer chooser lands inside
+  // the buy-box column instead of orphaned at the section bottom.
+  //
+  // The reparent runs as soon as DOM is ready AND keeps watching with a
+  // MutationObserver — Kaching Bundles renders a custom element that
+  // hydrates asynchronously, and on slow connections the slot div from
+  // the riverz body can show up after the {% for block %} markup. We
+  // also accept several fallback selectors (#bundles, .riverz-kaching-slot)
+  // so projects authored before the explicit data-rz-kaching-slot
+  // attribute existed still land the widget in the right place.
   const appBlocksLiquid = `{% if section.blocks.size > 0 %}
 <div data-rz-app-blocks style="display:contents">
   {% for block in section.blocks %}
@@ -195,11 +200,44 @@ export function buildSectionLiquid(opts: {
 </div>
 <script>
   (function(){
-    var src=document.querySelector('[data-rz-app-blocks]');
-    var slot=document.querySelector('[data-rz-kaching-slot]');
-    if(!src||!slot)return;
-    while(src.firstChild)slot.appendChild(src.firstChild);
-    src.parentNode&&src.parentNode.removeChild(src);
+    var SELECTORS = ['[data-rz-kaching-slot]', '.riverz-kaching-slot', '#bundles'];
+    function findSlot(){
+      for (var i=0;i<SELECTORS.length;i++){
+        var el=document.querySelector(SELECTORS[i]);
+        if (el) return el;
+      }
+      return null;
+    }
+    function reparent(){
+      var src=document.querySelector('[data-rz-app-blocks]');
+      var slot=findSlot();
+      // Already mounted on a previous tick — stop observing.
+      if(slot && slot.getAttribute('data-rz-kaching-mounted')==='1' && (!src||!src.children.length)) return true;
+      if(!src||!slot||!src.children.length) return false;
+      // Don't reparent if the slot is itself inside the src wrapper
+      // (would create a cycle).
+      if(src.contains(slot)) return false;
+      while(src.firstChild) slot.appendChild(src.firstChild);
+      if(src.parentNode) src.parentNode.removeChild(src);
+      slot.setAttribute('data-rz-kaching-mounted','1');
+      return true;
+    }
+    function tryNow(){
+      if (reparent()) return;
+      // Slot or source not ready yet — observe the body for late mounts
+      // (Kaching's web component, async section reload, etc.).
+      var mo=new MutationObserver(function(){ if (reparent()) mo.disconnect(); });
+      mo.observe(document.body || document.documentElement, { childList:true, subtree:true });
+      // Stop polling after 8s so we don't observe forever on pages that
+      // legitimately have no slot — the app block stays where it was
+      // rendered (end of section) which is the safe default.
+      setTimeout(function(){ try { mo.disconnect(); } catch(e){} }, 8000);
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryNow, { once:true });
+    } else {
+      tryNow();
+    }
   })();
 </script>
 {% endif %}`;
