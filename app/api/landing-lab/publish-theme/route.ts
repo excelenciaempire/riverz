@@ -184,10 +184,63 @@ export async function POST(req: Request) {
     );
   }
 
-  // 5) Persist so a republish hits the same files (no orphan assets) and
-  //    so "Mis páginas" can show the publish target + URL.
   const supabase = createAdminClient();
   const handle = (payload.shopify_handle || '').replace(/^\/products\//, '').replace(/[^a-z0-9-]/gi, '');
+
+  // 4b) If the user linked a product handle in Riverz Settings, assign
+  //     this template to it automatically — saves the user the manual
+  //     "Shopify Admin → Productos → Theme template" step. We do a
+  //     lookup-by-handle, productUpdate(templateSuffix), and on
+  //     success the public /products/<handle> URL renders the Riverz
+  //     landing immediately. Failures here are NOT fatal: the
+  //     section + template files are already live in the theme, the
+  //     user can always assign the template manually as a fallback.
+  let assignedToProduct = false;
+  let assignError: string | null = null;
+  if (handle) {
+    try {
+      type ProductByHandleRes = {
+        productByHandle: { id: string; title: string; templateSuffix: string | null } | null;
+      };
+      const lookup = await client.graphql<ProductByHandleRes>(
+        `query ProductByHandle($handle: String!) {
+           productByHandle(handle: $handle) { id title templateSuffix }
+         }`,
+        { handle },
+      );
+      const product = lookup.productByHandle;
+      if (!product) {
+        assignError = `Producto "${handle}" no encontrado en Shopify`;
+      } else {
+        type AssignRes = {
+          productUpdate: {
+            product: { id: string; templateSuffix: string | null } | null;
+            userErrors: Array<{ field: string[]; message: string }>;
+          };
+        };
+        const assigned = await client.graphql<AssignRes>(
+          `mutation AssignTpl($product: ProductUpdateInput!) {
+             productUpdate(product: $product) {
+               product { id templateSuffix }
+               userErrors { field message }
+             }
+           }`,
+          { product: { id: product.id, templateSuffix: templateName } },
+        );
+        if (assigned.productUpdate.userErrors.length) {
+          assignError = 'productUpdate: ' + JSON.stringify(assigned.productUpdate.userErrors);
+        } else {
+          assignedToProduct = true;
+        }
+      }
+    } catch (e: any) {
+      assignError = e?.message || 'desconocido';
+      console.error('[publish-theme] auto-assign failed:', assignError);
+    }
+  }
+
+  // 5) Persist so a republish hits the same files (no orphan assets) and
+  //    so "Mis páginas" can show the publish target + URL.
   const previewUrl = handle
     ? `https://${primaryDomain}/products/${handle}?view=${templateName}`
     : `https://${primaryDomain}/?view=${templateName}`;
@@ -234,9 +287,13 @@ export async function POST(req: Request) {
     preview_url: previewUrl,
     public_url: publicUrl,
     image_map: imageMap,
-    next_steps: handle
-      ? '✓ Theme template publicado.\n\nPara que tu producto "' + handle + '" use esta plantilla:\n1. Andá a Shopify Admin → Productos → "' + handle + '" → en "Online store" elegí Theme template = "' + templateName + '".\n\nMientras tanto, preview directo:\n' + previewUrl
-      : '✓ Theme template publicado en tu theme.\n\nPara usarlo en cualquier producto:\n1. Andá a Shopify Admin → Productos → tu producto.\n2. En "Online store" cambiá "Theme template" a "' + templateName + '".\n3. (Opcional) Cargá el handle del producto en Ajustes → "Producto Shopify" para que Riverz arme la URL pública automáticamente.\n\nPreview sin asignar:\n' + previewUrl,
+    assigned_to_product: assignedToProduct,
+    assign_error: assignError,
+    next_steps: assignedToProduct
+      ? '✓ Listo — tu producto "' + handle + '" ya usa esta plantilla.\n\nAbrí ' + publicUrl + ' para ver la landing en vivo.'
+      : handle
+        ? '✓ Theme template publicado.\n\nNo pude asignarlo automáticamente al producto "' + handle + '"' + (assignError ? ' (' + assignError + ')' : '') + '.\n\nAsignación manual:\n1. Shopify Admin → Productos → "' + handle + '".\n2. En "Online store" elegí Theme template = "' + templateName + '".\n\nMientras tanto, preview:\n' + previewUrl
+        : '✓ Theme template publicado en tu theme.\n\nPara que un producto lo use:\n1. Cargá el handle del producto en Riverz → Ajustes → "Producto Shopify" y republicá (Riverz lo asigna solo).\n2. O hacelo manualmente en Shopify Admin → Productos → tu producto → "Online store" → Theme template = "' + templateName + '".\n\nPreview sin asignar:\n' + previewUrl,
   });
 }
 
