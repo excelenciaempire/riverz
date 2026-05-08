@@ -1977,17 +1977,36 @@ var RIVERZ_SIZE_CSS =
      entire bottom strip on mobile/desktop sends the user to data-rz-url.
      No inner button; the inner <span class="rz-sticky-btn"> is the
      editable text slot only. */
-  '.rz-sticky-cta{position:sticky;bottom:0;z-index:60;display:block;width:100%;box-sizing:border-box;padding:18px 22px;background:#0a0a0a;color:#fff;font-weight:800;font-size:14px;letter-spacing:.04em;text-decoration:none;text-transform:uppercase;text-align:center;margin-top:24px;box-shadow:0 -8px 24px rgba(0,0,0,.35);cursor:pointer}\n' +
-  '.rz-sticky-cta:hover{filter:brightness(1.08)}\n' +
+  '.rz-sticky-cta{position:sticky;bottom:0;z-index:60;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;box-sizing:border-box;padding:18px 22px;background:#0a0a0a;color:#fff;font-weight:800;font-size:15px;line-height:1.2;letter-spacing:.06em;text-decoration:none;text-transform:uppercase;text-align:center;margin-top:24px;box-shadow:0 -10px 30px rgba(0,0,0,.45);cursor:pointer;transition:filter .18s ease,transform .15s ease;min-height:56px;-webkit-tap-highlight-color:transparent}\n' +
+  '.rz-sticky-cta:hover{filter:brightness(1.12)}\n' +
+  '.rz-sticky-cta:active{transform:scale(.985);filter:brightness(.94)}\n' +
+  '.rz-sticky-cta:focus-visible{outline:2px solid #f7ff9e;outline-offset:-3px}\n' +
+  /* Right-side chevron hints "scrolls to the offer". Pure CSS so it ships
+     on every published page without an extra asset. */
+  '.rz-sticky-cta::after{content:"→";font-size:18px;font-weight:900;letter-spacing:0;flex:0 0 auto;transition:transform .2s ease}\n' +
+  '.rz-sticky-cta:hover::after{transform:translateX(4px)}\n' +
   /* Editor preview: always shown so the user can interact + edit. */
   '.rz-sticky-cta:not([data-rz-published]){opacity:1}\n' +
   /* Published page: pin to the viewport, hidden until the scroll
-     observer flips .show on after data-rz-threshold% of page. */
-  '.rz-sticky-cta[data-rz-published]{position:fixed;left:0;right:0;bottom:0;margin:0;transform:translateY(110%);transition:transform .25s ease;pointer-events:none}\n' +
+     observer flips .show on after data-rz-threshold% of page.
+     padding-bottom + safe-area-inset-bottom keeps the tap target above the
+     iOS home-indicator strip. */
+  '.rz-sticky-cta[data-rz-published]{position:fixed;left:0;right:0;bottom:0;margin:0;padding-bottom:max(18px,calc(18px + env(safe-area-inset-bottom)));transform:translateY(110%);transition:transform .28s cubic-bezier(.2,.8,.2,1);pointer-events:none}\n' +
   '.rz-sticky-cta[data-rz-published].show{transform:translateY(0);pointer-events:auto}\n' +
-  /* Inner span just carries the editable text slot — inherits all visual
+  /* Inner span just carries the editable text slot — inherits visual
      styling from the anchor wrapper so the click target stays full-width. */
-  '.rz-sticky-cta .rz-sticky-btn{display:block;width:100%;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;text-align:inherit;text-decoration:none}\n' +
+  '.rz-sticky-cta .rz-sticky-btn{display:inline-block;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;text-align:inherit;text-decoration:none;max-width:calc(100% - 32px)}\n' +
+  /* Mobile: shorter font + tighter padding so the bar fits on iPhone SE
+     (320px). Desktop bumps it back up for a confident hero-CTA feel. */
+  '@media (max-width:480px){.rz-sticky-cta{font-size:13px;padding:16px 16px;letter-spacing:.05em;gap:8px}.rz-sticky-cta::after{font-size:16px}}\n' +
+  '@media (min-width:768px){.rz-sticky-cta{font-size:16px;padding:22px 32px;min-height:64px}}\n' +
+  /* Smooth-scroll anchor target — gives the Kaching offer chooser breathing
+     room above when the sticky bar jumps to it. */
+  '#rz-kaching,[data-rz-kaching-slot]{scroll-margin-top:24px}\n' +
+  /* Smooth-scroll for hash jumps on the published page so the sticky CTA
+     glides to the offer instead of teleporting. The editor preventDefaults
+     sticky clicks anyway, so the editor canvas behaviour is unaffected. */
+  'html{scroll-behavior:smooth}\n' +
   /* Editor-only hint badge so the user remembers the sticky lives at
      viewport bottom even when they scroll the canvas. Stripped at
      publish time via the [data-rz-published] flag the inline script
@@ -2446,7 +2465,10 @@ var BLOCK_TEMPLATES = {
   // CSS-driven and scoped to .edit-mode so nothing ships to the storefront
   // beyond the empty <div>.
   kaching:
-    '<div class="riverz-kaching-slot" data-rz-kind="kaching" data-rz-kaching-slot></div>',
+    // id="rz-kaching" doubles as the smooth-scroll target for the sticky CTA
+    // (sticky's data-rz-url defaults to #rz-kaching on product pages so a
+    // tap on the bar lands the buyer right on the Kaching offer chooser).
+    '<div id="rz-kaching" class="riverz-kaching-slot" data-rz-kind="kaching" data-rz-kaching-slot></div>',
   // Sticky CTA — single button pinned to viewport bottom, hidden until
   // the visitor scrolls past data-rz-threshold (% of total page). The
   // editor renders it always visible for editing; the published page
@@ -4303,6 +4325,10 @@ function wireRzSticky(){
     div.parentNode && div.parentNode.replaceChild(a, div);
     migrated = true;
   });
+  // Resolve smart-default: on product pages (Kaching slot present) an
+  // unconfigured sticky points at #rz-kaching so the bar smooth-scrolls
+  // the buyer to the offer chooser. Computed once per pass.
+  var hasKaching = !!pw.querySelector('#rz-kaching, [data-rz-kaching-slot]');
   pw.querySelectorAll('.rz-sticky-cta').forEach(function(el){
     if (el.dataset.rzsWired) return;
     el.dataset.rzsWired = '1';
@@ -4312,7 +4338,9 @@ function wireRzSticky(){
     // navigates correctly. The anchor IS the wrapper now (post-migration),
     // but we keep the inner-btn fallback for any path that still feeds a
     // legacy structure in (e.g. a freshly-imported .riverz.json bundle).
-    var url = el.getAttribute('data-rz-url') || '#';
+    var raw = (el.getAttribute('data-rz-url') || '').trim();
+    var hasOverride = raw && raw !== '#';
+    var url = hasOverride ? raw : (hasKaching ? '#rz-kaching' : '#');
     if (el.tagName === 'A') {
       el.setAttribute('href', url);
     } else {
@@ -4471,7 +4499,17 @@ function _insRenderStickySection(stEl){
   if (inp) {
     inp.value = url;
     var act = (typeof getActive === 'function') ? getActive() : null;
-    var fallback = (act && act.ctaUrl) ? act.ctaUrl : 'https://tu-tienda.com/products/...';
+    // On product pages with a Kaching slot the default behaviour is a
+    // smooth-scroll to the offer chooser — surface that in the placeholder
+    // so the user knows leaving the field empty is the right call. Pages
+    // without a slot fall back to proj.ctaUrl as before.
+    var hasKaching = !!document.querySelector('#page-wrap #rz-kaching, #page-wrap [data-rz-kaching-slot]');
+    var fallback;
+    if (hasKaching) {
+      fallback = '#rz-kaching · sección de oferta (Kaching)';
+    } else {
+      fallback = (act && act.ctaUrl) ? act.ctaUrl : 'https://tu-tienda.com/products/...';
+    }
     inp.setAttribute('placeholder', url ? fallback : ('Por defecto: ' + fallback));
   }
 }
@@ -5400,11 +5438,17 @@ function applyCTA(url){
   // New rz-sticky-cta blocks inherit the global CTA URL when no per-block
   // data-rz-url override has been set. The per-block override (set via the
   // inspector "Enlace del botón" field) wins.
+  // When the page has a Kaching slot (product pages), an unconfigured sticky
+  // defaults to #rz-kaching so a tap on the bar smooth-scrolls the buyer to
+  // the offer chooser. Pages without the slot (advertorials) fall back to
+  // proj.ctaUrl as before.
+  var hasKaching = !!document.querySelector('#page-wrap #rz-kaching, #page-wrap [data-rz-kaching-slot]');
   document.querySelectorAll('#page-wrap .rz-sticky-cta').forEach(function(wrap){
     var ov=(wrap.getAttribute('data-rz-url')||'').trim();
     if(ov && ov!=='#') return;
-    if (wrap.tagName === 'A') { wrap.setAttribute('href', url); }
-    else { var btn=wrap.querySelector('.rz-sticky-btn'); if(btn) btn.setAttribute('href',url); }
+    var resolved = hasKaching ? '#rz-kaching' : url;
+    if (wrap.tagName === 'A') { wrap.setAttribute('href', resolved); }
+    else { var btn=wrap.querySelector('.rz-sticky-btn'); if(btn) btn.setAttribute('href',resolved); }
   });
 }
 
@@ -6957,12 +7001,15 @@ function buildHTML(proj){
   clone.querySelectorAll('[data-v-text],[data-v-img]').forEach(function(el){el.removeAttribute('data-v-text');el.removeAttribute('data-v-img');});
   clone.classList.remove('edit-mode');clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
   var ctaUrl=proj.ctaUrl||'#';clone.querySelectorAll('a.cta-btn,a.sticky-btn').forEach(function(a){a.href=ctaUrl;});
-  // rz-sticky-cta: per-block data-rz-url wins; otherwise fall back to proj.ctaUrl.
-  // The anchor IS the wrapper post-migration, but we still patch the inner
-  // .rz-sticky-btn href in case a legacy structure made it through.
+  // rz-sticky-cta: per-block data-rz-url wins; otherwise on product pages
+  // (Kaching slot present) the bar smooth-scrolls to #rz-kaching so the
+  // buyer lands directly on the offer chooser. Non-product projects keep
+  // the proj.ctaUrl fallback.
+  var hasKachingExp = !!clone.querySelector('#rz-kaching, [data-rz-kaching-slot]');
   clone.querySelectorAll('.rz-sticky-cta').forEach(function(wrap){
     var ov=(wrap.getAttribute('data-rz-url')||'').trim();
-    var url=(ov && ov!=='#') ? ov : ctaUrl;
+    var hasOverride = ov && ov !== '#';
+    var url = hasOverride ? ov : (hasKachingExp ? '#rz-kaching' : ctaUrl);
     if (wrap.tagName === 'A') { wrap.setAttribute('href', url); }
     else { var btn=wrap.querySelector('.rz-sticky-btn'); if(btn) btn.setAttribute('href',url); }
   });
@@ -7087,11 +7134,14 @@ function buildPublishPayload(proj){
   clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
   clone.classList.remove('edit-mode');
   var ctaUrl=proj.ctaUrl||'#';clone.querySelectorAll('a.cta-btn,a.sticky-btn').forEach(function(a){a.href=ctaUrl;});
-  // rz-sticky-cta: per-block data-rz-url wins; otherwise fall back to proj.ctaUrl.
-  // Anchor-as-wrapper after migration; legacy fallback patches the inner btn.
+  // rz-sticky-cta: per-block data-rz-url wins; otherwise on product pages
+  // (Kaching slot present) the bar smooth-scrolls to #rz-kaching. Non-product
+  // projects keep proj.ctaUrl as fallback.
+  var hasKachingPub = !!clone.querySelector('#rz-kaching, [data-rz-kaching-slot]');
   clone.querySelectorAll('.rz-sticky-cta').forEach(function(wrap){
     var ov=(wrap.getAttribute('data-rz-url')||'').trim();
-    var url=(ov && ov!=='#') ? ov : ctaUrl;
+    var hasOverride = ov && ov !== '#';
+    var url = hasOverride ? ov : (hasKachingPub ? '#rz-kaching' : ctaUrl);
     if (wrap.tagName === 'A') { wrap.setAttribute('href', url); }
     else { var btn=wrap.querySelector('.rz-sticky-btn'); if(btn) btn.setAttribute('href',url); }
   });
