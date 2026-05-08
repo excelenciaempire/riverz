@@ -290,48 +290,50 @@ export function buildSectionLiquid(opts: {
     ? '{% assign rz_show_auto_form = false %}'
     : "{% assign rz_show_auto_form = section.settings.show_buy_button %}";
   const buyButtonLiquid = `${autoFormGuard}
-<span hidden data-rz-product-handle="{{ product.handle }}" data-rz-default-variant="{{ product.selected_or_first_available_variant.id }}"></span>
-{% comment %} Standard hidden product form so Kaching Bundles' default
-selectors (button[name="add"], form[action*="/cart/add"]) auto-detect.
-The visible buttons above wire their clicks through our JS handler, but
-this hidden form gives Kaching a stable anchor for live price updates. {% endcomment %}
-<form action="/cart/add" method="post" data-rz-shadow-form style="display:none" id="riverz-shadow-form">
-  <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}" data-rz-shadow-id>
-  <input type="hidden" name="quantity" value="1" data-rz-shadow-qty>
-</form>
 <script>
-  // Self-heal: if the Liquid render dropped a non-numeric value into
-  // the shadow form (rare — happens when a section is rendered without
-  // full product context, e.g. the theme editor's draft preview), pull
-  // the canonical variant id from /products/<handle>.js and patch the
-  // form so Kaching's auto-detector + our handler both see a valid id.
+  // Real JS globals — DOM-attribute lookups kept failing on Horizon when
+  // the section rendered before the product context fully resolved, so
+  // we emit the values directly as script globals + start a backup
+  // fetch immediately. Click handlers below await these.
+  window.RIVERZ_PRODUCT = window.RIVERZ_PRODUCT || {};
+  window.RIVERZ_PRODUCT.handle = {{ product.handle | json }};
+  window.RIVERZ_PRODUCT.defaultVariantId = String({{ product.selected_or_first_available_variant.id | default: 0 }} || '');
+  window.RIVERZ_PRODUCT.variants = (function(){
+    var out = [];
+    {% for v in product.variants %}
+      if ({{ v.available }}) out.push({ id: String({{ v.id }}), price: {{ v.price | json }}, available: {{ v.available }} });
+    {% endfor %}
+    return out;
+  })();
+  // Always kick off a /products/<handle>.js fetch on first paint so the
+  // click handler has a guaranteed real variant id to work with even if
+  // the Liquid emit above came up empty for any reason.
   (function(){
-    var idIn = document.querySelector('#riverz-shadow-form input[name="id"]');
-    if (!idIn) return;
-    var v = idIn.value || '';
-    if (/^\\d{6,}$/.test(v)) return; // already valid
-    var meta = document.querySelector('[data-rz-product-handle]');
-    var handle = meta ? meta.getAttribute('data-rz-product-handle') : null;
-    if (!handle) {
-      var m = location.pathname.match(/\\/products\\/([^/?#]+)/);
-      handle = m ? m[1] : null;
-    }
-    if (!handle) return;
-    fetch('/products/' + handle + '.js', { headers: { 'Accept': 'application/json' } })
+    var h = window.RIVERZ_PRODUCT.handle || (location.pathname.match(/\\/products\\/([^/?#]+)/) || [])[1];
+    if (!h) return;
+    window.RIVERZ_PRODUCT_FETCH = fetch('/products/' + h + '.js', { headers: { 'Accept': 'application/json' } })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(p){
-        if (!p || !p.variants) return;
+        if (!p || !p.variants) return null;
         for (var i=0; i<p.variants.length; i++){
           if (p.variants[i].available !== false && /^\\d{6,}$/.test(String(p.variants[i].id))) {
-            idIn.value = String(p.variants[i].id);
-            var span = document.querySelector('[data-rz-default-variant]');
-            if (span) span.setAttribute('data-rz-default-variant', String(p.variants[i].id));
-            return;
+            return String(p.variants[i].id);
           }
         }
-      });
+        return null;
+      })
+      .catch(function(){ return null; });
   })();
 </script>
+{% comment %} Standard hidden product form so Kaching Bundles' default
+selectors (button[name="add"], form[action*="/cart/add"]) auto-detect.
+Kaching writes the user-selected variant id into the input as the
+shopper picks a different bundle. {% endcomment %}
+<form action="/cart/add" method="post" data-rz-shadow-form style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden" id="riverz-shadow-form">
+  <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}" data-rz-shadow-id>
+  <input type="hidden" name="quantity" value="1" data-rz-shadow-qty>
+  <button type="submit" name="add" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px">.</button>
+</form>
 {% if rz_show_auto_form %}
 <div data-rz-buy-form class="riverz-buy-form" style="display:contents">
   <button type="button"
@@ -393,14 +395,32 @@ this hidden form gives Kaching a stable anchor for live price updates. {% endcom
       return null;
     }
     function getDefaults(){
-      var meta=document.querySelector('[data-rz-default-variant]');
-      var id = meta ? pickVariantId(meta.getAttribute('data-rz-default-variant')) : null;
-      var handle = meta ? meta.getAttribute('data-rz-product-handle') : null;
-      // Fallback chain when our meta span didn't make it into the DOM
-      // OR its value isn't a real variant id (Liquid context glitch on
-      // some themes). We try Shopify's own globals first, then any
-      // theme-rendered product form's id input.
-      if (!id && typeof window !== 'undefined') {
+      // Primary source: the script global emitted by the section liquid
+      // (window.RIVERZ_PRODUCT). Beats DOM-attribute lookup because it
+      // doesn't depend on querySelector finding a hidden element that
+      // some themes strip out.
+      var id = null, handle = null;
+      try {
+        if (window.RIVERZ_PRODUCT) {
+          id = pickVariantId(window.RIVERZ_PRODUCT.defaultVariantId);
+          handle = window.RIVERZ_PRODUCT.handle || null;
+          if (!id && Array.isArray(window.RIVERZ_PRODUCT.variants)) {
+            for (var i=0; i<window.RIVERZ_PRODUCT.variants.length; i++){
+              var c = pickVariantId(window.RIVERZ_PRODUCT.variants[i].id);
+              if (c) { id = c; break; }
+            }
+          }
+        }
+      } catch(e){}
+      // Fallbacks for theme contexts where the global wasn't set.
+      if (!id) {
+        var meta=document.querySelector('[data-rz-default-variant]');
+        if (meta) {
+          id = pickVariantId(meta.getAttribute('data-rz-default-variant'));
+          handle = handle || meta.getAttribute('data-rz-product-handle');
+        }
+      }
+      if (!id) {
         try {
           if (window.ShopifyAnalytics && window.ShopifyAnalytics.meta &&
               window.ShopifyAnalytics.meta.product &&
@@ -419,14 +439,15 @@ this hidden form gives Kaching a stable anchor for live price updates. {% endcom
         } catch(e){}
       }
       if (!id) {
-        // Any [name="id"] input on the page that holds a numeric — the
-        // theme's own legacy product form (still rendered by some
-        // sections), Kaching's hidden form, etc.
         var inputs = document.querySelectorAll('input[name="id"]');
-        for (var i=0; i<inputs.length; i++){
-          var cand = pickVariantId(inputs[i].value);
+        for (var j=0; j<inputs.length; j++){
+          var cand = pickVariantId(inputs[j].value);
           if (cand) { id = cand; break; }
         }
+      }
+      if (!handle) {
+        var m = location.pathname.match(/\\/products\\/([^/?#]+)/);
+        handle = m ? m[1] : null;
       }
       return { id: id, handle: handle };
     }
@@ -442,21 +463,16 @@ this hidden form gives Kaching a stable anchor for live price updates. {% endcom
       var q=parseInt((qtyInput && qtyInput.value) || '1', 10);
       return { id: id, quantity: isNaN(q)?1:q };
     }
-    // Fetch /products/<handle>.js to pull a real variant id when
-    // every static source above fails. Cached so we only hit it once
-    // per page-load. Returns a Promise<string|null>.
-    var _productFetch = null;
+    // Reuse the page-load fetch the section liquid kicks off
+    // (window.RIVERZ_PRODUCT_FETCH). Avoids hitting /products/<handle>.js
+    // a second time when the user clicks a buy button.
     function fetchProductDefault(){
-      if (_productFetch) return _productFetch;
-      var h = (document.querySelector('[data-rz-product-handle]') || {}).getAttribute
-        ? document.querySelector('[data-rz-product-handle]').getAttribute('data-rz-product-handle')
-        : null;
-      if (!h) {
-        var m = location.pathname.match(/\\/products\\/([^/?#]+)/);
-        h = m ? m[1] : null;
-      }
-      if (!h) { _productFetch = Promise.resolve(null); return _productFetch; }
-      _productFetch = fetch('/products/' + h + '.js', { headers: { 'Accept': 'application/json' } })
+      if (window.RIVERZ_PRODUCT_FETCH) return window.RIVERZ_PRODUCT_FETCH;
+      var h = (window.RIVERZ_PRODUCT && window.RIVERZ_PRODUCT.handle)
+        || (location.pathname.match(/\\/products\\/([^/?#]+)/) || [])[1]
+        || null;
+      if (!h) return Promise.resolve(null);
+      window.RIVERZ_PRODUCT_FETCH = fetch('/products/' + h + '.js', { headers: { 'Accept': 'application/json' } })
         .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(p){
           if (!p || !p.variants) return null;
@@ -469,7 +485,7 @@ this hidden form gives Kaching a stable anchor for live price updates. {% endcom
           return null;
         })
         .catch(function(){ return null; });
-      return _productFetch;
+      return window.RIVERZ_PRODUCT_FETCH;
     }
     function readKachingSelection(){
       var checked=document.querySelector('[data-rz-kaching-mounted="1"] input[type="radio"]:checked, [data-rz-kaching-slot] input[type="radio"]:checked, .kaching-bundles input[type="radio"]:checked');
