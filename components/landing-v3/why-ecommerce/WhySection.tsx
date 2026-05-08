@@ -32,7 +32,7 @@ const stats = [
 ];
 
 export function WhySection() {
-  const buildTimeline: SceneBuilder = useCallback((_ctx, { timeline, select }) => {
+  const buildTimeline: SceneBuilder = useCallback(({ timeline, select }) => {
     const eyebrow = select('[data-why-eyebrow]')[0];
     const headline = select('[data-why-headline]')[0];
     const painCards = select('[data-why-pain]');

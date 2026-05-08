@@ -8,7 +8,7 @@ import { setHeroProgress } from './useScrollProgress';
 import type { SceneBuilder } from '../shared/useGsapScene';
 
 export function HeroSection() {
-  const buildTimeline: SceneBuilder = useCallback((_ctx, { timeline, select }) => {
+  const buildTimeline: SceneBuilder = useCallback(({ timeline, select }) => {
     const eyebrow = select('[data-hero-eyebrow]')[0];
     const headlines = select('[data-hero-headline]');
     const sub = select('[data-hero-sub]')[0];

@@ -13,7 +13,7 @@ const blocks = [
 ];
 
 export function LandingLabSection() {
-  const buildTimeline: SceneBuilder = useCallback((_ctx, { timeline, select }) => {
+  const buildTimeline: SceneBuilder = useCallback(({ timeline, select }) => {
     const eyebrow = select('[data-l-eyebrow]')[0];
     const headline = select('[data-l-headline]')[0];
     const browser = select('[data-l-browser]')[0];

@@ -14,7 +14,7 @@ const phones = [
 const flags = ['ES', 'EN', 'FR', 'PT', 'DE', 'IT'];
 
 export function UgcSection() {
-  const buildTimeline: SceneBuilder = useCallback((_ctx, { timeline, select }) => {
+  const buildTimeline: SceneBuilder = useCallback(({ timeline, select }) => {
     const eyebrow = select('[data-u-eyebrow]')[0];
     const headline = select('[data-u-headline]')[0];
     const phoneEls = select('[data-u-phone]');

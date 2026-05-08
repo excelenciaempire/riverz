@@ -8,7 +8,7 @@ import type { SceneBuilder } from '../shared/useGsapScene';
 const variantGrid = Array.from({ length: 9 }).map((_, i) => i);
 
 export function StaticAdsSection() {
-  const buildTimeline: SceneBuilder = useCallback((_ctx, { timeline, select }) => {
+  const buildTimeline: SceneBuilder = useCallback(({ timeline, select }) => {
     const eyebrow = select('[data-sa-eyebrow]')[0];
     const headline = select('[data-sa-headline]')[0];
     const canvas = select('[data-sa-canvas]')[0];

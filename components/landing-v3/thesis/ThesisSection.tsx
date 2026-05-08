@@ -21,7 +21,7 @@ const models = [
 ];
 
 export function ThesisSection() {
-  const buildTimeline: SceneBuilder = useCallback((_ctx, { timeline, select }) => {
+  const buildTimeline: SceneBuilder = useCallback(({ timeline, select }) => {
     const eyebrow = select('[data-t-eyebrow]')[0];
     const headline = select('[data-t-headline]')[0];
     const items = select('[data-t-item]');

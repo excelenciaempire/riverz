@@ -4,20 +4,23 @@ import { useEffect, useRef, type RefObject } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-export type SceneBuilder = (
-  ctx: gsap.Context,
-  helpers: {
-    timeline: gsap.core.Timeline;
-    matchMedia: gsap.MatchMedia;
-    select: <T extends Element = HTMLElement>(selector: string) => T[];
-  }
-) => void;
+export type SceneBuilder = (helpers: {
+  timeline: gsap.core.Timeline;
+  matchMedia: gsap.MatchMedia;
+  select: <T extends Element = HTMLElement>(selector: string) => T[];
+}) => void;
 
 /**
  * Mounts a scrubbed GSAP timeline tied to the outer scene's scroll progress.
  * The inner stage is sticky (CSS), so we don't ask ScrollTrigger to pin DOM —
  * we only use it as a scrub driver. This avoids the App Router + React 19
  * concurrent-render layout drift issues that pin:true introduces.
+ *
+ * The scene builder receives only the helpers it needs (timeline, matchMedia,
+ * select). Earlier versions also passed `gsap.Context` itself, but that
+ * created a TDZ — the callback executes synchronously inside `gsap.context()`,
+ * so referencing the outer `const ctx = ...` inside it crashes with
+ * "Cannot access 'ctx' before initialization".
  */
 export function useGsapScene(
   sceneRef: RefObject<HTMLElement | null>,
@@ -58,7 +61,7 @@ export function useGsapScene(
       const select = <T extends Element = HTMLElement>(selector: string): T[] =>
         Array.from(stageEl.querySelectorAll<T>(selector));
 
-      build(ctx, { timeline: tl, matchMedia: mm, select });
+      build({ timeline: tl, matchMedia: mm, select });
       stageEl.setAttribute('data-lv3-ready', 'true');
     }, stageEl);
 

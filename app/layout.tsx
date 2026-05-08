@@ -37,10 +37,17 @@ export default function RootLayout({
       <head>
         {/* Theme bootstrap — runs before React hydrates so the saved
             preference paints on first frame instead of flashing the
-            default. Stored under rvz_theme by ThemeProvider. */}
-        <Script id="rvz-theme-init" strategy="beforeInteractive">
-          {`(function(){try{var t=localStorage.getItem('rvz_theme');if(t!=='light'&&t!=='dark'){t='light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`}
-        </Script>
+            default. Stored under rvz_theme by ThemeProvider.
+            Uses a plain script tag (not next/script with
+            strategy="beforeInteractive") because the latter triggers
+            a hydration mismatch under React 19 + App Router. */}
+        <script
+          id="rvz-theme-init"
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('rvz_theme');if(t!=='light'&&t!=='dark'){t='light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`,
+          }}
+        />
 
         {/* Google Analytics */}
         {process.env.NEXT_PUBLIC_GA_ID && (

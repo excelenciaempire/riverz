@@ -19,7 +19,7 @@ const adsetRows = [
 ];
 
 export function MetaAdsSection() {
-  const buildTimeline: SceneBuilder = useCallback((_ctx, { timeline, select }) => {
+  const buildTimeline: SceneBuilder = useCallback(({ timeline, select }) => {
     const eyebrow = select('[data-m-eyebrow]')[0];
     const headline = select('[data-m-headline]')[0];
     const assets = select('[data-m-asset]');
