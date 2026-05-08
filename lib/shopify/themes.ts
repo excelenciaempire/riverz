@@ -154,12 +154,31 @@ export function buildSectionLiquid(opts: {
   // to the Kaching Bundles app block from the theme editor.
   // No presets — keeps the section out of "Add section" pickers so it
   // can't be dropped into unrelated templates by accident.
+  // `show_buy_button` is on by default — Riverz product templates strip
+  // the theme's native product form, so without our own button there's
+  // no way to actually add the product to the cart. Kaching Bundles'
+  // "Add to cart" sub-block (when added) writes lines client-side and
+  // the merchant can flip this off to avoid duplicate buttons.
   const schema = JSON.stringify(
     {
       name: `Riverz · ${opts.sectionTag}`,
       tag: 'section',
       class: 'riverz-landing-section',
-      settings: [],
+      settings: [
+        {
+          type: 'checkbox',
+          id: 'show_buy_button',
+          label: 'Mostrar botón "Agregar al carrito"',
+          default: true,
+          info: 'Apagalo si Kaching Bundles (u otra app) ya inyecta su propio botón.',
+        },
+        {
+          type: 'text',
+          id: 'buy_button_text',
+          label: 'Texto del botón',
+          default: 'Agregar al carrito',
+        },
+      ],
       blocks: [{ type: '@app' }],
     },
     null,
@@ -241,6 +260,79 @@ export function buildSectionLiquid(opts: {
   })();
 </script>
 {% endif %}`;
+  // Native add-to-cart fallback. Riverz product templates replace the
+  // theme's main-product section, which means the standard
+  // {% form 'product' %} button is gone — without this the page has
+  // bundle radio options but no way to actually buy. Kaching Bundles
+  // can override this via lines hijacking; when their "Add to cart"
+  // sub-block is added, the merchant flips off section.settings.
+  // show_buy_button.
+  //
+  // We render INSIDE the riverz wrapper near the kaching slot so it
+  // sits in the buy-box column. A small client-side script reparents
+  // the form into [data-rz-buy-button-slot] (or the kaching slot if
+  // that's the only anchor present), so the user can position it
+  // precisely from the editor by dropping a Buy-button block — same
+  // pattern as the Kaching slot.
+  const buyButtonLiquid = `{% if section.settings.show_buy_button %}
+<div data-rz-buy-form class="riverz-buy-form" style="display:contents">
+  {% form 'product', product, id: 'riverz-product-form' %}
+    <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}" data-riverz-variant-id>
+    <input type="hidden" name="quantity" value="1" data-riverz-quantity>
+    <button type="submit"
+      class="riverz-buy-btn"
+      {% unless product.selected_or_first_available_variant.available %}disabled{% endunless %}
+      style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#0a0a0a;color:#fff;font-family:inherit;font-weight:800;font-size:15px;letter-spacing:.04em;text-transform:uppercase;padding:16px 24px;border-radius:8px;border:0;cursor:pointer;margin:14px 0;transition:filter .12s;box-shadow:0 8px 24px rgba(0,0,0,.18)">
+      {% if product.selected_or_first_available_variant.available %}
+        {{ section.settings.buy_button_text | default: 'Agregar al carrito' }}
+        <span style="opacity:.85" data-riverz-buy-price>· {{ product.selected_or_first_available_variant.price | money }}</span>
+      {% else %}
+        Agotado
+      {% endif %}
+    </button>
+  {% endform %}
+</div>
+<script>
+  (function(){
+    var form=document.querySelector('[data-rz-buy-form]');
+    if(!form) return;
+    // Anchor priority: explicit buy-button slot > kaching slot >
+    // legacy #bundles. If none of those exist we leave the form where
+    // it landed (end of section), which is still functional.
+    var anchor=document.querySelector('[data-rz-buy-button-slot]')
+            || document.querySelector('[data-rz-kaching-mounted="1"]')
+            || document.querySelector('[data-rz-kaching-slot]')
+            || document.querySelector('.riverz-kaching-slot')
+            || document.querySelector('#bundles');
+    if(!anchor) return;
+    // Move the actual <form> child (Liquid wraps it in form tag inside
+    // our wrapper div), keeping the wrapper out of the destination DOM.
+    var realForm=form.querySelector('form')||form;
+    if(anchor.tagName==='FORM') return; // skip if anchor is itself a form
+    if(anchor.contains(realForm)) return;
+    anchor.parentNode && anchor.parentNode.insertBefore(realForm, anchor.nextSibling);
+    if(form.parentNode && form !== realForm) form.parentNode.removeChild(form);
+    // Bridge Kaching → Shopify cart: when Kaching's deal block updates
+    // the selected variant + quantity (via attribute mutations on its
+    // hidden inputs) we mirror those into the form's hidden id/quantity
+    // fields so the standard /cart/add submit works for bundle deals
+    // even without Kaching's own cart-button block.
+    var kachingInput=document.querySelector('[name="id"][data-kaching-variant-id], [data-kaching-selected-variant]');
+    if(kachingInput){
+      var idIn=document.querySelector('[data-riverz-variant-id]');
+      var qtyIn=document.querySelector('[data-riverz-quantity]');
+      var sync=function(){
+        var v=kachingInput.value || kachingInput.getAttribute('data-kaching-selected-variant');
+        if(v && idIn) idIn.value=v;
+        var q=kachingInput.getAttribute('data-kaching-quantity');
+        if(q && qtyIn) qtyIn.value=q;
+      };
+      sync();
+      new MutationObserver(sync).observe(kachingInput, { attributes:true });
+    }
+  })();
+</script>
+{% endif %}`;
   return `{% comment %}
   Riverz Landing Lab — auto-generated section.
   DO NOT EDIT MANUALLY: changes are overwritten on every "Publicar en Shopify".
@@ -255,6 +347,8 @@ ${opts.fontsLink}
 ${inner}
 
 ${appBlocksLiquid}
+
+${buyButtonLiquid}
 
 ${opts.inlineScripts.map((s) => `<script>${s}</script>`).join('\n')}
 
