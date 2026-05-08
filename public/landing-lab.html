@@ -174,9 +174,9 @@ body{color:#E2E4EF;font-family:'Instrument Sans',sans-serif;font-size:13px;displ
 .bp-icon svg{width:100%;height:100%;color:inherit}
 .bp-label{font-size:10px;font-weight:600;letter-spacing:.02em}
 /* Drop indicator — pulsing border when palette item drags over a slot */
-[data-section-id].riverz-palette-target{outline:2px dashed #f7ff9e!important;outline-offset:3px;background:rgba(247,255,158,.05)}
+[data-section-id].riverz-palette-target{outline:1px dashed rgba(247,255,158,.4)!important;outline-offset:2px}
 [data-reorder-container].riverz-container-drop-target{outline:2px dashed #4A90E2!important;outline-offset:-2px;background:rgba(74,144,226,.06);transition:background .1s,outline-color .1s}
-#page-wrap.riverz-palette-canvas{outline:2px dashed rgba(247,255,158,.4);outline-offset:-2px}
+#page-wrap.riverz-palette-canvas{outline:1px dashed rgba(247,255,158,.22);outline-offset:-1px}
 .sb-head{padding:12px 12px 8px;border-bottom:1px solid #181B27;flex-shrink:0}
 .sb-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#3E4560;font-weight:600;margin-bottom:8px}
 .sb-new{width:100%;padding:8px 10px;background:transparent;border:1px dashed #252840;border-radius:6px;color:#5B6490;font-size:11px;font-weight:500;cursor:pointer;font-family:'Instrument Sans',sans-serif;transition:all .15s;display:flex;align-items:center;gap:5px}
@@ -397,8 +397,9 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
    showing exactly where the dragged block will land. Replaces the
    full-element outline so the user sees an inserts-here-not-replaces
    gesture. */
-.riverz-drop-line{position:absolute;height:3px;background:#f7ff9e;border-radius:2px;pointer-events:none;z-index:1000;box-shadow:0 0 8px rgba(247,255,158,.6),0 0 0 1px rgba(247,255,158,.3);transition:top .08s ease,left .08s ease,width .08s ease}
-.riverz-drop-line::before{content:"";position:absolute;left:-5px;top:-3.5px;width:9px;height:9px;border-radius:50%;background:#f7ff9e;box-shadow:0 0 8px rgba(247,255,158,.7)}
+.riverz-drop-line{position:absolute;height:4px;background:#f7ff9e;border-radius:3px;pointer-events:none;z-index:1000;box-shadow:0 0 0 1px #0d0f12,0 0 14px rgba(247,255,158,.85),0 0 0 3px rgba(247,255,158,.18)}
+.riverz-drop-line::before{content:"";position:absolute;left:-6px;top:-4px;width:12px;height:12px;border-radius:50%;background:#f7ff9e;border:2px solid #0d0f12;box-shadow:0 0 10px rgba(247,255,158,.9)}
+.riverz-drop-line::after{content:attr(data-label);position:absolute;right:0;top:-22px;background:#f7ff9e;color:#0d0f12;font-family:'Instrument Sans',sans-serif;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4)}
 /* Comment indicator — yellow dot top-right of any block with a saved
    comment. Click the comment toolbar button to view/edit. */
 [data-section-id][data-has-comment]{position:relative}
@@ -1913,12 +1914,13 @@ var RIVERZ_SIZE_CSS =
   '.rz-sticky-cta[data-rz-published]::before{display:none}\n' +
   /* Kaching Bundles slot — the offer chooser + add-to-cart button live in
      Kaching Bundles on the live product page. Editor-only placeholder
-     scoped to #page-wrap.edit-mode so the dashed box + hint text never
-     ship to the storefront (clone.classList.remove('edit-mode') strips it
-     at publish time, leaving an invisible empty container). */
-  '#page-wrap.edit-mode .riverz-kaching-slot{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;min-height:120px;padding:24px;border:1.5px dashed rgba(247,255,158,.55);border-radius:10px;background:rgba(247,255,158,.06);text-align:center;margin:14px 0}\n' +
-  '#page-wrap.edit-mode .riverz-kaching-slot::before{content:"🛒 Kaching Bundles";font-family:Instrument Sans,system-ui,sans-serif;font-size:13px;font-weight:800;letter-spacing:.04em;color:#f7ff9e;text-transform:uppercase}\n' +
-  '#page-wrap.edit-mode .riverz-kaching-slot::after{content:"En la página real del producto, esta área la rellena la app Kaching Bundles (selector de packs + Agregar al carrito).";font-family:Instrument Sans,system-ui,sans-serif;font-size:12px;color:#9aa3c0;max-width:360px;line-height:1.4}\n';
+     scoped to #page-wrap.edit-mode so the chip never ships to the
+     storefront (clone.classList.remove('edit-mode') strips the class at
+     publish time, leaving an invisible empty container). Compact pill
+     so it doesn't dominate the canvas — the real widget renders only
+     on the live PDP. */
+  '#page-wrap.edit-mode .riverz-kaching-slot{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px dashed rgba(247,255,158,.55);border-radius:999px;background:rgba(247,255,158,.06);margin:10px 0;font-family:Instrument Sans,system-ui,sans-serif;font-size:11px;font-weight:700;color:#f7ff9e;letter-spacing:.04em;text-transform:uppercase;line-height:1.2;width:auto;min-height:0}\n' +
+  '#page-wrap.edit-mode .riverz-kaching-slot::before{content:"🛒 Kaching Bundles · slot"}\n';
 
 // Load JSON data from script tags (avoids JS string escaping issues)
 var DEFAULT_TEXTS = JSON.parse(document.getElementById('data-default').textContent);
@@ -2516,6 +2518,10 @@ function wireBlockPalette(){
       document.querySelectorAll('[data-section-id].riverz-palette-target').forEach(function(el){
         el.classList.remove('riverz-palette-target');
       });
+      // Drop line lingers if the user drops outside the canvas (cancel
+      // gesture). Hide it explicitly so the next drag starts from a
+      // clean slate.
+      if (typeof _hideDropLine === 'function') _hideDropLine();
     });
   });
   // Make page-wrap a fallback drop target — drop in dead space adds the
@@ -2686,13 +2692,17 @@ function _showDropLine(target, before){
   }
   var paRect = pa.getBoundingClientRect();
   var r = target.getBoundingClientRect();
-  var top = (before ? r.top : r.bottom) - paRect.top + pa.scrollTop - 1.5;
+  var top = (before ? r.top : r.bottom) - paRect.top + pa.scrollTop - 2;
   var left = r.left - paRect.left + pa.scrollLeft;
   _dropLine.style.display = 'block';
   _dropLine.style.top = top + 'px';
   _dropLine.style.left = left + 'px';
   _dropLine.style.width = r.width + 'px';
   _dropLine.dataset.before = before ? '1' : '0';
+  // "Aquí" label snaps with the line so the user sees both the insertion
+  // edge AND a textual confirmation of where the drop will land — useful
+  // when blocks are tightly packed and the line overlaps a real border.
+  _dropLine.setAttribute('data-label', before ? '↑ aquí' : '↓ aquí');
 }
 function _hideDropLine(){
   if (_dropLine) _dropLine.style.display = 'none';
