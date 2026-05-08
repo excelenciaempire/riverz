@@ -4478,6 +4478,23 @@ function wireRzSticky(){
   pw.querySelectorAll('.riverz-kaching-slot,[data-rz-kaching-slot]').forEach(function(slot){
     if (!slot.id) slot.id = 'rz-kaching';
   });
+  // Migrate legacy data-rz-url values that no longer point at anything.
+  // The most common case: users (or older project HTML) saved
+  // data-rz-url="#bundles" because the listicle template's announcement
+  // bar links to that anchor — but on a product page #bundles doesn't
+  // exist, so the sticky click did nothing. Empty the override so the
+  // smart-default below resolves to #rz-kaching automatically.
+  pw.querySelectorAll('.rz-sticky-cta[data-rz-url]').forEach(function(el){
+    var raw = (el.getAttribute('data-rz-url') || '').trim();
+    if (!raw) return;
+    if (raw === '#bundles' && !pw.querySelector('#bundles')) {
+      el.setAttribute('data-rz-url', '');
+    } else if (raw.charAt(0) === '#' && raw.length > 1) {
+      // Any other hash with no matching element on the page → also dead.
+      var t = pw.querySelector(raw);
+      if (!t) el.setAttribute('data-rz-url', '');
+    }
+  });
   // Resolve smart-default: on product pages (Kaching slot present) an
   // unconfigured sticky points at #rz-kaching so the bar smooth-scrolls
   // the buyer to the offer chooser. Computed once per pass.
@@ -4537,8 +4554,12 @@ var RIVERZ_STICKY_CODE = '(function(){'+
   'tick();'+
   // Smooth-scroll fallback for older iOS Safari (<16) that ignores
   // CSS scroll-behavior:smooth. Listens on document so it survives the
-  // sticky relocation to <body>.
-  'document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a.rz-sticky-cta");if(!a)return;var h=a.getAttribute("href")||"";if(h.charAt(0)!=="#"||h.length<2)return;var t=document.getElementById(h.slice(1));if(!t)return;e.preventDefault();try{t.scrollIntoView({behavior:"smooth",block:"start"});}catch(_){t.scrollIntoView();}});'+
+  // sticky relocation to <body>. If the configured hash target doesn't
+  // exist on the page (legacy "#bundles" left over from the listicle
+  // template), fall back to #rz-kaching — that's the smart-default the
+  // editor would resolve to on republish, but stale published HTML
+  // might still be in the merchant's theme.
+  'document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a.rz-sticky-cta");if(!a)return;var h=a.getAttribute("href")||"";if(h.charAt(0)!=="#"||h.length<2)return;var t=document.getElementById(h.slice(1));if(!t){t=document.getElementById("rz-kaching")||document.querySelector(".riverz-kaching-slot,[data-rz-kaching-slot]");}if(!t)return;e.preventDefault();try{t.scrollIntoView({behavior:"smooth",block:"start"});}catch(_){t.scrollIntoView();}});'+
 '})();';
 window.RIVERZ_STICKY_CODE = RIVERZ_STICKY_CODE;
 
@@ -7451,14 +7472,28 @@ function buildPublishPayload(proj){
   });
   // rz-sticky-cta: per-block data-rz-url wins; otherwise on product pages
   // (Kaching slot present) the bar smooth-scrolls to #rz-kaching. Non-product
-  // projects keep proj.ctaUrl as fallback.
+  // projects keep proj.ctaUrl as fallback. Dead hash anchors (e.g. legacy
+  // "#bundles" on a product page that has no #bundles element) get treated
+  // as "no override" so the smart default lands the buyer on Kaching
+  // instead of doing nothing.
   var hasKachingPub = !!clone.querySelector('#rz-kaching, [data-rz-kaching-slot]');
   clone.querySelectorAll('.rz-sticky-cta').forEach(function(wrap){
     var ov=(wrap.getAttribute('data-rz-url')||'').trim();
     var hasOverride = ov && ov !== '#';
+    if (hasOverride && ov.charAt(0) === '#' && ov.length > 1) {
+      // Resolve hash override against the published clone — if the
+      // target id doesn't exist there, demote to "no override".
+      var t = null;
+      try { t = clone.querySelector(ov); } catch(_){ t = null; }
+      if (!t) hasOverride = false;
+    }
     var url = hasOverride ? ov : (hasKachingPub ? '#rz-kaching' : ctaUrl);
     if (wrap.tagName === 'A') { wrap.setAttribute('href', url); }
     else { var btn=wrap.querySelector('.rz-sticky-btn'); if(btn) btn.setAttribute('href',url); }
+    // Also normalise data-rz-url on the published markup so the inline
+    // RIVERZ_STICKY_CODE in the live page doesn't see a stale #bundles
+    // either (it uses data-rz-url for the smooth-scroll target lookup).
+    wrap.setAttribute('data-rz-url', url);
   });
 
   // Map each [data-v-img] back to the original src in proj.images, then
