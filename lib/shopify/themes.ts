@@ -86,6 +86,33 @@ export async function upsertThemeAsset(
   };
 }
 
+/**
+ * Fetch a theme asset's value as a string. Returns null when the asset
+ * doesn't exist (Shopify returns 404 + a JSON error body) so callers can
+ * gracefully fall through to "first-time create" logic. Any other failure
+ * throws — the publish flow surfaces those as 502s.
+ */
+export async function getThemeAssetValue(
+  client: ShopifyAdminClient,
+  themeId: number,
+  key: string,
+): Promise<string | null> {
+  const url =
+    themeAssetUrl(client, themeId) + `?asset[key]=${encodeURIComponent(key)}`;
+  const res = await fetch(url, { method: 'GET', headers: assetHeaders(client) });
+  if (res.status === 404) return null;
+  const body: any = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = body?.errors ? JSON.stringify(body.errors) : `HTTP ${res.status}`;
+    throw new Error(`themeAsset GET failed for ${key}: ${msg}`);
+  }
+  // The asset endpoint returns either { asset: { value: "..." } } for text
+  // assets or { asset: { attachment: "<base64>" } } for binary. Section /
+  // template files are always text so we only handle the value branch.
+  const v = body?.asset?.value;
+  return typeof v === 'string' ? v : null;
+}
+
 /** Optional helper — used only by future cleanup flows. Kept minimal so the module isn't bloated. */
 export async function deleteThemeAsset(
   client: ShopifyAdminClient,
@@ -203,21 +230,78 @@ ${schema}
  * Build the OS 2.0 product template JSON. References the section by its
  * file name (without the .liquid extension and without the sections/
  * prefix). `order` controls render order; we only have one section.
+ *
+ * If `preserveBlocks` is provided (typically the merchant's previously-
+ * saved Kaching Bundles app block from a prior republish, or copied from
+ * the default product.json on first publish), they're carried through so
+ * the merchant doesn't have to re-add the app block on every republish.
  */
-export function buildProductTemplateJson(sectionType: string): string {
+export function buildProductTemplateJson(
+  sectionType: string,
+  preserveBlocks?: { blocks?: Record<string, any>; block_order?: string[] },
+): string {
+  const main: Record<string, any> = {
+    type: sectionType,
+    settings: {},
+  };
+  if (preserveBlocks?.blocks && Object.keys(preserveBlocks.blocks).length > 0) {
+    main.blocks = preserveBlocks.blocks;
+    if (preserveBlocks.block_order?.length) {
+      main.block_order = preserveBlocks.block_order;
+    } else {
+      main.block_order = Object.keys(preserveBlocks.blocks);
+    }
+  }
   return JSON.stringify(
     {
-      sections: {
-        main: {
-          type: sectionType,
-          settings: {},
-        },
-      },
+      sections: { main },
       order: ['main'],
     },
     null,
     2,
   );
+}
+
+/**
+ * Pull existing **app blocks** off a previously-saved product template
+ * JSON so subsequent republishes don't wipe the merchant's app blocks
+ * (e.g. Kaching Bundles). Returns null when the template doesn't exist
+ * yet OR when its `sections.main.blocks` has no app-block entries.
+ *
+ * We filter to @app-type blocks only because the Riverz section schema
+ * declares `blocks: [{ type: '@app' }]` — copying through native blocks
+ * (text/image/etc.) from the merchant's stock product template would
+ * make Shopify silently drop them on render and would also pollute
+ * block_order with keys whose blocks the section doesn't accept.
+ *
+ * App block types are saved as `shopify://apps/<app>/blocks/<block>/<id>`.
+ */
+export function extractMainBlocks(
+  rawTemplateJson: string | null | undefined,
+): { blocks: Record<string, any>; block_order?: string[] } | null {
+  if (!rawTemplateJson) return null;
+  let parsed: any;
+  try {
+    parsed = JSON.parse(rawTemplateJson);
+  } catch {
+    return null;
+  }
+  const main = parsed?.sections?.main;
+  if (!main || typeof main !== 'object') return null;
+  const allBlocks = main.blocks;
+  if (!allBlocks || typeof allBlocks !== 'object' || Array.isArray(allBlocks)) return null;
+  const isAppBlock = (b: any) =>
+    b && typeof b.type === 'string' && /^shopify:\/\/apps\//.test(b.type);
+  const filtered: Record<string, any> = {};
+  for (const [k, v] of Object.entries(allBlocks)) {
+    if (isAppBlock(v)) filtered[k] = v;
+  }
+  const keys = Object.keys(filtered);
+  if (keys.length === 0) return null;
+  const order = Array.isArray(main.block_order)
+    ? (main.block_order as string[]).filter((k) => k in filtered)
+    : keys;
+  return { blocks: filtered, block_order: order.length ? order : keys };
 }
 
 function themeAssetUrl(client: ShopifyAdminClient, themeId: number): string {

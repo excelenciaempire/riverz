@@ -7,8 +7,10 @@ import { uploadImageToShopify } from '@/lib/shopify/files';
 import {
   getMainTheme,
   upsertThemeAsset,
+  getThemeAssetValue,
   buildSectionLiquid,
   buildProductTemplateJson,
+  extractMainBlocks,
 } from '@/lib/shopify/themes';
 
 export const runtime = 'nodejs';
@@ -167,7 +169,35 @@ export async function POST(req: Request) {
     sectionTag,
     shopifyHandle: payload.shopify_handle,
   });
-  const templateJson = buildProductTemplateJson(sectionFileName);
+
+  // Preserve any merchant-added app blocks (Kaching Bundles, upsell apps,
+  // etc.) across republishes. Strategy:
+  //   1) If the riverz template already exists, copy its blocks/block_order.
+  //   2) Otherwise (first publish), seed from the merchant's default
+  //      `templates/product.json` so the Kaching Bundles app block they
+  //      already added to the regular product page carries over without
+  //      manual reconfiguration.
+  // Failures here are non-fatal — we log and ship a blockless template,
+  // which is the existing behaviour.
+  let preservedBlocks: { blocks?: Record<string, any>; block_order?: string[] } | undefined;
+  try {
+    const existing = await getThemeAssetValue(client, theme.id, templateKey);
+    const fromExisting = extractMainBlocks(existing);
+    if (fromExisting) {
+      preservedBlocks = fromExisting;
+    } else {
+      const defaultTemplate = await getThemeAssetValue(
+        client,
+        theme.id,
+        'templates/product.json',
+      );
+      const fromDefault = extractMainBlocks(defaultTemplate);
+      if (fromDefault) preservedBlocks = fromDefault;
+    }
+  } catch (e: any) {
+    console.warn('[publish-theme] block preservation skipped:', e?.message || e);
+  }
+  const templateJson = buildProductTemplateJson(sectionFileName, preservedBlocks);
 
   // 4) Upsert both assets. Section first so the template (which
   //    references it by name) never points to a missing section.
@@ -286,6 +316,17 @@ export async function POST(req: Request) {
   // Shopify but hadn't linked it inside Riverz Settings. New copy
   // makes the success explicit and gives the same Admin → assign
   // template instructions either way.
+  // Did we end up shipping any preserved app blocks? If yes, they survive
+  // republishes automatically. If no, the merchant has to add Kaching
+  // Bundles (or any other app block) once via the Shopify theme editor —
+  // after that, our preserve-on-republish logic keeps it forever.
+  const preservedBlockCount = preservedBlocks?.blocks
+    ? Object.keys(preservedBlocks.blocks).length
+    : 0;
+  const kachingHint = preservedBlockCount > 0
+    ? `\n\n✓ Bloques de apps preservados (${preservedBlockCount}) — Kaching Bundles y similares siguen activos en la sección.`
+    : '\n\n⚠ Si querés que aparezca el selector de packs de Kaching Bundles, abrí Shopify Admin → Online Store → Editor de tema → tu producto → en la sección "Riverz · ' + sectionTag + '" hacé "Add block" y elegí Kaching Bundles. La próxima vez que republiques, Riverz lo conserva solo.';
+
   return NextResponse.json({
     ok: true,
     template: {
@@ -298,11 +339,12 @@ export async function POST(req: Request) {
     image_map: imageMap,
     assigned_to_product: assignedToProduct,
     assign_error: assignError,
-    next_steps: assignedToProduct
+    preserved_block_count: preservedBlockCount,
+    next_steps: (assignedToProduct
       ? '✓ Listo — tu producto "' + handle + '" ya usa esta plantilla.\n\nAbrí ' + publicUrl + ' para ver la landing en vivo.'
       : handle
         ? '✓ Theme template publicado.\n\nNo pude asignarlo automáticamente al producto "' + handle + '"' + (assignError ? ' (' + assignError + ')' : '') + '.\n\nAsignación manual:\n1. Shopify Admin → Productos → "' + handle + '".\n2. En "Online store" elegí Theme template = "' + templateName + '".\n\nMientras tanto, preview:\n' + previewUrl
-        : '✓ Theme template publicado en tu theme.\n\nPara que un producto lo use:\n1. Cargá el handle del producto en Riverz → Ajustes → "Producto Shopify" y republicá (Riverz lo asigna solo).\n2. O hacelo manualmente en Shopify Admin → Productos → tu producto → "Online store" → Theme template = "' + templateName + '".\n\nPreview sin asignar:\n' + previewUrl,
+        : '✓ Theme template publicado en tu theme.\n\nPara que un producto lo use:\n1. Cargá el handle del producto en Riverz → Ajustes → "Producto Shopify" y republicá (Riverz lo asigna solo).\n2. O hacelo manualmente en Shopify Admin → Productos → tu producto → "Online store" → Theme template = "' + templateName + '".\n\nPreview sin asignar:\n' + previewUrl) + kachingHint,
   });
 }
 
