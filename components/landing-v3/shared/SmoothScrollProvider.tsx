@@ -5,12 +5,12 @@ import Lenis from 'lenis';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-}
-
 export function SmoothScrollProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
+    // Plugin registration is idempotent — safe to call here on every mount.
+    // Module-scope registration would put us in TDZ territory under SWC mangle.
+    gsap.registerPlugin(ScrollTrigger);
+
     const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 

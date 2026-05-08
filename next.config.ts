@@ -88,6 +88,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // three / R3F / drei ship as ESM with module-scope side effects that the
+  // SWC minifier can reorder into a TDZ in production. Telling Next.js to
+  // transpile these packages with the same SWC settings as our own code
+  // prevents the "Cannot access 'X' before initialization" runtime crash.
+  transpilePackages: ['three', '@react-three/fiber'],
   typescript: {
     ignoreBuildErrors: true,
   },

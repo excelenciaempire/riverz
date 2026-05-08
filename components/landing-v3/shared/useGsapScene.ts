@@ -4,10 +4,6 @@ import { useEffect, useRef, type RefObject } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-}
-
 export type SceneBuilder = (
   ctx: gsap.Context,
   helpers: {
@@ -37,6 +33,10 @@ export function useGsapScene(
     const stageEl = stageRef.current;
     if (!sceneEl || !stageEl || builtRef.current) return;
     builtRef.current = true;
+
+    // Register the plugin lazily — putting registerPlugin at module scope
+    // can produce a TDZ in some minified production bundles.
+    gsap.registerPlugin(ScrollTrigger);
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
