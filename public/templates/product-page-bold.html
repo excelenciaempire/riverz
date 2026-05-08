@@ -502,53 +502,11 @@ ul{margin:0;padding:0;list-style:none}
 
         <a href="#" class="supp-link" data-v-text="supp-link">Hechos del suplemento</a>
 
-        <div class="bundles-label" data-v-text="bundles-label">Elegí tu pack:</div>
-        <div class="bundles" id="bundles">
-
-          <label class="bundle">
-            <span class="bundle-radio" aria-hidden="true"></span>
-            <span class="bundle-img" data-v-img="bundle-1-img"><img src="https://placehold.co/120x120/0a0a0a/e8b923?text=1" alt=""></span>
-            <span class="bundle-text">
-              <span class="bundle-name" data-v-text="bundle-1-name">Comprar 1</span>
-              <span class="bundle-sub" data-v-text="bundle-1-sub">1 Pack</span>
-            </span>
-            <span class="bundle-prices">
-              <span class="bundle-price" data-v-text="bundle-1-price">$39.00</span>
-              <span class="bundle-compare" data-v-text="bundle-1-compare">$98.00</span>
-            </span>
-          </label>
-
-          <label class="bundle is-active">
-            <span class="bundle-ribbon" data-v-text="bundle-2-ribbon">Más popular</span>
-            <span class="bundle-radio" aria-hidden="true"></span>
-            <span class="bundle-img" data-v-img="bundle-2-img"><img src="https://placehold.co/120x120/0a0a0a/e8b923?text=3" alt=""></span>
-            <span class="bundle-text">
-              <span class="bundle-name" data-v-text="bundle-2-name">Comprar 2 Llevá 1 GRATIS</span>
-              <span class="bundle-sub" data-v-text="bundle-2-sub">3 Packs</span>
-            </span>
-            <span class="bundle-prices">
-              <span class="bundle-price" data-v-text="bundle-2-price">$78.00</span>
-              <span class="bundle-compare" data-v-text="bundle-2-compare">$196.00</span>
-            </span>
-          </label>
-
-          <label class="bundle">
-            <span class="bundle-ribbon gold" data-v-text="bundle-3-ribbon">Mejor precio</span>
-            <span class="bundle-radio" aria-hidden="true"></span>
-            <span class="bundle-img" data-v-img="bundle-3-img"><img src="https://placehold.co/120x120/0a0a0a/e8b923?text=5" alt=""></span>
-            <span class="bundle-text">
-              <span class="bundle-name" data-v-text="bundle-3-name">Comprar 3 Llevá 2 GRATIS</span>
-              <span class="bundle-sub" data-v-text="bundle-3-sub">5 Packs</span>
-            </span>
-            <span class="bundle-prices">
-              <span class="bundle-price" data-v-text="bundle-3-price">$117.00</span>
-              <span class="bundle-compare" data-v-text="bundle-3-compare">$294.00</span>
-            </span>
-          </label>
-
-        </div>
-
-        <a href="#" class="cta-btn" data-v-text="cta-text">Agregar al carrito — $78.00</a>
+        <!-- Kaching Bundles slot — the offer chooser + add-to-cart button live
+             inside the Kaching Bundles app block on the live product page. We
+             leave an empty anchor here so the announcement-bar #bundles link
+             still lands in the right column on the storefront. -->
+        <div id="bundles" class="riverz-kaching-slot" data-rz-kaching-slot></div>
 
         <div class="trust-row">
           <span data-v-text="trust-1">Reabastecimiento cada 30 días</span>

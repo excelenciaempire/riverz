@@ -365,9 +365,12 @@ function sanitizeSectionTag(projectId: string): string {
 /**
  * Theme-context CSS reset. Way smaller than the Page-publish reset because
  * we ARE the product template — no need to hide the theme's product info,
- * it isn't rendered. Header/footer stay (which is correct UX). Just make
- * sure our section spans full width inside whatever wrapper the theme
- * uses for sections.
+ * it isn't rendered. Just make sure our section spans full width inside
+ * whatever wrapper the theme uses for sections AND hide the Riverz
+ * template's own announcement bar / header — those duplicate the
+ * Shopify theme's announcement bar + nav, which already render above
+ * us on every product page (especially noticeable on mobile, where
+ * stacking two headers leaves the hero pushed below the fold).
  */
 function buildThemeReset(): string {
   return `
@@ -381,6 +384,19 @@ function buildThemeReset(): string {
 .shopify-section .page-width:has([id^="riverz-landing-"]),
 .shopify-section .container:has([id^="riverz-landing-"]) {
   max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important;
+}
+/* Hide Riverz template's redundant chrome — the storefront theme provides
+   its own announcement bar + nav header, so rendering ours on top makes
+   the hero start below the fold on mobile. */
+[id^="riverz-landing-"] .pp-announce,
+[id^="riverz-landing-"] header.pp-header,
+[id^="riverz-landing-"] .pp-header { display: none !important; }
+/* Tighten the hero spacing once the redundant header is gone — the
+   .pp-hero default top padding compensated for the announcement bar. */
+[id^="riverz-landing-"] .pp-hero { padding-top: 0 !important; }
+@media (max-width: 768px) {
+  [id^="riverz-landing-"] .pp-hero { padding: 0 !important; gap: 18px !important; }
+  [id^="riverz-landing-"] .pp { padding-left: 14px !important; padding-right: 14px !important; }
 }
 `.trim();
 }

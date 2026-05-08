@@ -304,29 +304,16 @@ ul{margin:0;padding:0;list-style:none}
           <li class="bullet" data-v-text="bullet-3">Tercer beneficio: prueba o certificación que da confianza</li>
         </ul>
 
-        <div class="opts">
-          <span class="opts-label" data-v-text="opt-label">Elegí tu tratamiento</span>
-          <div class="opts-row">
-            <button class="opt-btn is-active" type="button" data-v-text="opt-1">1 mes</button>
-            <button class="opt-btn" type="button" data-v-text="opt-2">3 meses</button>
-            <button class="opt-btn" type="button" data-v-text="opt-3">6 meses</button>
-          </div>
-        </div>
-
         <div class="delivery-row">
           <span data-v-text="delivery-prefix">Recibilo en tu puerta antes del</span>
           <span class="delivery-pill" data-v-text="delivery-date">martes 5 de mayo</span>
           <span data-v-text="delivery-suffix">con Envío Express</span>
         </div>
 
-        <div class="qty-row">
-          <div class="qty">
-            <button type="button" aria-label="Quitar">−</button>
-            <input type="text" value="1" aria-label="Cantidad">
-            <button type="button" aria-label="Sumar">+</button>
-          </div>
-          <a href="#" class="cta-btn" data-v-text="cta-text">Comprar ahora</a>
-        </div>
+        <!-- Kaching Bundles slot — the variant chooser, qty selector and
+             add-to-cart button live inside the Kaching Bundles app block on
+             the live product page. -->
+        <div class="riverz-kaching-slot" data-rz-kaching-slot></div>
 
         <div class="guarantee-box">
           <span class="guarantee-icon" aria-hidden="true"></span>

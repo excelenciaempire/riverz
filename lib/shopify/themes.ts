@@ -118,35 +118,78 @@ export function buildSectionLiquid(opts: {
   const handleAttr = opts.shopifyHandle
     ? ` data-shopify-handle="${opts.shopifyHandle.replace(/[^a-z0-9-]/gi, '')}"`
     : '';
-  // Schema is intentionally minimal — no editor-visible blocks. The
-  // template references this section by name; the merchant edits the
-  // landing exclusively through Riverz, never via the theme editor.
-  // Disabling presets keeps it out of "Add section" pickers so it can't
-  // be dropped into other unrelated templates by accident.
+  // Schema allows `@app` blocks ONLY — the merchant edits all Riverz
+  // content through the Riverz editor (never through Shopify's theme
+  // editor) but they DO need a way to drop Shopify app blocks like
+  // Kaching Bundles into the page so the offer chooser + add-to-cart
+  // button render on the live product page. The Riverz template itself
+  // ships a `[data-rz-kaching-slot]` container that the merchant maps
+  // to the Kaching Bundles app block from the theme editor.
+  // No presets — keeps the section out of "Add section" pickers so it
+  // can't be dropped into unrelated templates by accident.
   const schema = JSON.stringify(
     {
       name: `Riverz · ${opts.sectionTag}`,
       tag: 'section',
       class: 'riverz-landing-section',
-      // Intentionally NO presets — section is template-only, not a
-      // user-pickable block.
       settings: [],
+      blocks: [{ type: '@app' }],
     },
     null,
     2,
   );
+  // The bodyHtml passed in already contains its own
+  // <div id="riverz-landing-..."> wrapper + the page CSS + the inline
+  // <script> tags built by the editor (sticky/reveal/carousel/shopify
+  // wiring). Earlier versions wrapped it AGAIN here, which produced
+  // duplicate ids on the page (invalid HTML) and meant the theme reset
+  // CSS targeted the outer wrapper while the page styles targeted the
+  // inner one — a few rules misfired on Horizon as a result.
+  // The wrapId / handleAttr fallback below only fires for callers
+  // that pass a bodyHtml WITHOUT their own wrapper; current callers
+  // always include one.
+  const alreadyWrapped = /id="riverz-landing-/i.test(opts.bodyHtml);
+  const inner = alreadyWrapped
+    ? opts.bodyHtml
+    : `<div id="${wrapId}"${handleAttr}>${opts.bodyHtml}</div>`;
   // Liquid comments use {% comment %} ... {% endcomment %}. The schema
   // sits at the bottom in a {% schema %} block per OS 2.0 convention.
+  // Render any merchant-added app blocks (e.g. Kaching Bundles) into the
+  // [data-rz-kaching-slot] placeholder if it exists, otherwise just append
+  // them at the end of the section. The MutationObserver-friendly placement
+  // means Kaching Bundles' web component lands inside the buy-box column
+  // alongside the Riverz product info instead of being orphaned at the
+  // bottom of the page.
+  const appBlocksLiquid = `{% if section.blocks.size > 0 %}
+<div data-rz-app-blocks style="display:contents">
+  {% for block in section.blocks %}
+    {% if block.type == '@app' %}{% render block %}{% endif %}
+  {% endfor %}
+</div>
+<script>
+  (function(){
+    var src=document.querySelector('[data-rz-app-blocks]');
+    var slot=document.querySelector('[data-rz-kaching-slot]');
+    if(!src||!slot)return;
+    while(src.firstChild)slot.appendChild(src.firstChild);
+    src.parentNode&&src.parentNode.removeChild(src);
+  })();
+</script>
+{% endif %}`;
   return `{% comment %}
   Riverz Landing Lab — auto-generated section.
   DO NOT EDIT MANUALLY: changes are overwritten on every "Publicar en Shopify".
   Edit through the Riverz editor instead.
+  Use the Shopify theme editor to drop app blocks (Kaching Bundles, etc.)
+  into this section — they render inside [data-rz-kaching-slot].
 {% endcomment %}
 
 ${opts.fontsLink}
 <style>${opts.cssBlock}</style>
 
-<div id="${wrapId}"${handleAttr}>${opts.bodyHtml}</div>
+${inner}
+
+${appBlocksLiquid}
 
 ${opts.inlineScripts.map((s) => `<script>${s}</script>`).join('\n')}
 

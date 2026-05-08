@@ -1909,7 +1909,15 @@ var RIVERZ_SIZE_CSS =
      publish time via the [data-rz-published] flag the inline script
      stamps when it takes over. */
   '.rz-sticky-cta::before{content:"📌 Sticky · aparece al "attr(data-rz-threshold)"%";position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:#f7ff9e;color:#0a0a0a;font-size:10px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:4px;white-space:nowrap;pointer-events:none}\n' +
-  '.rz-sticky-cta[data-rz-published]::before{display:none}\n';
+  '.rz-sticky-cta[data-rz-published]::before{display:none}\n' +
+  /* Kaching Bundles slot — the offer chooser + add-to-cart button live in
+     Kaching Bundles on the live product page. Editor-only placeholder
+     scoped to #page-wrap.edit-mode so the dashed box + hint text never
+     ship to the storefront (clone.classList.remove('edit-mode') strips it
+     at publish time, leaving an invisible empty container). */
+  '#page-wrap.edit-mode .riverz-kaching-slot{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;min-height:120px;padding:24px;border:1.5px dashed rgba(247,255,158,.55);border-radius:10px;background:rgba(247,255,158,.06);text-align:center;margin:14px 0}\n' +
+  '#page-wrap.edit-mode .riverz-kaching-slot::before{content:"🛒 Kaching Bundles";font-family:Instrument Sans,system-ui,sans-serif;font-size:13px;font-weight:800;letter-spacing:.04em;color:#f7ff9e;text-transform:uppercase}\n' +
+  '#page-wrap.edit-mode .riverz-kaching-slot::after{content:"En la página real del producto, esta área la rellena la app Kaching Bundles (selector de packs + Agregar al carrito).";font-family:Instrument Sans,system-ui,sans-serif;font-size:12px;color:#9aa3c0;max-width:360px;line-height:1.4}\n';
 
 // Load JSON data from script tags (avoids JS string escaping issues)
 var DEFAULT_TEXTS = JSON.parse(document.getElementById('data-default').textContent);
@@ -4292,8 +4300,21 @@ function _insRenderStickySection(stEl){
   if (isNaN(thr)) thr = 70;
   var range = document.getElementById('ins-rzs-thresh'); if (range) range.value = String(thr);
   var lbl = document.getElementById('ins-rzs-thresh-val'); if (lbl) lbl.textContent = String(thr);
-  var url = stEl.getAttribute('data-rz-url') || (stEl.querySelector('.rz-sticky-btn') ? stEl.querySelector('.rz-sticky-btn').getAttribute('href') : '') || '';
-  var inp = document.getElementById('ins-rzs-url'); if (inp) inp.value = url;
+  var raw = stEl.getAttribute('data-rz-url') || '';
+  var hrefAttr = stEl.querySelector('.rz-sticky-btn') ? (stEl.querySelector('.rz-sticky-btn').getAttribute('href') || '') : '';
+  // Show the explicit override only — '#' is treated as "no override yet" so
+  // the input renders empty and the placeholder hints at the CTA URL fallback.
+  var url = raw.trim();
+  if (!url || url === '#') {
+    url = (hrefAttr && hrefAttr !== '#') ? hrefAttr : '';
+  }
+  var inp = document.getElementById('ins-rzs-url');
+  if (inp) {
+    inp.value = url;
+    var act = (typeof getActive === 'function') ? getActive() : null;
+    var fallback = (act && act.ctaUrl) ? act.ctaUrl : 'https://tu-tienda.com/products/...';
+    inp.setAttribute('placeholder', url ? fallback : ('Por defecto: ' + fallback));
+  }
 }
 
 function rzCarouselToggleNav(){
@@ -5214,7 +5235,18 @@ function applyTexts(texts){
     if(texts&&texts[k]!==undefined) el.innerHTML=texts[k];
   });
 }
-function applyCTA(url){if(!url)return;document.querySelectorAll('#page-wrap a.cta-btn,#page-wrap a.sticky-btn').forEach(function(a){a.href=url;});}
+function applyCTA(url){
+  if(!url)return;
+  document.querySelectorAll('#page-wrap a.cta-btn,#page-wrap a.sticky-btn').forEach(function(a){a.href=url;});
+  // New rz-sticky-cta blocks inherit the global CTA URL when no per-block
+  // data-rz-url override has been set. The per-block override (set via the
+  // inspector "Enlace del botón" field) wins.
+  document.querySelectorAll('#page-wrap .rz-sticky-cta').forEach(function(wrap){
+    var ov=(wrap.getAttribute('data-rz-url')||'').trim();
+    if(ov && ov!=='#') return;
+    var btn=wrap.querySelector('.rz-sticky-btn'); if(btn) btn.setAttribute('href',url);
+  });
+}
 
 // imgEl resolves a slot key to its <img> element. The legacy Vitalu layout
 // uses `<img id="img-el-<n>">` so we still try that first for back-compat;
@@ -6765,6 +6797,12 @@ function buildHTML(proj){
   clone.querySelectorAll('[data-v-text],[data-v-img]').forEach(function(el){el.removeAttribute('data-v-text');el.removeAttribute('data-v-img');});
   clone.classList.remove('edit-mode');clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
   var ctaUrl=proj.ctaUrl||'#';clone.querySelectorAll('a.cta-btn,a.sticky-btn').forEach(function(a){a.href=ctaUrl;});
+  // rz-sticky-cta: per-block data-rz-url wins; otherwise fall back to proj.ctaUrl.
+  clone.querySelectorAll('.rz-sticky-cta').forEach(function(wrap){
+    var ov=(wrap.getAttribute('data-rz-url')||'').trim();
+    var url=(ov && ov!=='#') ? ov : ctaUrl;
+    var btn=wrap.querySelector('.rz-sticky-btn'); if(btn) btn.setAttribute('href',url);
+  });
   var allCSS='';document.querySelectorAll('style').forEach(function(s){
     if (s.id === 'riverz-runtime-css') return; // re-appended below
     allCSS+=s.textContent;
@@ -6787,7 +6825,16 @@ function buildHTML(proj){
     ? '<link href="'+GLOBAL_FONT_GFONT_URLS[proj.globalFont]+'" rel="stylesheet">'
     : '';
   var SO='<'+'scri'+'pt>',SC='<'+'/scri'+'pt>';
-  var code='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh=0.22;function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
+  // Reveal-on-scroll + legacy sticky wiring. The legacy #sticky element
+  // doesn't exist on every published page (the migration to the new
+  // rz-sticky-cta block removed it from product-page projects), so the
+  // sticky logic is GUARDED — but the IntersectionObserver always runs
+  // because every template ships .rv reveal classes on its sections.
+  // Earlier versions had `if(!s)return;` at the top, which bailed the
+  // entire script when there was no #sticky → all .rv sections stayed
+  // at opacity:0 forever and the published page rendered as a stack
+  // of blank black bands.
+  var code='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");var g=false,thresh=0.22;function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(s&&!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;if(s)s.classList.remove("show");});var rv=document.querySelectorAll(".rv");if("IntersectionObserver" in window){var io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});}else{rv.forEach(function(el){el.classList.add("on");});}})();';
   var galleryCode = (typeof RIVERZ_GALLERY_CODE === 'string') ? RIVERZ_GALLERY_CODE : '';
   var ingCode = (typeof RIVERZ_ING_CODE === 'string') ? RIVERZ_ING_CODE : '';
   var rzcCode = (typeof RIVERZ_CAROUSEL_CODE === 'string') ? RIVERZ_CAROUSEL_CODE : '';
@@ -6877,6 +6924,12 @@ function buildPublishPayload(proj){
   clone.querySelectorAll('.rv').forEach(function(el){el.classList.remove('on');});
   clone.classList.remove('edit-mode');
   var ctaUrl=proj.ctaUrl||'#';clone.querySelectorAll('a.cta-btn,a.sticky-btn').forEach(function(a){a.href=ctaUrl;});
+  // rz-sticky-cta: per-block data-rz-url wins; otherwise fall back to proj.ctaUrl.
+  clone.querySelectorAll('.rz-sticky-cta').forEach(function(wrap){
+    var ov=(wrap.getAttribute('data-rz-url')||'').trim();
+    var url=(ov && ov!=='#') ? ov : ctaUrl;
+    var btn=wrap.querySelector('.rz-sticky-btn'); if(btn) btn.setAttribute('href',url);
+  });
 
   // Map each [data-v-img] back to the original src in proj.images, then
   // replace the src with a sentinel + record the upload job for the server.
@@ -7015,7 +7068,11 @@ function buildPublishPayload(proj){
   // Settings → Sticky CTA on this project.
   var thresh = (typeof proj.stickyThresh === 'number' ? proj.stickyThresh : 0.22);
   thresh = Math.max(0, Math.min(0.95, thresh));
-  var stickyCode='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");if(!s)return;var g=false,thresh='+thresh+';function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;s.classList.remove("show");});var rv=document.querySelectorAll(".rv"),io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});})();';
+  // Same script as `code` above but with the per-project sticky
+  // threshold substituted in. Same guard fix: never bail on missing
+  // #sticky, otherwise the .rv reveal observer never installs and the
+  // published page renders blank.
+  var stickyCode='(function(){var pa=document.getElementById("page-area")||window;var p=document.getElementById("prog"),s=document.getElementById("sticky"),sc=document.getElementById("sticky-close");var g=false,thresh='+thresh+';function onScroll(){var el=pa===window?document.documentElement:pa;var r=el.scrollTop/(el.scrollHeight-el.clientHeight)||0;if(p)p.style.width=(r*100)+"%";if(s&&!g)s.classList.toggle("show",r>=thresh);}(pa===window?window:pa).addEventListener("scroll",onScroll,{passive:true});if(sc)sc.addEventListener("click",function(){g=true;if(s)s.classList.remove("show");});var rv=document.querySelectorAll(".rv");if("IntersectionObserver" in window){var io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add("on");io.unobserve(x.target);}});},{threshold:.07,rootMargin:"0px 0px -20px 0px"});rv.forEach(function(el){io.observe(el);});}else{rv.forEach(function(el){el.classList.add("on");});}})();';
   // Shopify product wiring — runs on the published page only. When the user
   // sets a product handle in Settings, the wrapper carries data-shopify-handle
   // and this script fetches /products/<handle>.js, populates price/compare-at
