@@ -427,15 +427,26 @@ function buildThemeReset(): string {
 .shopify-section .container:has([id^="riverz-landing-"]) {
   max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important;
 }
-/* Hide Riverz template's redundant chrome — the storefront theme provides
-   its own announcement bar + nav header, so rendering ours on top makes
-   the hero start below the fold on mobile. */
-[id^="riverz-landing-"] .pp-announce,
+/* Hide the Riverz template's nav header — the storefront theme already
+   ships its own nav, so stacking two leaves the hero below the fold on
+   mobile. The .pp-announce banner is KEPT: it's the merchant's editable
+   promo strip ("COMPRÁ HOY Y LLEVATE HASTA 50% OFF AHORA") and overrides
+   the theme's generic announcement when the merchant fills it in. */
 [id^="riverz-landing-"] header.pp-header,
 [id^="riverz-landing-"] .pp-header { display: none !important; }
-/* Tighten the hero spacing once the redundant header is gone — the
+/* Tighten the hero spacing once the redundant nav is gone — the
    .pp-hero default top padding compensated for the announcement bar. */
 [id^="riverz-landing-"] .pp-hero { padding-top: 0 !important; }
+/* The announcement bar (.pp-announce) breaks out of theme container width
+   so it spans edge-to-edge like a real announcement strip should, even
+   when the surrounding section-wrapper clamps to .page-width. */
+[id^="riverz-landing-"] .pp-announce {
+  width: 100vw !important;
+  margin-left: calc(50% - 50vw) !important;
+  margin-right: calc(50% - 50vw) !important;
+  position: relative;
+  z-index: 1;
+}
 @media (max-width: 768px) {
   [id^="riverz-landing-"] .pp-hero { padding: 0 !important; gap: 18px !important; }
   [id^="riverz-landing-"] .pp { padding-left: 14px !important; padding-right: 14px !important; }
