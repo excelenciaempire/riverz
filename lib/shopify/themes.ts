@@ -331,6 +331,18 @@ export function buildSectionLiquid(opts: {
   // conversions to the cart page.
   (function(){
     if (window.__rzBuyWired) return; window.__rzBuyWired = true;
+    // Shopify variant ids are 13+ digit numeric strings. Anything else
+    // (Kaching's internal deal ids like "ZhUk", base36 hashes, GIDs we
+    // forgot to strip) hard-fails /cart/add.js and the cart permalink.
+    function isVariantId(v){ return typeof v === 'string' && /^\d{6,}$/.test(v); }
+    function pickVariantId(/*…attrs*/){
+      for (var i=0;i<arguments.length;i++){
+        var v = arguments[i];
+        if (typeof v === 'number') v = String(v);
+        if (isVariantId(v)) return v;
+      }
+      return null;
+    }
     function getDefaults(){
       var meta=document.querySelector('[data-rz-default-variant]');
       return {
@@ -339,43 +351,69 @@ export function buildSectionLiquid(opts: {
       };
     }
     function readKachingSelection(){
-      // 1) Hidden input the deal block writes to — covers most theme
-      //    integrations Kaching publishes.
-      var input=document.querySelector('input[data-kaching-variant-id], input[data-kaching-selected-variant], [data-rz-kaching-mounted="1"] input[name="id"]');
-      // 2) Radio inside the deal block with checked state — fallback for
-      //    versions that don't expose a hidden input.
-      var checked=document.querySelector('[data-rz-kaching-mounted="1"] input[type="radio"]:checked, .kaching-bundles input[type="radio"]:checked');
-      var src=input || checked;
+      // Kaching's deal block exposes the selected line in a few places
+      // depending on version. We try the highest-fidelity sources first
+      // and validate every candidate as a real Shopify variant id.
+      var checked=document.querySelector('[data-rz-kaching-mounted="1"] input[type="radio"]:checked, [data-rz-kaching-slot] input[type="radio"]:checked, .kaching-bundles input[type="radio"]:checked');
+      var hidden=document.querySelector('[data-rz-kaching-mounted="1"] input[type="hidden"][name="id"], [data-rz-kaching-slot] input[type="hidden"][name="id"]');
+      var src = hidden || checked;
       if(!src) return null;
-      var id=src.value || src.getAttribute('data-variant-id') || src.getAttribute('data-kaching-selected-variant');
-      var qty=parseInt(src.getAttribute('data-kaching-quantity') || src.getAttribute('data-quantity') || '1', 10);
-      var dealId=src.getAttribute('data-kaching-deal-id') || src.getAttribute('data-deal-id') || null;
-      if(!id) return null;
-      return { id:String(id), quantity: isNaN(qty)?1:qty, dealId:dealId };
-    }
-    function buildLines(){
-      var k=readKachingSelection();
-      if (k) {
-        var props={};
-        if (k.dealId) props.__kaching_bundles = JSON.stringify({ id:k.dealId });
-        return { id:k.id, quantity:k.quantity, properties:props };
+      // Walk current node + ancestors for a valid Shopify variant id —
+      // Kaching's checked radio often carries its own deal id in
+      // value/data-id, with the actual variant id sitting on a wrapping
+      // <label> or <li>.
+      var node = src, found=null, qty=null, dealId=null;
+      while (node && node !== document.body) {
+        var cand = pickVariantId(
+          node.getAttribute && node.getAttribute('data-shopify-variant-id'),
+          node.getAttribute && node.getAttribute('data-product-variant-id'),
+          node.getAttribute && node.getAttribute('data-variant-id'),
+          node.getAttribute && node.getAttribute('data-merchandise-id'),
+          node.getAttribute && node.getAttribute('data-kaching-variant-id'),
+          node.value
+        );
+        if (!found && cand) found = cand;
+        if (!qty && node.getAttribute) {
+          var qa = node.getAttribute('data-kaching-quantity') || node.getAttribute('data-quantity');
+          if (qa && /^\d+$/.test(qa)) qty = parseInt(qa, 10);
+        }
+        if (!dealId && node.getAttribute) {
+          dealId = node.getAttribute('data-kaching-deal-id') || node.getAttribute('data-deal-id') || dealId;
+        }
+        if (found && qty && dealId) break;
+        node = node.parentElement;
       }
+      // If the radio's value itself is the deal id (non-numeric), keep
+      // it as the dealId hint for the __kaching_bundles attribute.
+      if (!dealId && src.value && !isVariantId(src.value)) dealId = src.value;
+      if (!found) return null;
+      return { id: found, quantity: qty || 1, dealId: dealId || null };
+    }
+    function buildLine(){
+      var k=readKachingSelection();
       var d=getDefaults();
-      if (!d.id) return null;
-      return { id:d.id, quantity:1 };
+      var id = (k && k.id) || (isVariantId(d.id) ? d.id : null);
+      if (!id) return null;
+      var line = { id: id, quantity: (k && k.quantity) || 1 };
+      if (k && k.dealId) {
+        line.properties = { __kaching_bundles: JSON.stringify({ id: k.dealId }) };
+      }
+      return line;
     }
     async function go(btn){
-      var line=buildLines();
-      if (!line) { console.warn('[Riverz] no variant available for checkout'); return; }
+      var line=buildLine();
+      if (!line) {
+        console.warn('[Riverz] no valid Shopify variant id available; skipping checkout');
+        return;
+      }
       var prevLabel=btn.innerHTML;
       btn.disabled=true;
       btn.innerHTML='Procesando…';
       try {
-        var body={ items: [line] };
         var res=await fetch('/cart/add.js', {
           method:'POST',
           headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ items: [line] }),
         });
         if (!res.ok) {
           var err=await res.json().catch(function(){ return {}; });
@@ -386,13 +424,10 @@ export function buildSectionLiquid(opts: {
         console.error('[Riverz] checkout failed:', e);
         btn.disabled=false;
         btn.innerHTML=prevLabel;
-        // Last-resort fallback: cart permalink — Shopify auto-adds the
-        // variant + qty without our JS.
-        var d=getDefaults();
-        var k=readKachingSelection();
-        var v=(k && k.id) || d.id;
-        var q=(k && k.quantity) || 1;
-        if (v) window.location.href='/cart/' + v + ':' + q + '?return_to=/checkout';
+        // Permalink fallback ONLY when we have a real numeric variant id.
+        if (isVariantId(line.id)) {
+          window.location.href='/cart/' + line.id + ':' + line.quantity + '?return_to=/checkout';
+        }
       }
     }
     document.addEventListener('click', function(e){
