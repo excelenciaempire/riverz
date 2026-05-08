@@ -299,6 +299,39 @@ this hidden form gives Kaching a stable anchor for live price updates. {% endcom
   <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}" data-rz-shadow-id>
   <input type="hidden" name="quantity" value="1" data-rz-shadow-qty>
 </form>
+<script>
+  // Self-heal: if the Liquid render dropped a non-numeric value into
+  // the shadow form (rare — happens when a section is rendered without
+  // full product context, e.g. the theme editor's draft preview), pull
+  // the canonical variant id from /products/<handle>.js and patch the
+  // form so Kaching's auto-detector + our handler both see a valid id.
+  (function(){
+    var idIn = document.querySelector('#riverz-shadow-form input[name="id"]');
+    if (!idIn) return;
+    var v = idIn.value || '';
+    if (/^\\d{6,}$/.test(v)) return; // already valid
+    var meta = document.querySelector('[data-rz-product-handle]');
+    var handle = meta ? meta.getAttribute('data-rz-product-handle') : null;
+    if (!handle) {
+      var m = location.pathname.match(/\\/products\\/([^/?#]+)/);
+      handle = m ? m[1] : null;
+    }
+    if (!handle) return;
+    fetch('/products/' + handle + '.js', { headers: { 'Accept': 'application/json' } })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(p){
+        if (!p || !p.variants) return;
+        for (var i=0; i<p.variants.length; i++){
+          if (p.variants[i].available !== false && /^\\d{6,}$/.test(String(p.variants[i].id))) {
+            idIn.value = String(p.variants[i].id);
+            var span = document.querySelector('[data-rz-default-variant]');
+            if (span) span.setAttribute('data-rz-default-variant', String(p.variants[i].id));
+            return;
+          }
+        }
+      });
+  })();
+</script>
 {% if rz_show_auto_form %}
 <div data-rz-buy-form class="riverz-buy-form" style="display:contents">
   <button type="button"
@@ -361,10 +394,41 @@ this hidden form gives Kaching a stable anchor for live price updates. {% endcom
     }
     function getDefaults(){
       var meta=document.querySelector('[data-rz-default-variant]');
-      return {
-        id: meta ? meta.getAttribute('data-rz-default-variant') : null,
-        handle: meta ? meta.getAttribute('data-rz-product-handle') : null,
-      };
+      var id = meta ? pickVariantId(meta.getAttribute('data-rz-default-variant')) : null;
+      var handle = meta ? meta.getAttribute('data-rz-product-handle') : null;
+      // Fallback chain when our meta span didn't make it into the DOM
+      // OR its value isn't a real variant id (Liquid context glitch on
+      // some themes). We try Shopify's own globals first, then any
+      // theme-rendered product form's id input.
+      if (!id && typeof window !== 'undefined') {
+        try {
+          if (window.ShopifyAnalytics && window.ShopifyAnalytics.meta &&
+              window.ShopifyAnalytics.meta.product &&
+              window.ShopifyAnalytics.meta.product.variants &&
+              window.ShopifyAnalytics.meta.product.variants[0]) {
+            id = pickVariantId(window.ShopifyAnalytics.meta.product.variants[0].id);
+          }
+        } catch(e){}
+      }
+      if (!id) {
+        try {
+          if (window.meta && window.meta.product && window.meta.product.variants &&
+              window.meta.product.variants[0]) {
+            id = pickVariantId(window.meta.product.variants[0].id);
+          }
+        } catch(e){}
+      }
+      if (!id) {
+        // Any [name="id"] input on the page that holds a numeric — the
+        // theme's own legacy product form (still rendered by some
+        // sections), Kaching's hidden form, etc.
+        var inputs = document.querySelectorAll('input[name="id"]');
+        for (var i=0; i<inputs.length; i++){
+          var cand = pickVariantId(inputs[i].value);
+          if (cand) { id = cand; break; }
+        }
+      }
+      return { id: id, handle: handle };
     }
     // Highest fidelity source: the shadow product form. If Kaching has
     // wired up to it (auto-detection via name="add"/form[action]) the
@@ -377,6 +441,35 @@ this hidden form gives Kaching a stable anchor for live price updates. {% endcom
       if(!id) return null;
       var q=parseInt((qtyInput && qtyInput.value) || '1', 10);
       return { id: id, quantity: isNaN(q)?1:q };
+    }
+    // Fetch /products/<handle>.js to pull a real variant id when
+    // every static source above fails. Cached so we only hit it once
+    // per page-load. Returns a Promise<string|null>.
+    var _productFetch = null;
+    function fetchProductDefault(){
+      if (_productFetch) return _productFetch;
+      var h = (document.querySelector('[data-rz-product-handle]') || {}).getAttribute
+        ? document.querySelector('[data-rz-product-handle]').getAttribute('data-rz-product-handle')
+        : null;
+      if (!h) {
+        var m = location.pathname.match(/\\/products\\/([^/?#]+)/);
+        h = m ? m[1] : null;
+      }
+      if (!h) { _productFetch = Promise.resolve(null); return _productFetch; }
+      _productFetch = fetch('/products/' + h + '.js', { headers: { 'Accept': 'application/json' } })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(p){
+          if (!p || !p.variants) return null;
+          for (var i=0; i<p.variants.length; i++){
+            if (p.variants[i].available !== false) {
+              var id = pickVariantId(p.variants[i].id);
+              if (id) return id;
+            }
+          }
+          return null;
+        })
+        .catch(function(){ return null; });
+      return _productFetch;
     }
     function readKachingSelection(){
       var checked=document.querySelector('[data-rz-kaching-mounted="1"] input[type="radio"]:checked, [data-rz-kaching-slot] input[type="radio"]:checked, .kaching-bundles input[type="radio"]:checked');
@@ -409,21 +502,31 @@ this hidden form gives Kaching a stable anchor for live price updates. {% endcom
       if (!found) return null;
       return { id: found, quantity: qty || 1, dealId: dealId || null };
     }
-    function buildLine(){
+    async function buildLine(){
       // Order of preference:
       //   1) Shadow form (Kaching auto-wires here when its detector
       //      finds button[name="add"]) — single source of truth once
       //      Kaching is in control.
       //   2) Manual scrape of the deal block radios (older Kaching
       //      versions / when auto-detection failed).
-      //   3) Product default — keeps the buy buttons functional even
-      //      with zero Kaching integration.
+      //   3) Product default from any sync source (meta, theme form,
+      //      our own data-rz-default-variant span).
+      //   4) /products/<handle>.js fetch — last resort, async.
       var s=readShadowForm();
       var k=readKachingSelection();
       var d=getDefaults();
-      var id = (s && s.id) || (k && k.id) || (isVariantId(d.id) ? d.id : null);
+      var id = (s && s.id) || (k && k.id) || (d.id || null);
       var qty = (s && s.quantity) || (k && k.quantity) || 1;
-      if (!id) return null;
+      if (!id) {
+        try { id = await fetchProductDefault(); } catch(e){}
+      }
+      if (!id) {
+        console.warn('[Riverz] variant lookup failed', {
+          shadowForm: s, kachingSel: k, defaults: d,
+          tip: 'Open DevTools → Console and run: document.querySelectorAll("input[name=\\"id\\"]")'
+        });
+        return null;
+      }
       var line = { id: id, quantity: qty };
       if (k && k.dealId) {
         line.properties = { __kaching_bundles: JSON.stringify({ id: k.dealId }) };
@@ -431,7 +534,7 @@ this hidden form gives Kaching a stable anchor for live price updates. {% endcom
       return line;
     }
     async function go(btn, mode){
-      var line=buildLine();
+      var line=await buildLine();
       if (!line) {
         console.warn('[Riverz] no valid Shopify variant id available; skipping ' + mode);
         return;
