@@ -1022,6 +1022,9 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
           <span id="ins-rzc-count" class="in-btn" style="flex:0 0 auto;cursor:default;background:transparent;color:#9aa3b8">3 slides</span>
           <button class="in-btn flex" type="button" onclick="rzCarouselAddSlide()" title="Agregar un nuevo slide">+ Slide</button>
         </div>
+        <div class="in-row" style="gap:6px;margin-top:6px">
+          <button class="in-btn flex" type="button" onclick="rzCarouselDuplicateSlide()" title="Duplicar el slide actualmente visible">⎘ Duplicar slide</button>
+        </div>
         <div class="in-label" style="margin-top:10px">Visibles en desktop</div>
         <div class="in-row in-seg" id="ins-rzc-cards-seg">
           <button type="button" class="seg-b" data-val="1">1</button>
@@ -1042,6 +1045,22 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
           <button class="in-btn flex" type="button" id="ins-rzc-nav" onclick="rzCarouselToggleNav()" title="Mostrar / ocultar las flechas de navegación">Flechas: On</button>
         </div>
         <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.4">El track siempre hace scroll horizontal con snap; el número visible controla el ancho de cada slide.</p>
+      </div>
+      <!-- Slide-level controls — surfaced when the user clicks a card
+           inside a carousel. Lets them reorder/dup/delete a SPECIFIC
+           slide without scrolling through the carousel-level Add/Remove
+           which only acts on the last slide. -->
+      <div class="in-section" id="ins-slide-section" style="display:none">
+        <div class="in-label">Slide <span id="ins-slide-pos">1</span> de <span id="ins-slide-total">1</span></div>
+        <div class="in-row" style="gap:6px">
+          <button class="in-btn flex" type="button" onclick="rzSlideMove(-1)" title="Mover este slide a la izquierda">← Atrás</button>
+          <button class="in-btn flex" type="button" onclick="rzSlideMove(1)" title="Mover este slide a la derecha">Adelante →</button>
+        </div>
+        <div class="in-row" style="gap:6px;margin-top:6px">
+          <button class="in-btn flex" type="button" onclick="rzSlideDuplicate()" title="Crear una copia de este slide a continuación">⎘ Duplicar</button>
+          <button class="in-btn flex" type="button" onclick="rzSlideDelete()" title="Eliminar este slide del carrusel" style="color:#ff7675;border-color:rgba(255,118,117,.35)">🗑 Eliminar</button>
+        </div>
+        <p class="in-help" style="font-size:10px;color:#5B6490;margin:8px 0 0;line-height:1.4">También podés arrastrar el slide para reordenarlo dentro del carrusel.</p>
       </div>
       <!-- Background colour — visible for every selection. Writes
            background-color (and inherits-friendly color overrides)
@@ -1986,8 +2005,12 @@ var RIVERZ_SIZE_CSS =
   '.rz-carousel-track::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22);border-radius:3px}\n' +
   /* Default: 1 card visible on mobile (with peek). data-rz-cards-mobile
      overrides when set explicitly. */
-  '.rz-carousel-card{flex:0 0 84%;scroll-snap-align:start;background:rgba(0,0,0,.04);border-radius:12px;padding:22px;min-width:0}\n' +
-  '.rz-carousel[data-rz-cards-mobile="1"] .rz-carousel-card{flex:0 0 84%}\n' +
+  // Default mobile card width — 88% leaves a slim peek of the next card
+  // so users discover the swipe affordance without the neighbour eating
+  // a third of the visible area (the user reported the previous 84%
+  // looked cropped/awkward on a 400px-wide phone).
+  '.rz-carousel-card{flex:0 0 88%;scroll-snap-align:start;background:rgba(0,0,0,.04);border-radius:12px;padding:22px;min-width:0;box-sizing:border-box}\n' +
+  '.rz-carousel[data-rz-cards-mobile="1"] .rz-carousel-card{flex:0 0 88%}\n' +
   '.rz-carousel[data-rz-cards-mobile="2"] .rz-carousel-card{flex:0 0 calc(50% - 8px)}\n' +
   '.rz-carousel[data-rz-cards-mobile="3"] .rz-carousel-card{flex:0 0 calc(33.333% - 11px)}\n' +
   '.rz-carousel[data-rz-cards-mobile="4"] .rz-carousel-card{flex:0 0 calc(25% - 12px)}\n' +
@@ -3494,6 +3517,14 @@ function insRefresh(){
   var carSec = document.getElementById('ins-carousel-section');
   if (carSec) carSec.style.display = carEl ? '' : 'none';
   if (carEl) _insRenderCarouselSection(carEl);
+  // Slide-level controls — only when the selection is inside a
+  // .rz-carousel-card so individual cards can be moved / duplicated /
+  // deleted without dragging.
+  var slideEl = (_insEl.matches && _insEl.matches('.rz-carousel-card')) ? _insEl
+              : (_insEl.closest ? _insEl.closest('.rz-carousel-card') : null);
+  var slideSec = document.getElementById('ins-slide-section');
+  if (slideSec) slideSec.style.display = slideEl ? '' : 'none';
+  if (slideEl) _insRenderSlideSection(slideEl);
   // Sticky CTA controls — same pattern. Click anywhere on the sticky
   // bar (button label, padding, badge) and the inspector surfaces the
   // threshold + link controls.
@@ -3653,6 +3684,26 @@ function _insRenderCarouselSection(carEl){
   if (navBtn){
     var on = carEl.getAttribute('data-rz-nav') !== 'off';
     navBtn.textContent = 'Flechas: ' + (on ? 'On' : 'Off');
+  }
+}
+function _insRenderSlideSection(slideEl){
+  // "Slide N de M" label + reorder/duplicate/delete buttons. The
+  // disabled state on the move buttons gives the user a visual hint at
+  // edges so they don't keep tapping wondering why nothing happens.
+  var track = slideEl.parentElement;
+  if (!track) return;
+  var siblings = Array.prototype.slice.call(track.querySelectorAll(':scope > .rz-carousel-card'));
+  var idx = siblings.indexOf(slideEl);
+  var pos = document.getElementById('ins-slide-pos');
+  var total = document.getElementById('ins-slide-total');
+  if (pos) pos.textContent = String(idx + 1);
+  if (total) total.textContent = String(siblings.length);
+  var sec = document.getElementById('ins-slide-section');
+  if (sec) {
+    var moves = sec.querySelectorAll('button');
+    if (moves[0]) moves[0].disabled = idx <= 0;
+    if (moves[1]) moves[1].disabled = idx >= siblings.length - 1;
+    if (moves[3]) moves[3].disabled = siblings.length <= 1;
   }
 }
 
@@ -4572,6 +4623,102 @@ function rzCarouselSetCardsMobile(n){
   if (typeof insRefresh === 'function') insRefresh();
 }
 window.rzCarouselSetCardsMobile = rzCarouselSetCardsMobile;
+// Per-slide editing helpers — surfaced in the inspector when the user
+// clicks a card inside a carousel. The carousel-level controls live in
+// rzCarouselAddSlide / rzCarouselRemoveSlide / rzCarouselSet*; these
+// operate on a SPECIFIC slide so the user can reorder, clone, or remove
+// a card without touching the others.
+function _rzCardForSlideOps(){
+  if (!_insEl) return null;
+  return (_insEl.matches && _insEl.matches('.rz-carousel-card')) ? _insEl
+       : (_insEl.closest ? _insEl.closest('.rz-carousel-card') : null);
+}
+function rzSlideMove(dir){
+  var card = _rzCardForSlideOps(); if (!card) return;
+  var track = card.parentElement; if (!track) return;
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  if (dir < 0 && card.previousElementSibling) {
+    track.insertBefore(card, card.previousElementSibling);
+  } else if (dir > 0 && card.nextElementSibling) {
+    track.insertBefore(card.nextElementSibling, card);
+  }
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
+  if (typeof saveAll === 'function') saveAll();
+  if (typeof insRefresh === 'function') insRefresh();
+  // Scroll the card into view so the user sees the move land.
+  try { card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch(_){}
+}
+function rzSlideDuplicate(){
+  var card = _rzCardForSlideOps(); if (!card) return;
+  var clone = card.cloneNode(true);
+  // Re-slug every data-v-text/data-v-img/data-v-video on the clone so the
+  // duplicated content doesn't share storage keys with the original — if
+  // they did, editing one would update both (saveTexts maps slot→string
+  // and the second writes wins).
+  var stamp = Date.now().toString(36).slice(-5);
+  ['data-v-text','data-v-img','data-v-video'].forEach(function(attr){
+    clone.querySelectorAll('['+attr+']').forEach(function(el){
+      var v = el.getAttribute(attr) || '';
+      el.setAttribute(attr, v + '-d' + stamp);
+    });
+  });
+  // Strip per-block ids so the dup gets a fresh sectionId on next pass.
+  clone.querySelectorAll('[data-section-id]').forEach(function(el){ el.removeAttribute('data-section-id'); });
+  clone.removeAttribute('data-section-id');
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  card.parentNode.insertBefore(clone, card.nextSibling);
+  if (typeof rebuildSlotTables === 'function') rebuildSlotTables();
+  if (typeof initEdit === 'function') initEdit();
+  if (typeof makeSectionsDraggable === 'function') makeSectionsDraggable();
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
+  if (typeof saveAll === 'function') saveAll();
+  if (typeof insSelect === 'function') setTimeout(function(){ insSelect(clone); }, 30);
+}
+function rzSlideDelete(){
+  var card = _rzCardForSlideOps(); if (!card) return;
+  var track = card.parentElement; if (!track) return;
+  if (track.children.length <= 1) {
+    if (typeof toast === 'function') toast('No podés eliminar el último slide del carrusel', 1);
+    return;
+  }
+  if (typeof snapshot === 'function' && !isRestoring) snapshot();
+  var sib = card.previousElementSibling || card.nextElementSibling;
+  card.parentNode.removeChild(card);
+  if (typeof rebuildSlotTables === 'function') rebuildSlotTables();
+  if (typeof saveLayoutOrder === 'function') saveLayoutOrder();
+  if (typeof saveAll === 'function') saveAll();
+  if (typeof insSelect === 'function' && sib) setTimeout(function(){ insSelect(sib); }, 30);
+  else if (typeof insClear === 'function') insClear();
+}
+function rzCarouselDuplicateSlide(){
+  // Carousel-level "Duplicar slide" button — clones whichever card is
+  // currently scrolled into view (or the last card if the user hasn't
+  // scrolled yet). Falls back to rzSlideDuplicate when a card is
+  // already selected so the two surfaces stay consistent.
+  if (_insEl && _insEl.matches && _insEl.matches('.rz-carousel-card')) {
+    rzSlideDuplicate();
+    return;
+  }
+  if (!_insEl || _insEl.getAttribute('data-rz-kind') !== 'carousel') return;
+  var track = _insEl.querySelector('.rz-carousel-track'); if (!track) return;
+  var cards = Array.prototype.slice.call(track.querySelectorAll(':scope > .rz-carousel-card'));
+  if (!cards.length) return;
+  // Find the card whose left edge is closest to the track's scrollLeft —
+  // that's the "current" slide on a snap-scrolled track.
+  var sl = track.scrollLeft;
+  var pick = cards[0];
+  var bestDist = Infinity;
+  cards.forEach(function(c){
+    var d = Math.abs(c.offsetLeft - sl);
+    if (d < bestDist){ bestDist = d; pick = c; }
+  });
+  if (typeof insSelect === 'function') insSelect(pick);
+  setTimeout(function(){ rzSlideDuplicate(); }, 0);
+}
+window.rzSlideMove = rzSlideMove;
+window.rzSlideDuplicate = rzSlideDuplicate;
+window.rzSlideDelete = rzSlideDelete;
+window.rzCarouselDuplicateSlide = rzCarouselDuplicateSlide;
 // Sticky CTA setters — bound to the inspector controls when the
 // selection lands on a [data-rz-kind="sticky"]. Each mutation fires
 // snapshot+saveAll so the change persists to proj.html (the attribute

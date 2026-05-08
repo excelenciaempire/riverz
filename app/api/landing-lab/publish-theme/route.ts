@@ -429,6 +429,29 @@ function buildThemeReset(): string {
 [id^="riverz-landing-"] .gallery-thumbs { overscroll-behavior-x: contain !important }
 @media (max-width: 768px) {
   body, html { overflow-x: hidden !important; max-width: 100vw !important; }
+  /* Section + row widths on mobile — without box-sizing the container's
+     inline padding adds to its declared width and pushes content off the
+     right edge (the user reported "INGREDIENTES PO…" cut off + the page
+     drifting sideways). */
+  [id^="riverz-landing-"] section,
+  [id^="riverz-landing-"] [data-rz-kind="section"],
+  [id^="riverz-landing-"] [data-rz-kind="row"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  /* Long titles like "INGREDIENTES POTENTES PARA RENDIMIENTO PICO" must
+     wrap — many templates ship h2 with letter-spacing + uppercase that
+     pushes them past 320px on iPhone SE. */
+  [id^="riverz-landing-"] h1,
+  [id^="riverz-landing-"] h2,
+  [id^="riverz-landing-"] h3,
+  [id^="riverz-landing-"] h4 {
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+    max-width: 100% !important;
+  }
 }
 [id^="riverz-landing-"] .vid-ph video { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
 .shopify-section--main-product .page-width,
