@@ -46,7 +46,10 @@ export function useGsapScene(
     const ctx = gsap.context(() => {
       const mm = gsap.matchMedia();
       const tl = gsap.timeline({
-        defaults: { ease: 'power2.out' },
+        // Linear ease for scrub-tied timelines. With scrub, the timeline's
+        // progress is the scroll position; layering an ease on top of that
+        // produces a non-monotonic motion that reads as "jumpy".
+        defaults: { ease: 'none' },
         scrollTrigger: reducedMotion
           ? undefined
           : {

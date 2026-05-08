@@ -65,7 +65,7 @@ export function MetaAdsSection() {
       id="meta-ads"
       pinDuration={210}
       pinDurationMobile={150}
-      scrub={0.25}
+      scrub={0.5}
       buildTimeline={buildTimeline}
       className="lv3-bg-ink"
     >

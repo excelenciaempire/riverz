@@ -20,29 +20,26 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
     }
 
     const lenis = new Lenis({
-      // Tighter smoothing — keeps the "smoothness" but stops feeling laggy.
-      // With this + scrub: 0.25 on the scenes, animations feel glued to the
-      // scroll position rather than catching up afterwards.
-      duration: 0.6,
+      duration: 0.8,
       easing: (t) => 1 - Math.pow(1 - t, 3),
       smoothWheel: true,
       wheelMultiplier: 1,
       touchMultiplier: 1,
     });
 
+    // Critical for fluidity: drive Lenis from GSAP's ticker so Lenis,
+    // ScrollTrigger and every tween share a single RAF loop. Running
+    // our own requestAnimationFrame in parallel produces frame mismatches
+    // that read as "not smooth" even though no frames are actually dropped.
+    const tick = (time: number) => lenis.raf(time * 1000);
+    gsap.ticker.add(tick);
+    gsap.ticker.lagSmoothing(0);
+
     lenis.on('scroll', ScrollTrigger.update);
-
-    let rafId = 0;
-    const raf = (time: number) => {
-      lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
-    };
-    rafId = requestAnimationFrame(raf);
-
     ScrollTrigger.refresh();
 
     return () => {
-      cancelAnimationFrame(rafId);
+      gsap.ticker.remove(tick);
       lenis.destroy();
     };
   }, []);

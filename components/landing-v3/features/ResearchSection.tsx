@@ -56,7 +56,7 @@ export function ResearchSection() {
       id="research"
       pinDuration={180}
       pinDurationMobile={140}
-      scrub={0.25}
+      scrub={0.5}
       buildTimeline={buildTimeline}
       className="lv3-bg-cream"
     >

@@ -55,7 +55,7 @@ export function UgcSection() {
       id="ugc"
       pinDuration={200}
       pinDurationMobile={150}
-      scrub={0.25}
+      scrub={0.5}
       buildTimeline={buildTimeline}
       className="lv3-bg-cream"
     >
