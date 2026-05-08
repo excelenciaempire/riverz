@@ -611,53 +611,79 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
 #riverz-quota-banner button.rqb-cta:hover{filter:brightness(1.1)}
 #riverz-quota-banner button.rqb-x{position:absolute;top:8px;right:10px;background:transparent;border:0;color:rgba(255,200,180,.55);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px}
 #riverz-quota-banner button.rqb-x:hover{color:#fff}
-/* Publish progress modal — shown for the duration of a "Publicar en
-   Shopify" run. Steps light up as each phase completes; the bar
-   animates indeterminately during the server roundtrip and snaps to
-   100% on success. Animations are CSS-only (no GSAP/anime dep). */
-.rz-pub-modal{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(8,9,14,.72);backdrop-filter:blur(8px);font-family:'Instrument Sans',system-ui,sans-serif;color:#E2E4EF;padding:20px}
-.rz-pub-modal.is-open{display:flex;animation:rzPubFade .18s ease}
+/* Publish modal — single surface for confirm → progress → done. Polish
+   beats: long curves on every transition, stagger on phase rows so the
+   eye lands on the active step, gradient sheen on the indeterminate
+   bar, and a checkmark that scales+rotates in instead of just popping. */
+.rz-pub-modal{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(6,8,12,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-family:'Instrument Sans',system-ui,sans-serif;color:#E2E4EF;padding:20px}
+.rz-pub-modal.is-open{display:flex;animation:rzPubFade .22s cubic-bezier(.2,.7,.3,1)}
 @keyframes rzPubFade{from{opacity:0}to{opacity:1}}
-.rz-pub-card{width:100%;max-width:480px;background:linear-gradient(180deg,#15181f 0%,#10131a 100%);border:1px solid #252840;border-radius:14px;padding:26px 26px 20px;box-shadow:0 24px 80px rgba(0,0,0,.6);animation:rzPubPop .22s cubic-bezier(.2,.9,.3,1.1)}
-@keyframes rzPubPop{from{transform:translateY(8px) scale(.97);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
-.rz-pub-head{text-align:center;margin-bottom:18px}
-.rz-pub-icon{font-size:36px;line-height:1;margin-bottom:10px;display:inline-block;animation:rzPubBob 2.4s ease-in-out infinite}
-@keyframes rzPubBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-.rz-pub-modal.is-done .rz-pub-icon{animation:rzPubPing .5s ease}
-.rz-pub-modal.is-error .rz-pub-icon{animation:rzPubShake .4s ease}
-@keyframes rzPubPing{0%{transform:scale(.6)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
-@keyframes rzPubShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
-.rz-pub-title{font-size:17px;font-weight:800;letter-spacing:-.01em;color:#fff;margin-bottom:4px}
-.rz-pub-sub{font-size:12.5px;color:#9aa3c0;line-height:1.45}
-.rz-pub-progress{height:5px;background:#0a0c12;border-radius:3px;overflow:hidden;margin-bottom:14px;position:relative;border:1px solid #1a1d28}
-.rz-pub-bar{position:absolute;inset:0;width:0%;background:linear-gradient(90deg,#f7ff9e,#f1fa84);border-radius:3px;transition:width .3s ease}
-.rz-pub-modal.is-running .rz-pub-bar{width:100%;animation:rzPubIndeterminate 1.4s ease-in-out infinite;background:linear-gradient(90deg,transparent 0%,#f7ff9e 50%,transparent 100%);background-size:40% 100%;background-repeat:no-repeat}
-@keyframes rzPubIndeterminate{0%{background-position:-40% 0}100%{background-position:140% 0}}
-.rz-pub-modal.is-done .rz-pub-bar{width:100%;background:linear-gradient(90deg,#3ddc97,#2bb87f);animation:none}
-.rz-pub-modal.is-error .rz-pub-bar{width:100%;background:linear-gradient(90deg,#ff7675,#d94c4c);animation:none}
-.rz-pub-steps{list-style:none;padding:0;margin:0 0 14px;display:flex;flex-direction:column;gap:7px}
-.rz-pub-steps li{display:flex;align-items:center;gap:9px;font-size:12.5px;color:#5B6490;line-height:1.4;transition:color .15s}
+.rz-pub-card{position:relative;width:100%;max-width:420px;background:linear-gradient(180deg,#13161d 0%,#0e1118 100%);border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:26px 24px 20px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 30px 100px rgba(0,0,0,.65);animation:rzPubPop .32s cubic-bezier(.2,.9,.25,1.05);overflow:hidden}
+.rz-pub-card::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(120% 80% at 50% 0%,rgba(247,255,158,.06),transparent 60%);pointer-events:none;opacity:0;transition:opacity .35s ease}
+.rz-pub-modal.is-running .rz-pub-card::before,
+.rz-pub-modal.is-confirm .rz-pub-card::before{opacity:1}
+.rz-pub-modal.is-done .rz-pub-card::before{background:radial-gradient(120% 80% at 50% 0%,rgba(61,220,151,.08),transparent 60%);opacity:1}
+.rz-pub-modal.is-error .rz-pub-card::before{background:radial-gradient(120% 80% at 50% 0%,rgba(255,118,117,.08),transparent 60%);opacity:1}
+@keyframes rzPubPop{from{transform:translateY(10px) scale(.97);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+.rz-pub-head{position:relative;text-align:center;margin-bottom:18px}
+.rz-pub-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;background:linear-gradient(180deg,#1a1d28,#15181f);color:#f7ff9e;border:1px solid rgba(247,255,158,.22);margin-bottom:12px;transition:all .35s cubic-bezier(.2,.9,.25,1)}
+.rz-pub-icon svg{display:block}
+.rz-pub-modal.is-running .rz-pub-icon{animation:rzPubBob 1.8s cubic-bezier(.4,0,.2,1) infinite}
+@keyframes rzPubBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.rz-pub-modal.is-done .rz-pub-icon{background:linear-gradient(180deg,#1a3328,#16291f);border-color:rgba(61,220,151,.45);color:#3ddc97;animation:rzPubBurst .55s cubic-bezier(.18,.89,.32,1.28)}
+.rz-pub-modal.is-error .rz-pub-icon{background:linear-gradient(180deg,#33181a,#291315);border-color:rgba(255,118,117,.45);color:#ff7675;animation:rzPubShake .45s cubic-bezier(.36,.07,.19,.97)}
+@keyframes rzPubBurst{0%{transform:scale(.5) rotate(-12deg);opacity:.4}55%{transform:scale(1.18) rotate(2deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes rzPubShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+.rz-pub-title{font-size:17px;font-weight:800;letter-spacing:-.01em;color:#fff;margin-bottom:5px}
+.rz-pub-sub{font-size:12.5px;color:#9aa3c0;line-height:1.5;max-width:300px;margin:0 auto}
+.rz-pub-progress{height:3px;background:rgba(255,255,255,.04);border-radius:3px;overflow:hidden;margin:0 0 16px;position:relative;transition:opacity .25s}
+.rz-pub-modal.is-confirm .rz-pub-progress{opacity:0;height:0;margin:0}
+.rz-pub-bar{position:absolute;inset:0;width:0;background:linear-gradient(90deg,#f7ff9e,#f1fa84);border-radius:3px;transition:width .55s cubic-bezier(.4,0,.2,1)}
+.rz-pub-modal.is-running .rz-pub-bar{width:100%;background:linear-gradient(90deg,transparent,rgba(247,255,158,.95),transparent);background-size:35% 100%;background-repeat:no-repeat;animation:rzPubSlide 1.6s cubic-bezier(.4,0,.2,1) infinite}
+@keyframes rzPubSlide{0%{background-position:-35% 0}100%{background-position:135% 0}}
+.rz-pub-modal.is-done .rz-pub-bar{width:100%;background:linear-gradient(90deg,#3ddc97,#2bb87f)}
+.rz-pub-modal.is-error .rz-pub-bar{width:100%;background:linear-gradient(90deg,#ff7675,#d94c4c)}
+.rz-pub-steps{list-style:none;padding:0;margin:0 0 16px;display:flex;flex-direction:column;gap:8px;transition:opacity .3s ease,max-height .35s ease,margin .3s ease}
+.rz-pub-modal.is-confirm .rz-pub-steps,
+.rz-pub-modal.is-done .rz-pub-steps,
+.rz-pub-modal.is-error .rz-pub-steps{opacity:0;max-height:0;overflow:hidden;margin:0;pointer-events:none}
+.rz-pub-modal.is-running .rz-pub-steps,
+.rz-pub-modal.is-prep .rz-pub-steps{opacity:1;max-height:240px}
+.rz-pub-steps li{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#5B6490;line-height:1.3;transition:color .25s ease,transform .35s ease,opacity .35s ease;transform:translateX(-4px);opacity:.55}
+.rz-pub-steps li.is-active,.rz-pub-steps li.is-done{transform:translateX(0);opacity:1}
 .rz-pub-steps li.is-active{color:#fff;font-weight:600}
 .rz-pub-steps li.is-done{color:#3ddc97}
-.rz-pub-steps li.is-skipped{opacity:.45}
-.rz-pub-dot{flex:0 0 14px;width:14px;height:14px;border-radius:50%;background:#1a1d28;border:1.5px solid #2a2e38;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#0d0f12}
-.rz-pub-steps li.is-active .rz-pub-dot{border-color:#f7ff9e;background:#f7ff9e22;animation:rzPubPulse 1s ease-in-out infinite}
-@keyframes rzPubPulse{0%,100%{box-shadow:0 0 0 0 rgba(247,255,158,.35)}50%{box-shadow:0 0 0 5px rgba(247,255,158,0)}}
-.rz-pub-steps li.is-done .rz-pub-dot{border-color:#3ddc97;background:#3ddc97;color:#0a0c12}
-.rz-pub-steps li.is-done .rz-pub-dot::after{content:"✓"}
+.rz-pub-steps li.is-skipped{display:none}
+.rz-pub-dot{flex:0 0 16px;width:16px;height:16px;border-radius:50%;background:transparent;border:1.5px solid #252840;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#0d0f12;transition:all .25s cubic-bezier(.2,.9,.25,1.05);position:relative}
+.rz-pub-steps li.is-active .rz-pub-dot{border-color:#f7ff9e;background:rgba(247,255,158,.12);animation:rzPubPulse 1.6s cubic-bezier(.4,0,.6,1) infinite}
+.rz-pub-steps li.is-active .rz-pub-dot::after{content:"";width:6px;height:6px;border-radius:50%;background:#f7ff9e;animation:rzPubInner 1.6s cubic-bezier(.4,0,.6,1) infinite}
+@keyframes rzPubPulse{0%,100%{box-shadow:0 0 0 0 rgba(247,255,158,.5)}50%{box-shadow:0 0 0 6px rgba(247,255,158,0)}}
+@keyframes rzPubInner{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.6);opacity:.5}}
+.rz-pub-steps li.is-done .rz-pub-dot{border-color:#3ddc97;background:#3ddc97;color:#0a0c12;transform:scale(1)}
+.rz-pub-steps li.is-done .rz-pub-dot::after{content:"";width:8px;height:5px;border-left:2px solid #0a0c12;border-bottom:2px solid #0a0c12;transform:rotate(-45deg) translateY(-1px);animation:rzPubCheck .3s cubic-bezier(.65,.05,.36,1)}
+@keyframes rzPubCheck{from{transform:rotate(-45deg) translateY(-1px) scale(0);opacity:0}to{transform:rotate(-45deg) translateY(-1px) scale(1);opacity:1}}
 .rz-pub-steps li.is-error .rz-pub-dot{border-color:#ff7675;background:#ff7675;color:#0a0c12}
 .rz-pub-steps li.is-error .rz-pub-dot::after{content:"!"}
-.rz-pub-result{display:none;font-size:12.5px;line-height:1.55;padding:12px 14px;border-radius:8px;margin-bottom:14px;white-space:pre-line}
+/* Confirm-state summary card — replaces step list before publish starts */
+.rz-pub-summary{display:none;font-size:12.5px;color:#a8b1c8;line-height:1.55;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05);margin-bottom:16px}
+.rz-pub-modal.is-confirm .rz-pub-summary{display:block;animation:rzPubFadeUp .35s cubic-bezier(.2,.9,.25,1)}
+@keyframes rzPubFadeUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.rz-pub-summary-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;gap:12px}
+.rz-pub-summary-row+.rz-pub-summary-row{border-top:1px solid rgba(255,255,255,.04);padding-top:8px;margin-top:5px}
+.rz-pub-summary-row span:first-child{color:#5b6490;font-size:11.5px;letter-spacing:.02em;text-transform:uppercase;font-weight:600}
+.rz-pub-summary-row span:last-child{color:#fff;font-weight:600;font-size:12.5px}
+.rz-pub-result{display:none;font-size:12.5px;line-height:1.55;color:#9aa3c0;text-align:center;margin:0 0 14px;animation:rzPubFadeUp .3s cubic-bezier(.2,.9,.25,1)}
 .rz-pub-result.is-on{display:block}
-.rz-pub-modal.is-done .rz-pub-result{background:rgba(61,220,151,.08);border:1px solid rgba(61,220,151,.28);color:#c8f4dc}
-.rz-pub-modal.is-error .rz-pub-result{background:rgba(255,118,117,.08);border:1px solid rgba(255,118,117,.32);color:#ffd2d1}
-.rz-pub-actions{display:flex;gap:8px;justify-content:flex-end}
-.rz-pub-btn{padding:9px 16px;border-radius:7px;font-size:12.5px;font-weight:700;letter-spacing:.02em;cursor:pointer;font-family:inherit;border:1px solid transparent;transition:filter .12s,background .12s,border-color .12s}
-.rz-pub-btn-ghost{background:transparent;border-color:#2a2e38;color:#9aa3c0}
-.rz-pub-btn-ghost:hover{border-color:#3a3e48;color:#fff}
-.rz-pub-btn-primary{background:#f7ff9e;color:#0a0a0a}
-.rz-pub-btn-primary:hover{filter:brightness(1.08)}
-.rz-pub-btn:disabled{opacity:.45;cursor:not-allowed}
+.rz-pub-modal.is-error .rz-pub-result{color:#ffd2d1}
+.rz-pub-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.rz-pub-btn{padding:10px 18px;border-radius:9px;font-size:12.5px;font-weight:700;letter-spacing:.02em;cursor:pointer;font-family:inherit;border:1px solid transparent;transition:all .2s cubic-bezier(.2,.9,.25,1);display:inline-flex;align-items:center;gap:6px}
+.rz-pub-btn-ghost{background:transparent;border-color:rgba(255,255,255,.08);color:#9aa3c0}
+.rz-pub-btn-ghost:hover{border-color:rgba(255,255,255,.18);color:#fff;transform:translateY(-1px)}
+.rz-pub-btn-primary{background:linear-gradient(180deg,#f7ff9e 0%,#eef58c 100%);color:#0a0a0a;box-shadow:0 4px 18px rgba(247,255,158,.18)}
+.rz-pub-btn-primary:hover{filter:brightness(1.06);transform:translateY(-1px);box-shadow:0 6px 22px rgba(247,255,158,.28)}
+.rz-pub-btn:active{transform:translateY(0)!important}
+.rz-pub-btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.rz-pub-btn[hidden]{display:none}
 </style>
 <script type="application/json" id="data-default">{"hero-l1": "Llevas años", "hero-l2": "probando de todo.", "hero-em": "Tu piel merece algo diferente.", "hero-sub": "Lo que las grandes marcas nunca te van a contar — y el ingrediente que nuestras bisabuelas usaban sin saberlo.", "pq-text": "\"Probé la rutina coreana, el dermatólogo, los sérums importados. Gasté más de dos millones de pesos. Mi piel seguía igual.\"", "pq-cite": "— Magdalena R., Bogotá", "dolor-p1": "Si esto te suena familiar, no es casualidad. El mercado de skincare está diseñado para que siempre necesites <strong>el siguiente producto", "dolor-p2": "Diez pasos. Quince productos. Dos millones de pesos al año. Y la piel… más o menos igual.", "stat-1": "Gasta en promedio una colombiana en cosméticos al año", "stat-2": "Solo compra en oferta por desconfianza al precio real", "stat-3": "De hogares colombianos usan crema — pocas están satisfechas", "vill-p1": "Tu piel tiene una barrera hecha de lípidos que <strong>bloquea la mayoría de las cremas", "vill-p2": "Las grandes marcas lo resuelven con químicos agresivos. Tu piel se irrita. La barrera se debilita. El ciclo se repite.", "vill-p3": "El costo real de los ingredientes puede ser <strong>hasta 1.000 veces menor", "rev-p1": "Antes de que existiera una sola crema importada, las mujeres colombianas cuidaban su piel con lo que tenían. Sin rutinas de diez pasos. Y muchas tenían una piel que hoy llamaríamos \"glass skin.\"", "rev-p2": "El ingrediente central de ese cuidado tiene un nombre que te va a sorprender:", "rev-p3": "Sí. Antes de que hagas esa cara — escucha la ciencia.", "rev-pq": "\"El perfil de ácidos grasos del sebo bovino es casi idéntico al de los lípidos naturales de la piel humana. Es el ingrediente más biocompatible que existe.\"", "rev-p4": "Biocompatible significa que tu piel lo reconoce como propio. No lo bloquea. Lo absorbe y lo usa para repararse desde adentro.", "rev-p5": "La industria lo enterró porque <strong>no se puede patentar", "prod-desc": "Fabricada en Medellín. Formulada para la piel colombiana y su clima. El sebo de res purificado como protagonista, potenciado por los activos modernos que la ciencia confirma.", "prod-p1": "El sebo de res purificado como protagonista, combinado con ácido hialurónico, vitamina E y omega 3. Se absorbe en minutos. Sin residuo graso. Sin olor fuerte.", "ing-1-name": "Sebo de Res Purificado", "ing-1-desc": "Grass-fed. Tu piel lo reconoce como propio — absorción inmediata. Repara la barrera cutánea.", "ing-2-name": "Ácido Hialurónico", "ing-2-desc": "Retiene hasta 1.000 veces su peso en agua. Hidratación activa 24 horas.", "ing-3-name": "Aceite de Coco", "ing-3-desc": "Antibacterial natural. Ayuda al sebo a penetrar más profundo sin tapar los poros.", "ing-4-name": "Manteca de Cacao", "ing-4-desc": "Textura sedosa, absorción en minutos. Sin residuo. Antioxidantes para el sol.", "ing-5-name": "Vitamina E", "ing-5-desc": "Potencia los efectos del sebo. Protege del daño celular. Multiplica la eficacia.", "ing-6-name": "Omega 3", "ing-6-desc": "Reduce inflamación y rojeces. Estimula la renovación celular desde adentro.", "t1-body": "\"Llevaba AÑOS probando de todo. Dos semanas después mi compañera me dijo que me veía radiante. Ahora salgo sin base y me siento segura.\"", "t1-name": "Magdalena R.", "t1-city": "Bogotá · Cliente verificada", "t2-body": "\"Tengo rosácea desde los 25. Gasté más de $2.000.000 en cremas. Por primera vez en 8 años mi cara no está roja. Mis amigas preguntan si me hice láser.\"", "t2-name": "Patricia V.", "t2-city": "Cali · Cliente verificada", "t3-body": "\"Trabajo en turismo en Cartagena. Con este sol tenía la nariz grasosa pero mejillas resecas. Ha sido lo mejor que he probado.\"", "t3-name": "Luciana M.", "t3-city": "Cartagena · Cliente verificada", "gift-title": "Con tu Crema Vitalú<br>te regalamos el Jabón Exótico.", "gift-p1": "La crema funciona sola. Pero los resultados se multiplican cuando la piel llega limpia y lista para absorber.", "gift-p2": "El Jabón Exótico Vitalú — maracuyá, sandía, karité y chía — prepara tu piel para que la crema entre donde debe entrar.", "gift-note": "No lo cobramos aparte. Es un regalo. Sin condiciones.", "ck-1": "Ya probaste cremas importadas, rutinas coreanas o el dermatólogo — y tu piel sigue sin ser lo que quieres.", "ck-2": "Te gustaría salir sin base algún día y sentirte bien de todas formas.", "ck-3": "Tienes manchas del sol colombiano que no desaparecen con nada.", "ck-4": "Estás cansada de rutinas de diez pasos y quieres algo simple que funcione de verdad.", "ck-5": "Tienes piel seca, grasa, mixta, sensible o madura. Vitalú trabaja con tu biología, no contra ella.", "ck-6": "Quieres apoyar una empresa colombiana con ingredientes reales y garantía real.", "gtee-title": "30 días. O te devolvemos cada peso.", "gtee-body": "Creemos tanto en la fórmula que asumimos el riesgo nosotros. Prueba la Crema Vitalú durante 30 días. Si no ves una diferencia real en tu piel, te hacemos la devolución completa. Sin preguntas. Sin burocracia.", "cta-title": "Tu piel tan bonita que el maquillaje se vuelve opcional.", "cta-sub": "Para las que ya probaron de todo. Con el Jabón Exótico de regalo.", "cta-btn": "Quiero mi Crema Vitalú →", "cta-meta": "🛡️ Garantía 30 días — devolución completa si no ves resultados\n🚚 Envío desde Medellín · 2 a 5 días hábiles · Transportadora Envía\n🎁 Jabón Exótico de regalo con cada pedido · Sin costo adicional"}</script>
 <script type="application/json" id="data-landing-b">{"hero-l1": "Ya gastaste suficiente", "hero-l2": "en cremas que no funcionan.", "hero-em": "Esta vez es diferente.", "hero-sub": "Descubrimos por qué tu piel no responde a nada. No es tu disciplina. Es la biología.", "hero-gtag": "Vitalú Colombia · Para las que ya probaron todo", "pq-text": "Probé la rutina coreana, el dermatólogo, los sérums importados. Gasté más de dos millones de pesos. Mi piel seguía igual.", "pq-cite": "— Valentina C., Bogotá", "dolor-p1": "Conoces exactamente esa sensación. Compras algo nuevo con esperanza. Los primeros días parece que algo cambia. Y luego... nada. De vuelta al punto de partida con el cajón lleno de cremas a medio usar.", "dolor-p2": "No es falta de constancia. No es tu tipo de piel. Es que la mayoría de las cremas del mercado están diseñadas para fallar — para que siempre necesites comprar la siguiente.", "stat-n1": "$1.2M", "stat-1": "Gasta al año una colombiana en cosméticos que no funcionan", "stat-n2": "61%", "stat-2": "Compra solo en oferta por desconfianza en los precios reales", "stat-n3": "74%", "stat-3": "De hogares usan crema a diario — pocas están satisfechas", "vill-p1": "Tu piel tiene una barrera lipídica que bloquea lo que no reconoce como propio. La mayoría de ingredientes de las cremas masivas son tan ajenos a tu biología que tu piel simplemente los rechaza.", "vill-p2": "Para burlar esa barrera, las marcas usan penetradores químicos que irritan, adelgazan y debilitan tu piel con el tiempo. Resultado: piel más sensible, más dependiente, siempre necesitando más producto.", "vill-p3": "El ingrediente activo real puede costar menos del 1% de lo que pagas. El resto es marca, empaque y publicidad. Tú pagas el marketing, no la solución.", "rev-p1": "Antes de que existiera el skincare moderno, las mujeres colombianas mantenían su piel con lo que había. Sin doce pasos. Sin importados. Y muchas llegaban a los 70 con una piel que hoy pagaríamos miles por tener.", "rev-p2": "El secreto era simple. Un ingrediente que tu piel reconoce como propio, absorbe sin resistencia y usa exactamente como sabe hacerlo. Uno que la industria enterró porque no se puede patentar.", "rev-p3": "Se llama sebo de res. Y la ciencia está confirmando lo que nuestras bisabuelas sabían por instinto.", "rev-pq": "El sebo bovino purificado tiene el perfil de ácidos grasos más cercano al de los lípidos naturales de la piel humana.", "rev-p4": "Tu barrera no lo bloquea. Lo absorbe. Lo usa para repararse e hidratarse desde adentro.", "rev-p5": "No tiene nombre en francés. No puede venderse a $300.000 la cajita. Por eso desapareció. Por eso nadie te lo había contado.", "prod-desc": "Fabricada en Medellín para el clima colombiano. Seis ingredientes con rol específico, ninguno de relleno.", "prod-name": "Crema Vitalú", "prod-p1": "Sin agua, sin silicones, sin relleno. Solo lo que tu piel necesita para hacer lo que sabe hacer: repararse sola.", "prod-tag1": "Hecha en Medellín", "prod-tag2": "6 ingredientes", "prod-tag3": "Sin relleno", "ing-1-name": "Sebo de Res Grass-Fed", "ing-1-desc": "El ingrediente que tu piel reconoce como propio. Absorción inmediata, cero rechazo, reparación real.", "ing-2-name": "Ácido Hialurónico", "ing-2-desc": "Retiene hasta 1000 veces su peso en agua. Hidratación que dura todo el día.", "ing-3-name": "Aceite de Coco Virgin", "ing-3-desc": "Antibacterial natural. Potencia la penetración del sebo sin tapar poros.", "ing-4-name": "Manteca de Cacao", "ing-4-desc": "Se derrite con el calor de tu piel. Antioxidantes para el sol colombiano.", "ing-5-name": "Vitamina E", "ing-5-desc": "Amplifica la acción reparadora del sebo. Escudo contra el daño oxidativo.", "ing-6-name": "Omega 3", "ing-6-desc": "Apaga la inflamación silenciosa. Activa la renovación celular.", "tl-1": "Primera noche: tu piel respira diferente. Más suave. Sin la sensación de tirante.", "tl-2": "Días 3 a 5: el brillo real aparece. No grasoso — el brillo húmedo, saludable.", "tl-3": "Semana 2: la textura cambia. Manchas que se atenúan. Poros más finos.", "tl-4": "Semana 3: alguien te pregunta si hiciste algo. Tú dices que no.", "tl-5": "Mes 2 en adelante: sin base. No porque debas — porque puedes.", "t1-body": "Probé absolutamente todo. La rutina coreana completa. Tres dermatólogos distintos. Con Vitalú en dos semanas mi piel se veía mejor que en cinco años. Ahora salgo sin base.", "t1-name": "Valentina C.", "t1-city": "Bogotá · Usuaria verificada", "t2-body": "Tengo rosácea desde los 22. Todo me irritaba. Con Vitalú por primera vez en años mi piel no está roja al despertar. Mi esposo pensó que me había hecho un tratamiento.", "t2-name": "Sofía M.", "t2-city": "Medellín · Usuaria verificada", "t3-body": "Piel mixta, clima costero, sol todo el año. Vitalú es lo primero que regula todo sin secar las mejillas ni engrasar la nariz.", "t3-name": "Adriana P.", "t3-city": "Barranquilla · Usuaria verificada", "gift-tag": "Regalo con cada pedido", "gift-title": "El Jabón Exótico va incluido.", "gift-p1": "La crema funciona sola. Pero cuando la piel llega limpia y lista para absorber, los resultados se ven antes.", "gift-p2": "Con maracuyá, sandía, karité y chía — prepara tu piel para aprovechar cada aplicación.", "gift-note": "Incluido con cada pedido. Sin condiciones. Sin costo extra.", "gtee-title": "30 días de prueba real. Sin riesgo.", "gtee-body": "No pedimos fotos. No exigimos justificación. Si en 30 días no ves la diferencia, te hacemos la devolución completa. Punto.", "cta-title": "Por fin algo que funciona.", "cta-sub": "Para las que ya probaron todo. Garantía 30 días real — si no funciona, te devolvemos cada peso.", "cta-btn": "Probar sin riesgo →", "cta-meta": "Garantia 30 dias sin preguntas\nEnvio desde Medellin 2-5 dias\nJabon Exotico incluido con cada pedido", "ck-head": "Vitalú es para ti", "ck-1": "Ya probaste cremas importadas, rutinas coreanas y dermatólogos sin resultados.", "ck-2": "Has gastado más de lo que quieres admitir en productos que prometían todo.", "ck-3": "Tienes manchas, piel seca en algunos lados y grasa en otros.", "ck-4": "Quieres una rutina simple que funcione de verdad.", "ck-5": "Te gustaría salir sin base y sentirte bien mirándote al espejo.", "ck-6": "Estás dispuesta a darle una oportunidad más — con garantía real de por medio.", "tl-day1": "Primera noche", "tl-day2": "Días 3 – 5", "tl-day3": "Semana 1 – 2", "tl-day4": "Semana 3", "tl-day5": "Mes 2 en adelante", "sticky-h": "Vitalú — Garantía 30 días", "sticky-sub": " Si no funciona, te devolvemos cada peso.", "sticky-btn": "Probar sin riesgo →"}</script>
@@ -693,31 +719,29 @@ body.riverz-move-mode #page-wrap *{cursor:copy}
 <!-- Sticky banner shown when localStorage is full so the user actually
      sees the failure (the 3.2s toast was being missed). Hidden by
      default; saveAll's catch path turns it on. -->
-<!-- Publish progress modal — visible flow for the 20–40s Shopify roundtrip
-     so the user knows the request is running, can see which phase it's in
-     (preparing assets / uploading / writing template) and gets a clear
-     success (with "open page in new tab") or error state at the end.
-     The opaque alert() / confirm() pair we used before made the publish
-     feel hung mid-request, especially on slow uplinks. -->
+<!-- Publish modal — replaces the native confirm() + toast + alert chain
+     with a single dialog that walks the user through the entire publish:
+     pre-flight summary → live phase indicator → success or error state.
+     One surface, no interruptions, fits the rest of the editor's dark UI. -->
 <div id="rz-pub-modal" class="rz-pub-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="rz-pub-title">
   <div class="rz-pub-card">
     <div class="rz-pub-head">
-      <div class="rz-pub-icon" id="rz-pub-icon">🛒</div>
-      <div class="rz-pub-title" id="rz-pub-title">Publicando en Shopify</div>
-      <div class="rz-pub-sub" id="rz-pub-sub">Esto puede tardar 20–40 s.</div>
+      <div class="rz-pub-icon" id="rz-pub-icon" aria-hidden="true"><svg viewBox="0 0 28 28" width="28" height="28"><path d="M5 8h18l-1.6 12.4a2 2 0 0 1-2 1.6H8.6a2 2 0 0 1-2-1.6L5 8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 8V6a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+      <div class="rz-pub-title" id="rz-pub-title">Publicar en Shopify</div>
+      <div class="rz-pub-sub" id="rz-pub-sub">—</div>
     </div>
-    <div class="rz-pub-progress"><div class="rz-pub-bar" id="rz-pub-bar"></div></div>
+    <div class="rz-pub-progress" id="rz-pub-progress"><div class="rz-pub-bar" id="rz-pub-bar"></div></div>
     <ul class="rz-pub-steps" id="rz-pub-steps">
-      <li data-step="prep"><span class="rz-pub-dot"></span><span>Preparando contenido</span></li>
-      <li data-step="vid"><span class="rz-pub-dot"></span><span>Subiendo videos pendientes</span></li>
-      <li data-step="img"><span class="rz-pub-dot"></span><span>Empaquetando imágenes</span></li>
-      <li data-step="ship"><span class="rz-pub-dot"></span><span>Enviando a Shopify · creando theme template</span></li>
-      <li data-step="assign"><span class="rz-pub-dot"></span><span>Asignando plantilla al producto</span></li>
+      <li data-step="prep"><span class="rz-pub-dot"></span><span>Preparando</span></li>
+      <li data-step="vid"><span class="rz-pub-dot"></span><span>Subiendo videos</span></li>
+      <li data-step="img"><span class="rz-pub-dot"></span><span>Subiendo imágenes</span></li>
+      <li data-step="ship"><span class="rz-pub-dot"></span><span>Creando theme template</span></li>
+      <li data-step="assign"><span class="rz-pub-dot"></span><span>Asignando al producto</span></li>
     </ul>
     <div class="rz-pub-result" id="rz-pub-result"></div>
     <div class="rz-pub-actions" id="rz-pub-actions">
-      <button type="button" class="rz-pub-btn rz-pub-btn-ghost" id="rz-pub-cancel">Cerrar</button>
-      <button type="button" class="rz-pub-btn rz-pub-btn-primary" id="rz-pub-go" style="display:none">Abrir página del producto ↗</button>
+      <button type="button" class="rz-pub-btn rz-pub-btn-ghost" id="rz-pub-cancel">Cancelar</button>
+      <button type="button" class="rz-pub-btn rz-pub-btn-primary" id="rz-pub-go">Publicar</button>
     </div>
   </div>
 </div>
@@ -7326,52 +7350,94 @@ function buildPublishPayload(proj){
   };
 }
 
-// Publish progress modal controller — wraps DOM updates so publishToShopify
-// reads as a sequence of high-level phase calls (markStep / setIcon /
-// finishOk / finishErr) instead of querySelector noise.
+// Publish modal controller — single surface that walks the user from
+// confirm → progress → done. Replaces the native confirm() + toast +
+// alert chain so the publish feels like one continuous flow instead of
+// three interrupted prompts.
 var _rzPub = (function(){
   function el(id){ return document.getElementById(id); }
   function modal(){ return el('rz-pub-modal'); }
-  function open(opts){
+  function setMode(mode){
     var m = modal(); if (!m) return;
-    m.className = 'rz-pub-modal is-open is-running';
-    el('rz-pub-icon').textContent = (opts && opts.icon) || '🛒';
-    el('rz-pub-title').textContent = (opts && opts.title) || 'Publicando en Shopify';
-    el('rz-pub-sub').textContent = (opts && opts.sub) || 'Esto puede tardar 20–40 s.';
-    var result = el('rz-pub-result'); result.className='rz-pub-result'; result.textContent='';
-    el('rz-pub-go').style.display = 'none';
-    el('rz-pub-cancel').textContent = 'Cancelar';
-    el('rz-pub-cancel').disabled = false;
-    // Reset all step rows
+    m.classList.remove('is-confirm','is-running','is-done','is-error');
+    if (mode) m.classList.add(mode);
+  }
+  function resetSteps(){
+    var m = modal(); if (!m) return;
     Array.prototype.forEach.call(m.querySelectorAll('.rz-pub-steps li'), function(li){
       li.className = '';
     });
-    // If there are no pending videos, mark the video step as skipped from
-    // the start so the user doesn't wonder why it never lights up.
-    if (opts && opts.skipVideo) {
-      var v = m.querySelector('.rz-pub-steps li[data-step="vid"]');
-      if (v) v.classList.add('is-skipped');
-    }
-    m.setAttribute('aria-hidden','false');
-    document.body.style.overflow = 'hidden';
+  }
+  function showSummary(rows){
+    var m = modal(); if (!m) return;
+    var existing = m.querySelector('.rz-pub-summary');
+    if (existing) existing.parentNode.removeChild(existing);
+    if (!rows || !rows.length) return;
+    var div = document.createElement('div');
+    div.className = 'rz-pub-summary';
+    div.innerHTML = rows.map(function(r){
+      return '<div class="rz-pub-summary-row"><span>'+r[0]+'</span><span>'+r[1]+'</span></div>';
+    }).join('');
+    var progress = el('rz-pub-progress');
+    progress.parentNode.insertBefore(div, progress.nextSibling);
+  }
+  function hideSummary(){
+    var s = document.querySelector('.rz-pub-summary');
+    if (s && s.parentNode) s.parentNode.removeChild(s);
+  }
+  // confirm({ title, sub, summary[], skipVideo }) returns Promise<boolean>
+  function confirm(opts){
+    return new Promise(function(resolve){
+      var m = modal(); if (!m) { resolve(false); return; }
+      setMode('is-confirm');
+      el('rz-pub-icon').innerHTML = '<svg viewBox="0 0 28 28" width="28" height="28"><path d="M5 8h18l-1.6 12.4a2 2 0 0 1-2 1.6H8.6a2 2 0 0 1-2-1.6L5 8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 8V6a4 4 0 0 1 8 0v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+      el('rz-pub-title').textContent = (opts && opts.title) || 'Publicar en Shopify';
+      el('rz-pub-sub').textContent = (opts && opts.sub) || '';
+      el('rz-pub-result').className = 'rz-pub-result';
+      resetSteps();
+      if (opts && opts.skipVideo) {
+        var v = m.querySelector('.rz-pub-steps li[data-step="vid"]');
+        if (v) v.classList.add('is-skipped');
+      }
+      showSummary(opts && opts.summary);
+      var goBtn = el('rz-pub-go');
+      var cancelBtn = el('rz-pub-cancel');
+      goBtn.textContent = 'Publicar';
+      goBtn.removeAttribute('hidden');
+      goBtn.disabled = false;
+      cancelBtn.textContent = 'Cancelar';
+      cancelBtn.disabled = false;
+      m.classList.add('is-open');
+      m.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      var done = false;
+      function onGo(){ if(done) return; done=true; cleanup(); resolve(true); }
+      function onCancel(){ if(done) return; done=true; cleanup(); close(); resolve(false); }
+      function cleanup(){
+        goBtn.removeEventListener('click', onGo);
+        cancelBtn.removeEventListener('click', onCancel);
+      }
+      goBtn.addEventListener('click', onGo);
+      cancelBtn.addEventListener('click', onCancel);
+    });
+  }
+  function startRunning(opts){
+    var m = modal(); if (!m) return;
+    setMode('is-running');
+    hideSummary();
+    el('rz-pub-title').textContent = (opts && opts.title) || 'Publicando…';
+    el('rz-pub-sub').textContent = (opts && opts.sub) || 'Esto suele tardar 20–40 s.';
+    el('rz-pub-go').setAttribute('hidden', '');
+    el('rz-pub-cancel').textContent = 'Cancelar';
+    el('rz-pub-cancel').disabled = true; // can't bail mid-fetch — the response would be lost
   }
   function close(){
     var m = modal(); if (!m) return;
     m.classList.remove('is-open');
-    m.setAttribute('aria-hidden','true');
+    m.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
   }
-  function markStep(stepKey, state){
-    var m = modal(); if (!m) return;
-    var li = m.querySelector('.rz-pub-steps li[data-step="'+stepKey+'"]');
-    if (!li) return;
-    li.classList.remove('is-active','is-done','is-error');
-    if (state === 'active' || !state) li.classList.add('is-active');
-    else if (state === 'done') li.classList.add('is-done');
-    else if (state === 'error') li.classList.add('is-error');
-  }
-  // Mark stepKey active and the previous active step done — typical phase
-  // advance in a linear pipeline.
+  // Mark stepKey active, all preceding non-skipped steps done.
   function advanceTo(stepKey){
     var m = modal(); if (!m) return;
     var saw = false;
@@ -7382,53 +7448,82 @@ var _rzPub = (function(){
         li.classList.add('is-active');
         saw = true;
       } else if (!saw) {
-        if (li.classList.contains('is-active')) li.classList.remove('is-active');
+        li.classList.remove('is-active');
         if (!li.classList.contains('is-error')) li.classList.add('is-done');
       }
     });
   }
+  // Mark every step done — used when transitioning to success.
+  function finishAllSteps(){
+    var m = modal(); if (!m) return;
+    Array.prototype.forEach.call(m.querySelectorAll('.rz-pub-steps li'), function(li){
+      if (li.classList.contains('is-skipped')) return;
+      li.classList.remove('is-active','is-error');
+      li.classList.add('is-done');
+    });
+  }
   function finishOk(opts){
     var m = modal(); if (!m) return;
-    m.classList.remove('is-running');
-    m.classList.add('is-done');
-    advanceTo('__end__'); // marks every preceding step done
-    el('rz-pub-icon').textContent = '✅';
-    el('rz-pub-title').textContent = (opts && opts.title) || '¡Publicado en Shopify!';
-    el('rz-pub-sub').textContent = (opts && opts.sub) || 'Tu landing ya está en vivo.';
-    if (opts && opts.message) {
-      var r = el('rz-pub-result'); r.className='rz-pub-result is-on'; r.textContent = opts.message;
-    }
-    el('rz-pub-cancel').textContent = 'Cerrar';
+    finishAllSteps();
+    setMode('is-done');
+    el('rz-pub-icon').innerHTML = '<svg viewBox="0 0 28 28" width="28" height="28"><path d="M7 14.5l4.5 4.5L21 9.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    el('rz-pub-title').textContent = (opts && opts.title) || 'Publicado';
+    el('rz-pub-sub').textContent = (opts && opts.sub) || '';
+    var r = el('rz-pub-result');
+    if (opts && opts.message) { r.className = 'rz-pub-result is-on'; r.textContent = opts.message; }
+    else { r.className = 'rz-pub-result'; r.textContent = ''; }
+    var goBtn = el('rz-pub-go');
+    var cancelBtn = el('rz-pub-cancel');
+    cancelBtn.textContent = 'Cerrar';
+    cancelBtn.disabled = false;
     if (opts && opts.url) {
-      var btn = el('rz-pub-go');
-      btn.style.display = '';
-      btn.onclick = function(){ try { window.open(opts.url, '_blank', 'noopener'); } catch(e){} };
+      goBtn.removeAttribute('hidden');
+      goBtn.textContent = (opts.actionLabel || 'Abrir página del producto') + ' ↗';
+      goBtn.onclick = function(){
+        try { window.open(opts.url, '_blank', 'noopener'); } catch(e){}
+        close();
+      };
+    } else if (opts && opts.action && opts.actionLabel) {
+      goBtn.removeAttribute('hidden');
+      goBtn.textContent = opts.actionLabel;
+      goBtn.onclick = function(){
+        try { opts.action(); } catch(e){}
+        close();
+      };
+    } else {
+      goBtn.setAttribute('hidden', '');
     }
   }
   function finishErr(message){
     var m = modal(); if (!m) return;
-    m.classList.remove('is-running');
-    m.classList.add('is-error');
+    setMode('is-error');
     var active = m.querySelector('.rz-pub-steps li.is-active');
     if (active) { active.classList.remove('is-active'); active.classList.add('is-error'); }
-    el('rz-pub-icon').textContent = '⚠️';
+    el('rz-pub-icon').innerHTML = '<svg viewBox="0 0 28 28" width="28" height="28"><path d="M14 8v8M14 19v.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="14" cy="14" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
     el('rz-pub-title').textContent = 'No se pudo publicar';
-    el('rz-pub-sub').textContent = 'Cerrá el diálogo y volvé a intentar.';
-    var r = el('rz-pub-result'); r.className='rz-pub-result is-on'; r.textContent = message || 'Error desconocido.';
+    el('rz-pub-sub').textContent = 'Volvé a intentar en un momento.';
+    var r = el('rz-pub-result'); r.className='rz-pub-result is-on'; r.textContent = message || 'Error desconocido';
+    el('rz-pub-go').setAttribute('hidden', '');
     el('rz-pub-cancel').textContent = 'Cerrar';
+    el('rz-pub-cancel').disabled = false;
   }
   // Wire close handlers once.
   document.addEventListener('DOMContentLoaded', function(){
-    var c = el('rz-pub-cancel');
-    if (c) c.addEventListener('click', close);
-    // Click outside the card closes too — but only when finished, so an
-    // accidental click during the long roundtrip can't drop the request.
     var m = modal();
-    if (m) m.addEventListener('click', function(e){
+    if (!m) return;
+    // Backdrop click closes only when not running (so a misclick during
+    // the fetch can't drop the response).
+    m.addEventListener('click', function(e){
       if (e.target === m && !m.classList.contains('is-running')) close();
     });
+    // Esc to close (same guard).
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape' && m.classList.contains('is-open') && !m.classList.contains('is-running')) {
+        close();
+      }
+    });
   });
-  return { open:open, close:close, markStep:markStep, advanceTo:advanceTo, finishOk:finishOk, finishErr:finishErr };
+  return { confirm:confirm, startRunning:startRunning, advanceTo:advanceTo, finishOk:finishOk, finishErr:finishErr, close:close };
 })();
 window._rzPub = _rzPub;
 
@@ -7442,30 +7537,33 @@ async function publishToShopify(){
   var isProductPage = !!(proj.templateId && /^product-page-/.test(proj.templateId));
   var imgCount=Object.values(proj.images||{}).filter(function(v){return typeof v==='string' && v;}).length;
   var pendingVidCount = Object.keys(_pendingVideos || {}).length;
+  var handle = (proj.shopifyProductHandle || '').trim();
 
-  // Pre-confirm with a lightweight summary. We keep the native confirm
-  // here because it's a yes/no decision; once the user agrees, the rich
-  // progress modal takes over and stays visible until the publish
-  // resolves.
-  var confirmMsg = 'Publicar "'+proj.name+'" en Shopify?\n'+
-    imgCount+' imagen(es) se subirán a Shopify Files.';
-  if (isProductPage) {
-    confirmMsg += '\n📦 Como product page (theme template).';
-  }
-  if (pendingVidCount){
-    confirmMsg += '\n' + pendingVidCount + ' video(s) pendientes también se subirán ahora.';
-  }
-  confirmMsg += '\nEsto puede tardar 20-40 segundos.';
-  if(!confirm(confirmMsg)) return;
+  // In-modal confirm — one surface, no native browser dialog. Summary
+  // shows what's about to happen at a glance.
+  var summary = [
+    ['Landing', proj.name || 'Sin nombre'],
+    ['Imágenes', String(imgCount)],
+  ];
+  if (pendingVidCount) summary.push(['Videos pendientes', String(pendingVidCount)]);
+  summary.push(['Destino', isProductPage ? 'Theme template' : 'Shopify Page']);
+  if (isProductPage) summary.push(['Producto', handle ? '/products/' + handle : '⚠ no configurado']);
 
-  _rzPub.open({
-    title: 'Publicando "' + (proj.name || 'landing') + '"',
+  var confirmed = await _rzPub.confirm({
+    title: 'Publicar en Shopify',
     sub: isProductPage
-      ? 'Empaquetando ' + imgCount + ' imagen(es) y enviando a tu theme. Esto puede tardar 20–40 s.'
-      : 'Empaquetando ' + imgCount + ' imagen(es) y enviando a Shopify. Esto puede tardar 20–40 s.',
+      ? 'La landing se sube como product template en tu theme.'
+      : 'La landing se publica como página de Shopify.',
+    summary: summary,
     skipVideo: pendingVidCount === 0,
   });
-  _rzPub.markStep('prep', 'active');
+  if (!confirmed) return;
+
+  _rzPub.startRunning({
+    title: 'Publicando…',
+    sub: 'No cierres esta pestaña. Suele tardar 20–40 s.',
+  });
+  _rzPub.advanceTo('prep');
 
   // Upload any deferred videos FIRST so buildPublishPayload sees the
   // permanent CDN URLs in proj.videos instead of dead blob: URLs that
@@ -7512,7 +7610,7 @@ async function publishToShopify(){
   // can build /products/<handle>?view=<template> preview URLs.
   var endpoint = isProductPage ? '/api/landing-lab/publish-theme' : '/api/landing-lab/publish';
   if (isProductPage) {
-    payload.shopify_handle = (proj.shopifyProductHandle || '').trim();
+    payload.shopify_handle = handle;
   }
   _rzPub.advanceTo('ship');
   try{
@@ -7528,7 +7626,7 @@ async function publishToShopify(){
         if(data.missingScopes && data.missingScopes.length){
           hint = 'Permisos faltantes: ' + data.missingScopes.join(', ') + '. ' + hint;
         }
-        _rzPub.finishErr(hint + '\n\nReconectá Shopify desde Configuración → Integraciones para continuar.');
+        _rzPub.finishErr(hint);
         return;
       }
       throw new Error(data.error||'Error al publicar');
@@ -7539,17 +7637,29 @@ async function publishToShopify(){
       _rzPub.advanceTo('assign');
       // Tiny delay so the user actually sees the assign step light up
       // before we collapse to success — the server already did the work.
-      await new Promise(function(r){ setTimeout(r, 200); });
+      await new Promise(function(r){ setTimeout(r, 350); });
     }
+
+    // Resolve a redirect URL with hard preference for /products/<handle>.
     // Page publish returns data.page.url; theme publish returns
-    // data.preview_url + data.public_url + data.next_steps.
-    var url = isProductPage
-      ? (data.public_url || data.preview_url || null)
-      : (data.page && data.page.url);
-    if(url){
-      // Persist the published URL on the project so we can show "View live page" later.
-      proj.shopifyUrl = url;
+    // data.public_url (when a handle was sent) or data.preview_url.
+    var productUrl = null;
+    if (isProductPage) {
+      // public_url is built ONLY when shopify_handle was sent and the
+      // theme write succeeded. preview_url falls back to a bare-domain
+      // ?view= URL when no handle is set — that's the case we
+      // *don't* want to redirect to (looks like the homepage with an
+      // unused query param).
+      if (data.public_url && /\/products\//.test(data.public_url)) {
+        productUrl = data.public_url;
+      } else if (data.preview_url && /\/products\//.test(data.preview_url)) {
+        productUrl = data.preview_url;
+      }
+    } else {
+      productUrl = (data.page && data.page.url) || null;
     }
+    if(productUrl){ proj.shopifyUrl = productUrl; }
+
     // Auto-snapshot a "Publicado · …" version so the user can roll back to
     // any prior live state without thinking about it. Cap at 30 entries.
     try {
@@ -7564,21 +7674,41 @@ async function publishToShopify(){
       }
     } catch (snapErr) { console.warn('publish auto-snapshot failed', snapErr); }
     saveAll();
-    var successSub = isProductPage
-      ? (data.assigned_to_product
-          ? 'Tu producto "' + (data.template && data.template.name ? proj.shopifyProductHandle || '' : '') + '" ya usa esta plantilla.'
-          : 'Theme template publicado en tu theme.')
-      : 'Tu página ya está en vivo en Shopify.';
-    _rzPub.finishOk({
-      title: '✓ ¡Publicado en Shopify!',
-      sub: successSub,
-      message: data.next_steps || '',
-      url: url || null,
-    });
-    // Auto-open the live page after a short delay so the user can read
-    // the success state first. Fires once; if the user already clicked
-    // the action button, window.open is a noop because the modal closed.
-    if (url) setTimeout(function(){ try { window.open(url,'_blank','noopener'); } catch(e){} }, 1200);
+
+    // Success copy stays minimal — the modal speaks visually (✓ icon,
+    // green bar, completed steps). The verbose next_steps blob from the
+    // server is only surfaced when there's a missing handle or assign
+    // error worth surfacing inline.
+    if (productUrl) {
+      _rzPub.finishOk({
+        title: '✓ Publicado',
+        sub: isProductPage
+          ? 'Tu producto ya usa esta plantilla.'
+          : 'Tu landing ya está en vivo.',
+        url: productUrl,
+        actionLabel: 'Abrir página del producto',
+      });
+      // Auto-open the live page in a new tab so the user can verify.
+      // Short delay so the success animation reads first.
+      setTimeout(function(){
+        try { window.open(productUrl,'_blank','noopener'); } catch(e){}
+      }, 900);
+    } else if (isProductPage) {
+      // Theme template wrote successfully but no /products/ URL — handle
+      // is missing or auto-assign was skipped. Push the user to the one
+      // settings step they need; we keep the modal copy short and
+      // actionable instead of dumping the long server next_steps.
+      _rzPub.finishOk({
+        title: '✓ Plantilla publicada',
+        sub: 'Falta vincular un producto para abrirla en /products/.',
+        action: function(){
+          if (typeof openSettingsModal === 'function') openSettingsModal();
+        },
+        actionLabel: 'Vincular producto',
+      });
+    } else {
+      _rzPub.finishOk({ title: '✓ Publicado', sub: 'Tu landing ya está en vivo.' });
+    }
   }catch(e){
     _rzPub.finishErr(e && e.message ? e.message : 'Error al publicar');
   }
@@ -8151,6 +8281,29 @@ function initEdit(){
   pw.addEventListener('input',function(e){if(isRestoring||!e.target.hasAttribute('data-v-text'))return;qSave();});
   pw.addEventListener('blur',function(e){if(isRestoring||!e.target.hasAttribute('data-v-text'))return;flushQSavePending();collectTexts();snapshot();saveAll();},true);
   pw.addEventListener('paste',function(e){if(!e.target.hasAttribute('data-v-text'))return;e.preventDefault();var t=(e.clipboardData||window.clipboardData).getData('text/plain');document.execCommand('insertText',false,t);});
+  // <summary> elements (FAQ accordion headers) toggle their <details>
+  // open/close on Space and Enter natively — the browser handles those
+  // keys BEFORE contentEditable can insert the character, so a user
+  // typing "tomarlas con" inside an accordion question loses every
+  // space (the bar opens/closes instead). Intercept on bubble: when the
+  // target is an editable summary, preventDefault the toggle and insert
+  // the character manually via execCommand('insertText') — same pattern
+  // we already use for paste handling above.
+  pw.addEventListener('keydown', function(e){
+    var t = e.target;
+    if (!t || t.nodeType !== 1 || t.tagName !== 'SUMMARY') return;
+    if (!t.isContentEditable) return;
+    if (e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      document.execCommand('insertText', false, ' ');
+    } else if (e.key === 'Enter') {
+      // Plain Enter on a question heading shouldn't toggle the panel.
+      // Insert a <br> so multi-line questions still work; users who
+      // really want to toggle can click the chevron instead.
+      e.preventDefault();
+      document.execCommand('insertHTML', false, '<br>');
+    }
+  });
   var iui=g('im-url-in');if(iui && !iui.dataset.editListenersWired){iui.dataset.editListenersWired='1';iui.addEventListener('input',function(){var v=this.value.trim(),p=g('im-prev');if(v){p.src=v;p.style.display='block';}else{p.src='';p.style.display='none';}});}
 }
 
