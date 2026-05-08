@@ -38,7 +38,7 @@ export function LandingNav() {
           scrolled ? 'py-3' : 'py-4'
         }`}
       >
-        <Link href="/v3" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-md bg-[#0a0a0a] text-[12px] font-bold text-[#f7ff9e]">
             R
           </span>
