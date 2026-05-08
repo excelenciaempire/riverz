@@ -20,8 +20,11 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
     }
 
     const lenis = new Lenis({
-      duration: 1.1,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      // Tighter smoothing — keeps the "smoothness" but stops feeling laggy.
+      // With this + scrub: 0.25 on the scenes, animations feel glued to the
+      // scroll position rather than catching up afterwards.
+      duration: 0.6,
+      easing: (t) => 1 - Math.pow(1 - t, 3),
       smoothWheel: true,
       wheelMultiplier: 1,
       touchMultiplier: 1,

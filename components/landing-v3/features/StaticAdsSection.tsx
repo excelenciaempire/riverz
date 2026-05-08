@@ -65,7 +65,7 @@ export function StaticAdsSection() {
       id="static-ads"
       pinDuration={260}
       pinDurationMobile={180}
-      scrub={0.7}
+      scrub={0.25}
       buildTimeline={buildTimeline}
       className="lv3-bg-dark"
     >

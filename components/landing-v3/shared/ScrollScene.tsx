@@ -24,7 +24,7 @@ export function ScrollScene({
   id,
   pinDuration = 200,
   pinDurationMobile,
-  scrub = 0.6,
+  scrub = 0.25,
   className = '',
   stageClassName = '',
   buildTimeline,

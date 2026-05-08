@@ -49,7 +49,7 @@ export function LandingLabSection() {
       id="landing-lab"
       pinDuration={220}
       pinDurationMobile={160}
-      scrub={0.7}
+      scrub={0.25}
       buildTimeline={buildTimeline}
       className="lv3-bg-cream2"
     >

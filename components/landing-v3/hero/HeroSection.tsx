@@ -45,7 +45,7 @@ export function HeroSection() {
       id="hero"
       pinDuration={170}
       pinDurationMobile={130}
-      scrub={0.6}
+      scrub={0.2}
       buildTimeline={buildTimeline}
       className="lv3-bg-cream"
     >

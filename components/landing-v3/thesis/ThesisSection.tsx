@@ -46,7 +46,7 @@ export function ThesisSection() {
       id="modelos"
       pinDuration={200}
       pinDurationMobile={140}
-      scrub={0.6}
+      scrub={0.2}
       buildTimeline={buildTimeline}
       className="lv3-bg-dark"
     >
